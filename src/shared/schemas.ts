@@ -133,6 +133,20 @@ export const SLOTS_PAR_ETAGE = 6
 export const ETAGES_MAX = 3
 
 /**
+ * GEOMETRIE DU BATIMENT. Une dalle ne se verrouille pas: le wiki dit que l'entree
+ * « se scelle » et qu'on place des tourelles « en haut des escaliers ». Il faut donc
+ * des murs, UNE entree, et un escalier. Trois consequences mecaniques:
+ *  - le verrou a quelque chose a fermer
+ *  - la montee est une vraie traversee, ou le malus du voleur se paie
+ *  - le butin reste VISIBLE de l'exterieur (face avant ouverte), sinon personne ne
+ *    sait ce qu'il y a a voler et le lieu n'attire pas
+ */
+export const BASE_COTE = 5.0
+export const MUR_EPAISSEUR = 0.22
+export const MUR_HAUTEUR = 2.6
+export const PORTE_LARGEUR = 2.0
+
+/**
  * REBIRTH. Definition exacte relevee chez le praticien (transcription Aywen 1):
  * *« un systeme de palier que vous debloquez en atteignant un certain niveau d'argent
  * [...] debloquer des recompenses comme des nouvelles boites [...] ou UN ETAGE
@@ -202,8 +216,19 @@ export const PLOT_MAX_OBJETS = SLOTS_PAR_ETAGE * ETAGES_MAX
 export function slotPosition(slot: number): { dx: number; dy: number; dz: number } {
   const etage = Math.floor(slot / SLOTS_PAR_ETAGE)
   const k = slot % SLOTS_PAR_ETAGE
-  const a = (k / SLOTS_PAR_ETAGE) * Math.PI * 2
-  return { dx: Math.cos(a) * 1.15, dy: 0.55 + etage * ETAGE_HAUTEUR, dz: Math.sin(a) * 1.15 }
+  // Deux rangees de trois le long des murs du fond: le butin se voit depuis l'entree.
+  const col = k % 3
+  const rang = Math.floor(k / 3)
+  return {
+    dx: (col - 1) * 1.4,
+    dy: 0.45 + etage * ETAGE_HAUTEUR,
+    dz: -0.9 - rang * 1.1
+  }
+}
+
+/** L'escalier monte le long du mur droit, d'un etage au suivant. */
+export function rampePosition(etage: number): { dx: number; dy: number; dz: number } {
+  return { dx: BASE_COTE / 2 - 0.7, dy: etage * ETAGE_HAUTEUR + ETAGE_HAUTEUR / 2, dz: 0.6 }
 }
 /** Centre de la scene: 25 parcelles = 80x80 m. */
 export const CENTRE = { x: 40, z: 40 }

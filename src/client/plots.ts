@@ -4,7 +4,10 @@ import {
   Tween, TweenSequence, TweenLoop, EasingFunction
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition } from '../shared/schemas'
+import {
+  Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition,
+  rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR
+} from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
 import { voler } from './theft'
 
@@ -17,15 +20,73 @@ import { voler } from './theft'
  * donc une base retiree ne coute rien.
  */
 
-type Vue = { socle: Entity; etiquette: Entity; planchers: Entity[]; objets: Entity[]; signature: string; ownerId: string }
+type Etage = { plancher: Entity; murs: Entity[]; rampe: Entity }
+type Vue = {
+  socle: Entity; etiquette: Entity; porte: Entity
+  etages: Etage[]; objets: Entity[]; signature: string; ownerId: string
+}
+
+const GRIS = '#5b6472ff'
+const GRIS_CLAIR = '#6e7889ff'
+
+/** Un pave plein, l'unite de construction du batiment. */
+function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, couleur: string): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  MeshRenderer.setBox(e)
+  MeshCollider.setBox(e)
+  Material.setPbrMaterial(e, { albedoColor: Color4.fromHexString(couleur), roughness: 0.85 })
+  return e
+}
+
+/**
+ * Un etage: son plancher, trois murs, et l'ouverture en facade.
+ * La FACE AVANT (+Z) reste ouverte: le butin doit se voir de l'exterieur, sinon personne
+ * ne sait ce qu'il y a a prendre et le lieu n'attire personne.
+ */
+function construireEtage(x: number, z: number, etage: number): Etage {
+  const y = etage * ETAGE_HAUTEUR
+  const c = BASE_COTE
+  const h = MUR_HAUTEUR
+  const ep = MUR_EPAISSEUR
+
+  const plancher = bloc(x, y + 0.12, z, c, 0.24, c, etage === 0 ? '#4a5568ff' : GRIS)
+  const murs: Entity[] = [
+    bloc(x, y + h / 2, z - c / 2, c, h, ep, GRIS),                       // fond
+    bloc(x - c / 2, y + h / 2, z, ep, h, c, GRIS),                       // gauche
+    bloc(x + c / 2, y + h / 2, z, ep, h, c, GRIS),                       // droite
+    // facade: deux jambages qui laissent l'entree au milieu
+    bloc(x - (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),
+    bloc(x + (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),
+    bloc(x, y + h - 0.2, z + c / 2, PORTE_LARGEUR, 0.4, ep, GRIS_CLAIR)  // linteau
+  ]
+
+  // Rampe vers l'etage suivant, le long du mur droit.
+  const r = rampePosition(etage)
+  const rampe = engine.addEntity()
+  Transform.create(rampe, {
+    position: Vector3.create(x + r.dx, y + ETAGE_HAUTEUR / 2, z + r.dz),
+    scale: Vector3.create(1.2, 0.2, ETAGE_HAUTEUR * 1.9),
+    rotation: Quaternion.fromEulerDegrees(-32, 0, 0)
+  })
+  MeshRenderer.setBox(rampe)
+  MeshCollider.setBox(rampe)
+  Material.setPbrMaterial(rampe, { albedoColor: Color4.fromHexString('#7a8496ff'), roughness: 0.9 })
+
+  return { plancher, murs, rampe }
+}
 const vues = new Map<number, Vue>()   // clef = entite synchronisee du Plot
 
 function creerVue(x: number, z: number): Vue {
-  const socle = engine.addEntity()
-  Transform.create(socle, { position: Vector3.create(x, 0.15, z), scale: Vector3.create(3.2, 0.3, 3.2) })
-  MeshRenderer.setBox(socle)
-  MeshCollider.setBox(socle)
-  Material.setPbrMaterial(socle, { albedoColor: Color4.fromHexString('#4a5568ff') })
+  // Le socle deborde du batiment: un parvis, qui donne au lieu une assise.
+  const socle = bloc(x, 0.06, z, BASE_COTE + 1.6, 0.12, BASE_COTE + 1.6, '#3b424dff')
+
+  const etages: Etage[] = []
+  for (let e = 0; e < ETAGES_MAX; e++) etages.push(construireEtage(x, z, e))
+
+  // La porte n'apparait QUE verrouille: c'est le rendu visible de la mecanique 3.2.
+  const porte = bloc(x, MUR_HAUTEUR / 2, z + BASE_COTE / 2, PORTE_LARGEUR, MUR_HAUTEUR - 0.4, MUR_EPAISSEUR, '#c94f3dff')
+  Transform.getMutable(porte).scale = Vector3.create(0, 0, 0)
   // On vole en tapant LA BASE, pas un bouton flottant: la cible du geste est la chose
   // convoitee. Plus lisible pour un juge, et utilisable au doigt sur mobile.
   PointerEvents.create(socle, {
@@ -36,24 +97,9 @@ function creerVue(x: number, z: number): Vue {
   })
 
   const etiquette = engine.addEntity()
-  Transform.create(etiquette, { position: Vector3.create(x, 2.2, z), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Transform.create(etiquette, { position: Vector3.create(x, ETAGES_MAX * ETAGE_HAUTEUR + 1.0, z), scale: Vector3.create(0.6, 0.6, 0.6) })
   Billboard.create(etiquette, {})
   TextShape.create(etiquette, { text: '', fontSize: 3, textColor: Color4.White() })
-
-  // Les planchers des etages superieurs. Ils apparaissent quand le joueur les debloque:
-  // un batiment qui pousse est une progression VISIBLE de loin, pour lui et pour les autres.
-  const planchers: Entity[] = []
-  for (let e = 1; e < ETAGES_MAX; e++) {
-    const f = engine.addEntity()
-    Transform.create(f, {
-      position: Vector3.create(x, 0.15 + e * ETAGE_HAUTEUR, z),
-      scale: Vector3.create(0, 0, 0)
-    })
-    MeshRenderer.setBox(f)
-    MeshCollider.setBox(f)
-    Material.setPbrMaterial(f, { albedoColor: Color4.fromHexString('#525c6bff') })
-    planchers.push(f)
-  }
 
   const objets: Entity[] = []
   for (let k = 0; k < PLOT_MAX_OBJETS; k++) {
@@ -74,13 +120,18 @@ function creerVue(x: number, z: number): Vue {
     })
     objets.push(o)
   }
-  return { socle, etiquette, planchers, objets, signature: '', ownerId: '' }
+  return { socle, etiquette, porte, etages, objets, signature: '', ownerId: '' }
 }
 
 function detruireVue(v: Vue): void {
   engine.removeEntity(v.socle)
   engine.removeEntity(v.etiquette)
-  for (const f of v.planchers) engine.removeEntity(f)
+  engine.removeEntity(v.porte)
+  for (const e of v.etages) {
+    engine.removeEntity(e.plancher)
+    engine.removeEntity(e.rampe)
+    for (const m of e.murs) engine.removeEntity(m)
+  }
   for (const o of v.objets) engine.removeEntity(o)
 }
 
@@ -112,7 +163,9 @@ export function setupPlots(): void {
         vues.set(id, v)
       }
 
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${p.items.join(',')}`
+      // Le verrou entre dans la signature en BOOLEEN, pas en horodatage: sinon la vue se
+      // repeindrait a chaque image pendant toute la duree du verrou.
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${p.lockedUntil > Date.now() ? 1 : 0}|${p.items.join(',')}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
@@ -128,10 +181,33 @@ export function setupPlots(): void {
         albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
       })
 
-      // Les planchers debloques apparaissent, les autres restent a l'echelle zero.
-      for (let e = 0; e < v.planchers.length; e++) {
-        const ft = Transform.getMutableOrNull(v.planchers[e])
-        if (ft !== null) ft.scale = (e + 2) <= p.etages ? Vector3.create(3.0, 0.25, 3.0) : Vector3.create(0, 0, 0)
+      // Un etage non debloque disparait entierement: murs, plancher et rampe.
+      // Le batiment POUSSE a mesure qu'on progresse, et ca se voit de loin.
+      for (let e = 0; e < v.etages.length; e++) {
+        const ouvert = e < p.etages
+        const et = v.etages[e]
+        const mettre = (ent: Entity, sx: number, sy: number, sz: number) => {
+          const tr = Transform.getMutableOrNull(ent)
+          if (tr !== null) tr.scale = ouvert ? Vector3.create(sx, sy, sz) : Vector3.create(0, 0, 0)
+        }
+        mettre(et.plancher, BASE_COTE, 0.24, BASE_COTE)
+        mettre(et.murs[0], BASE_COTE, MUR_HAUTEUR, MUR_EPAISSEUR)
+        mettre(et.murs[1], MUR_EPAISSEUR, MUR_HAUTEUR, BASE_COTE)
+        mettre(et.murs[2], MUR_EPAISSEUR, MUR_HAUTEUR, BASE_COTE)
+        mettre(et.murs[3], (BASE_COTE - PORTE_LARGEUR) / 2, MUR_HAUTEUR, MUR_EPAISSEUR)
+        mettre(et.murs[4], (BASE_COTE - PORTE_LARGEUR) / 2, MUR_HAUTEUR, MUR_EPAISSEUR)
+        mettre(et.murs[5], PORTE_LARGEUR, 0.4, MUR_EPAISSEUR)
+        // la rampe ne sert que s'il y a un etage AU-DESSUS a rejoindre
+        mettre(et.rampe, 1.2, 0.2, ETAGE_HAUTEUR * 1.9)
+        const rtr = Transform.getMutableOrNull(et.rampe)
+        if (rtr !== null && (e + 1) >= p.etages) rtr.scale = Vector3.create(0, 0, 0)
+      }
+
+      // La porte se ferme quand la base est verrouillee: la mecanique devient VISIBLE.
+      const ptr = Transform.getMutableOrNull(v.porte)
+      if (ptr !== null) {
+        const verrouille = p.lockedUntil > Date.now()
+        ptr.scale = verrouille ? Vector3.create(PORTE_LARGEUR, MUR_HAUTEUR - 0.4, MUR_EPAISSEUR) : Vector3.create(0, 0, 0)
       }
 
       for (let k = 0; k < v.objets.length; k++) {
