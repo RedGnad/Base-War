@@ -25,6 +25,7 @@ export const SPIKE_AVATARS = 8
 
 export function startClient(): void {
   console.log('[CLIENT] demarrage')
+  room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
   if (SPIKE_AVATARS > 0) spawnTestAvatars(SPIKE_AVATARS)
   setupTouchHud()
   reportPlatform()

@@ -14,6 +14,14 @@ export const MESSAGES = {
   hitCrate: Schemas.Map({}),
   /** serveur -> celui qui a frappe: coup refuse et pourquoi (trop loin = triche probable) */
   hitRejected: Schemas.Map({ raison: Schemas.String, antiCheat: Schemas.Boolean }),
+  /**
+   * serveur -> tous: relais de journal.
+   * Les `console.log` du serveur headless NE REMONTENT PAS dans la console de scene du
+   * client (runtime separe), ce qui rend tout echec serveur invisible en developpement.
+   * Ce relais est notre seule fenetre. A garder jusqu'au gel, il coute une chaine.
+   */
+  serverLog: Schemas.Map({ line: Schemas.String }),
+
   /** client -> serveur: je prends un objet sur l'emplacement d'a cote. */
   stealItem: Schemas.Map({}),
   /** client -> serveur: je protege mon emplacement. */

@@ -4,6 +4,13 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
+import { room } from '../shared/messages'
+
+/** Journalise cote serveur ET relaie au client, seule fenetre de diagnostic. */
+function jour(line: string): void {
+  jour(`${line}`)
+  void room.send('serverLog', { line })
+}
 
 /**
  * ALLOCATION DYNAMIQUE DES BASES.
@@ -70,7 +77,8 @@ function publier(b: Base, ici?: Set<string>): void {
 /** Cree la base d'un joueur. Retourne null si le lieu affiche deja son maximum. */
 function creerBase(address: string, name: string, items: number[], lastSeen: number): Base | null {
   const place = placesLibres.shift()
-  if (place === undefined) return null
+  if (place === undefined) { jour(`creerBase: aucune place libre pour ${address.slice(0, 8)}`); return null }
+  try {
   const e = engine.addEntity()
   const p = plotPosition(place)
   Transform.create(e, { position: Vector3.create(p.x, 0, p.z) })
@@ -80,6 +88,11 @@ function creerBase(address: string, name: string, items: number[], lastSeen: num
   bases.set(address, b)
   publier(b)
   return b
+  } catch (err) {
+    jour(`creerBase A JETE pour ${address.slice(0, 8)}: ${err}`)
+    placesLibres.unshift(place)
+    return null
+  }
 }
 
 function retirerBase(address: string): void {
@@ -106,9 +119,9 @@ async function chargerBases(): Promise<void> {
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, MAX_BASES)
     for (const l of lues) creerBase(l.address, l.name, l.items, l.lastSeen)
-    console.log(`[SERVER] ${lues.length} bases restituees sur ${res.pagination.total} connues`)
+    jour(`${lues.length} bases restituees sur ${res.pagination.total} connues`)
   } catch (e) {
-    console.error(`[SERVER] lecture des bases impossible: ${e}`)
+    jour(`ERREUR lecture des bases impossible: ${e}`)
   }
 }
 
@@ -118,14 +131,14 @@ async function sauver(): Promise<void> {
     const b = bases.get(a)
     if (!b) continue
     const ok = await Storage.set(CLE_BASE(a), JSON.stringify({ name: b.name, items: b.items, lastSeen: b.lastSeen }))
-    if (!ok) { console.error(`[SERVER] ECHEC sauvegarde base ${a}`); basesSales.add(a) }
+    if (!ok) { jour(`ERREUR ECHEC sauvegarde base ${a}`); basesSales.add(a) }
   }
   for (const a of [...profilsSales]) {
     profilsSales.delete(a)
     const p = profils.get(a)
     if (!p) continue
     const ok = await Storage.player.set(a, CLE_JOUEUR, JSON.stringify(p))
-    if (!ok) { console.error(`[SERVER] ECHEC sauvegarde profil ${a}`); profilsSales.add(a) }
+    if (!ok) { jour(`ERREUR ECHEC sauvegarde profil ${a}`); profilsSales.add(a) }
   }
 }
 
@@ -147,7 +160,7 @@ export async function accueillir(address: string): Promise<void> {
     dejala.lastSeen = Date.now()
     basesSales.add(address)
     publier(dejala)
-    console.log(`[SERVER] ${name} retrouve sa base (place ${dejala.place})`)
+    jour(`${name} retrouve sa base (place ${dejala.place})`)
     return
   }
 
@@ -160,18 +173,18 @@ export async function accueillir(address: string): Promise<void> {
       if (plusVieux === null || b.lastSeen < plusVieux.lastSeen) plusVieux = b
     }
     if (plusVieux !== null) {
-      console.log(`[SERVER] base de ${plusVieux.name} retiree de l'affichage (absent le plus ancien), son butin reste a lui`)
+      jour(`base de ${plusVieux.name} retiree de l'affichage (absent le plus ancien), son butin reste a lui`)
       retirerBase(plusVieux.address)
     }
   }
 
   const b = creerBase(address, name, items, Date.now())
   if (b === null) {
-    console.log(`[SERVER] ${name} sans base affichee: ${MAX_BASES} bases deja visibles. Son butin s'accumule.`)
+    jour(`${name} sans base affichee: ${MAX_BASES} bases deja visibles. Son butin s'accumule.`)
     return
   }
   basesSales.add(address)
-  console.log(`[SERVER] base creee pour ${name} (place ${b.place}), ${bases.size}/${MAX_BASES} affichees`)
+  jour(`base creee pour ${name} (place ${b.place}), ${bases.size}/${MAX_BASES} affichees`)
 }
 
 /** Au depart: la base RESTE visible, c'est elle que les autres pourront piller. */
@@ -181,7 +194,7 @@ export function auRevoir(address: string): void {
   b.lastSeen = Date.now()
   basesSales.add(address)
   publier(b)
-  console.log(`[SERVER] ${b.name} est parti, sa base reste affichee et pillable`)
+  jour(`${b.name} est parti, sa base reste affichee et pillable`)
 }
 
 export async function poserObjet(address: string, rarity: number): Promise<boolean> {
@@ -189,13 +202,13 @@ export async function poserObjet(address: string, rarity: number): Promise<boole
   if (!profil) return false
   const b = bases.get(address)
   if (b && b.items.length >= PLOT_MAX_OBJETS) {
-    console.log(`[SERVER] base de ${b.name} pleine (${PLOT_MAX_OBJETS})`)
+    jour(`base de ${b.name} pleine (${PLOT_MAX_OBJETS})`)
     return false
   }
   profil.items.push(rarity)
   profilsSales.add(address)
   if (b) { b.items = [...profil.items]; basesSales.add(address); publier(b) }
-  console.log(`[SERVER] rarete ${rarity} posee par ${address.slice(0, 8)} (${profil.items.length} objets)`)
+  jour(`rarete ${rarity} posee par ${address.slice(0, 8)} (${profil.items.length} objets)`)
   return true
 }
 
