@@ -284,15 +284,24 @@ export function retirerObjet(address: string, index: number): number | null {
 }
 
 /** Ajoute un objet a une base (ou au seul profil si le joueur n'a pas de base affichee). */
-export function ajouterObjet(address: string, rarity: number): boolean {
+/**
+ * Range un objet. Renvoie ce qui s'est REELLEMENT passe, pour que le client puisse le
+ * dire au joueur au lieu d'annoncer « pose sur ta base » quand il n'y a pas de base.
+ */
+export type RangementResultat = 'expose' | 'en-stock' | 'plein'
+
+export function ajouterObjet(address: string, rarity: number): RangementResultat {
   const prof = profils.get(address)
-  if (!prof) return false
-  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0, prof.rebirths ?? 0)) return false
+  if (!prof) return 'plein'
+  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0, prof.rebirths ?? 0)) return 'plein'
   prof.items.push(rarity)
   profilsSales.add(address)
   const b = bases.get(address)
-  if (b) { b.items = [...prof.items]; basesSales.add(address); publier(b) }
-  return true
+  if (!b) return 'en-stock'
+  b.items = [...prof.items]
+  basesSales.add(address)
+  publier(b)
+  return 'expose'
 }
 
 export function nomAffiche(address: string): string {

@@ -10,6 +10,13 @@ import { RARITIES } from './shared/loot-table'
 
 /** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
 const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256]
+
+/** Ce qu'on dit au joueur selon ce qui est REELLEMENT arrive a son objet. */
+const ETATS: Record<string, (r: number) => string> = {
+  expose: (r) => `+${GAIN_PAR_SECONDE_UI[r] ?? 1} pieces/s  ·  pose sur ta base`,
+  'en-stock': () => 'garde de cote  ·  POSE TA BASE pour qu il rapporte',
+  plein: () => 'ta base est pleine  ·  fais de la place'
+}
 import { slotView, basculerPose, poserIci } from './client/slots'
 
 /**
@@ -118,13 +125,24 @@ const uiComponent = () => (
           fontSize={boxView.roule ? 34 : 44}
           color={Color4.fromHexString((RARITIES[boxView.index]?.couleur ?? '#ffffff') + 'ff')} />
         <Label
-          value={boxView.roule
-            ? '...'
-            : (boxView.message !== ''
-                ? boxView.message
-                : `+${GAIN_PAR_SECONDE_UI[boxView.resultat] ?? 1} pieces/s  ·  pose sur ta base`)}
+          value={boxView.roule ? '...' : ETATS[boxView.etat]?.(boxView.resultat) ?? ''}
           fontSize={15}
-          color={Color4.fromHexString(boxView.message !== '' ? '#ff8080ff' : '#8fe08fff')} />
+          color={Color4.fromHexString(boxView.etat === 'expose' ? '#8fe08fff' : '#ffd166ff')} />
+      </UiEntity>
+    )}
+
+    {/* Rappel AVANT d'ouvrir: sans base, l'objet ne rapportera rien. On previent
+        plutot que d'interdire: bloquer un joueur qui veut juste voir sa boite serait pire. */}
+    {!theftView.basePosee && boxView.stock.length > 0 && !boxView.ouverture && !boxView.roule && (
+      <UiEntity
+        uiTransform={{
+          width: 400, height: 40, positionType: 'absolute',
+          position: { bottom: 150, left: '50%' }, margin: { left: -200 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
+      >
+        <Label value="pose ta base : tes objets n y rapportent rien sans elle" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 

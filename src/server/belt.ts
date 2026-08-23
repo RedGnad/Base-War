@@ -138,14 +138,9 @@ export function startBelt(): void {
       return
     }
     const rarity = rollBoite(d.typeBoite)
-    const place = ajouterObjet(a, rarity)
-    if (!place) {
-      // Base pleine: l'objet est perdu plutot que la boite. On previent clairement.
-      jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity}, MAIS base pleine`)
-    } else {
-      jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity}`)
-    }
-    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, place }, { to: [a] })
+    const etat = ajouterObjet(a, rarity)
+    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity} (${etat})`)
+    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, etat }, { to: [a] })
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
   })
 

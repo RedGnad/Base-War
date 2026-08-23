@@ -55,7 +55,7 @@ export const MESSAGES = {
    * Le resultat est decide par le SERVEUR; la roulette du client n'est que du theatre
    * qui atterrit dessus. C'est ainsi que fonctionne toute loterie honnete.
    */
-  boxResult: Schemas.Map({ typeBoite: Schemas.Int, rarity: Schemas.Int, place: Schemas.Boolean }),
+  boxResult: Schemas.Map({ typeBoite: Schemas.Int, rarity: Schemas.Int, etat: Schemas.String }),
   /** serveur -> chaque joueur: son stock de boites non ouvertes, par type. */
   inventory: Schemas.Map({ boites: Schemas.Array(Schemas.Int) }),
 

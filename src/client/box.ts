@@ -32,6 +32,8 @@ export const boxView = {
   resultat: -1,
   /** instant jusqu'auquel le resultat reste affiche apres l'arret de la roulette */
   resultatJusqua: 0,
+  /** 'expose' | 'en-stock' | 'plein' */
+  etat: 'expose',
   message: ''
 }
 
@@ -63,7 +65,10 @@ export function setupBox(): void {
     // On lance la roulette VERS le resultat serveur. Duree fixe, ralentissement continu.
     boxView.roule = true
     boxView.resultat = d.rarity
-    boxView.message = d.place ? '' : 'base pleine, objet perdu'
+    // On dit la VERITE sur ce qui vient d'arriver a l'objet. Annoncer « pose sur ta
+    // base » quand il n'y a pas de base laisse le joueur devant un compteur immobile
+    // sans aucun moyen de comprendre.
+    boxView.etat = d.etat
     restant = 2.6
     prochainPas = 0.045
     pasCourant = 0
