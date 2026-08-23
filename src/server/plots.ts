@@ -4,10 +4,12 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
-  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide,
+  DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { jour, viderJournal } from './journal'
+import { aQuelqueChoseAReprendre } from './theft'
 import { room } from '../shared/messages'
 
 /**
@@ -46,6 +48,8 @@ type Profil = {
   rebirths?: number
   x?: number
   z?: number
+  /** horodatage du dernier DEPLACEMENT (pas du premier placement) */
+  dernierDeplacement?: number
   alertes?: object[]
 }
 
@@ -443,6 +447,29 @@ export function depenser(address: string, montant: number): boolean {
   return true
 }
 
+/**
+ * REVENTE. C'est la seule facon de faire de la place: les emplacements sont la
+ * ressource rare, et « progresser, c'est remplacer ». Sans revente, une base pleine de
+ * Communs est un cul-de-sac.
+ * On rend 30 secondes de production, donc bien moins que le prix d'une boite: revendre
+ * est un arbitrage, pas une source de revenu.
+ */
+export function revendreObjet(address: string, index: number): { ok: boolean; gain?: number; raison?: string } {
+  const p = profils.get(address)
+  const b = bases.get(address)
+  if (!p || !b) return { ok: false, raison: 'no base' }
+  if (index < 0 || index >= b.items.length) return { ok: false, raison: 'no such item' }
+  const r = b.items[index]
+  const gain = Math.round((GAIN_PAR_SECONDE[r] ?? 1) * REVENTE_SECONDES * multiplicateurRevenu(p.rebirths ?? 0))
+  b.items.splice(index, 1)
+  p.items = [...b.items]
+  p.coins += gain
+  basesSales.add(address); profilsSales.add(address)
+  publier(b)
+  jour(`${b.name} revend une rarete ${r} pour ${gain}`)
+  return { ok: true, gain }
+}
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)
@@ -500,9 +527,12 @@ export function startPlots(): void {
       let revenu = 0
       if (b) for (const r of b.items) revenu += GAIN_PAR_SECONDE[r] ?? 1
       revenu = Math.round(revenu * multiplicateurRevenu(palier))
+      const lock = b ? (Plot.getOrNull(b.entity)?.lockedUntil ?? 0) : 0
       void room.send('wallet', {
         revenu,
         basePosee: b !== undefined,
+        verrouSec: Math.max(0, Math.ceil((lock - Date.now()) / 1000)),
+        aReprendre: aQuelqueChoseAReprendre(address),
         coins: Math.floor(p.coins),
         prochainPalier: suivant ? suivant.cout : 0,
         palier,

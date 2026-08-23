@@ -13,9 +13,9 @@ const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256]
 
 /** Ce qu'on dit au joueur selon ce qui est REELLEMENT arrive a son objet. */
 const ETATS: Record<string, (r: number) => string> = {
-  expose: (r) => `+${GAIN_PAR_SECONDE_UI[r] ?? 1} pieces/s  ·  pose sur ta base`,
-  'en-stock': () => 'garde de cote  ·  POSE TA BASE pour qu il rapporte',
-  plein: () => 'ta base est pleine  ·  fais de la place'
+  expose: (r) => `+${GAIN_PAR_SECONDE_UI[r] ?? 1} coins/s  ·  placed on your base`,
+  'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
+  plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, poserIci } from './client/slots'
 
@@ -63,14 +63,14 @@ const uiComponent = () => (
       uiBackground={{ color: PANNEAU }}
     >
       <Label
-        value={`${theftView.coins} pieces${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
+        value={`${theftView.coins} coins${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
         fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
       <Label
         value={
-          !view.serverAlive ? 'SERVEUR SILENCIEUX'
-          : !theftView.basePosee ? 'pose ta base pour que tes objets rapportent'
-          : theftView.revenu === 0 ? 'ouvre une boite pour commencer a gagner'
-          : `+${theftView.revenu}/s · ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}`
+          !view.serverAlive ? 'SERVER OFFLINE'
+          : !theftView.basePosee ? 'place your base so your loot earns'
+          : theftView.revenu === 0 ? 'open a crate to start earning'
+          : `+${theftView.revenu}/s · ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
         }
         fontSize={13}
         color={
@@ -156,7 +156,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
       >
-        <Label value={`FRAPPE LA BOITE  ${boxView.coups}/3`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
+        <Label value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 
@@ -178,30 +178,44 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 560, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -370 },
+        width: 620, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -400 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
       <Button
         uiTransform={{ width: 120, height: 54 }}
-        value={boxView.stock.length > 0 ? `OUVRIR (${boxView.stock.length})` : 'OUVRIR'}
+        value={boxView.stock.length > 0 ? `OPEN (${boxView.stock.length})` : 'OPEN'}
         variant={boxView.stock.length > 0 ? 'primary' : 'secondary'}
         fontSize={14}
         onMouseDown={ouvrirMeilleure} />
-      <Button uiTransform={{ width: 100, height: 54 }} value="PROTEGER" variant="secondary" fontSize={14} onMouseDown={verrouiller} />
-      <Button uiTransform={{ width: 100, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={14} onMouseDown={reprendre} />
+      {/* Chaque bouton DIT son etat: un bouton qui a l'air actif et ne fait rien est
+          pire que pas de bouton du tout. */}
       <Button
         uiTransform={{ width: 110, height: 54 }}
-        value={slotView.actif ? (slotView.valide ? 'POSER' : 'X') : 'MA BASE'}
+        value={theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s` : 'LOCK 60s'}
+        variant={theftView.verrouSec > 0 ? 'secondary' : 'primary'}
+        fontSize={13}
+        onMouseDown={verrouiller} />
+      <Button
+        uiTransform={{ width: 110, height: 54 }}
+        value={theftView.aReprendre ? 'RECOVER!' : 'RECOVER'}
+        variant={theftView.aReprendre ? 'primary' : 'secondary'}
+        fontSize={13}
+        onMouseDown={reprendre} />
+      <Button
+        uiTransform={{ width: 110, height: 54 }}
+        value={slotView.actif ? (slotView.valide ? 'BUILD' : 'X') : 'MA BASE'}
         variant={slotView.actif && slotView.valide ? 'primary' : 'secondary'}
         fontSize={14}
         onMouseDown={() => { if (!slotView.actif) basculerPose(); else if (slotView.valide) poserIci(); else basculerPose() }}
       />
       {theftView.prochainPalier > 0 && (
         <Button
-          uiTransform={{ width: 110, height: 54 }}
-          value={theftView.coins >= theftView.prochainPalier ? 'PALIER !' : `${theftView.prochainPalier}`}
+          uiTransform={{ width: 150, height: 54 }}
+          value={theftView.coins >= theftView.prochainPalier
+            ? `PRESTIGE x${theftView.multiplicateur * 2}`
+            : `PRESTIGE ${theftView.prochainPalier}`}
           variant={theftView.coins >= theftView.prochainPalier ? 'primary' : 'secondary'}
           fontSize={14}
           onMouseDown={franchirPalier}

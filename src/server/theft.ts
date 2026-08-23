@@ -12,7 +12,7 @@ import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
   nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe,
-  poserBase, positionsBases
+  poserBase, positionsBases, revendreObjet
 } from './plots'
 
 /**
@@ -70,6 +70,12 @@ export function delivrerAlertes(address: string): void {
     void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity }, { to: [address] })
   }
   jour(`${a.length} alerte(s) differee(s) delivree(s) a ${nomAffiche(address)}`)
+}
+
+/** Y a-t-il un larcin recent que cette victime peut encore reprendre ? */
+export function aQuelqueChoseAReprendre(address: string): boolean {
+  const t = Date.now()
+  return larcins.some((l) => l.victime === address && t - l.quand <= REPRISE_FENETRE_MS)
 }
 
 export function startTheft(): void {
@@ -155,6 +161,14 @@ export function startTheft(): void {
     const ps = positionsBases()
     void room.send('basePositions', { xs: ps.map((q) => q.x), zs: ps.map((q) => q.z) })
   }, 2500)
+
+  room.onMessage('sellItem', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = revendreObjet(a, d.slot)
+    if (!r.ok) { refus(a, 'sell', r.raison ?? 'refused'); return }
+    void room.send('sold', { gain: r.gain ?? 0, rarity: 0 }, { to: [a] })
+  })
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

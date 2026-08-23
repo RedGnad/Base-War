@@ -230,11 +230,20 @@ export const PORTE_LARGEUR = 2.0
  * c'est le sacrifice des objets qui rend le palier signifiant, et le multiplicateur qui
  * fait accelerer la boucle au lieu de la faire stagner.
  */
+/**
+ * PALIERS. Prix cales sur ~5 minutes de production d'une base pleine de la rarete exigee:
+ * un palier est une grosse amelioration permanente, il doit se meriter. Les valeurs
+ * precedentes (1 500 pour un x2) se franchissaient en quelques dizaines de secondes.
+ *   6 Peu communs =  24/s -> 5 min =   7 200
+ *   6 Rares       =  96/s -> 5 min =  28 800
+ *   6 Epiques     = 384/s -> 5 min = 115 000
+ *   6 Legendaires =1536/s -> 5 min = 460 000
+ */
 export const PALIERS = [
-  { cout: 1500,   rareteMin: 1, multiplicateur: 2, garde: 1 },
-  { cout: 12000,  rareteMin: 2, multiplicateur: 3, garde: 1 },
-  { cout: 90000,  rareteMin: 3, multiplicateur: 5, garde: 2 },
-  { cout: 700000, rareteMin: 4, multiplicateur: 8, garde: 2 }
+  { cout: 5000,    rareteMin: 1, multiplicateur: 2, garde: 1 },
+  { cout: 40000,   rareteMin: 2, multiplicateur: 3, garde: 1 },
+  { cout: 250000,  rareteMin: 3, multiplicateur: 5, garde: 2 },
+  { cout: 1500000, rareteMin: 4, multiplicateur: 8, garde: 2 }
 ] as const
 export const REBIRTH_MAX = PALIERS.length
 
@@ -277,6 +286,17 @@ export function placesOuvertes(objetsCollectes: number, rebirths = 0): number {
  * decision d'implantation: pres du tapis pour acheter vite, a l'ecart pour se faire
  * oublier des voleurs, ou colle a un ami.
  */
+/**
+ * DELAI ENTRE DEUX DEPLACEMENTS DE BASE.
+ * Sans lui, on peut teleporter sa base des qu'un voleur approche: la defense devient
+ * gratuite et le vol impossible. Le premier placement ne compte pas comme un
+ * deplacement, pour ne pas punir un choix fait avant de connaitre le lieu.
+ */
+export const DELAI_DEPLACEMENT_MS = 180_000
+
+/** Valeur de revente d'un objet: 30 secondes de sa production. */
+export const REVENTE_SECONDES = 30
+
 export const GRILLE = 2                    // pas d'accrochage, en metres
 export const ECART_MIN_BASES = 11          // entre deux centres: 8 m de base + circulation
 export const MARGE_BORD = 7                // du bord de la scene

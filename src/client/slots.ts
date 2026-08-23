@@ -76,7 +76,7 @@ export function setupSlots(): void {
     }
     const ts = TextShape.getMutableOrNull(etiquette)
     if (ts !== null) {
-      ts.text = slotView.valide ? 'POSER ICI' : slotView.raison
+      ts.text = slotView.valide ? 'BUILD HERE' : slotView.raison
       ts.textColor = c
     }
   })

@@ -18,6 +18,8 @@ export const theftView = {
   multiplicateur: 1,
   revenu: 0,
   basePosee: false,
+  verrouSec: 0,
+  aReprendre: false,
   alerte: '',
   alerteCouleur: '#ffffff',
   alerteJusqua: 0,
@@ -79,11 +81,18 @@ export function setupTheft(): void {
     theftView.multiplicateur = d.multiplicateur
     theftView.revenu = d.revenu
     theftView.basePosee = d.basePosee
+    theftView.verrouSec = d.verrouSec
+    theftView.aReprendre = d.aReprendre
   })
 
   room.onMessage('rebirthDone', (d) => {
     alerter(`PALIER ${d.palier} — ${d.etages} etages`, '#f5a524', 6000)
     console.log(`[CLIENT] palier ${d.palier}, ${d.etages} etages`)
+  })
+
+  room.onMessage('sold', (d) => {
+    alerter(`+${d.gain} coins`, '#8fe08f', 2500)
+    console.log(`[CLIENT] revendu pour ${d.gain}`)
   })
 
   room.onMessage('actionRejected', (d) => {
@@ -104,3 +113,9 @@ export function voler(ownerId = '', slot = -1): void {
 export function verrouiller(): void { void room.send('activateLock', {}) }
 export function reprendre(): void { void room.send('reclaim', {}) }
 export function franchirPalier(): void { void room.send('rebirth', {}) }
+export function revendre(slot: number): void { void room.send('sellItem', { slot }) }
+
+/** Adresse du joueur local, resolue une fois. */
+let _adresse = ''
+export function monAdresseClient(): string { return _adresse }
+export function setAdresseClient(a: string): void { _adresse = a }

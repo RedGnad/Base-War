@@ -9,7 +9,7 @@ import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
 import { setupPlots } from './plots'
-import { setupTheft } from './theft'
+import { setupTheft, setAdresseClient } from './theft'
 import { setupBelt } from './belt'
 import { setupSlots } from './slots'
 
@@ -53,6 +53,7 @@ export function startClient(): void {
       const me = getPlayer()
       if (me === null) return
       myAddress = me.userId.toLowerCase()
+      setAdresseClient(myAddress)
       console.log(`[CLIENT] mon adresse: ${myAddress}`)
     }
     // Source de verite: MA base, publiee par le serveur. Le compteur du spike 1.1

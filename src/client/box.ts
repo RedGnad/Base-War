@@ -54,8 +54,8 @@ export function setupBox(): void {
   MeshCollider.setBox(boite3d)
   PointerEvents.create(boite3d, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Frapper' } },
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Frapper' } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Smash' } },
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Smash' } }
     ]
   })
 

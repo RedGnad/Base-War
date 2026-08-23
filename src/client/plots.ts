@@ -9,7 +9,7 @@ import {
   rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR, TREMIE_LARGEUR
 } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
-import { voler } from './theft'
+import { voler, revendre, monAdresseClient } from './theft'
 
 /**
  * Rendu DYNAMIQUE des bases: une vue apparait quand le serveur cree une base, disparait
@@ -120,15 +120,32 @@ function creerVue(x: number, z: number): Vue {
   const etages: Etage[] = []
   for (let e = 0; e < ETAGES_MAX; e++) etages.push(construireEtage(x, z, e))
 
-  // La porte n'apparait QUE verrouille: c'est le rendu visible de la mecanique 3.2.
-  const porte = bloc(x, MUR_HAUTEUR / 2, z + BASE_COTE / 2, PORTE_LARGEUR, MUR_HAUTEUR - 0.4, MUR_EPAISSEUR, '#c94f3dff')
-  Transform.getMutable(porte).scale = Vector3.create(0, 0, 0)
+  /**
+   * BOUCLIER, et non une porte. Une porte qui n'empeche pas d'entrer par le haut ne
+   * veut rien dire: le vrai barrage est la verification serveur, et une decoration qui
+   * pretend bloquer ment au joueur.
+   * Un dome translucide englobe TOUTE la base, toits compris. Il ne bloque rien
+   * physiquement (aucun collider), il DIT que le serveur refusera le vol.
+   */
+  const porte = engine.addEntity()
+  Transform.create(porte, {
+    position: Vector3.create(x, (ETAGES_MAX * ETAGE_HAUTEUR) / 2, z),
+    scale: Vector3.create(0, 0, 0)
+  })
+  MeshRenderer.setBox(porte)
+  Material.setPbrMaterial(porte, {
+    albedoColor: Color4.create(0.30, 0.85, 1.0, 0.16),
+    emissiveColor: Color4.fromHexString('#4dd2ffff'),
+    emissiveIntensity: 0.55,
+    metallic: 0,
+    roughness: 0.1
+  })
   // On vole en tapant LA BASE, pas un bouton flottant: la cible du geste est la chose
   // convoitee. Plus lisible pour un juge, et utilisable au doigt sur mobile.
   PointerEvents.create(socle, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Prendre un objet' } },
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Prendre un objet' } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Steal' } },
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
     ]
   })
 
@@ -150,8 +167,8 @@ function creerVue(x: number, z: number): Vue {
     // C'est l'OBJET qu'on vise, pas la base: le voleur choisit sa cible, comme chez le #1.
     PointerEvents.create(o, {
       pointerEvents: [
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Prendre' } },
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Prendre' } }
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Steal' } },
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
       ]
     })
     objets.push(o)
@@ -181,7 +198,14 @@ export function setupPlots(): void {
         if (
           inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.objets[k]) ||
           inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.objets[k])
-        ) { voler(v.ownerId, k); return }
+        ) {
+          // MEME GESTE, CIBLE DIFFERENTE: chez soi on revend pour faire de la place,
+          // chez les autres on vole. C'est la seule facon de remplacer un Commun par
+          // un Epique quand la base est pleine.
+          if (v.ownerId.toLowerCase() === monAdresseClient()) revendre(k)
+          else voler(v.ownerId, k)
+          return
+        }
       }
     }
   })
@@ -201,16 +225,33 @@ export function setupPlots(): void {
 
       // Le verrou entre dans la signature en BOOLEEN, pas en horodatage: sinon la vue se
       // repeindrait a chaque image pendant toute la duree du verrou.
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${p.lockedUntil > Date.now() ? 1 : 0}|${p.items.join(',')}`
+      // Le decompte du verrou entre dans la signature a la SECONDE, pas a l'image:
+      // sinon soit l'etiquette ne se rafraichit jamais, soit on repeint 30 fois/s.
+      const secondesVerrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
+
+      // Le libelle du survol dit ce que le geste FERA, et ca depend de qui possede.
+      const mien = p.ownerId.toLowerCase() === monAdresseClient()
+      const libelle = mien ? 'Sell' : 'Steal'
+      for (const o of v.objets) {
+        PointerEvents.createOrReplace(o, {
+          pointerEvents: [
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: libelle } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: libelle } }
+          ]
+        })
+      }
 
       const txt = TextShape.getMutableOrNull(v.etiquette)
       if (txt !== null) {
         // Le nom reste affiche meme absent: une base occupee n'est jamais vide a l'ecran,
         // et c'est elle que les autres viendront piller.
-        txt.text = p.ownerPresent ? p.ownerName : `${p.ownerName}\n(absent)`
+        const verrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
+        const etat = verrou > 0 ? `\nLOCKED ${verrou}s` : (p.ownerPresent ? '' : '\n(away)')
+        txt.text = `${p.ownerName}${etat}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
       }
       Material.setPbrMaterial(v.socle, {
@@ -240,11 +281,16 @@ export function setupPlots(): void {
         if (rtr !== null && (e + 1) >= p.etages) rtr.scale = Vector3.create(0, 0, 0)
       }
 
-      // La porte se ferme quand la base est verrouillee: la mecanique devient VISIBLE.
+      // Le bouclier apparait quand la base est protegee: la mecanique devient VISIBLE
+      // de loin, et un voleur sait avant de traverser le lieu que c'est inutile.
       const ptr = Transform.getMutableOrNull(v.porte)
       if (ptr !== null) {
         const verrouille = p.lockedUntil > Date.now()
-        ptr.scale = verrouille ? Vector3.create(PORTE_LARGEUR, MUR_HAUTEUR - 0.4, MUR_EPAISSEUR) : Vector3.create(0, 0, 0)
+        const h = p.etages * ETAGE_HAUTEUR + 0.6
+        ptr.position = Vector3.create(t.position.x, h / 2, t.position.z)
+        ptr.scale = verrouille
+          ? Vector3.create(BASE_COTE + 1.2, h, BASE_COTE + 1.2)
+          : Vector3.create(0, 0, 0)
       }
 
       for (let k = 0; k < v.objets.length; k++) {
