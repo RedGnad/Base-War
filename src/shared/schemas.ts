@@ -70,6 +70,49 @@ export const Loot = engine.defineComponent('friendzone::loot', {
   slot: Schemas.Int
 })
 
+/**
+ * LE TAPIS. Coeur du jeu de reference (wiki, page `Red Carpet`):
+ * *« a studded carpet where Brainrots spawn and walk across to the other side.
+ *   People can buy Brainrots from it »*
+ * *« You can buy one, and the Brainrot will go to your base. However, OTHER PEOPLE CAN BUY
+ *   IT when it walks to your side »*
+ *
+ * Trois proprietes que notre caisse n'avait pas, et qui font le jeu:
+ *  - PARTAGE: tout le monde voit passer les memes objets
+ *  - DISPUTE: le premier qui paie l'emporte, competition SANS combat (Decentraland n'en a pas)
+ *  - EVENEMENTIEL: une rarete qui apparait est annoncee, et tout le monde converge
+ *
+ * C'est aussi ce qui donne aux pieces leur vrai emploi: sans le tapis elles ne servent
+ * qu'au rebirth, et rien ne met les joueurs en concurrence.
+ */
+export const Belt = engine.defineComponent('friendzone::belt', {
+  /** identifiant stable de l'article tant qu'il defile */
+  articleId: Schemas.Int,
+  rarity: Schemas.Int,
+  prix: Schemas.Int,
+  /** avancee sur le tapis, de 0 (entree) a 1 (sortie) */
+  progres: Schemas.Float,
+  /** vide tant que personne n'a paye */
+  acheteurNom: Schemas.String
+})
+
+export const TAPIS_LONGUEUR = 26
+export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider
+export const TAPIS_INTERVALLE_S = 5      // un article toutes les 5 s
+export const PORTEE_ACHAT = 5
+
+/** Position d'un article selon son avancee. Le tapis traverse le lieu d'ouest en est. */
+export function beltPosition(progres: number): { x: number; y: number; z: number } {
+  return {
+    x: CENTRE.x - TAPIS_LONGUEUR / 2 + progres * TAPIS_LONGUEUR,
+    y: 1.15,
+    z: CENTRE.z
+  }
+}
+
+/** Prix d'un article, croissant avec la rarete. */
+export const PRIX_RARETE = [40, 150, 600, 2600, 11000]
+
 /** Identifiants de synchronisation explicites: reserves aux singletons. */
 export const SYNC_ID = {
   serverBeat: 1,

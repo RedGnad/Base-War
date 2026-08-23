@@ -355,6 +355,16 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
 
 export function paliersDe(address: string): number { return profils.get(address)?.rebirths ?? 0 }
 
+/** Debite (ou credite si negatif). Le solde n'est jamais touche par le client. */
+export function depenser(address: string, montant: number): boolean {
+  const p = profils.get(address)
+  if (!p) return false
+  if (montant > 0 && p.coins < montant) return false
+  p.coins -= montant
+  profilsSales.add(address)
+  return true
+}
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)

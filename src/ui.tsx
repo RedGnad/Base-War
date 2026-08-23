@@ -5,6 +5,7 @@ import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/re
 import { view } from './client/setup'
 import { crateView } from './client/crate'
 import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
+import { beltView } from './client/belt'
 
 /**
  * DISPOSITION DICTEE PAR LA DOC MOBILE (`build-for-mobile/develop/safe-area`), pas par
@@ -68,6 +69,20 @@ const uiComponent = () => (
         {theftView.fil.slice(0, 3).map((l, i) => (
           <Label key={i} value={l} fontSize={12} color={Color4.fromHexString('#b8c2d0ff')} />
         ))}
+      </UiEntity>
+    )}
+
+    {/* HAUT-CENTRE: l'annonce du tapis. Non actionnable, mais elle doit faire lever la tete. */}
+    {beltView.annonce !== '' && (
+      <UiEntity
+        uiTransform={{
+          width: 420, height: 44, positionType: 'absolute',
+          position: { top: 176, left: '50%' }, margin: { left: -210 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0.10, 0.08, 0.02, 0.85) }}
+      >
+        <Label value={beltView.annonce} fontSize={19} color={Color4.fromHexString('#f5a524ff')} />
       </UiEntity>
     )}
 

@@ -7,6 +7,7 @@ import { startCrate } from './crate'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
+import { startBelt } from './belt'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -109,6 +110,7 @@ export function startServer(): void {
 
   startPlots()
   startTheft()
+  startBelt()
 
   // La caisse: le serveur valide la proximite et tire la rarete lui-meme.
   startCrate((address, rarity) => {

@@ -32,6 +32,13 @@ export const MESSAGES = {
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
   wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int }),
 
+  /** client -> serveur: j'achete l'article n du tapis. Le serveur verifie tout. */
+  buyBelt: Schemas.Map({ articleId: Schemas.Int }),
+  /** serveur -> tous: un article rare vient d'entrer sur le tapis. */
+  beltAlert: Schemas.Map({ rarity: Schemas.Int }),
+  /** serveur -> tous: quelqu'un a rafle un article. */
+  bought: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, prix: Schemas.Int }),
+
   /** client -> serveur: je franchis un palier. Le serveur verifie que j'ai les pieces. */
   rebirth: Schemas.Map({}),
   /** serveur -> l'auteur: palier franchi. */
