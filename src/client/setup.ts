@@ -13,6 +13,8 @@ import { Color4 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
+import { spawnTestAvatars } from '../spikes/avatars'
+import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -24,8 +26,15 @@ export const view = {
   taps: 0
 }
 
+/** SPIKE 1.2: nombre d'avatars de test. 0 = mesure de reference. */
+export const SPIKE_AVATARS = 8
+
 export function startClient(): void {
   console.log('[CLIENT] demarrage')
+  if (SPIKE_AVATARS > 0) spawnTestAvatars(SPIKE_AVATARS)
+  setupTouchHud()
+  reportPlatform()
+  applyThiefPenalty(false)
 
   // Entite d'execution: le composite est en mode edition et la scene peut etre ouverte
   // dans le Creator Hub. Ce cube est du code de spike, il sera remplace par une entite
