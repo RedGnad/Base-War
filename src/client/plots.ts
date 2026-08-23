@@ -1,9 +1,11 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
+  PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Plot, PLOT_MAX_OBJETS } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
+import { voler } from './theft'
 
 /**
  * Rendu DYNAMIQUE des bases: une vue apparait quand le serveur cree une base, disparait
@@ -23,6 +25,14 @@ function creerVue(x: number, z: number): Vue {
   MeshRenderer.setBox(socle)
   MeshCollider.setBox(socle)
   Material.setPbrMaterial(socle, { albedoColor: Color4.fromHexString('#4a5568ff') })
+  // On vole en tapant LA BASE, pas un bouton flottant: la cible du geste est la chose
+  // convoitee. Plus lisible pour un juge, et utilisable au doigt sur mobile.
+  PointerEvents.create(socle, {
+    pointerEvents: [
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Prendre un objet' } },
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Prendre un objet' } }
+    ]
+  })
 
   const etiquette = engine.addEntity()
   Transform.create(etiquette, { position: Vector3.create(x, 2.2, z), scale: Vector3.create(0.5, 0.5, 0.5) })
@@ -50,6 +60,17 @@ function detruireVue(v: Vue): void {
 }
 
 export function setupPlots(): void {
+  // Une frappe sur n'importe quelle base declenche la demande de vol. Le SERVEUR
+  // choisit la cible par proximite et refuse tout ce qui doit l'etre.
+  engine.addSystem(() => {
+    for (const v of vues.values()) {
+      if (
+        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.socle) ||
+        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.socle)
+      ) { voler(); break }
+    }
+  })
+
   engine.addSystem(() => {
     const vivantes = new Set<number>()
 
