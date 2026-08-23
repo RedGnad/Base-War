@@ -80,10 +80,18 @@ function construireEtage(x: number, z: number, etage: number): Etage {
     vitre(x, y + h / 2, z - c / 2, c, h, ep),                            // fond
     vitre(x - c / 2, y + h / 2, z, ep, h, c),                            // gauche
     vitre(x + c / 2, y + h / 2, z, ep, h, c),                            // droite
-    // facade: deux jambages qui laissent l'entree au milieu
-    bloc(x - (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),
-    bloc(x + (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),
-    bloc(x, y + h - 0.2, z + c / 2, PORTE_LARGEUR, 0.4, ep, GRIS_CLAIR)  // linteau
+    // Facade VITREE elle aussi, de part et d'autre de l'entree: avec une base de 8 m,
+    // des jambages pleins de 3 m rendaient le batiment opaque de face, donc le butin
+    // invisible depuis l'exterieur. C'est precisement ce qu'il ne faut pas.
+    vitre(x - (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep),
+    vitre(x + (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep),
+    bloc(x, y + h - 0.15, z + c / 2, PORTE_LARGEUR, 0.3, ep, GRIS_CLAIR),  // linteau
+    // Montants d'angle pleins: sans eux le batiment n'a plus de structure lisible et
+    // se confond avec le decor.
+    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, GRIS),
+    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, GRIS),
+    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, GRIS),
+    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, GRIS)
   ]
 
   // Rampe vers l'etage suivant, le long du mur droit.
@@ -221,7 +229,8 @@ export function setupPlots(): void {
         mettre(et.murs[2], MUR_EPAISSEUR, MUR_HAUTEUR, BASE_COTE)
         mettre(et.murs[3], (BASE_COTE - PORTE_LARGEUR) / 2, MUR_HAUTEUR, MUR_EPAISSEUR)
         mettre(et.murs[4], (BASE_COTE - PORTE_LARGEUR) / 2, MUR_HAUTEUR, MUR_EPAISSEUR)
-        mettre(et.murs[5], PORTE_LARGEUR, 0.4, MUR_EPAISSEUR)
+        mettre(et.murs[5], PORTE_LARGEUR, 0.3, MUR_EPAISSEUR)
+        for (let m = 6; m <= 9; m++) mettre(et.murs[m], 0.28, MUR_HAUTEUR, 0.28)
         // la rampe ne sert que s'il y a un etage AU-DESSUS a rejoindre
         mettre(et.rampe, 1.1, 0.18, RAMPE_LONGUEUR)
         const rtr = Transform.getMutableOrNull(et.rampe)
