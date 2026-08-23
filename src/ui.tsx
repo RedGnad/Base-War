@@ -1,63 +1,101 @@
 import { Color4 } from '@dcl/sdk/math'
+import { engine } from '@dcl/sdk/ecs'
+import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
 import { crateView } from './client/crate'
-import { theftView, voler, verrouiller, reprendre } from './client/theft'
-
-export function setupUi() {
-  ReactEcsRenderer.setUiRenderer(uiComponent)
-}
+import { theftView, verrouiller, reprendre } from './client/theft'
 
 /**
- * Toute action de jeu passe par un BOUTON, jamais par une visee precise:
- * l'entree mobile est tactile seule, sans survol ni clavier (doc `input-on-mobile`).
- * Le panneau descend de 110 px: le bandeau RELOAD SCENE de l'apercu occupe le coin.
+ * DISPOSITION DICTEE PAR LA DOC MOBILE (`build-for-mobile/develop/safe-area`), pas par
+ * l'esthetique. La zone sure est le **motif de rejet numero un** cite par Decentraland.
+ *
+ * Ce que le client mobile s'approprie, et qu'on doit fuir:
+ *  - COLONNE DE GAUCHE: chat, profil, joystick, emotes -> exclue de la zone interactable
+ *  - COIN BAS-DROIT: boutons d'action, dessines PAR-DESSUS meme la zone interactable
+ *  - COIN HAUT-DROIT: profil et controles camera, une UI collee la se lit comme du HUD client
+ *
+ * Emplacements prescrits, et ce qu'on y met:
+ *  - centre: dialogues actionnables         -> l'alerte de vol
+ *  - haut-centre: messages non actionnables -> etat et fil d'activite
+ *  - bas-centre: indices contextuels        -> les deux boutons, decales a GAUCHE du centre
  */
+export function setupUi() {
+  // `interactable` n'est PAS neutre sur desktop (le client y reserve ~25 % a gauche),
+  // donc on ne l'applique QUE sur telephone. La plateforme n'est pas connue au premier
+  // tick: on attend qu'elle le soit avant de choisir.
+  function choisir(): void {
+    if (getPlatform() === null) return
+    engine.removeSystem(choisir)
+    const inset = isMobile() ? 'interactable' : 'device'
+    ReactEcsRenderer.setUiRenderer(uiComponent, { screenInset: inset })
+    console.log(`[CLIENT] interface en screenInset '${inset}'`)
+  }
+  ReactEcsRenderer.setUiRenderer(uiComponent)
+  engine.addSystem(choisir)
+}
+
+const PANNEAU = Color4.create(0, 0, 0, 0.62)
+
 const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
-    {/* Alerte de vol: plein centre, couleur de la rarete perdue. */}
-    {theftView.alerte !== '' && (
+    {/* HAUT-CENTRE: etat, non actionnable. */}
+    <UiEntity
+      uiTransform={{
+        width: 360, height: 74, positionType: 'absolute',
+        position: { top: 12, left: '50%' }, margin: { left: -180 },
+        padding: 10, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
+      }}
+      uiBackground={{ color: PANNEAU }}
+    >
+      <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
+             fontSize={17} color={Color4.fromHexString('#ffd166ff')} />
+      <Label value={`caisse ${crateView.hits}/${crateView.maxHits}${view.serverAlive ? '' : ' · serveur silencieux'}`}
+             fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
+    </UiEntity>
+
+    {/* HAUT-CENTRE, sous l'etat: fil d'activite, non actionnable. */}
+    {theftView.fil.length > 0 && (
       <UiEntity
-        uiTransform={{ width: 520, height: 64, positionType: 'absolute', position: { top: '18%', left: '50%' }, margin: { left: -260 }, justifyContent: 'center', alignItems: 'center' }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.82) }}
+        uiTransform={{
+          width: 400, height: 62, positionType: 'absolute',
+          position: { top: 92, left: '50%' }, margin: { left: -200 },
+          padding: 8, flexDirection: 'column', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
       >
-        <Label value={theftView.alerte} fontSize={24} color={Color4.fromHexString(theftView.alerteCouleur + 'ff')} />
+        {theftView.fil.slice(0, 3).map((l, i) => (
+          <Label key={i} value={l} fontSize={12} color={Color4.fromHexString('#b8c2d0ff')} />
+        ))}
       </UiEntity>
     )}
 
-    {/* Etat */}
-    <UiEntity
-      uiTransform={{ width: 320, height: 150, positionType: 'absolute', position: { top: 110, left: 24 }, padding: 12, flexDirection: 'column', justifyContent: 'space-between' }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.65) }}
-    >
-      <Label value={`serveur: ${view.serverAlive ? 'VIVANT' : 'silencieux'}`} fontSize={12}
-             color={view.serverAlive ? Color4.Green() : Color4.Red()} />
-      <Label value={`caisse: ${crateView.hits} / ${crateView.maxHits}`} fontSize={15} color={Color4.White()} />
-      <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
-             fontSize={18} color={Color4.fromHexString('#ffd166ff')} />
-      <Label value={theftView.malusJusqua > 0 ? 'MALUS VOLEUR actif' : (theftView.refus === '' ? '' : theftView.refus)}
-             fontSize={12}
-             color={theftView.malusJusqua > 0 ? Color4.fromHexString('#ff6060ff') : Color4.Gray()} />
-    </UiEntity>
+    {/* CENTRE: l'alerte, seule chose qui exige une reaction. */}
+    {theftView.alerte !== '' && (
+      <UiEntity
+        uiTransform={{
+          width: 520, height: 70, positionType: 'absolute',
+          position: { top: '42%', left: '50%' }, margin: { left: -260 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.85) }}
+      >
+        <Label value={theftView.alerte} fontSize={23} color={Color4.fromHexString(theftView.alerteCouleur + 'ff')} />
+      </UiEntity>
+    )}
 
-    {/* Fil d'activite: montre que le lieu est vivant meme sans personne connecte. */}
+    {/* BAS-CENTRE, DECALE A GAUCHE: le coin bas-droit appartient au client.
+        Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
-      uiTransform={{ width: 360, height: 96, positionType: 'absolute', position: { top: 110, right: 24 }, padding: 10, flexDirection: 'column' }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.5) }}
+      uiTransform={{
+        width: 320, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -260 },
+        flexDirection: 'row', justifyContent: 'space-between'
+      }}
     >
-      {theftView.fil.map((l, i) => (
-        <Label key={i} value={l} fontSize={12} color={Color4.fromHexString('#c8d0dcff')} />
-      ))}
-    </UiEntity>
-
-    {/* Actions, en bas, au pouce. */}
-    <UiEntity
-      uiTransform={{ width: 480, height: 62, positionType: 'absolute', position: { bottom: 96, left: '50%' }, margin: { left: -240 }, flexDirection: 'row', justifyContent: 'space-between' }}
-    >
-      <Button uiTransform={{ width: 150, height: 56 }} value="VOLER" variant="primary" fontSize={18} onMouseDown={voler} />
-      <Button uiTransform={{ width: 150, height: 56 }} value="PROTEGER" variant="secondary" fontSize={18} onMouseDown={verrouiller} />
-      <Button uiTransform={{ width: 150, height: 56 }} value="REPRENDRE" variant="secondary" fontSize={18} onMouseDown={reprendre} />
+      <Button uiTransform={{ width: 150, height: 54 }} value="PROTEGER" variant="primary" fontSize={16} onMouseDown={verrouiller} />
+      <Button uiTransform={{ width: 150, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={16} onMouseDown={reprendre} />
     </UiEntity>
   </UiEntity>
 )

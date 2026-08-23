@@ -28,8 +28,19 @@ export function applyThiefPenalty(actif: boolean): void {
  * un gain reel sur telephone.
  */
 export function setupTouchHud(): void {
+  // Le gros bouton central declenche notre action principale au lieu du saut.
+  // Nos entites (caisse, objets) ecoutent IA_PRIMARY *et* IA_POINTER, donc le doigt
+  // et le bouton central font la meme chose.
   TouchScreenControls.setMainAction(InputAction.IA_PRIMARY)
-  console.log('[SPIKE] bouton central mobile -> IA_PRIMARY')
+
+  // On cache les boutons de la barre dont le jeu ne se sert pas: chacun encombre un
+  // pouce sur un ecran de telephone. On NE CACHE PAS le joystick: notre boucle exige
+  // de marcher jusqu'aux bases des autres.
+  TouchScreenControls.hide([
+    InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
+    InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
+  ])
+  console.log('[SPIKE] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick garde')
 }
 
 /** La plateforme n'est connue qu'apres coup: on attend qu'elle soit resolue. */
