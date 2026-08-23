@@ -130,8 +130,16 @@ export const ETAGE_HAUTEUR = 3.2
 export const SLOTS_PAR_ETAGE = 6
 export const ETAGES_MAX = 3
 
-/** Les etages se debloquent a la collecte. Seuils en nombre d'objets recuperes. */
-export const SEUILS_ETAGE = [0, 10, 25] as const
+/**
+ * Seuils de deblocage des etages, en objets collectes.
+ * CALES SUR LA CONTRAINTE DE JUGEMENT, pas sur une courbe de progression longue: un juge
+ * dispose de trois minutes. Si le 2e etage exigeait 10 objets (30 coups de caisse), il ne
+ * verrait jamais son batiment grandir, et c'est precisement le moment qui donne envie de
+ * rester. 4 objets = 12 coups, atteignable dans la premiere minute.
+ * Le jeu de reference fait monter les etages avec les rebirths (progression longue): on
+ * garde la MECANIQUE, on resserre la COURBE pour le format juge.
+ */
+export const SEUILS_ETAGE = [0, 4, 10] as const
 
 export function etagesOuverts(objetsCollectes: number): number {
   let n = 1
