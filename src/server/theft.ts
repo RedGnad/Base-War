@@ -8,7 +8,7 @@ import { room } from '../shared/messages'
 import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
-  nomAffiche, deposerAlerte, retirerAlertes, coinsDe
+  nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe
 } from './plots'
 
 /**
@@ -26,13 +26,14 @@ import {
 type Larcin = { voleur: string; victime: string; rarity: number; quand: number }
 const larcins: Larcin[] = []
 
-/** Progression: chaque palier de 5 objets collectes donne +10 s de verrou. */
-const paliers = new Map<string, number>()
-export function noterPalier(address: string, objetsCollectes: number): void {
-  paliers.set(address, Math.floor(objetsCollectes / 5))
-}
+/**
+ * 3.6 progression = protection. Source: wiki du #1, page `Base`:
+ * *« +10 seconds base lock per rebirth »*. On branche donc le bonus sur les PALIERS,
+ * pas sur un compteur d'objets: c'est la meme grandeur que chez la reference.
+ */
+export function noterPalier(_address: string, _objetsCollectes: number): void { /* remplace par les paliers */ }
 function bonusVerrou(address: string): number {
-  return (paliers.get(address) ?? 0) * VERROU_BONUS_MS
+  return paliersDe(address) * VERROU_BONUS_MS
 }
 
 function positionDe(address: string): Vector3 | null {
@@ -126,6 +127,14 @@ export function startTheft(): void {
       jour(`${nomVoleur} a vole une rarete ${r} a ${c.name}`)
       return
     }
+  })
+
+  room.onMessage('rebirth', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = tenterRebirth(a)
+    if (!r.ok) { refus(a, 'palier', r.raison ?? 'refuse'); return }
+    void room.send('rebirthDone', { palier: r.palier ?? 0, etages: r.etages ?? 1 }, { to: [a] })
   })
 
   /** 3.2 verrou gratuit, activable par le proprietaire. */

@@ -4,7 +4,7 @@ import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
 import { crateView } from './client/crate'
-import { theftView, verrouiller, reprendre } from './client/theft'
+import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
 
 /**
  * DISPOSITION DICTEE PAR LA DOC MOBILE (`build-for-mobile/develop/safe-area`), pas par
@@ -51,7 +51,7 @@ const uiComponent = () => (
     >
       <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
              fontSize={17} color={Color4.fromHexString('#ffd166ff')} />
-      <Label value={`caisse ${crateView.hits}/${crateView.maxHits}${view.serverAlive ? '' : ' · serveur silencieux'}`}
+      <Label value={`${theftView.coins} pieces${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · serveur silencieux'}`}
              fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
     </UiEntity>
 
@@ -89,13 +89,22 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 320, height: 58, positionType: 'absolute',
+        width: 340, height: 58, positionType: 'absolute',
         position: { bottom: 24, left: '50%' }, margin: { left: -260 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
-      <Button uiTransform={{ width: 150, height: 54 }} value="PROTEGER" variant="primary" fontSize={16} onMouseDown={verrouiller} />
-      <Button uiTransform={{ width: 150, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={16} onMouseDown={reprendre} />
+      <Button uiTransform={{ width: 100, height: 54 }} value="PROTEGER" variant="primary" fontSize={14} onMouseDown={verrouiller} />
+      <Button uiTransform={{ width: 100, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={14} onMouseDown={reprendre} />
+      {theftView.prochainPalier > 0 && (
+        <Button
+          uiTransform={{ width: 110, height: 54 }}
+          value={theftView.coins >= theftView.prochainPalier ? 'PALIER !' : `${theftView.prochainPalier}`}
+          variant={theftView.coins >= theftView.prochainPalier ? 'primary' : 'secondary'}
+          fontSize={14}
+          onMouseDown={franchirPalier}
+        />
+      )}
     </UiEntity>
   </UiEntity>
 )

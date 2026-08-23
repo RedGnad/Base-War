@@ -11,6 +11,9 @@ import { applyThiefPenalty } from '../spikes/locomotion'
  */
 
 export const theftView = {
+  coins: 0,
+  palier: 0,
+  prochainPalier: 0,
   alerte: '',
   alerteCouleur: '#ffffff',
   alerteJusqua: 0,
@@ -64,6 +67,17 @@ export function setupTheft(): void {
   room.onMessage('reclaimed', (d) => {
     ajouterAuFil(`${d.byName} a repris son ${rarity(d.rarity).nom} a ${d.fromName}`)
   })
+  room.onMessage('wallet', (d) => {
+    theftView.coins = d.coins
+    theftView.palier = d.palier
+    theftView.prochainPalier = d.prochainPalier
+  })
+
+  room.onMessage('rebirthDone', (d) => {
+    alerter(`PALIER ${d.palier} — ${d.etages} etages`, '#f5a524', 6000)
+    console.log(`[CLIENT] palier ${d.palier}, ${d.etages} etages`)
+  })
+
   room.onMessage('actionRejected', (d) => {
     theftView.refus = `${d.action}: ${d.raison}`
     console.log(`[CLIENT] refuse (${d.action}): ${d.raison}${d.antiCheat ? ' [anti-triche]' : ''}`)
@@ -81,3 +95,4 @@ export function voler(ownerId = '', slot = -1): void {
 }
 export function verrouiller(): void { void room.send('activateLock', {}) }
 export function reprendre(): void { void room.send('reclaim', {}) }
+export function franchirPalier(): void { void room.send('rebirth', {}) }

@@ -49,6 +49,8 @@ export const Crate = engine.defineComponent('friendzone::crate', {
 export const Plot = engine.defineComponent('friendzone::plot', {
   /** nombre d'etages ouverts chez ce joueur: 1 a 3 */
   etages: Schemas.Int,
+  /** paliers de rebirth franchis: statut visible, et +10 s de verrou chacun */
+  rebirths: Schemas.Int,
   index: Schemas.Int,
   ownerId: Schemas.String,
   ownerName: Schemas.String,
@@ -131,6 +133,22 @@ export const SLOTS_PAR_ETAGE = 6
 export const ETAGES_MAX = 3
 
 /**
+ * REBIRTH. Definition exacte relevee chez le praticien (transcription Aywen 1):
+ * *« un systeme de palier que vous debloquez en atteignant un certain niveau d'argent
+ * [...] debloquer des recompenses comme des nouvelles boites [...] ou UN ETAGE
+ * SUPPLEMENTAIRE a votre salle de sport. Sauf qu'en echange, ca vous RESETTE votre argent. »*
+ *
+ * C'est ce qui donne un BUT aux pieces. Sans lui elles s'accumulent sans rien acheter,
+ * et le gain passif ne sert a rien.
+ */
+export const COUT_REBIRTH = [500, 2500, 12000, 60000] as const
+export const REBIRTH_MAX = COUT_REBIRTH.length
+
+export function coutRebirth(palier: number): number {
+  return COUT_REBIRTH[Math.min(palier, COUT_REBIRTH.length - 1)]
+}
+
+/**
  * Seuils de deblocage des etages, en objets collectes.
  * CALES SUR LA CONTRAINTE DE JUGEMENT, pas sur une courbe de progression longue: un juge
  * dispose de trois minutes. Si le 2e etage exigeait 10 objets (30 coups de caisse), il ne
@@ -141,14 +159,18 @@ export const ETAGES_MAX = 3
  */
 export const SEUILS_ETAGE = [0, 4, 10] as const
 
-export function etagesOuverts(objetsCollectes: number): number {
+/**
+ * Les etages viennent de DEUX sources: la collecte (visible vite, pour le juge de passage)
+ * et le rebirth (le vrai palier, qui coute des pieces). On prend le plus genereux des deux.
+ */
+export function etagesOuverts(objetsCollectes: number, rebirths = 0): number {
   let n = 1
   for (let i = 1; i < SEUILS_ETAGE.length; i++) if (objetsCollectes >= SEUILS_ETAGE[i]) n = i + 1
-  return Math.min(n, ETAGES_MAX)
+  return Math.min(Math.max(n, 1 + rebirths), ETAGES_MAX)
 }
 
-export function placesOuvertes(objetsCollectes: number): number {
-  return etagesOuverts(objetsCollectes) * SLOTS_PAR_ETAGE
+export function placesOuvertes(objetsCollectes: number, rebirths = 0): number {
+  return etagesOuverts(objetsCollectes, rebirths) * SLOTS_PAR_ETAGE
 }
 
 /** Plafond absolu d'objets visibles sur une base. */

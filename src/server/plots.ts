@@ -2,9 +2,10 @@ import { engine, Transform, PlayerIdentityData, AvatarBase, timers } from '@dcl/
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
-import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes } from '../shared/schemas'
+import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes, coutRebirth, REBIRTH_MAX } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { jour, viderJournal } from './journal'
+import { room } from '../shared/messages'
 
 /**
  * ALLOCATION DYNAMIQUE DES BASES.
@@ -32,7 +33,7 @@ type Base = {
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
 }
-type Profil = { coins: number; items: number[]; collectes?: number; alertes?: object[] }
+type Profil = { coins: number; items: number[]; collectes?: number; rebirths?: number; alertes?: object[] }
 
 const bases = new Map<string, Base>()
 const profils = new Map<string, Profil>()
@@ -70,7 +71,9 @@ function ranger(items: number[]): number[] {
 function publier(b: Base, ici?: Set<string>): void {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return
-  c.etages = etagesOuverts(profils.get(b.address)?.collectes ?? 0)
+  const pr = profils.get(b.address)
+  c.etages = etagesOuverts(pr?.collectes ?? 0, pr?.rebirths ?? 0)
+  c.rebirths = pr?.rebirths ?? 0
   c.index = b.place
   c.ownerId = b.address
   c.ownerName = b.name
@@ -86,7 +89,7 @@ function creerBase(address: string, name: string, items: number[], lastSeen: num
   const e = engine.addEntity()
   const p = plotPosition(place)
   Transform.create(e, { position: Vector3.create(p.x, 0, p.z) })
-  Plot.create(e, { etages: 1, index: place, ownerId: address, ownerName: name, items: ranger(items), ownerPresent: false, lockedUntil: 0 })
+  Plot.create(e, { etages: 1, rebirths: 0, index: place, ownerId: address, ownerName: name, items: ranger(items), ownerPresent: false, lockedUntil: 0 })
   syncEntity(e, [Plot.componentId, Transform.componentId])
   const b: Base = { address, name, items: [...items], place, entity: e, lastSeen }
   bases.set(address, b)
@@ -156,6 +159,7 @@ export async function accueillir(address: string): Promise<void> {
     coins: stocke?.coins ?? 0,
     items: [...items],
     collectes: stocke?.collectes ?? items.length,
+    rebirths: stocke?.rebirths ?? 0,
     alertes: stocke?.alertes ?? []
   }
   profils.set(address, profil)
@@ -209,7 +213,7 @@ export function auRevoir(address: string): void {
 export async function poserObjet(address: string, rarity: number): Promise<boolean> {
   const profil = profils.get(address)
   if (!profil) return false
-  const ouvertes = placesOuvertes(profil.collectes ?? 0)
+  const ouvertes = placesOuvertes(profil.collectes ?? 0, profil.rebirths ?? 0)
   const b = bases.get(address)
   if (profil.items.length >= ouvertes) {
     jour(`base de ${b?.name ?? address.slice(0, 8)} pleine (${ouvertes} places ouvertes)`)
@@ -276,7 +280,7 @@ export function retirerObjet(address: string, index: number): number | null {
 export function ajouterObjet(address: string, rarity: number): boolean {
   const prof = profils.get(address)
   if (!prof) return false
-  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0)) return false
+  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0, prof.rebirths ?? 0)) return false
   prof.items.push(rarity)
   profilsSales.add(address)
   const b = bases.get(address)
@@ -316,6 +320,30 @@ export function retirerAlertes(address: string): object[] {
 }
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 export function toutesLesBases(): Base[] { return [...bases.values()] }
+/**
+ * Franchit un palier: DEPENSE les pieces, en echange d'un deblocage permanent.
+ * C'est ce qui donne un but au gain passif. Le serveur seul verifie le solde.
+ */
+export function tenterRebirth(address: string): { ok: boolean; raison?: string; palier?: number; etages?: number } {
+  const p = profils.get(address)
+  if (!p) return { ok: false, raison: 'profil inconnu' }
+  const palier = p.rebirths ?? 0
+  if (palier >= REBIRTH_MAX) return { ok: false, raison: 'palier maximum atteint' }
+  const cout = coutRebirth(palier)
+  if (p.coins < cout) return { ok: false, raison: `il te faut ${Math.ceil(cout - p.coins)} pieces de plus` }
+
+  p.coins -= cout
+  p.rebirths = palier + 1
+  profilsSales.add(address)
+  const b = bases.get(address)
+  if (b) { basesSales.add(address); publier(b) }
+  const et = etagesOuverts(p.collectes ?? 0, p.rebirths)
+  jour(`${b?.name ?? address.slice(0, 8)} franchit le palier ${p.rebirths} (-${cout} pieces, ${et} etages)`)
+  return { ok: true, palier: p.rebirths, etages: et }
+}
+
+export function paliersDe(address: string): number { return profils.get(address)?.rebirths ?? 0 }
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)
@@ -344,6 +372,21 @@ export function startPlots(): void {
 
   // Le tampon de journal se vide plus vite que les sauvegardes: on veut voir vite.
   timers.setInterval(() => { viderJournal() }, 1000)
+  // Chaque joueur voit son solde et ce que coute le prochain palier: sans ce retour,
+  // le gain passif est invisible et le palier ne se comprend pas.
+  timers.setInterval(() => {
+    const ici = presents()
+    for (const [address, p] of profils) {
+      if (!ici.has(address)) continue
+      const palier = p.rebirths ?? 0
+      void room.send('wallet', {
+        coins: Math.floor(p.coins),
+        prochainPalier: palier >= REBIRTH_MAX ? 0 : coutRebirth(palier),
+        palier
+      }, { to: [address] })
+    }
+  }, 1500)
+
   timers.setInterval(() => { void sauver() }, SAUVE_MS)
   timers.setInterval(() => {
     const ici = presents()

@@ -29,6 +29,14 @@ export const MESSAGES = {
    * verifie la portee, le verrou, l'existence de l'objet, et decide seul.
    */
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
+  /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
+  wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int }),
+
+  /** client -> serveur: je franchis un palier. Le serveur verifie que j'ai les pieces. */
+  rebirth: Schemas.Map({}),
+  /** serveur -> l'auteur: palier franchi. */
+  rebirthDone: Schemas.Map({ palier: Schemas.Int, etages: Schemas.Int }),
+
   /** client -> serveur: je protege mon emplacement. */
   activateLock: Schemas.Map({}),
   /** client -> serveur: je reprends mon bien au voleur qui est pres de moi. */
