@@ -3,6 +3,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
+import { startCrate } from './crate'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -97,6 +98,15 @@ export function startServer(): void {
       console.log(`[SERVER] tap de ${address} -> ${next}`)
       void room.send('tapAck', { count: next, persisted: false }, { to: [address] })
     })()
+  })
+
+  // La caisse: le serveur valide la proximite et tire la rarete lui-meme.
+  startCrate((address, rarity) => {
+    const n = (counts.get(address) ?? 0) + 1
+    counts.set(address, n)
+    dirty.add(address)
+    publish(address)
+    console.log(`[SERVER] ${address} recupere un objet de rarete ${rarity}, total ${n}`)
   })
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.

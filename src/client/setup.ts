@@ -1,33 +1,25 @@
 import {
-  engine,
-  Transform,
-  MeshRenderer,
-  MeshCollider,
-  PointerEvents,
-  PointerEventType,
-  InputAction,
-  Material,
-  inputSystem
+  engine, Transform, MeshRenderer, MeshCollider, Material,
+  PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
-import { Color4 } from '@dcl/sdk/math'
+import { Color4, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
+import { setupCrate } from './crate'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
-  count: 0,
+  objets: 0,
   serverAlive: false,
-  /** derniere valeur de battement observee, et l'instant CLIENT ou on l'a vue changer */
   lastBeatValue: 0,
   lastBeatSeenAt: 0,
-  taps: 0,
   malusActif: false
 }
 
-/** SPIKE 1.2: nombre d'avatars de test. 0 = mesure de reference. */
+/** SPIKE 1.2: avatars de mesure. 0 = mesure de reference. */
 export const SPIKE_AVATARS = 8
 
 export function startClient(): void {
@@ -37,28 +29,11 @@ export function startClient(): void {
   reportPlatform()
   applyThiefPenalty(false)
 
-  // Entite d'execution: le composite est en mode edition et la scene peut etre ouverte
-  // dans le Creator Hub. Ce cube est du code de spike, il sera remplace par une entite
-  // du composite quand on passera au vrai contenu.
-  const box = engine.addEntity()
-  Transform.create(box, { position: { x: 16, y: 1, z: 16 }, scale: { x: 1.5, y: 1.5, z: 1.5 } })
-  MeshRenderer.setBox(box)
-  MeshCollider.setBox(box)
-  Material.setPbrMaterial(box, { albedoColor: Color4.fromHexString('#e0a030ff') })
-  PointerEvents.create(box, {
-    pointerEvents: [
-      {
-        eventType: PointerEventType.PET_DOWN,
-        eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Taper' }
-      }
-    ]
-  })
+  setupCrate()
 
-  // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le JUGER A L'OEIL.
-  // Marcher, taper la rouge, remarcher: la difference doit sauter aux yeux, sinon
-  // le malus est trop faible pour porter la mecanique anti-frustration du #1.
+  // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le juger a l'oeil.
   const toggle = engine.addEntity()
-  Transform.create(toggle, { position: { x: 20, y: 1, z: 16 }, scale: { x: 1.2, y: 1.2, z: 1.2 } })
+  Transform.create(toggle, { position: Vector3.create(22, 1, 16), scale: Vector3.create(1, 1, 1) })
   MeshRenderer.setBox(toggle)
   MeshCollider.setBox(toggle)
   Material.setPbrMaterial(toggle, { albedoColor: Color4.fromHexString('#c03030ff') })
@@ -76,36 +51,20 @@ export function startClient(): void {
     }
   })
 
-  engine.addSystem(() => {
-    if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, box)) {
-      view.taps += 1
-      console.log(`[CLIENT] tap #${view.taps} envoye`)
-      void room.send('tap', {})
-    }
-  })
-
-  // tapAck ne sert qu'au retour immediat. Il ne peut PAS etre la source de verite:
-  // au rechargement, le client repart a zero et n'en recevra plus avant d'agir.
-  room.onMessage('tapAck', (data) => {
-    view.count = data.count
-    console.log(`[CLIENT] tapAck: count=${data.count}`)
-  })
-
   // SOURCE DE VERITE: le composant synchronise, publie par le serveur des notre entree.
-  // On retrouve la sienne par le champ playerId, jamais par un identifiant de synchronisation.
   let myAddress = ''
   engine.addSystem(() => {
     if (myAddress === '') {
       const me = getPlayer()
-      if (me === null) return // pas encore resolu au demarrage
+      if (me === null) return
       myAddress = me.userId.toLowerCase()
       console.log(`[CLIENT] mon adresse: ${myAddress}`)
     }
     for (const [, taps] of engine.getEntitiesWith(PlayerTaps)) {
       if (taps.playerId.toLowerCase() === myAddress) {
-        if (taps.count !== view.count) {
-          console.log(`[CLIENT] etat restitue depuis le serveur: ${taps.count}`)
-          view.count = taps.count
+        if (taps.count !== view.objets) {
+          console.log(`[CLIENT] total objets restitue: ${taps.count}`)
+          view.objets = taps.count
         }
         return
       }
@@ -116,11 +75,8 @@ export function startClient(): void {
   // Un instantane CRDT laisse par un serveur eteint porte un horodatage credible
   // mais ne change plus, donc il ne peut pas se faire passer pour vivant.
   engine.addSystem(() => {
-    const beat = ServerBeat.getOrNull(engine.RootEntity)
-    const all = engine.getEntitiesWith(ServerBeat)
-    let value = beat?.at ?? 0
-    for (const [, b] of all) value = b.at > value ? b.at : value
-
+    let value = 0
+    for (const [, b] of engine.getEntitiesWith(ServerBeat)) value = b.at > value ? b.at : value
     const now = Date.now()
     if (value !== 0 && value !== view.lastBeatValue) {
       view.lastBeatValue = value

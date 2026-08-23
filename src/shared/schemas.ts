@@ -29,10 +29,34 @@ export const ServerBeat = engine.defineComponent('friendzone::server-beat', {
   at: Schemas.Int64
 })
 
+/**
+ * La caisse: etat autoritaire, publie par le serveur.
+ * `hits` monte, et a `maxHits` le serveur tire une rarete et remet a zero.
+ * Le client N'INCREMENTE JAMAIS: il envoie "j'ai tape", le serveur decide.
+ */
+export const Crate = engine.defineComponent('friendzone::crate', {
+  hits: Schemas.Int,
+  maxHits: Schemas.Int,
+  /** monte de 1 a chaque cassage: sert au client a declencher sa secousse sans double-jeu */
+  breakSeq: Schemas.Int
+})
+
+/** Un objet tombe, pose sur l'emplacement d'un joueur. */
+export const Loot = engine.defineComponent('friendzone::loot', {
+  rarity: Schemas.Int,
+  ownerId: Schemas.String,
+  /** index de l'emplacement chez le proprietaire */
+  slot: Schemas.Int
+})
+
 /** Identifiants de synchronisation explicites: reserves aux singletons. */
 export const SYNC_ID = {
-  serverBeat: 1
+  serverBeat: 1,
+  crate: 2
 } as const
+
+/** Distance maximale a la caisse pour qu'un coup soit accepte par le serveur. */
+export const PORTEE_COUP = 4
 
 /** Periode du battement de coeur, et seuil au-dela duquel on considere le serveur mort. */
 export const BEAT_MS = 2000
@@ -53,4 +77,6 @@ export function registerValidators(): void {
 
   PlayerTaps.validateBeforeChange(serverOnly)
   ServerBeat.validateBeforeChange(serverOnly)
+  Crate.validateBeforeChange(serverOnly)
+  Loot.validateBeforeChange(serverOnly)
 }
