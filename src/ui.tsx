@@ -6,6 +6,7 @@ import { view } from './client/setup'
 import { crateView } from './client/crate'
 import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
 import { beltView } from './client/belt'
+import { slotView, basculerPose, poserIci } from './client/slots'
 
 /**
  * DISPOSITION DICTEE PAR LA DOC MOBILE (`build-for-mobile/develop/safe-area`), pas par
@@ -104,13 +105,20 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 340, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -260 },
+        width: 460, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -320 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
       <Button uiTransform={{ width: 100, height: 54 }} value="PROTEGER" variant="primary" fontSize={14} onMouseDown={verrouiller} />
       <Button uiTransform={{ width: 100, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={14} onMouseDown={reprendre} />
+      <Button
+        uiTransform={{ width: 110, height: 54 }}
+        value={slotView.actif ? (slotView.valide ? 'POSER' : 'X') : 'MA BASE'}
+        variant={slotView.actif && slotView.valide ? 'primary' : 'secondary'}
+        fontSize={14}
+        onMouseDown={() => { if (!slotView.actif) basculerPose(); else if (slotView.valide) poserIci(); else basculerPose() }}
+      />
       {theftView.prochainPalier > 0 && (
         <Button
           uiTransform={{ width: 110, height: 54 }}

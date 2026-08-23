@@ -1,99 +1,91 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction
+  engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity,
+  PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { plotPosition, MAX_BASES } from '../shared/schemas'
+import { BASE_COTE, accrocher, raisonInvalide } from '../shared/schemas'
 import { room } from '../shared/messages'
+import { Plot } from '../shared/schemas'
 
 /**
- * LES PLACES LIBRES. Le joueur choisit ou il s'installe: pres du tapis pour acheter
- * vite, ou a l'ecart pour se faire oublier. C'est une decision, pas une attribution.
+ * FANTOME DE POSE. Un carre au sol suit le joueur: VERT si l'endroit convient, ROUGE
+ * sinon, avec la raison affichee. Le joueur valide et sa base se construit la.
  *
- * Une place libre doit se voir DE LOIN, sinon un arrivant ne sait pas qu'il peut se
- * poser et reste spectateur.
+ * Le fantome est une AIDE A LA VISEE, jamais une autorisation: le serveur revalide
+ * tout, un client modifie enverrait n'importe quelles coordonnees.
  */
 
-type Marqueur = { socle: Entity; balise: Entity; texte: Entity }
-const marqueurs = new Map<number, Marqueur>()
-let libres: number[] = []
+const SCENE_COTE = 80
 
-function creer(place: number): Marqueur {
-  const p = plotPosition(place)
+export const slotView = { actif: false, valide: false, raison: '' }
 
-  // Une DALLE DISCRETE, pas l'emprise entiere. Afficher les 9,6 m de chaque place
-  // libre couvrait le lieu d'un tapis de beton continu: le repere doit etre la balise,
-  // pas la surface. On garde juste de quoi viser au doigt.
-  const socle = engine.addEntity()
-  Transform.create(socle, { position: Vector3.create(p.x, 0.09, p.z), scale: Vector3.create(2.4, 0.18, 2.4) })
-  MeshRenderer.setBox(socle)
-  MeshCollider.setBox(socle)
-  Material.setPbrMaterial(socle, {
-    albedoColor: Color4.fromHexString('#6b5f2eff'),
-    emissiveColor: Color4.fromHexString('#ffd166ff'),
-    emissiveIntensity: 0.5
-  })
-  PointerEvents.create(socle, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Poser ma base ici' } },
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Poser ma base ici' } }
-    ]
-  })
+let fantome: Entity
+let etiquette: Entity
+let autres: Array<{ x: number; z: number }> = []
 
-  // Une balise verticale qui monte et descend: visible par-dessus les autres batiments.
-  const balise = engine.addEntity()
-  Transform.create(balise, { position: Vector3.create(p.x, 2.4, p.z), scale: Vector3.create(0.22, 4.4, 0.22) })
-  MeshRenderer.setBox(balise)
-  Material.setPbrMaterial(balise, {
-    albedoColor: Color4.fromHexString('#ffd166ff'),
-    emissiveColor: Color4.fromHexString('#ffd166ff'),
-    emissiveIntensity: 1.2
-  })
-  Tween.createOrReplace(balise, {
-    mode: Tween.Mode.Move({
-      start: Vector3.create(p.x, 2.0, p.z),
-      end: Vector3.create(p.x, 2.8, p.z)
-    }),
-    duration: 1400,
-    easingFunction: EasingFunction.EF_EASESINE
-  })
-  TweenSequence.createOrReplace(balise, { sequence: [], loop: TweenLoop.TL_YOYO })
-
-  const texte = engine.addEntity()
-  Transform.create(texte, { position: Vector3.create(p.x, 5.4, p.z), scale: Vector3.create(0.55, 0.55, 0.55) })
-  Billboard.create(texte, {})
-  TextShape.create(texte, { text: 'LIBRE', fontSize: 3, textColor: Color4.fromHexString('#ffd166ff') })
-
-  return { socle, balise, texte }
-}
-
-function detruire(m: Marqueur): void {
-  engine.removeEntity(m.socle)
-  engine.removeEntity(m.balise)
-  engine.removeEntity(m.texte)
+export function basculerPose(): void {
+  slotView.actif = !slotView.actif
+  if (!slotView.actif) {
+    const t = Transform.getMutableOrNull(fantome)
+    if (t !== null) t.scale = Vector3.create(0, 0, 0)
+    const e = Transform.getMutableOrNull(etiquette)
+    if (e !== null) e.scale = Vector3.create(0, 0, 0)
+  }
 }
 
 export function setupSlots(): void {
-  room.onMessage('freeSlots', (d) => {
-    libres = [...d.places]
-    const set = new Set(libres)
-    for (const place of libres) if (!marqueurs.has(place)) marqueurs.set(place, creer(place))
-    for (const [place, m] of marqueurs) {
-      if (set.has(place)) continue
-      detruire(m)
-      marqueurs.delete(place)
-    }
+  fantome = engine.addEntity()
+  Transform.create(fantome, { position: Vector3.create(0, 0.08, 0), scale: Vector3.create(0, 0, 0) })
+  MeshRenderer.setBox(fantome)
+  // Pas de collider: le fantome ne doit ni bloquer le joueur ni intercepter les clics.
+
+  etiquette = engine.addEntity()
+  Transform.create(etiquette, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
+  Billboard.create(etiquette, {})
+  TextShape.create(etiquette, { text: '', fontSize: 3, textColor: Color4.White() })
+
+  room.onMessage('basePositions', (d) => {
+    autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
   })
 
   engine.addSystem(() => {
-    for (const [place, m] of marqueurs) {
-      if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, m.socle) ||
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, m.socle)
-      ) {
-        void room.send('claimSlot', { place })
-        return
-      }
+    if (!slotView.actif) return
+    if (!Transform.has(engine.PlayerEntity)) return
+    const p = Transform.get(engine.PlayerEntity).position
+    const x = accrocher(p.x)
+    const z = accrocher(p.z)
+
+    // On s'exclut soi-meme des obstacles: deplacer sa base ne doit pas etre bloque
+    // par sa propre base.
+    const raison = raisonInvalide(x, z, SCENE_COTE, autres)
+    slotView.valide = raison === null
+    slotView.raison = raison ?? ''
+
+    const t = Transform.getMutableOrNull(fantome)
+    if (t !== null) {
+      t.position = Vector3.create(x, 0.08, z)
+      t.scale = Vector3.create(BASE_COTE, 0.16, BASE_COTE)
+    }
+    const c = slotView.valide ? Color4.fromHexString('#3ddc84ff') : Color4.fromHexString('#e04a3aff')
+    Material.setPbrMaterial(fantome, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.7 })
+
+    const te = Transform.getMutableOrNull(etiquette)
+    if (te !== null) {
+      te.position = Vector3.create(x, 2.4, z)
+      te.scale = Vector3.create(0.7, 0.7, 0.7)
+    }
+    const ts = TextShape.getMutableOrNull(etiquette)
+    if (ts !== null) {
+      ts.text = slotView.valide ? 'POSER ICI' : slotView.raison
+      ts.textColor = c
     }
   })
+}
+
+/** Valide la pose a l'endroit ou se tient le joueur. */
+export function poserIci(): void {
+  if (!Transform.has(engine.PlayerEntity)) return
+  const p = Transform.get(engine.PlayerEntity).position
+  void room.send('claimSlot', { x: accrocher(p.x), z: accrocher(p.z) })
+  basculerPose()
 }

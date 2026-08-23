@@ -37,9 +37,9 @@ export const MESSAGES = {
    * Le joueur CHOISIT ou il s'installe: pres du tapis pour acheter vite, ou a l'ecart
    * pour se faire oublier des voleurs. C'est une decision, pas une attribution.
    */
-  claimSlot: Schemas.Map({ place: Schemas.Int }),
-  /** serveur -> tous: les places encore libres, pour les afficher. */
-  freeSlots: Schemas.Map({ places: Schemas.Array(Schemas.Int) }),
+  claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
+  /** serveur -> tous: ou sont les bases, pour que le fantome sache ce qui est occupe. */
+  basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
 
   /** client -> serveur: j'achete l'article n du tapis. Le serveur verifie tout. */
   buyBelt: Schemas.Map({ articleId: Schemas.Int }),

@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS,
-  VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS, plotPosition
+  VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS
 } from '../shared/schemas'
 
 /** On doit etre PRES d'une place pour la revendiquer. */
@@ -12,7 +12,7 @@ import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
   nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe,
-  poserBase, placesDisponibles
+  poserBase, positionsBases
 } from './plots'
 
 /**
@@ -140,21 +140,21 @@ export function startTheft(): void {
     if (!a) return
     const p = positionDe(a)
     if (p === null) { refus(a, 'installation', 'position inconnue'); return }
-    const cible = plotPosition(d.place)
-    const dist = Vector3.distance(p, Vector3.create(cible.x, 0, cible.z))
+    // On pose CHEZ SOI: la position demandee doit etre celle ou l'on se tient.
+    const dist = Vector3.distance(p, Vector3.create(d.x, p.y, d.z))
     if (dist > PORTEE_INSTALLATION) {
-      refus(a, 'installation', `approche-toi de la place (${dist.toFixed(0)} m)`, true)
+      refus(a, 'installation', 'pose la ou tu te tiens', true)
       return
     }
-    const r = poserBase(a, d.place)
+    const r = poserBase(a, d.x, d.z)
     if (!r.ok) { refus(a, 'installation', r.raison ?? 'refuse'); return }
-    void room.send('freeSlots', { places: placesDisponibles() })
   })
 
-  // Les places libres sont republiees regulierement: un arrivant doit les voir.
+  // Les positions des bases existantes servent au fantome cote client.
   timers.setInterval(() => {
-    void room.send('freeSlots', { places: placesDisponibles() })
-  }, 3000)
+    const ps = positionsBases()
+    void room.send('basePositions', { xs: ps.map((q) => q.x), zs: ps.map((q) => q.z) })
+  }, 2500)
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

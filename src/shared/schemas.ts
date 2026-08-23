@@ -135,41 +135,16 @@ export const REPRISE_FENETRE_MS = 20_000  // 3.5 fenetre pour reprendre son bien
 export const PORTEE_VOL = 4
 export const PORTEE_REPRISE = 6
 
-/**
- * DISPOSITION EN ANNEAUX, dimensionnee le 23 Aug apres la question « et si on a 100 joueurs ».
- *
- * Motif copie des jeux de reference (memo §3.1): une base par joueur, creee a l'arrivee,
- * liberee au depart. Ce qui NE se copie pas, c'est le « serveur de 6 »: Decentraland ne
- * partitionne pas le monde, il n'y a qu'un serveur autoritaire par scene.
- *
- * Plafond reel, formule officielle des limites (entites = 200 x parcelles, et seules les
- * entites RENDUES comptent, doc `scene-limitations`): a 25 parcelles, 5 000 entites pour
- * ~9 par base, soit ~550. Les parcelles sont GRATUITES dans un World (jusqu'a 90 000).
- * Le vrai plafond est le rendu mobile: ~1 000 appels de dessin recommandes, donc de
- * l'ordre de 100 bases affichees. C'est notre chiffre de dimensionnement.
- *
- * Les anneaux gardent le lieu DENSE quand il y a peu de monde, et l'etendent sans
- * redessiner quand il y en a beaucoup.
- */
-/**
- * Rayons recalcules pour des bases de 8 m plus leur parvis (9,6 m d'emprise).
- * Ecart entre deux centres voisins sur un anneau = 2 x rayon x sin(pi / places).
- * Il doit rester > 11 m pour qu'on circule entre deux bases.
- *   anneau 0: 2 x 12 x sin(30 deg)  = 12,0 m
- *   anneau 1: 2 x 22 x sin(15 deg)  = 11,4 m
- *   anneau 2: 2 x 32 x sin(10 deg)  = 11,1 m
- */
-export const ANNEAUX = [
-  { rayon: 12, places: 6 },
-  { rayon: 22, places: 12 },
-  { rayon: 32, places: 18 }
-] as const
-// 36 bases dans les 80x80 m actuels. Pour aller au-dela: ajouter des anneaux ET des
 // parcelles (gratuites dans un World). Un anneau de rayon r exige une scene de rayon r+5.
 // Contrepartie a peser: plus le lieu est grand, plus on marche, et un juge a 3 minutes.
 
 /** 90 bases affichables. Au-dela on n'affiche plus, on ne casse pas. */
-export const MAX_BASES = ANNEAUX.reduce((n, a) => n + a.places, 0)
+/**
+ * Plafond d'affichage, pas de joueurs. Fixe par le rendu mobile (~1 000 appels de dessin
+ * recommandes), pas par une grille. Au-dela, les bases les moins recemment vues ne sont
+ * plus affichees; leur butin reste intact dans le profil de leur proprietaire.
+ */
+export const MAX_BASES_AFFICHEES = 60
 /**
  * LA BASE EST UN BATIMENT, pas un tapis.
  * Source: wiki du #1, page `Base`: *« The Base is a building that can currently only have
@@ -275,6 +250,43 @@ export function placesOuvertes(objetsCollectes: number, rebirths = 0): number {
   return etagesOuverts(objetsCollectes, rebirths) * SLOTS_PAR_ETAGE
 }
 
+/**
+ * PLACEMENT LIBRE. Le joueur pose sa base ou il veut, avec un fantome au sol qui dit si
+ * l'endroit convient. C'est le motif classique de construction, et il donne une vraie
+ * decision d'implantation: pres du tapis pour acheter vite, a l'ecart pour se faire
+ * oublier des voleurs, ou colle a un ami.
+ */
+export const GRILLE = 2                    // pas d'accrochage, en metres
+export const ECART_MIN_BASES = 11          // entre deux centres: 8 m de base + circulation
+export const MARGE_BORD = 7                // du bord de la scene
+export const ECART_TAPIS = 6               // du tapis, pour ne pas le barrer
+
+/** Accroche une coordonnee sur la grille de pose. */
+export function accrocher(v: number): number {
+  return Math.round(v / GRILLE) * GRILLE
+}
+
+/**
+ * Un emplacement est-il valable ? Verifie cote CLIENT pour le fantome, et re-verifie
+ * cote SERVEUR a la pose: le fantome est une aide, jamais une autorisation.
+ */
+export function raisonInvalide(
+  x: number, z: number, cote: number,
+  autres: Array<{ x: number; z: number }>
+): string | null {
+  if (x < MARGE_BORD || z < MARGE_BORD || x > cote - MARGE_BORD || z > cote - MARGE_BORD) {
+    return 'trop pres du bord'
+  }
+  if (Math.abs(z - CENTRE.z) < ECART_TAPIS && Math.abs(x - CENTRE.x) < TAPIS_LONGUEUR / 2 + 4) {
+    return 'sur le passage du tapis'
+  }
+  for (const a of autres) {
+    const dx = a.x - x, dz = a.z - z
+    if (Math.sqrt(dx * dx + dz * dz) < ECART_MIN_BASES) return 'trop pres d une autre base'
+  }
+  return null
+}
+
 /** Plafond absolu d'objets visibles sur une base. */
 export const PLOT_MAX_OBJETS = SLOTS_PAR_ETAGE * ETAGES_MAX
 
@@ -312,17 +324,6 @@ export function rampePosition(etage: number): { dx: number; dy: number; dz: numb
 /** Centre de la scene: 25 parcelles = 80x80 m. */
 export const CENTRE = { x: 40, z: 40 }
 
-export function plotPosition(index: number): { x: number; y: number; z: number } {
-  let reste = index
-  for (const a of ANNEAUX) {
-    if (reste < a.places) {
-      const ang = (reste / a.places) * Math.PI * 2
-      return { x: CENTRE.x + Math.cos(ang) * a.rayon, y: 0, z: CENTRE.z + Math.sin(ang) * a.rayon }
-    }
-    reste -= a.places
-  }
-  return { x: CENTRE.x, y: 0, z: CENTRE.z }
-}
 
 /** Periode du battement de coeur, et seuil au-dela duquel on considere le serveur mort. */
 export const BEAT_MS = 2000

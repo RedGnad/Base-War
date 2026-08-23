@@ -2,7 +2,10 @@ import { engine, Transform, PlayerIdentityData, AvatarBase, timers } from '@dcl/
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
-import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes, coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu } from '../shared/schemas'
+import {
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide
+} from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { jour, viderJournal } from './journal'
 import { room } from '../shared/messages'
@@ -29,19 +32,20 @@ type Base = {
   address: string
   name: string
   items: number[]
-  place: number      // index de position sur les anneaux
+  x: number          // position CHOISIE par le joueur
+  z: number
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
 }
-type Profil = { coins: number; items: number[]; collectes?: number; rebirths?: number; alertes?: object[] }
+type Profil = { coins: number; items: number[]; collectes?: number; rebirths?: number; x?: number; z?: number; alertes?: object[] }
 
 const bases = new Map<string, Base>()
 const profils = new Map<string, Profil>()
-const placesLibres: number[] = []
 const basesSales = new Set<string>()
 const profilsSales = new Set<string>()
 
-for (let i = 0; i < MAX_BASES; i++) placesLibres.push(i)
+/** Cote de la scene en metres: 25 parcelles = 5 x 16. */
+const SCENE_COTE = 80
 
 function nomDe(address: string): string {
   for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
@@ -74,7 +78,6 @@ function publier(b: Base, ici?: Set<string>): void {
   const pr = profils.get(b.address)
   c.etages = etagesOuverts(pr?.collectes ?? 0, pr?.rebirths ?? 0)
   c.rebirths = pr?.rebirths ?? 0
-  c.index = b.place
   c.ownerId = b.address
   c.ownerName = b.name
   c.items = ranger(b.items)
@@ -82,28 +85,18 @@ function publier(b: Base, ici?: Set<string>): void {
 }
 
 /** Cree la base d'un joueur. Retourne null si le lieu affiche deja son maximum. */
-function creerBase(address: string, name: string, items: number[], lastSeen: number, voulue?: number): Base | null {
-  let place: number | undefined
-  if (voulue !== undefined) {
-    const i = placesLibres.indexOf(voulue)
-    if (i >= 0) { placesLibres.splice(i, 1); place = voulue }
-  } else {
-    place = placesLibres.shift()
-  }
-  if (place === undefined) { jour(`creerBase: aucune place libre pour ${address.slice(0, 8)}`); return null }
+function creerBase(address: string, name: string, items: number[], lastSeen: number, x: number, z: number): Base | null {
   try {
   const e = engine.addEntity()
-  const p = plotPosition(place)
-  Transform.create(e, { position: Vector3.create(p.x, 0, p.z) })
-  Plot.create(e, { etages: 1, rebirths: 0, index: place, ownerId: address, ownerName: name, items: ranger(items), ownerPresent: false, lockedUntil: 0 })
+  Transform.create(e, { position: Vector3.create(x, 0, z) })
+  Plot.create(e, { etages: 1, rebirths: 0, index: 0, ownerId: address, ownerName: name, items: ranger(items), ownerPresent: false, lockedUntil: 0 })
   syncEntity(e, [Plot.componentId, Transform.componentId])
-  const b: Base = { address, name, items: [...items], place, entity: e, lastSeen }
+  const b: Base = { address, name, items: [...items], x, z, entity: e, lastSeen }
   bases.set(address, b)
   publier(b)
   return b
   } catch (err) {
     jour(`creerBase A JETE pour ${address.slice(0, 8)}: ${err}`)
-    placesLibres.unshift(place)
     return null
   }
 }
@@ -112,8 +105,6 @@ function retirerBase(address: string): void {
   const b = bases.get(address)
   if (!b) return
   engine.removeEntity(b.entity)
-  placesLibres.push(b.place)
-  placesLibres.sort((x, y) => x - y)
   bases.delete(address)
 }
 
@@ -127,11 +118,17 @@ async function chargerBases(): Promise<void> {
     const lues = res.data
       .map(({ key, value }) => {
         const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
-        return { address: key.slice('base:'.length), name: v.name ?? '', items: v.items ?? [], lastSeen: v.lastSeen ?? 0 }
+        return {
+          address: key.slice('base:'.length), name: v.name ?? '', items: v.items ?? [],
+          lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z
+        }
       })
+      // Une base sans coordonnees vient d'une version anterieure au placement libre:
+      // on ne la restitue pas plutot que de l'inventer quelque part.
+      .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
       .sort((a, b) => b.lastSeen - a.lastSeen)
-      .slice(0, MAX_BASES)
-    for (const l of lues) creerBase(l.address, l.name, l.items, l.lastSeen)
+      .slice(0, MAX_BASES_AFFICHEES)
+    for (const l of lues) creerBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z)
     jour(`${lues.length} bases restituees sur ${res.pagination.total} connues`)
   } catch (e) {
     jour(`ERREUR lecture des bases impossible: ${e}`)
@@ -143,7 +140,7 @@ async function sauver(): Promise<void> {
     basesSales.delete(a)
     const b = bases.get(a)
     if (!b) continue
-    const ok = await Storage.set(CLE_BASE(a), JSON.stringify({ name: b.name, items: b.items, lastSeen: b.lastSeen }))
+    const ok = await Storage.set(CLE_BASE(a), JSON.stringify({ name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z }))
     if (!ok) { jour(`ERREUR ECHEC sauvegarde base ${a}`); basesSales.add(a) }
   }
   for (const a of [...profilsSales]) {
@@ -172,6 +169,11 @@ export async function accueillir(address: string): Promise<void> {
   profilsSales.add(address)
 
   const name = nomDe(address)
+  // Le joueur retrouve sa base LA OU IL L'AVAIT POSEE.
+  if (!bases.has(address) && profil.x !== undefined && profil.z !== undefined) {
+    const b = creerBase(address, name, items, Date.now(), profil.x, profil.z)
+    if (b !== null) { basesSales.add(address); jour(`base de ${name} reposee en ${profil.x},${profil.z}`) }
+  }
   const dejala = bases.get(address)
   if (dejala) {
     dejala.name = name
@@ -179,27 +181,13 @@ export async function accueillir(address: string): Promise<void> {
     dejala.lastSeen = Date.now()
     basesSales.add(address)
     publier(dejala)
-    jour(`${name} retrouve sa base (place ${dejala.place})`)
+    jour(`${name} retrouve sa base en ${dejala.x},${dejala.z}`)
     return
-  }
-
-  // Le lieu est plein: on libere la base de l'ABSENT le plus ancien. Jamais celle d'un present.
-  if (placesLibres.length === 0) {
-    const ici = presents()
-    let plusVieux: Base | null = null
-    for (const b of bases.values()) {
-      if (ici.has(b.address)) continue
-      if (plusVieux === null || b.lastSeen < plusVieux.lastSeen) plusVieux = b
-    }
-    if (plusVieux !== null) {
-      jour(`base de ${plusVieux.name} retiree de l'affichage (absent le plus ancien), son butin reste a lui`)
-      retirerBase(plusVieux.address)
-    }
   }
 
   // On NE POSE PLUS la base d'office: le joueur choisit son emplacement.
   // Son butin l'attend dans son profil en attendant qu'il se decide.
-  jour(`${name} arrive sans base posee, ${placesLibres.length} places libres`)
+  if (!bases.has(address)) jour(`${name} arrive sans base posee`)
 }
 
 /** Au depart: la base RESTE visible, c'est elle que les autres pourront piller. */
@@ -356,32 +344,41 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
 }
 
 export function paliersDe(address: string): number { return profils.get(address)?.rebirths ?? 0 }
-export function placesDisponibles(): number[] { return [...placesLibres] }
+/** Positions des bases existantes, pour la validation d'implantation. */
+export function positionsBases(sauf?: string): Array<{ x: number; z: number }> {
+  const out: Array<{ x: number; z: number }> = []
+  for (const b of bases.values()) if (b.address !== sauf) out.push({ x: b.x, z: b.z })
+  return out
+}
 
 /**
  * Pose (ou deplace) la base d'un joueur sur la place demandee.
  * Deplacer est GRATUIT: un joueur doit pouvoir reagir a son voisinage, sinon le choix
  * initial devient un piege pour qui ne connait pas encore le lieu.
  */
-export function poserBase(address: string, place: number): { ok: boolean; raison?: string } {
+export function poserBase(address: string, xb: number, zb: number): { ok: boolean; raison?: string } {
   const p = profils.get(address)
   if (!p) return { ok: false, raison: 'profil inconnu' }
-  if (!placesLibres.includes(place)) {
-    // deja la sienne ? alors rien a faire
-    if (bases.get(address)?.place === place) return { ok: true }
-    return { ok: false, raison: 'place deja prise' }
-  }
+
+  // Le serveur RE-VERIFIE tout. Le fantome cote client est une aide a la visee, jamais
+  // une autorisation: un client modifie enverrait n'importe quelles coordonnees.
+  const x = accrocher(xb)
+  const z = accrocher(zb)
+  const mauvais = raisonInvalide(x, z, SCENE_COTE, positionsBases(address))
+  if (mauvais !== null) return { ok: false, raison: mauvais }
 
   const ancienne = bases.get(address)
   if (ancienne) retirerBase(address)
 
   const items = p.items.length > 0 ? p.items : [0]
   p.items = [...items]
-  const b = creerBase(address, nomDe(address), items, Date.now(), place)
-  if (b === null) return { ok: false, raison: 'place indisponible' }
+  const b = creerBase(address, nomDe(address), items, Date.now(), x, z)
+  if (b === null) return { ok: false, raison: 'pose impossible' }
+  p.x = x
+  p.z = z
   basesSales.add(address)
   profilsSales.add(address)
-  jour(`${b.name} pose sa base sur la place ${place}${ancienne ? ` (deplacee depuis ${ancienne.place})` : ''}`)
+  jour(`${b.name} pose sa base en ${x},${z}${ancienne ? ` (deplacee depuis ${ancienne.x},${ancienne.z})` : ''}`)
   return { ok: true }
 }
 
