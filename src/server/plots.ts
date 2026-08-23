@@ -114,9 +114,26 @@ export async function attribuerPlot(address: string): Promise<number> {
     return profil.plotIndex
   }
 
+  // ORDRE D'ATTRIBUTION, et il ne doit JAMAIS deloger un joueur present.
+  // 1) une place vraiment libre
   let libre = plots.findIndex((p) => p.ownerId === '')
-  if (libre === -1) libre = plots.findIndex((p) => !presents().has(p.ownerId))
-  if (libre === -1) libre = 0
+  // 2) sinon la place d'un ABSENT (il garde son butin, qui vit dans son stockage)
+  if (libre === -1) {
+    const ici = presents()
+    libre = plots.findIndex((p) => !ici.has(p.ownerId))
+  }
+  // 3) sinon: toutes les places sont tenues par des joueurs PRESENTS.
+  // On ne deloge personne. Le joueur joue quand meme, son butin s'accumule dans son
+  // stockage, et il prendra la premiere place liberee. Mesure du 23 Aug: le lieu le plus
+  // frequente de toute la plateforme compte 11 joueurs, donc ce cas est rare, mais il
+  // doit degrader proprement au lieu de voler la place de quelqu'un.
+  if (libre === -1) {
+    console.log(`[SERVER] ${address} sans vitrine: les ${NB_PLOTS} sont tenues par des presents`)
+    const p: Profil = { plotIndex: -1, coins: profil?.coins ?? 0, items: profil?.items ?? [] }
+    profils.set(address, p)
+    profilsSales.add(address)
+    return -1
+  }
 
   // Le joueur evince garde son butin: il est dans SON stockage, pas sur la vitrine.
   const evince = plots[libre].ownerId
@@ -142,6 +159,14 @@ export async function attribuerPlot(address: string): Promise<number> {
 /** 2.3: l'objet obtenu se pose directement sur l'emplacement du joueur. */
 export async function poserObjet(address: string, rarity: number): Promise<boolean> {
   const i = await attribuerPlot(address)
+  // Sans vitrine, le butin va quand meme dans le profil: rien n'est perdu, il
+  // s'affichera des qu'une place se libere.
+  if (i === -1) {
+    const prof = profils.get(address)
+    if (prof) { prof.items = [...prof.items, rarity]; profilsSales.add(address) }
+    console.log(`[SERVER] ${address} recupere une rarete ${rarity} en attente de vitrine`)
+    return true
+  }
   const p = plots[i]
   if (p.items.length >= PLOT_MAX_OBJETS) {
     console.log(`[SERVER] emplacement ${i} plein (${PLOT_MAX_OBJETS})`)
@@ -211,4 +236,23 @@ export function startPlots(): void {
 
   // La presence change l'affichage des emplacements: on republie a intervalle lent.
   timers.setInterval(() => { for (let i = 0; i < NB_PLOTS; i++) publier(i) }, 3000)
+
+  // Les joueurs en attente prennent la premiere place liberee.
+  timers.setInterval(() => {
+    const attente = [...profils.entries()].filter(([, p]) => p.plotIndex === -1)
+    if (attente.length === 0) return
+    const ici = presents()
+    for (const [address] of attente) {
+      if (!ici.has(address)) continue
+      const libre = plots.findIndex((p) => p.ownerId === '' || !ici.has(p.ownerId))
+      if (libre === -1) return
+      const prof = profils.get(address)!
+      const items = prof.items.length > 0 ? prof.items : [0]
+      plots[libre] = { ownerId: address, ownerName: nomDe(address), items: [...items] }
+      prof.plotIndex = libre
+      prof.items = [...items]
+      plotsSales.add(libre); profilsSales.add(address); publier(libre)
+      console.log(`[SERVER] ${address} obtient enfin la vitrine ${libre}`)
+    }
+  }, 4000)
 }
