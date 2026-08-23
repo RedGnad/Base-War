@@ -6,6 +6,7 @@ import { room } from '../shared/messages'
 import { startCrate } from './crate'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
 import { jour, viderJournal, rejouerJournal } from './journal'
+import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -107,6 +108,7 @@ export function startServer(): void {
   })
 
   startPlots()
+  startTheft()
 
   // La caisse: le serveur valide la proximite et tire la rarete lui-meme.
   startCrate((address, rarity) => {
@@ -115,6 +117,7 @@ export function startServer(): void {
     dirty.add(address)
     publish(address)
     void poserObjet(address, rarity)
+    noterPalier(address, n)   // 3.6 progression = protection: +10 s de verrou par palier
     console.log(`[SERVER] ${address} recupere une rarete ${rarity}, total ${n}, ${coinsDe(address)} pieces`)
   })
 
@@ -147,6 +150,8 @@ export function startServer(): void {
         const n = await load(address)
         publish(address)
         await accueillir(address)
+        verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied
+        delivrerAlertes(address)  // ce qui s'est passe pendant l'absence
         rejouerJournal(address)
         console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
       })()

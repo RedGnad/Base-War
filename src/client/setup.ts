@@ -10,6 +10,7 @@ import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
 import { setupCrate } from './crate'
 import { setupPlots } from './plots'
+import { setupTheft } from './theft'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -33,6 +34,7 @@ export function startClient(): void {
 
   setupCrate()
   setupPlots()
+  setupTheft()
 
   // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le juger a l'oeil.
   const toggle = engine.addEntity()

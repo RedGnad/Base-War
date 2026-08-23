@@ -32,7 +32,7 @@ type Base = {
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
 }
-type Profil = { coins: number; items: number[] }
+type Profil = { coins: number; items: number[]; alertes?: object[] }
 
 const bases = new Map<string, Base>()
 const profils = new Map<string, Profil>()
@@ -207,6 +207,93 @@ export async function poserObjet(address: string, rarity: number): Promise<boole
 }
 
 export function coinsDe(address: string): number { return Math.floor(profils.get(address)?.coins ?? 0) }
+
+// --- Acces pour la couche vol -------------------------------------------------------
+
+export type BaseVue = { address: string; name: string; items: number[]; entity: ReturnType<typeof engine.addEntity> }
+
+export function basesProches(p: Vector3, portee: number, sauf: string): BaseVue[] {
+  const out: BaseVue[] = []
+  for (const b of bases.values()) {
+    if (b.address === sauf) continue
+    const t = Transform.getOrNull(b.entity)
+    if (t === null) continue
+    if (Vector3.distance(p, Vector3.create(t.position.x, t.position.y, t.position.z)) > portee) continue
+    out.push({ address: b.address, name: b.name, items: b.items, entity: b.entity })
+  }
+  return out
+}
+
+export function verrouDe(address: string): number {
+  const b = bases.get(address)
+  if (!b) return 0
+  return Plot.getOrNull(b.entity)?.lockedUntil ?? 0
+}
+
+export function poserVerrou(address: string, jusqua: number): boolean {
+  const b = bases.get(address)
+  if (!b) return false
+  const c = Plot.getMutableOrNull(b.entity)
+  if (c === null) return false
+  c.lockedUntil = jusqua
+  basesSales.add(address)
+  return true
+}
+
+/** Retire un objet d'une base et le rend. Le profil du proprietaire suit. */
+export function retirerObjet(address: string, index: number): number | null {
+  const b = bases.get(address)
+  if (!b || index < 0 || index >= b.items.length) return null
+  const [r] = b.items.splice(index, 1)
+  const prof = profils.get(address)
+  if (prof) { prof.items = [...b.items]; profilsSales.add(address) }
+  basesSales.add(address)
+  publier(b)
+  return r
+}
+
+/** Ajoute un objet a une base (ou au seul profil si le joueur n'a pas de base affichee). */
+export function ajouterObjet(address: string, rarity: number): boolean {
+  const prof = profils.get(address)
+  if (!prof) return false
+  if (prof.items.length >= PLOT_MAX_OBJETS) return false
+  prof.items.push(rarity)
+  profilsSales.add(address)
+  const b = bases.get(address)
+  if (b) { b.items = [...prof.items]; basesSales.add(address); publier(b) }
+  return true
+}
+
+export function nomAffiche(address: string): string {
+  return bases.get(address)?.name ?? nomDe(address)
+}
+
+/** Alerte differee: la victime peut etre absente au moment du vol. */
+export function deposerAlerte(victime: string, alerte: object): void {
+  const prof = profils.get(victime)
+  if (prof) {
+    prof.alertes = [...(prof.alertes ?? []), alerte]
+    profilsSales.add(victime)
+    return
+  }
+  // Victime jamais chargee en memoire: on ecrit directement dans son stockage.
+  void (async () => {
+    const brut = await Storage.player.get<string>(victime, CLE_JOUEUR)
+    const p = brut ? JSON.parse(brut) : { coins: 0, items: [] }
+    p.alertes = [...(p.alertes ?? []), alerte]
+    const ok = await Storage.player.set(victime, CLE_JOUEUR, JSON.stringify(p))
+    if (!ok) jour(`ERREUR alerte differee perdue pour ${victime.slice(0, 8)}`)
+  })()
+}
+
+export function retirerAlertes(address: string): object[] {
+  const prof = profils.get(address)
+  if (!prof) return []
+  const a = prof.alertes ?? []
+  prof.alertes = []
+  if (a.length > 0) profilsSales.add(address)
+  return a
+}
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 export function toutesLesBases(): Base[] { return [...bases.values()] }
 export function marquerSale(address: string): void {
