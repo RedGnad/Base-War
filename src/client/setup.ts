@@ -23,7 +23,8 @@ export const view = {
   /** derniere valeur de battement observee, et l'instant CLIENT ou on l'a vue changer */
   lastBeatValue: 0,
   lastBeatSeenAt: 0,
-  taps: 0
+  taps: 0,
+  malusActif: false
 }
 
 /** SPIKE 1.2: nombre d'avatars de test. 0 = mesure de reference. */
@@ -51,6 +52,28 @@ export function startClient(): void {
         eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Taper' }
       }
     ]
+  })
+
+  // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le JUGER A L'OEIL.
+  // Marcher, taper la rouge, remarcher: la difference doit sauter aux yeux, sinon
+  // le malus est trop faible pour porter la mecanique anti-frustration du #1.
+  const toggle = engine.addEntity()
+  Transform.create(toggle, { position: { x: 20, y: 1, z: 16 }, scale: { x: 1.2, y: 1.2, z: 1.2 } })
+  MeshRenderer.setBox(toggle)
+  MeshCollider.setBox(toggle)
+  Material.setPbrMaterial(toggle, { albedoColor: Color4.fromHexString('#c03030ff') })
+  PointerEvents.create(toggle, {
+    pointerEvents: [
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Basculer le malus voleur' } }
+    ]
+  })
+  let malus = false
+  engine.addSystem(() => {
+    if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, toggle)) {
+      malus = !malus
+      applyThiefPenalty(malus)
+      view.malusActif = malus
+    }
   })
 
   engine.addSystem(() => {
