@@ -167,7 +167,10 @@ export async function accueillir(address: string): Promise<void> {
   const brut = await Storage.player.get<string>(address, CLE_JOUEUR)
   const stocke: Profil | null = brut ? JSON.parse(brut) : null
   // Objet de bienvenue au TOUT PREMIER passage seulement: une base n'est jamais nue.
-  const items = stocke?.items && stocke.items.length > 0 ? stocke.items : [0]
+  // PAS d'objet gratuit. Le cadeau d'arrivee est LA BOITE, et rien d'autre: donner
+  // aussi un objet, c'est un revenu qui coule avant que le joueur ait rien fait, et
+  // ca vide de son sens le premier geste du jeu (ouvrir).
+  const items = stocke?.items ?? []
   // BOITE OFFERTE A L'ARRIVEE (starter pack). Sans elle, un nouveau joueur a un revenu
   // nul, aucune piece, donc rien a faire: la boucle ne peut pas demarrer.
   const premiere = stocke === null
@@ -384,8 +387,8 @@ export function poserBase(address: string, xb: number, zb: number): { ok: boolea
   const ancienne = bases.get(address)
   if (ancienne) retirerBase(address)
 
-  const items = p.items.length > 0 ? p.items : [0]
-  p.items = [...items]
+  // Poser sa base ne cree aucun objet: on affiche ce qu'on possede, meme si c'est rien.
+  const items = [...p.items]
   const b = creerBase(address, nomDe(address), items, Date.now(), x, z)
   if (b === null) return { ok: false, raison: 'pose impossible' }
   p.x = x
