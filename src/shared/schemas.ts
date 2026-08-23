@@ -1,4 +1,8 @@
 import { Schemas, engine } from '@dcl/sdk/ecs'
+import { isServer } from '@dcl/sdk/network'
+// AUTH_SERVER_PEER_ID n'est PAS reexporte par @dcl/sdk/network: chemin profond obligatoire.
+// Confirme par la scene officielle 90,-9-authoritative-server-leaderboard.
+import { AUTH_SERVER_PEER_ID } from '@dcl/sdk/network/message-bus-sync'
 
 // Les composants se definissent au chargement du module, avant que le moteur ne se scelle.
 // Ce fichier DOIT etre importe statiquement depuis index.ts, jamais via import() dynamique,
@@ -34,10 +38,19 @@ export const SYNC_ID = {
 export const BEAT_MS = 2000
 export const BEAT_DEAD_AFTER_MS = BEAT_MS * 3
 
-// [A VERIFIER] Le skill `authoritative-server` prescrit `Component.validateBeforeChange(...)`
-// pour interdire aux clients d'ecrire l'etat autoritaire. Cette methode publique n'existe PAS
-// dans les typages de @dcl/ecs livres avec @dcl/sdk@auth-server 7.26.1-32239895147 (0 occurrence
-// dans dist/), alors que le runtime appelle bien `component.__run_validateBeforeChange` en
-// interne. A resoudre avant la phase 3 (le vol) en lisant la scene officielle
-// sdk7-test-scenes/scenes/90,-9-authoritative-server-leaderboard.
-// Le spike n'en depend pas: il prouve la chaine de persistance, pas l'anti-triche.
+
+/**
+ * Gardes d'ecriture: seul le serveur peut modifier l'etat autoritaire.
+ * Les composants personnalises utilisent la surcharge globale (sans entite).
+ * Appele depuis main() DES DEUX COTES: la garde isServer() en fait un no-op sur un
+ * client, ou l'appel produirait des erreurs.
+ */
+export function registerValidators(): void {
+  if (!isServer()) return
+
+  const serverOnly = (value: { senderAddress: string }) =>
+    value.senderAddress.toLowerCase() === AUTH_SERVER_PEER_ID.toLowerCase()
+
+  PlayerTaps.validateBeforeChange(serverOnly)
+  ServerBeat.validateBeforeChange(serverOnly)
+}
