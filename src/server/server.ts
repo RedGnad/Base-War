@@ -1,6 +1,5 @@
-import { engine, Transform, timers } from '@dcl/sdk/ecs'
+import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
-import { onEnterScene, onLeaveScene } from '@dcl/sdk/players'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -69,28 +68,11 @@ async function flush(): Promise<void> {
 export function startServer(): void {
   console.log('[SERVER] demarrage')
 
-  // HYDRATATION A L'ARRIVEE.
-  // Sans ceci, un joueur qui revient voit zero jusqu'a ce qu'il agisse: on ne chargeait
-  // depuis Storage qu'au premier tap. C'est le defaut "lieu vide" en miniature, et c'est
-  // exactement ce que la regle d'eligibilite punit. On publie donc son etat des l'entree.
-  onEnterScene((player) => {
-    const address = player.userId?.toLowerCase()
-    if (!address) return
-    void (async () => {
-      const n = await load(address)
-      publish(address)
-      console.log(`[SERVER] ${player.name} entre, etat restitue: ${n}`)
-    })()
-  })
-
-  // Point de controle a la sortie: c'est le moment ou l'on est sur de ne rien perdre.
-  onLeaveScene((userId) => {
-    const address = userId?.toLowerCase()
-    if (address) dirty.add(address)
-    void flush()
-  })
-
-  // Battement de coeur, publie immediatement pour que le premier client n'attende pas.
+  // LE BATTEMENT DE COEUR D'ABORD, avant toute autre logique.
+  // Regle apprise a la dure: la premiere version creait le battement APRES l'hydratation.
+  // L'hydratation a jete, et le serveur est mort sans jamais signaler qu'il vivait, donc
+  // le client affichait "silencieux" sans distinguer "serveur mort" de "serveur absent".
+  // Le signal de vie ne doit dependre de rien.
   const beat = engine.addEntity()
   ServerBeat.create(beat, { at: Date.now() })
   syncEntity(beat, [ServerBeat.componentId], SYNC_ID.serverBeat)
@@ -113,7 +95,31 @@ export function startServer(): void {
       dirty.add(address)
       publish(address)
       console.log(`[SERVER] tap de ${address} -> ${next}`)
-      void room.send('tapAck', { count: next, persisted: !dirty.has(address) }, { to: [address] })
+      void room.send('tapAck', { count: next, persisted: false }, { to: [address] })
     })()
+  })
+
+  // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.
+  // On n'utilise PAS le helper @dcl/sdk/players: il est oriente client et le faire tourner
+  // sur le runtime headless tue le serveur au demarrage. PlayerIdentityData est la voie
+  // documentee cote serveur pour savoir qui est present.
+  // Sans hydratation, un joueur qui revient voit zero jusqu'a ce qu'il agisse: c'est le
+  // defaut "lieu vide" en miniature, exactement ce que la regle d'eligibilite punit.
+  const seen = new Set<string>()
+  let sinceCheck = 0
+  engine.addSystem((dt: number) => {
+    sinceCheck += dt
+    if (sinceCheck < 1) return
+    sinceCheck = 0
+    for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+      const address = id.address?.toLowerCase()
+      if (!address || seen.has(address)) continue
+      seen.add(address)
+      void (async () => {
+        const n = await load(address)
+        publish(address)
+        console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
+      })()
+    }
   })
 }
