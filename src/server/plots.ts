@@ -16,8 +16,21 @@ const CLE_PLOT = (i: number) => `plot:${i}`
 const CLE_JOUEUR = 'profil'
 const SAUVE_MS = 5000
 
+/**
+ * ARCHITECTURE, corrigee le 23 Aug apres une question de l'utilisateur.
+ * Decentraland n'a PAS le modele Roblox (des milliers d'instances du meme jeu):
+ * un seul serveur autoritaire par scene deployee. Les « iles » sont un mecanisme de
+ * communication, pas de duplication de monde.
+ * Donc: 8 emplacements possedes a vie plafonneraient le jeu a 8 joueurs. Faux.
+ *
+ * L'emplacement est une PLACE SUR LA SCENE, pas un titre de propriete:
+ *  - le butin appartient au joueur et vit dans SON stockage joueur (autoritaire)
+ *  - l'emplacement n'est que la vitrine, plus une trace visible quand il est parti
+ *  - un absent cede sa vitrine a un arrivant, SANS jamais perdre son butin
+ * Nombre de joueurs: illimite. Nombre de vitrines simultanees: 8.
+ */
 type EtatPlot = { ownerId: string; ownerName: string; items: number[] }
-type Profil = { plotIndex: number; coins: number }
+type Profil = { plotIndex: number; coins: number; items: number[] }
 
 const plots: EtatPlot[] = []
 const entites: ReturnType<typeof engine.addEntity>[] = []
@@ -105,16 +118,19 @@ export async function attribuerPlot(address: string): Promise<number> {
   if (libre === -1) libre = plots.findIndex((p) => !presents().has(p.ownerId))
   if (libre === -1) libre = 0
 
-  // OBJET DE BIENVENUE: un emplacement fraichement pris n'est JAMAIS nu.
-  // Sans lui, on prend un emplacement et on repart avec un socle vide a son nom,
-  // ce qui donne exactement l'image d'abandon que la regle d'eligibilite punit.
-  const existants = plots[libre].items ?? []
-  plots[libre] = {
-    ownerId: address,
-    ownerName: nomDe(address),
-    items: existants.length > 0 ? existants : [0]
+  // Le joueur evince garde son butin: il est dans SON stockage, pas sur la vitrine.
+  const evince = plots[libre].ownerId
+  if (evince !== '' && evince !== address) {
+    console.log(`[SERVER] vitrine ${libre} liberee par ${evince} (absent), son butin reste a lui`)
   }
-  profil = { plotIndex: libre, coins: profil?.coins ?? 0 }
+
+  // On restitue le butin PROPRE au joueur. OBJET DE BIENVENUE au premier passage
+  // seulement: une vitrine fraichement prise n'est jamais nue, sinon on donne
+  // exactement l'image d'abandon que la regle d'eligibilite punit.
+  const sienItems = profil?.items ?? []
+  const items = sienItems.length > 0 ? sienItems : [0]
+  plots[libre] = { ownerId: address, ownerName: nomDe(address), items: [...items] }
+  profil = { plotIndex: libre, coins: profil?.coins ?? 0, items: [...items] }
   profils.set(address, profil)
   plotsSales.add(libre)
   profilsSales.add(address)
@@ -132,6 +148,8 @@ export async function poserObjet(address: string, rarity: number): Promise<boole
     return false
   }
   p.items.push(rarity)
+  const profil = profils.get(address)
+  if (profil) { profil.items = [...p.items]; profilsSales.add(address) }
   plotsSales.add(i)
   publier(i)
   console.log(`[SERVER] rarete ${rarity} posee sur l'emplacement ${i} (${p.items.length} objets)`)
@@ -141,6 +159,23 @@ export async function poserObjet(address: string, rarity: number): Promise<boole
 export function coinsDe(address: string): number {
   return Math.floor(profils.get(address)?.coins ?? 0)
 }
+
+/** Accesseurs pour la couche vol (phase 3). */
+export function etatPlot(i: number): EtatPlot | undefined { return plots[i] }
+export function tousLesPlots(): EtatPlot[] { return plots }
+export function plotDe(address: string): number | undefined { return profils.get(address)?.plotIndex }
+
+/** Le butin vit dans le profil: toute modification de vitrine doit le suivre. */
+export function synchroniserProfil(i: number): void {
+  const p = plots[i]
+  if (!p || p.ownerId === '') { plotsSales.add(i); publier(i); return }
+  const profil = profils.get(p.ownerId)
+  if (profil) { profil.items = [...p.items]; profilsSales.add(p.ownerId) }
+  plotsSales.add(i)
+  publier(i)
+}
+
+export function marquerSale(i: number): void { plotsSales.add(i) }
 
 export function startPlots(): void {
   for (let i = 0; i < NB_PLOTS; i++) {

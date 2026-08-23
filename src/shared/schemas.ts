@@ -53,7 +53,9 @@ export const Plot = engine.defineComponent('friendzone::plot', {
   /** raretes posees, dans l'ordre. Longueur = nombre d'objets visibles. */
   items: Schemas.Array(Schemas.Int),
   /** le proprietaire est-il connecte en ce moment */
-  ownerPresent: Schemas.Boolean
+  ownerPresent: Schemas.Boolean,
+  /** horodatage serveur jusqu'auquel l'emplacement est protege. Int64 obligatoire. */
+  lockedUntil: Schemas.Int64
 })
 
 /** Un objet tombe, pose sur l'emplacement d'un joueur. */
@@ -72,6 +74,19 @@ export const SYNC_ID = {
 
 /** Distance maximale a la caisse pour qu'un coup soit accepte par le serveur. */
 export const PORTEE_COUP = 4
+
+/**
+ * Les six mecaniques anti-frustration, valeurs mesurees chez le #1 (wiki Steal a Brainrot).
+ * Le vol doit etre lent, bruyant, defendable et reversible: sans ca il chasse les joueurs
+ * au lieu de les faire revenir.
+ */
+export const VERROU_ARRIVEE_MS = 30_000   // 3.1 verrou automatique a l'arrivee
+export const VERROU_GRATUIT_MS = 60_000   // 3.2 verrou activable
+export const VERROU_BONUS_MS = 10_000     // 3.6 +10 s par palier de progression
+export const MALUS_DUREE_MS = 12_000      // 3.4 duree du malus du voleur
+export const REPRISE_FENETRE_MS = 20_000  // 3.5 fenetre pour reprendre son bien
+export const PORTEE_VOL = 4
+export const PORTEE_REPRISE = 6
 
 /** Les 8 emplacements, en cercle autour de la caisse. Scene = 32x32 m, centre (16,16). */
 export const NB_PLOTS = 8
