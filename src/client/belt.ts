@@ -5,7 +5,7 @@ import {
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Belt, beltPosition, TAPIS_LONGUEUR, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { rarity } from '../shared/loot-table'
+import { boite } from '../shared/loot-table'
 
 /**
  * Rendu du tapis. Chaque article est cliquable: on achete CE qu'on voit passer.
@@ -36,17 +36,17 @@ export function setupBelt(): void {
       const t = Transform.get(ent)
       let v = vues.get(b.articleId)
       if (!v) {
-        const r = rarity(b.rarity)
+        const r = boite(b.typeBoite)
         const objet = engine.addEntity()
         Transform.create(objet, { position: Vector3.create(t.position.x, t.position.y, t.position.z), scale: Vector3.create(r.taille, r.taille, r.taille) })
         MeshRenderer.setBox(objet)
         MeshCollider.setBox(objet)
         const c = Color4.fromHexString(r.couleur + 'ff')
-        Material.setPbrMaterial(objet, { albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, metallic: 0.6, roughness: 0.35 })
+        Material.setPbrMaterial(objet, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.45, metallic: 0.6, roughness: 0.35 })
         PointerEvents.create(objet, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: `Acheter ${r.nom} — ${b.prix}` } },
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Acheter ${r.nom} — ${b.prix}` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: `${r.nom} — ${b.prix} pieces` } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `${r.nom} — ${b.prix} pieces` } }
           ]
         })
 
@@ -85,13 +85,13 @@ export function setupBelt(): void {
   })
 
   room.onMessage('beltAlert', (d) => {
-    const r = rarity(d.rarity)
+    const r = boite(d.typeBoite)
     beltView.annonce = `${r.nom} sur le tapis !`
     beltView.annonceJusqua = Date.now() + 7000
     console.log(`[CLIENT] annonce: ${r.nom}`)
   })
 
   room.onMessage('bought', (d) => {
-    console.log(`[CLIENT] ${d.byName} a rafle un ${rarity(d.rarity).nom} pour ${d.prix}`)
+    console.log(`[CLIENT] ${d.byName} a rafle une ${boite(d.typeBoite).nom} pour ${d.prix}`)
   })
 }

@@ -43,10 +43,21 @@ export const MESSAGES = {
 
   /** client -> serveur: j'achete l'article n du tapis. Le serveur verifie tout. */
   buyBelt: Schemas.Map({ articleId: Schemas.Int }),
-  /** serveur -> tous: un article rare vient d'entrer sur le tapis. */
-  beltAlert: Schemas.Map({ rarity: Schemas.Int }),
-  /** serveur -> tous: quelqu'un a rafle un article. */
-  bought: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, prix: Schemas.Int }),
+  /** serveur -> tous: une boite chere vient d'entrer sur le tapis. */
+  beltAlert: Schemas.Map({ typeBoite: Schemas.Int }),
+  /** serveur -> tous: quelqu'un a rafle une boite. */
+  bought: Schemas.Map({ byName: Schemas.String, typeBoite: Schemas.Int, prix: Schemas.Int }),
+
+  /** client -> serveur: j'ouvre une boite de mon stock. */
+  openBox: Schemas.Map({ typeBoite: Schemas.Int }),
+  /**
+   * serveur -> l'ouvreur: voici ce qu'elle contenait.
+   * Le resultat est decide par le SERVEUR; la roulette du client n'est que du theatre
+   * qui atterrit dessus. C'est ainsi que fonctionne toute loterie honnete.
+   */
+  boxResult: Schemas.Map({ typeBoite: Schemas.Int, rarity: Schemas.Int, place: Schemas.Boolean }),
+  /** serveur -> chaque joueur: son stock de boites non ouvertes, par type. */
+  inventory: Schemas.Map({ boites: Schemas.Array(Schemas.Int) }),
 
   /** client -> serveur: je franchis un palier. Le serveur verifie que j'ai les pieces. */
   rebirth: Schemas.Map({}),

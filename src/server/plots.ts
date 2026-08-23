@@ -37,7 +37,17 @@ type Base = {
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
 }
-type Profil = { coins: number; items: number[]; collectes?: number; rebirths?: number; x?: number; z?: number; alertes?: object[] }
+type Profil = {
+  coins: number
+  items: number[]
+  /** boites ACHETEES ET NON OUVERTES, par type. Le hasard attend l'ouverture. */
+  boites?: number[]
+  collectes?: number
+  rebirths?: number
+  x?: number
+  z?: number
+  alertes?: object[]
+}
 
 const bases = new Map<string, Base>()
 const profils = new Map<string, Profil>()
@@ -158,9 +168,13 @@ export async function accueillir(address: string): Promise<void> {
   const stocke: Profil | null = brut ? JSON.parse(brut) : null
   // Objet de bienvenue au TOUT PREMIER passage seulement: une base n'est jamais nue.
   const items = stocke?.items && stocke.items.length > 0 ? stocke.items : [0]
+  // BOITE OFFERTE A L'ARRIVEE (starter pack). Sans elle, un nouveau joueur a un revenu
+  // nul, aucune piece, donc rien a faire: la boucle ne peut pas demarrer.
+  const premiere = stocke === null
   const profil: Profil = {
     coins: stocke?.coins ?? 0,
     items: [...items],
+    boites: premiere ? [0] : (stocke?.boites ?? []),
     collectes: stocke?.collectes ?? items.length,
     rebirths: stocke?.rebirths ?? 0,
     alertes: stocke?.alertes ?? []
@@ -383,6 +397,31 @@ export function poserBase(address: string, xb: number, zb: number): { ok: boolea
 }
 
 /** Debite (ou credite si negatif). Le solde n'est jamais touche par le client. */
+/** Ajoute une boite FERMEE au stock. */
+export function ajouterBoite(address: string, typeBoite: number): void {
+  const p = profils.get(address)
+  if (!p) return
+  p.boites = [...(p.boites ?? []), typeBoite]
+  profilsSales.add(address)
+}
+
+/** Retire une boite du stock si elle s'y trouve. */
+export function retirerBoite(address: string, typeBoite: number): boolean {
+  const p = profils.get(address)
+  if (!p) return false
+  const b = [...(p.boites ?? [])]
+  const i = b.indexOf(typeBoite)
+  if (i < 0) return false
+  b.splice(i, 1)
+  p.boites = b
+  profilsSales.add(address)
+  return true
+}
+
+export function boitesDe(address: string): number[] {
+  return [...(profils.get(address)?.boites ?? [])]
+}
+
 export function depenser(address: string, montant: number): boolean {
   const p = profils.get(address)
   if (!p) return false
@@ -437,6 +476,7 @@ export function startPlots(): void {
         rareteMin: suivant ? suivant.rareteMin : 0,
         multiplicateur: multiplicateurRevenu(palier)
       }, { to: [address] })
+      void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
     }
   }, 1500)
 

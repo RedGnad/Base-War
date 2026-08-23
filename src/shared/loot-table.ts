@@ -20,3 +20,22 @@ export const RARITIES = [
 export function rarity(id: number) {
   return RARITIES[id] ?? RARITIES[0]
 }
+
+/**
+ * LES BOITES. On achete du HASARD, pas un objet connu: c'est ce qui rend l'achat
+ * excitant plutot qu'arithmetique, et c'est la boucle validee par `Unbox ASMR`
+ * (10 205 joueurs simultanes, 97 % d'approbation, boucle entiere = ouvrir des boites).
+ *
+ * Chaque boite a sa propre repartition. Les POIDS ne sont PAS ici: ils vivent cote
+ * serveur, comme le tirage. Le client ne connait que le nom, le prix et la couleur.
+ */
+export const BOITES = [
+  { id: 0, nom: 'Boite simple', prix: 25,   couleur: '#9aa3ad', taille: 0.55 },
+  { id: 1, nom: 'Bonne boite',  prix: 120,  couleur: '#4ec04e', taille: 0.62 },
+  { id: 2, nom: 'Boite rare',   prix: 600,  couleur: '#3d8ef0', taille: 0.70 },
+  { id: 3, nom: 'Boite epique', prix: 2600, couleur: '#a855f7', taille: 0.80 }
+] as const
+
+export function boite(id: number) {
+  return BOITES[Math.max(0, Math.min(id, BOITES.length - 1))]
+}

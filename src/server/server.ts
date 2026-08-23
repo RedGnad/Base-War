@@ -3,7 +3,6 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startCrate } from './crate'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
@@ -112,16 +111,6 @@ export function startServer(): void {
   startTheft()
   startBelt()
 
-  // La caisse: le serveur valide la proximite et tire la rarete lui-meme.
-  startCrate((address, rarity) => {
-    const n = (counts.get(address) ?? 0) + 1
-    counts.set(address, n)
-    dirty.add(address)
-    publish(address)
-    void poserObjet(address, rarity)
-    noterPalier(address, n)   // 3.6 progression = protection: +10 s de verrou par palier
-    console.log(`[SERVER] ${address} recupere une rarete ${rarity}, total ${n}, ${coinsDe(address)} pieces`)
-  })
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.
   // On n'utilise PAS le helper @dcl/sdk/players: il est oriente client et le faire tourner

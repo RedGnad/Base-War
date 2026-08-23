@@ -88,7 +88,8 @@ export const Loot = engine.defineComponent('friendzone::loot', {
 export const Belt = engine.defineComponent('friendzone::belt', {
   /** identifiant stable de l'article tant qu'il defile */
   articleId: Schemas.Int,
-  rarity: Schemas.Int,
+  /** TYPE DE BOITE, pas une rarete: on achete du hasard, pas un objet connu. */
+  typeBoite: Schemas.Int,
   prix: Schemas.Int,
   /** avancee sur le tapis, de 0 (entree) a 1 (sortie) */
   progres: Schemas.Float,

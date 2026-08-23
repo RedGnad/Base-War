@@ -3,9 +3,10 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { crateView } from './client/crate'
 import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
 import { beltView } from './client/belt'
+import { boxView, ouvrirMeilleure } from './client/box'
+import { rarity, boite, RARITIES } from './shared/loot-table'
 import { slotView, basculerPose, poserIci } from './client/slots'
 
 /**
@@ -45,16 +46,18 @@ const uiComponent = () => (
     {/* HAUT-CENTRE: etat, non actionnable. */}
     <UiEntity
       uiTransform={{
-        width: 360, height: 74, positionType: 'absolute',
+        width: 380, height: 88, positionType: 'absolute',
         position: { top: 12, left: '50%' }, margin: { left: -180 },
         padding: 10, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
       uiBackground={{ color: PANNEAU }}
     >
-      <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
-             fontSize={17} color={Color4.fromHexString('#ffd166ff')} />
-      <Label value={`${theftView.coins} pieces${theftView.multiplicateur > 1 ? ' x' + theftView.multiplicateur : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · serveur silencieux'}`}
-             fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
+      <Label
+        value={`${theftView.coins} pieces${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
+        fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
+      <Label
+        value={`${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · SERVEUR SILENCIEUX'}`}
+        fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
     </UiEntity>
 
     {/* HAUT-CENTRE, sous l'etat: fil d'activite, non actionnable. */}
@@ -62,7 +65,7 @@ const uiComponent = () => (
       <UiEntity
         uiTransform={{
           width: 400, height: 62, positionType: 'absolute',
-          position: { top: 92, left: '50%' }, margin: { left: -200 },
+          position: { top: 106, left: '50%' }, margin: { left: -200 },
           padding: 8, flexDirection: 'column', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
@@ -87,6 +90,40 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {/* CENTRE: LA ROULETTE. Le moment du jeu: elle defile, ralentit, s'arrete. */}
+    {(boxView.roule || boxView.resultat >= 0 && !boxView.ouverture && boxView.message !== '') && (
+      <UiEntity
+        uiTransform={{
+          width: 460, height: 130, positionType: 'absolute',
+          position: { top: '34%', left: '50%' }, margin: { left: -230 },
+          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.88) }}
+      >
+        <Label
+          value={RARITIES[boxView.index]?.nom ?? ''}
+          fontSize={boxView.roule ? 34 : 44}
+          color={Color4.fromHexString((RARITIES[boxView.index]?.couleur ?? '#ffffff') + 'ff')} />
+        <Label
+          value={boxView.roule ? '...' : (boxView.message !== '' ? boxView.message : 'pose sur ta base')}
+          fontSize={15} color={Color4.fromHexString('#c8d0dcff')} />
+      </UiEntity>
+    )}
+
+    {/* CENTRE-BAS: les trois coups. */}
+    {boxView.ouverture && (
+      <UiEntity
+        uiTransform={{
+          width: 320, height: 54, positionType: 'absolute',
+          position: { bottom: 150, left: '50%' }, margin: { left: -160 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
+      >
+        <Label value={`FRAPPE LA BOITE  ${boxView.coups}/3`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
+      </UiEntity>
+    )}
+
     {/* CENTRE: l'alerte, seule chose qui exige une reaction. */}
     {theftView.alerte !== '' && (
       <UiEntity
@@ -105,12 +142,18 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 460, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -320 },
+        width: 560, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -370 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
-      <Button uiTransform={{ width: 100, height: 54 }} value="PROTEGER" variant="primary" fontSize={14} onMouseDown={verrouiller} />
+      <Button
+        uiTransform={{ width: 120, height: 54 }}
+        value={boxView.stock.length > 0 ? `OUVRIR (${boxView.stock.length})` : 'OUVRIR'}
+        variant={boxView.stock.length > 0 ? 'primary' : 'secondary'}
+        fontSize={14}
+        onMouseDown={ouvrirMeilleure} />
+      <Button uiTransform={{ width: 100, height: 54 }} value="PROTEGER" variant="secondary" fontSize={14} onMouseDown={verrouiller} />
       <Button uiTransform={{ width: 100, height: 54 }} value="REPRENDRE" variant="secondary" fontSize={14} onMouseDown={reprendre} />
       <Button
         uiTransform={{ width: 110, height: 54 }}

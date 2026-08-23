@@ -8,7 +8,7 @@ import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
-import { setupCrate } from './crate'
+import { setupBox } from './box'
 import { setupPlots } from './plots'
 import { setupTheft } from './theft'
 import { setupBelt } from './belt'
@@ -41,7 +41,7 @@ export function startClient(): void {
   // pour lire un batiment et ses etages.
   SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 57600 })
 
-  setupCrate()
+  setupBox()
   setupPlots()
   setupTheft()
   setupBelt()

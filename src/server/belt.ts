@@ -6,8 +6,9 @@ import {
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { jour } from './journal'
-import { rollRarity } from './loot'
-import { ajouterObjet, nomAffiche, depenser, coinsDe } from './plots'
+import { rollTypeBoite, rollBoite } from './loot'
+import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet } from './plots'
+import { BOITES } from '../shared/loot-table'
 
 /**
  * LE TAPIS, cote serveur. Les articles defilent, n'importe qui peut en acheter un,
@@ -17,7 +18,7 @@ import { ajouterObjet, nomAffiche, depenser, coinsDe } from './plots'
 
 type Article = {
   id: number
-  rarity: number
+  typeBoite: number
   prix: number
   progres: number
   vendu: boolean
@@ -38,26 +39,21 @@ function positionDe(address: string): Vector3 | null {
 }
 
 function creerArticle(): void {
-  const rarity = rollRarity()
+  const typeBoite = rollTypeBoite()
+  const prix = BOITES[typeBoite].prix
   const e = engine.addEntity()
   const p = beltPosition(0)
   Transform.create(e, { position: Vector3.create(p.x, p.y, p.z) })
-  Belt.create(e, {
-    articleId: prochainId,
-    rarity,
-    prix: PRIX_RARETE[rarity] ?? 40,
-    progres: 0,
-    acheteurNom: ''
-  })
+  Belt.create(e, { articleId: prochainId, typeBoite, prix, progres: 0, acheteurNom: '' })
   syncEntity(e, [Belt.componentId, Transform.componentId])
-  articles.push({ id: prochainId, rarity, prix: PRIX_RARETE[rarity] ?? 40, progres: 0, vendu: false, entity: e })
+  articles.push({ id: prochainId, typeBoite, prix, progres: 0, vendu: false, entity: e })
   prochainId += 1
 
-  // Une rarete elevee est ANNONCEE a tout le monde: c'est ce qui fait converger les
-  // joueurs au meme endroit, et ca cree un evenement social sans rien coder de plus.
-  if (rarity >= 3) {
-    void room.send('beltAlert', { rarity })
-    jour(`ANNONCE: rarete ${rarity} sur le tapis`)
+  // Une boite chere est ANNONCEE a tout le monde: c'est ce qui fait converger les joueurs
+  // au meme endroit, et ca cree un evenement social sans rien coder de plus.
+  if (typeBoite >= 2) {
+    void room.send('beltAlert', { typeBoite })
+    jour(`ANNONCE: ${BOITES[typeBoite].nom} sur le tapis`)
   }
 }
 
@@ -108,19 +104,42 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'achat', raison: `il te faut ${art.prix - coinsDe(a)} pieces de plus`, antiCheat: false }, { to: [a] })
       return
     }
-    if (!ajouterObjet(a, art.rarity)) {
-      depenser(a, -art.prix)   // remboursement: la base etait pleine
-      void room.send('actionRejected', { action: 'achat', raison: 'ta base est pleine', antiCheat: false }, { to: [a] })
-      return
-    }
 
+    // La boite part FERMEE dans le stock: le hasard se revele a l'ouverture, pas a l'achat.
+    ajouterBoite(a, art.typeBoite)
+    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
     art.vendu = true
     const nom = nomAffiche(a)
     const c = Belt.getMutableOrNull(art.entity)
     if (c !== null) c.acheteurNom = nom
-    void room.send('bought', { byName: nom, rarity: art.rarity, prix: art.prix })
-    jour(`${nom} achete une rarete ${art.rarity} pour ${art.prix} pieces`)
+    void room.send('bought', { byName: nom, typeBoite: art.typeBoite, prix: art.prix })
+    jour(`${nom} achete une ${BOITES[art.typeBoite].nom} pour ${art.prix} pieces`)
     retirer(art)
+  })
+
+  /**
+   * OUVERTURE D'UNE BOITE. Le SERVEUR tire, immediatement et une seule fois.
+   * La roulette du client n'est que du theatre qui atterrit sur ce resultat: c'est
+   * ainsi que fonctionne toute loterie honnete, et ca interdit au client de rejouer
+   * jusqu'a obtenir ce qui l'arrange.
+   */
+  room.onMessage('openBox', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    if (!retirerBoite(a, d.typeBoite)) {
+      void room.send('actionRejected', { action: 'ouverture', raison: 'tu n as pas cette boite', antiCheat: true }, { to: [a] })
+      return
+    }
+    const rarity = rollBoite(d.typeBoite)
+    const place = ajouterObjet(a, rarity)
+    if (!place) {
+      // Base pleine: l'objet est perdu plutot que la boite. On previent clairement.
+      jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity}, MAIS base pleine`)
+    } else {
+      jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity}`)
+    }
+    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, place }, { to: [a] })
+    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
   })
 
   jour('tapis pret')
