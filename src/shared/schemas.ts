@@ -150,7 +150,12 @@ export const BASE_COTE = 5.0
 export const RAMPE_ANGLE = 40
 export const RAMPE_LONGUEUR = 4.4
 export const MUR_EPAISSEUR = 0.22
-export const MUR_HAUTEUR = 2.6
+/**
+ * Les murs montent EXACTEMENT jusqu'au plancher du dessus. Une hauteur inferieure
+ * laisse une bande de vide entre les niveaux, et le batiment redevient une pile de
+ * dalles flottantes: c'est ce qui distingue un immeuble d'un empilement.
+ */
+export const MUR_HAUTEUR = ETAGE_HAUTEUR
 export const PORTE_LARGEUR = 2.0
 
 /**
