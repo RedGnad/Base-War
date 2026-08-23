@@ -21,14 +21,17 @@ let libres: number[] = []
 function creer(place: number): Marqueur {
   const p = plotPosition(place)
 
+  // Une DALLE DISCRETE, pas l'emprise entiere. Afficher les 9,6 m de chaque place
+  // libre couvrait le lieu d'un tapis de beton continu: le repere doit etre la balise,
+  // pas la surface. On garde juste de quoi viser au doigt.
   const socle = engine.addEntity()
-  Transform.create(socle, { position: Vector3.create(p.x, 0.06, p.z), scale: Vector3.create(9.6, 0.12, 9.6) })
+  Transform.create(socle, { position: Vector3.create(p.x, 0.09, p.z), scale: Vector3.create(2.4, 0.18, 2.4) })
   MeshRenderer.setBox(socle)
   MeshCollider.setBox(socle)
   Material.setPbrMaterial(socle, {
-    albedoColor: Color4.fromHexString('#4a4326ff'),
+    albedoColor: Color4.fromHexString('#6b5f2eff'),
     emissiveColor: Color4.fromHexString('#ffd166ff'),
-    emissiveIntensity: 0.18
+    emissiveIntensity: 0.5
   })
   PointerEvents.create(socle, {
     pointerEvents: [
@@ -39,7 +42,7 @@ function creer(place: number): Marqueur {
 
   // Une balise verticale qui monte et descend: visible par-dessus les autres batiments.
   const balise = engine.addEntity()
-  Transform.create(balise, { position: Vector3.create(p.x, 2.2, p.z), scale: Vector3.create(0.3, 4.0, 0.3) })
+  Transform.create(balise, { position: Vector3.create(p.x, 2.4, p.z), scale: Vector3.create(0.22, 4.4, 0.22) })
   MeshRenderer.setBox(balise)
   Material.setPbrMaterial(balise, {
     albedoColor: Color4.fromHexString('#ffd166ff'),
@@ -57,9 +60,9 @@ function creer(place: number): Marqueur {
   TweenSequence.createOrReplace(balise, { sequence: [], loop: TweenLoop.TL_YOYO })
 
   const texte = engine.addEntity()
-  Transform.create(texte, { position: Vector3.create(p.x, 5.2, p.z), scale: Vector3.create(0.7, 0.7, 0.7) })
+  Transform.create(texte, { position: Vector3.create(p.x, 5.4, p.z), scale: Vector3.create(0.55, 0.55, 0.55) })
   Billboard.create(texte, {})
-  TextShape.create(texte, { text: 'LIBRE\nposer ma base', fontSize: 3, textColor: Color4.fromHexString('#ffd166ff') })
+  TextShape.create(texte, { text: 'LIBRE', fontSize: 3, textColor: Color4.fromHexString('#ffd166ff') })
 
   return { socle, balise, texte }
 }
