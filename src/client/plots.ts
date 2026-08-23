@@ -6,7 +6,7 @@ import {
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition,
-  rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR
+  rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR
 } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
 import { voler } from './theft'
@@ -26,8 +26,11 @@ type Vue = {
   etages: Etage[]; objets: Entity[]; signature: string; ownerId: string
 }
 
-const GRIS = '#5b6472ff'
-const GRIS_CLAIR = '#6e7889ff'
+// Materiaux clairs: sous un ciel de 16h, un batiment gris fonce devient une silhouette
+// noire et illisible. On monte les valeurs pour que les etages se distinguent.
+const GRIS = '#9aa3b0ff'
+const GRIS_CLAIR = '#b6bec9ff'
+const PLANCHER = '#7f8794ff'
 
 /** Un pave plein, l'unite de construction du batiment. */
 function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, couleur: string): Entity {
@@ -50,7 +53,7 @@ function construireEtage(x: number, z: number, etage: number): Etage {
   const h = MUR_HAUTEUR
   const ep = MUR_EPAISSEUR
 
-  const plancher = bloc(x, y + 0.12, z, c, 0.24, c, etage === 0 ? '#4a5568ff' : GRIS)
+  const plancher = bloc(x, y + 0.12, z, c, 0.24, c, PLANCHER)
   const murs: Entity[] = [
     bloc(x, y + h / 2, z - c / 2, c, h, ep, GRIS),                       // fond
     bloc(x - c / 2, y + h / 2, z, ep, h, c, GRIS),                       // gauche
@@ -66,12 +69,12 @@ function construireEtage(x: number, z: number, etage: number): Etage {
   const rampe = engine.addEntity()
   Transform.create(rampe, {
     position: Vector3.create(x + r.dx, y + ETAGE_HAUTEUR / 2, z + r.dz),
-    scale: Vector3.create(1.2, 0.2, ETAGE_HAUTEUR * 1.9),
-    rotation: Quaternion.fromEulerDegrees(-32, 0, 0)
+    scale: Vector3.create(1.1, 0.18, RAMPE_LONGUEUR),
+    rotation: Quaternion.fromEulerDegrees(-RAMPE_ANGLE, 0, 0)
   })
   MeshRenderer.setBox(rampe)
   MeshCollider.setBox(rampe)
-  Material.setPbrMaterial(rampe, { albedoColor: Color4.fromHexString('#7a8496ff'), roughness: 0.9 })
+  Material.setPbrMaterial(rampe, { albedoColor: Color4.fromHexString('#c9a227ff'), roughness: 0.7, metallic: 0.3 })
 
   return { plancher, murs, rampe }
 }
@@ -79,7 +82,7 @@ const vues = new Map<number, Vue>()   // clef = entite synchronisee du Plot
 
 function creerVue(x: number, z: number): Vue {
   // Le socle deborde du batiment: un parvis, qui donne au lieu une assise.
-  const socle = bloc(x, 0.06, z, BASE_COTE + 1.6, 0.12, BASE_COTE + 1.6, '#3b424dff')
+  const socle = bloc(x, 0.06, z, BASE_COTE + 1.6, 0.12, BASE_COTE + 1.6, '#6b6f78ff')
 
   const etages: Etage[] = []
   for (let e = 0; e < ETAGES_MAX; e++) etages.push(construireEtage(x, z, e))
@@ -198,7 +201,7 @@ export function setupPlots(): void {
         mettre(et.murs[4], (BASE_COTE - PORTE_LARGEUR) / 2, MUR_HAUTEUR, MUR_EPAISSEUR)
         mettre(et.murs[5], PORTE_LARGEUR, 0.4, MUR_EPAISSEUR)
         // la rampe ne sert que s'il y a un etage AU-DESSUS a rejoindre
-        mettre(et.rampe, 1.2, 0.2, ETAGE_HAUTEUR * 1.9)
+        mettre(et.rampe, 1.1, 0.18, RAMPE_LONGUEUR)
         const rtr = Transform.getMutableOrNull(et.rampe)
         if (rtr !== null && (e + 1) >= p.etages) rtr.scale = Vector3.create(0, 0, 0)
       }

@@ -128,7 +128,7 @@ export const MAX_BASES = ANNEAUX.reduce((n, a) => n + a.places, 0)
  * pendant que son malus de vitesse et de saut le penalise. *« it is good to check what
  * Brainrots are on each floor »*. La disposition verticale EST la defense.
  */
-export const ETAGE_HAUTEUR = 3.2
+export const ETAGE_HAUTEUR = 2.8
 export const SLOTS_PAR_ETAGE = 6
 export const ETAGES_MAX = 3
 
@@ -142,6 +142,13 @@ export const ETAGES_MAX = 3
  *    sait ce qu'il y a a voler et le lieu n'attire pas
  */
 export const BASE_COTE = 5.0
+/**
+ * La rampe doit TENIR DANS le batiment. Franchir `ETAGE_HAUTEUR` sous un angle a
+ * demande une longueur de h/sin(a). A 32 degres pour 3,2 m il fallait 6,0 m, donc elle
+ * depassait d'un batiment large de 5. A 40 degres pour 2,8 m il faut 4,36 m: ca rentre.
+ */
+export const RAMPE_ANGLE = 40
+export const RAMPE_LONGUEUR = 4.4
 export const MUR_EPAISSEUR = 0.22
 export const MUR_HAUTEUR = 2.6
 export const PORTE_LARGEUR = 2.0
@@ -226,9 +233,9 @@ export function slotPosition(slot: number): { dx: number; dy: number; dz: number
   }
 }
 
-/** L'escalier monte le long du mur droit, d'un etage au suivant. */
+/** L'escalier monte le long du mur droit, centre pour rester dans l'emprise. */
 export function rampePosition(etage: number): { dx: number; dy: number; dz: number } {
-  return { dx: BASE_COTE / 2 - 0.7, dy: etage * ETAGE_HAUTEUR + ETAGE_HAUTEUR / 2, dz: 0.6 }
+  return { dx: BASE_COTE / 2 - 0.85, dy: etage * ETAGE_HAUTEUR + ETAGE_HAUTEUR / 2, dz: 0 }
 }
 /** Centre de la scene: 25 parcelles = 80x80 m. */
 export const CENTRE = { x: 40, z: 40 }
