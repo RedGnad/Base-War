@@ -1,5 +1,6 @@
 import { engine, Transform, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
+import { onEnterScene, onLeaveScene } from '@dcl/sdk/players'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -67,6 +68,27 @@ async function flush(): Promise<void> {
 
 export function startServer(): void {
   console.log('[SERVER] demarrage')
+
+  // HYDRATATION A L'ARRIVEE.
+  // Sans ceci, un joueur qui revient voit zero jusqu'a ce qu'il agisse: on ne chargeait
+  // depuis Storage qu'au premier tap. C'est le defaut "lieu vide" en miniature, et c'est
+  // exactement ce que la regle d'eligibilite punit. On publie donc son etat des l'entree.
+  onEnterScene((player) => {
+    const address = player.userId?.toLowerCase()
+    if (!address) return
+    void (async () => {
+      const n = await load(address)
+      publish(address)
+      console.log(`[SERVER] ${player.name} entre, etat restitue: ${n}`)
+    })()
+  })
+
+  // Point de controle a la sortie: c'est le moment ou l'on est sur de ne rien perdre.
+  onLeaveScene((userId) => {
+    const address = userId?.toLowerCase()
+    if (address) dirty.add(address)
+    void flush()
+  })
 
   // Battement de coeur, publie immediatement pour que le premier client n'attende pas.
   const beat = engine.addEntity()

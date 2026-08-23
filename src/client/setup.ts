@@ -10,7 +10,8 @@ import {
   inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
-import { ServerBeat, BEAT_DEAD_AFTER_MS } from '../shared/schemas'
+import { getPlayer } from '@dcl/sdk/players'
+import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 
 /** Etat d'affichage, lu par l'UI. */
@@ -51,9 +52,32 @@ export function startClient(): void {
     }
   })
 
+  // tapAck ne sert qu'au retour immediat. Il ne peut PAS etre la source de verite:
+  // au rechargement, le client repart a zero et n'en recevra plus avant d'agir.
   room.onMessage('tapAck', (data) => {
     view.count = data.count
     console.log(`[CLIENT] tapAck: count=${data.count}`)
+  })
+
+  // SOURCE DE VERITE: le composant synchronise, publie par le serveur des notre entree.
+  // On retrouve la sienne par le champ playerId, jamais par un identifiant de synchronisation.
+  let myAddress = ''
+  engine.addSystem(() => {
+    if (myAddress === '') {
+      const me = getPlayer()
+      if (me === null) return // pas encore resolu au demarrage
+      myAddress = me.userId.toLowerCase()
+      console.log(`[CLIENT] mon adresse: ${myAddress}`)
+    }
+    for (const [, taps] of engine.getEntitiesWith(PlayerTaps)) {
+      if (taps.playerId.toLowerCase() === myAddress) {
+        if (taps.count !== view.count) {
+          console.log(`[CLIENT] etat restitue depuis le serveur: ${taps.count}`)
+          view.count = taps.count
+        }
+        return
+      }
+    }
   })
 
   // Vivacite du serveur: on suit l'instant CLIENT du dernier CHANGEMENT de valeur.
