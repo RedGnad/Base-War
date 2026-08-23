@@ -2,7 +2,7 @@ import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings } fr
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 
 /**
- * SPIKE 1.3 — HUD pouce et malus de locomotion.
+ * HUD tactile et locomotion.
  *
  * Le malus du voleur vient de la mesure du #1 (wiki Steal a Brainrot):
  * vitesse -41 % et saut -40 %. Defauts client verifies: jogSpeed 8, jumpHeight 1.
@@ -24,7 +24,7 @@ export function applyThiefPenalty(actif: boolean): void {
     jogSpeed: actif ? JOG_VOLEUR : JOG_NORMAL,
     jumpHeight: actif ? SAUT_VOLEUR : SAUT_NORMAL
   })
-  console.log(`[SPIKE] malus voleur ${actif ? 'ACTIF' : 'inactif'}: jog=${actif ? JOG_VOLEUR : JOG_NORMAL} saut=${actif ? SAUT_VOLEUR : SAUT_NORMAL}`)
+  console.log(`[CLIENT] malus voleur ${actif ? 'ACTIF' : 'inactif'}: jog=${actif ? JOG_VOLEUR : JOG_NORMAL} saut=${actif ? SAUT_VOLEUR : SAUT_NORMAL}`)
 }
 
 /**
@@ -47,7 +47,7 @@ export function setupTouchHud(): void {
     InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
     InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])
-  console.log('[SPIKE] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick garde')
+  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick garde')
 }
 
 /** La plateforme n'est connue qu'apres coup: on attend qu'elle soit resolue. */
@@ -55,7 +55,7 @@ export function reportPlatform(): void {
   function once(): void {
     if (getPlatform() === null) return
     engine.removeSystem(once)
-    console.log(`[SPIKE] plateforme = ${getPlatform()} (mobile: ${isMobile()})`)
+    console.log(`[CLIENT] plateforme = ${getPlatform()} (mobile: ${isMobile()})`)
   }
   engine.addSystem(once)
 }

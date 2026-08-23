@@ -2,7 +2,7 @@ import { engine, AudioSource, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
 import { rarity } from '../shared/loot-table'
-import { applyThiefPenalty } from '../spikes/locomotion'
+import { applyThiefPenalty } from './locomotion'
 
 /**
  * Retour joueur du vol. Le client ne DECIDE rien: il reagit a ce que le serveur annonce.
