@@ -82,8 +82,14 @@ function publier(b: Base, ici?: Set<string>): void {
 }
 
 /** Cree la base d'un joueur. Retourne null si le lieu affiche deja son maximum. */
-function creerBase(address: string, name: string, items: number[], lastSeen: number): Base | null {
-  const place = placesLibres.shift()
+function creerBase(address: string, name: string, items: number[], lastSeen: number, voulue?: number): Base | null {
+  let place: number | undefined
+  if (voulue !== undefined) {
+    const i = placesLibres.indexOf(voulue)
+    if (i >= 0) { placesLibres.splice(i, 1); place = voulue }
+  } else {
+    place = placesLibres.shift()
+  }
   if (place === undefined) { jour(`creerBase: aucune place libre pour ${address.slice(0, 8)}`); return null }
   try {
   const e = engine.addEntity()
@@ -191,13 +197,9 @@ export async function accueillir(address: string): Promise<void> {
     }
   }
 
-  const b = creerBase(address, name, items, Date.now())
-  if (b === null) {
-    jour(`${name} sans base affichee: ${MAX_BASES} bases deja visibles. Son butin s'accumule.`)
-    return
-  }
-  basesSales.add(address)
-  jour(`base creee pour ${name} (place ${b.place}), ${bases.size}/${MAX_BASES} affichees`)
+  // On NE POSE PLUS la base d'office: le joueur choisit son emplacement.
+  // Son butin l'attend dans son profil en attendant qu'il se decide.
+  jour(`${name} arrive sans base posee, ${placesLibres.length} places libres`)
 }
 
 /** Au depart: la base RESTE visible, c'est elle que les autres pourront piller. */
@@ -354,6 +356,34 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
 }
 
 export function paliersDe(address: string): number { return profils.get(address)?.rebirths ?? 0 }
+export function placesDisponibles(): number[] { return [...placesLibres] }
+
+/**
+ * Pose (ou deplace) la base d'un joueur sur la place demandee.
+ * Deplacer est GRATUIT: un joueur doit pouvoir reagir a son voisinage, sinon le choix
+ * initial devient un piege pour qui ne connait pas encore le lieu.
+ */
+export function poserBase(address: string, place: number): { ok: boolean; raison?: string } {
+  const p = profils.get(address)
+  if (!p) return { ok: false, raison: 'profil inconnu' }
+  if (!placesLibres.includes(place)) {
+    // deja la sienne ? alors rien a faire
+    if (bases.get(address)?.place === place) return { ok: true }
+    return { ok: false, raison: 'place deja prise' }
+  }
+
+  const ancienne = bases.get(address)
+  if (ancienne) retirerBase(address)
+
+  const items = p.items.length > 0 ? p.items : [0]
+  p.items = [...items]
+  const b = creerBase(address, nomDe(address), items, Date.now(), place)
+  if (b === null) return { ok: false, raison: 'place indisponible' }
+  basesSales.add(address)
+  profilsSales.add(address)
+  jour(`${b.name} pose sa base sur la place ${place}${ancienne ? ` (deplacee depuis ${ancienne.place})` : ''}`)
+  return { ok: true }
+}
 
 /** Debite (ou credite si negatif). Le solde n'est jamais touche par le client. */
 export function depenser(address: string, montant: number): boolean {

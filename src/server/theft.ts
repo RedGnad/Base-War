@@ -2,13 +2,17 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS,
-  VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS
+  VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS, plotPosition
 } from '../shared/schemas'
+
+/** On doit etre PRES d'une place pour la revendiquer. */
+const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
 import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
-  nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe
+  nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe,
+  poserBase, placesDisponibles
 } from './plots'
 
 /**
@@ -128,6 +132,29 @@ export function startTheft(): void {
       return
     }
   })
+
+  // Le joueur pose sa base ou il veut. Le serveur verifie la proximite: on ne
+  // revendique pas une place depuis l'autre bout du lieu.
+  room.onMessage('claimSlot', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const p = positionDe(a)
+    if (p === null) { refus(a, 'installation', 'position inconnue'); return }
+    const cible = plotPosition(d.place)
+    const dist = Vector3.distance(p, Vector3.create(cible.x, 0, cible.z))
+    if (dist > PORTEE_INSTALLATION) {
+      refus(a, 'installation', `approche-toi de la place (${dist.toFixed(0)} m)`, true)
+      return
+    }
+    const r = poserBase(a, d.place)
+    if (!r.ok) { refus(a, 'installation', r.raison ?? 'refuse'); return }
+    void room.send('freeSlots', { places: placesDisponibles() })
+  })
+
+  // Les places libres sont republiees regulierement: un arrivant doit les voir.
+  timers.setInterval(() => {
+    void room.send('freeSlots', { places: placesDisponibles() })
+  }, 3000)
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

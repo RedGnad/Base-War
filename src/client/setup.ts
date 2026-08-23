@@ -12,6 +12,7 @@ import { setupCrate } from './crate'
 import { setupPlots } from './plots'
 import { setupTheft } from './theft'
 import { setupBelt } from './belt'
+import { setupSlots } from './slots'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -44,6 +45,7 @@ export function startClient(): void {
   setupPlots()
   setupTheft()
   setupBelt()
+  setupSlots()
 
   // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le juger a l'oeil.
   const toggle = engine.addEntity()

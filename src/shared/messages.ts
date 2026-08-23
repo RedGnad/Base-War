@@ -32,6 +32,15 @@ export const MESSAGES = {
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
   wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int }),
 
+  /**
+   * client -> serveur: je pose ma base sur l'emplacement n.
+   * Le joueur CHOISIT ou il s'installe: pres du tapis pour acheter vite, ou a l'ecart
+   * pour se faire oublier des voleurs. C'est une decision, pas une attribution.
+   */
+  claimSlot: Schemas.Map({ place: Schemas.Int }),
+  /** serveur -> tous: les places encore libres, pour les afficher. */
+  freeSlots: Schemas.Map({ places: Schemas.Array(Schemas.Int) }),
+
   /** client -> serveur: j'achete l'article n du tapis. Le serveur verifie tout. */
   buyBelt: Schemas.Map({ articleId: Schemas.Int }),
   /** serveur -> tous: un article rare vient d'entrer sur le tapis. */
