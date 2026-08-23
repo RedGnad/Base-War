@@ -43,6 +43,25 @@ function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: numbe
 }
 
 /**
+ * Une paroi VITREE. Le wiki dit que le voleur « verifie quels objets sont a chaque etage »:
+ * le butin doit donc se voir depuis l'exterieur, a TOUS les niveaux, pas seulement au rez.
+ * Une facade ouverte ne le permet qu'en bas; le verre le permet partout, et il laisse la
+ * base lisible de loin, ce qui est ce qui donne envie de venir.
+ */
+function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: number): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  MeshRenderer.setBox(e)
+  MeshCollider.setBox(e)
+  Material.setPbrMaterial(e, {
+    albedoColor: Color4.create(0.62, 0.78, 0.88, 0.22),   // alpha bas = transparent
+    metallic: 0.1,
+    roughness: 0.05
+  })
+  return e
+}
+
+/**
  * Un etage: son plancher, trois murs, et l'ouverture en facade.
  * La FACE AVANT (+Z) reste ouverte: le butin doit se voir de l'exterieur, sinon personne
  * ne sait ce qu'il y a a prendre et le lieu n'attire personne.
@@ -54,10 +73,13 @@ function construireEtage(x: number, z: number, etage: number): Etage {
   const ep = MUR_EPAISSEUR
 
   const plancher = bloc(x, y + 0.12, z, c, 0.24, c, PLANCHER)
+  // Les trois cotes sont VITRES: on voit le butin de partout, a tous les etages.
+  // Seuls les montants et le linteau restent pleins, pour que le batiment garde une
+  // structure lisible et que l'entree se distingue.
   const murs: Entity[] = [
-    bloc(x, y + h / 2, z - c / 2, c, h, ep, GRIS),                       // fond
-    bloc(x - c / 2, y + h / 2, z, ep, h, c, GRIS),                       // gauche
-    bloc(x + c / 2, y + h / 2, z, ep, h, c, GRIS),                       // droite
+    vitre(x, y + h / 2, z - c / 2, c, h, ep),                            // fond
+    vitre(x - c / 2, y + h / 2, z, ep, h, c),                            // gauche
+    vitre(x + c / 2, y + h / 2, z, ep, h, c),                            // droite
     // facade: deux jambages qui laissent l'entree au milieu
     bloc(x - (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),
     bloc(x + (c + PORTE_LARGEUR) / 4, y + h / 2, z + c / 2, (c - PORTE_LARGEUR) / 2, h, ep, GRIS_CLAIR),

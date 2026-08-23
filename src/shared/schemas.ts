@@ -108,13 +108,22 @@ export const PORTEE_REPRISE = 6
  * Les anneaux gardent le lieu DENSE quand il y a peu de monde, et l'etendent sans
  * redessiner quand il y en a beaucoup.
  */
+/**
+ * Rayons recalcules pour des bases de 8 m plus leur parvis (9,6 m d'emprise).
+ * Ecart entre deux centres voisins sur un anneau = 2 x rayon x sin(pi / places).
+ * Il doit rester > 11 m pour qu'on circule entre deux bases.
+ *   anneau 0: 2 x 12 x sin(30 deg)  = 12,0 m
+ *   anneau 1: 2 x 22 x sin(15 deg)  = 11,4 m
+ *   anneau 2: 2 x 32 x sin(10 deg)  = 11,1 m
+ */
 export const ANNEAUX = [
-  { rayon: 9, places: 6 },
-  { rayon: 15, places: 12 },
-  { rayon: 21, places: 18 },
-  { rayon: 27, places: 24 },
-  { rayon: 33, places: 30 }
+  { rayon: 12, places: 6 },
+  { rayon: 22, places: 12 },
+  { rayon: 32, places: 18 }
 ] as const
+// 36 bases dans les 80x80 m actuels. Pour aller au-dela: ajouter des anneaux ET des
+// parcelles (gratuites dans un World). Un anneau de rayon r exige une scene de rayon r+5.
+// Contrepartie a peser: plus le lieu est grand, plus on marche, et un juge a 3 minutes.
 
 /** 90 bases affichables. Au-dela on n'affiche plus, on ne casse pas. */
 export const MAX_BASES = ANNEAUX.reduce((n, a) => n + a.places, 0)
@@ -141,14 +150,19 @@ export const ETAGES_MAX = 3
  *  - le butin reste VISIBLE de l'exterieur (face avant ouverte), sinon personne ne
  *    sait ce qu'il y a a voler et le lieu n'attire pas
  */
-export const BASE_COTE = 5.0
+/**
+ * 8 m de cote. A 5 m c'etait exigu: un avatar doit pouvoir CIRCULER entre les objets et
+ * monter la rampe sans se coincer. La reference va jusqu'a 31 emplacements, donc l'emprise
+ * doit rester genereuse.
+ */
+export const BASE_COTE = 8.0
 /**
  * La rampe doit TENIR DANS le batiment. Franchir `ETAGE_HAUTEUR` sous un angle a
  * demande une longueur de h/sin(a). A 32 degres pour 3,2 m il fallait 6,0 m, donc elle
  * depassait d'un batiment large de 5. A 40 degres pour 2,8 m il faut 4,36 m: ca rentre.
  */
 export const RAMPE_ANGLE = 40
-export const RAMPE_LONGUEUR = 4.4
+export const RAMPE_LONGUEUR = 4.4  // h/sin(40 deg) pour 2,8 m
 export const MUR_EPAISSEUR = 0.22
 /**
  * Les murs montent EXACTEMENT jusqu'au plancher du dessus. Une hauteur inferieure
@@ -228,13 +242,14 @@ export const PLOT_MAX_OBJETS = SLOTS_PAR_ETAGE * ETAGES_MAX
 export function slotPosition(slot: number): { dx: number; dy: number; dz: number } {
   const etage = Math.floor(slot / SLOTS_PAR_ETAGE)
   const k = slot % SLOTS_PAR_ETAGE
-  // Deux rangees de trois le long des murs du fond: le butin se voit depuis l'entree.
+  // Deux rangees de trois, ecartees vers les murs: le centre reste libre pour circuler
+  // et pour la rampe. Un objet inatteignable est un objet involable.
   const col = k % 3
   const rang = Math.floor(k / 3)
   return {
-    dx: (col - 1) * 1.4,
+    dx: (col - 1) * 2.2,
     dy: 0.45 + etage * ETAGE_HAUTEUR,
-    dz: -0.9 - rang * 1.1
+    dz: -2.6 + rang * 1.6
   }
 }
 
