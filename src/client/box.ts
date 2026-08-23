@@ -42,7 +42,15 @@ export const boxView = {
 }
 
 let boite3d: Entity
-let sonneur: Entity
+/**
+ * TROIS emetteurs distincts. Un seul `AudioSource` reutilise coupe le son precedent:
+ * le coup 3 ferait taire le coup 2, et l'explosion tuerait le dernier impact. La
+ * sensation de percussion vient justement de leur CHEVAUCHEMENT.
+ */
+let sonCoup: Entity
+let sonBurst: Entity
+let sonReveal: Entity
+const eclats: Entity[] = []
 let prochainPas = 0
 let pasCourant = 0
 let restant = 0
@@ -59,9 +67,24 @@ export function setupBox(): void {
     ]
   })
 
-  sonneur = engine.addEntity()
-  Transform.create(sonneur, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alerte-vol.wav', playing: false, loop: false, volume: 0.7 })
+  const emetteur = (clip: string, vol: number): Entity => {
+    const e = engine.addEntity()
+    Transform.create(e, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+    AudioSource.create(e, { audioClipUrl: clip, playing: false, loop: false, volume: vol })
+    return e
+  }
+  sonCoup = emetteur('assets/sounds/hit.wav', 0.9)
+  sonBurst = emetteur('assets/sounds/burst.wav', 1)
+  sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
+
+  // Les eclats de l'explosion, crees une fois et recycles: en creer a chaque ouverture
+  // ferait grimper le compte d'entites a chaque boite.
+  for (let i = 0; i < 14; i++) {
+    const e = engine.addEntity()
+    Transform.create(e, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
+    MeshRenderer.setBox(e)
+    eclats.push(e)
+  }
 
   room.onMessage('inventory', (d) => { boxView.stock = [...d.boites] })
 
@@ -83,10 +106,8 @@ export function setupBox(): void {
     prochainPas = 0.045
     pasCourant = 0
 
-    // On memorise ou etait la boite AVANT de la ranger: c'est de la que part l'objet.
-    const t = Transform.getOrNull(boite3d)
-    const depart = t ? Vector3.create(t.position.x, t.position.y, t.position.z) : null
-    rangerBoite()
+    // La boite a deja explose au 3e coup; on part de l'endroit de l'explosion.
+    const depart = dernierePosition
     if (depart !== null && d.etat === 'expose') {
       // L'envoi part a la FIN de la roulette, pas avant: sinon on voit le resultat
       // filer vers la base pendant qu'on attend encore de savoir ce que c'est.
@@ -113,11 +134,24 @@ export function setupBox(): void {
           easingFunction: EasingFunction.EF_EASEOUTELASTIC,
           currentTime: 0
         })
-        const a = AudioSource.getMutableOrNull(sonneur)
-        if (a !== null) { a.playing = false; a.playing = true }
+        jouer(sonCoup)
+
+        // La boite s'ABIME a vue d'oeil: sans degradation visible, les trois coups sont
+        // une formalite au lieu d'une montee.
+        const usure = boxView.coups / COUPS
+        Material.setPbrMaterial(boite3d, {
+          albedoColor: Color4.fromHexString(b.couleur + 'ff'),
+          emissiveColor: Color4.fromHexString(b.couleur + 'ff'),
+          emissiveIntensity: 0.4 + usure * 1.6,
+          metallic: 0.5,
+          roughness: 0.4
+        })
 
         if (boxView.coups >= COUPS) {
           boxView.ouverture = false
+          const t = Transform.getOrNull(boite3d)
+          if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.couleur)
+          rangerBoite()
           void room.send('openBox', { typeBoite: boxView.typeEnCours })
         }
       }
@@ -136,6 +170,7 @@ export function setupBox(): void {
       if (restant <= 0) {
         boxView.roule = false
         boxView.index = boxView.resultat
+        jouer(sonReveal)
         // Le resultat RESTE a l'ecran: sans ce temps de lecture, la roulette s'arrete
         // et il ne se passe visiblement rien. C'est le paiement du geste.
         boxView.resultatJusqua = Date.now() + 3200
@@ -146,6 +181,61 @@ export function setupBox(): void {
       boxView.message = ''
     }
   })
+}
+
+let dernierePosition: Vector3 | null = null
+
+function jouer(e: Entity): void {
+  const a = AudioSource.getMutableOrNull(e)
+  if (a !== null) { a.playing = false; a.playing = true }
+}
+
+/**
+ * EXPLOSION. La boite ne doit pas rester plantee: elle EXPLOSE en eclats qui partent
+ * vers l'exterieur puis retombent. Les particules ne sont pas fiables sur mobile
+ * (`ParticleSystem` toujours liste comme manquant), donc on le fait en primitives, ce
+ * qui marche partout.
+ */
+function exploser(centre: Vector3, couleur: string): void {
+  dernierePosition = centre
+  jouer(sonBurst)
+  const c = Color4.fromHexString(couleur + 'ff')
+  for (let i = 0; i < eclats.length; i++) {
+    const e = eclats[i]
+    const a = (i / eclats.length) * Math.PI * 2
+    const h = 0.6 + (i % 3) * 0.5
+    const r = 1.6 + (i % 4) * 0.45
+    const t = Transform.getMutableOrNull(e)
+    if (t === null) continue
+    t.position = centre
+    t.scale = Vector3.create(0.16, 0.16, 0.16)
+    Material.setPbrMaterial(e, { albedoColor: c, emissiveColor: c, emissiveIntensity: 1.4 })
+    Tween.createOrReplace(e, {
+      mode: Tween.Mode.Move({
+        start: centre,
+        end: Vector3.create(centre.x + Math.cos(a) * r, centre.y + h, centre.z + Math.sin(a) * r)
+      }),
+      duration: 260,
+      easingFunction: EasingFunction.EF_EASEOUTQUAD
+    })
+    TweenSequence.createOrReplace(e, {
+      sequence: [{
+        mode: Tween.Mode.Move({
+          start: Vector3.create(centre.x + Math.cos(a) * r, centre.y + h, centre.z + Math.sin(a) * r),
+          end: Vector3.create(centre.x + Math.cos(a) * r * 1.5, 0.2, centre.z + Math.sin(a) * r * 1.5)
+        }),
+        duration: 520,
+        easingFunction: EasingFunction.EF_EASEINQUAD
+      }]
+    })
+  }
+  timers.setTimeout(() => {
+    for (const e of eclats) {
+      const t = Transform.getMutableOrNull(e)
+      if (t !== null) { t.scale = Vector3.create(0, 0, 0); t.position = Vector3.create(0, -10, 0) }
+      Tween.deleteFrom(e); TweenSequence.deleteFrom(e)
+    }
+  }, 850)
 }
 
 function rangerBoite(): void {

@@ -231,19 +231,28 @@ export const PORTE_LARGEUR = 2.0
  * fait accelerer la boucle au lieu de la faire stagner.
  */
 /**
- * PALIERS. Prix cales sur ~5 minutes de production d'une base pleine de la rarete exigee:
- * un palier est une grosse amelioration permanente, il doit se meriter. Les valeurs
- * precedentes (1 500 pour un x2) se franchissaient en quelques dizaines de secondes.
- *   6 Peu communs =  24/s -> 5 min =   7 200
- *   6 Rares       =  96/s -> 5 min =  28 800
- *   6 Epiques     = 384/s -> 5 min = 115 000
- *   6 Legendaires =1536/s -> 5 min = 460 000
+ * PALIERS. FORME reprise du tableau `Rebirth` du wiki de la reference (jeu a 191 330
+ * joueurs simultanes), pas inventee:
+ *
+ *   couts requis : 500K, 1.5M, 7.5M, 25M, 100M, 350M, 1B, 5B, 25B, 125B, 800B
+ *                  -> progression GEOMETRIQUE, rapport 3 a 5
+ *   multiplicateurs: x0.5, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10...
+ *                  -> progression LINEAIRE, +1 par palier
+ *
+ * Ce qui est TRANSPOSE: la forme (rapport 4 entre paliers, multiplicateur +1).
+ * Ce qui est A NOUS: l'ancrage du premier palier, car nos revenus n'ont pas la meme
+ * echelle que les leurs et les valeurs absolues ne se transferent pas.
+ *
+ * Ancrage: une base de 6 Peu communs produit 24/s; 5 000 pieces representent donc
+ * quelques minutes de jeu accumule, le temps de remplir une base et de l'ameliorer une
+ * fois. Ma version precedente (multiplicateurs 2/3/5/8) faisait exploser le revenu
+ * bien plus vite que la reference ne l'autorise.
  */
 export const PALIERS = [
-  { cout: 5000,    rareteMin: 1, multiplicateur: 2, garde: 1 },
-  { cout: 40000,   rareteMin: 2, multiplicateur: 3, garde: 1 },
-  { cout: 250000,  rareteMin: 3, multiplicateur: 5, garde: 2 },
-  { cout: 1500000, rareteMin: 4, multiplicateur: 8, garde: 2 }
+  { cout: 5000,   rareteMin: 1, multiplicateur: 2, garde: 1 },
+  { cout: 20000,  rareteMin: 2, multiplicateur: 3, garde: 1 },
+  { cout: 80000,  rareteMin: 3, multiplicateur: 4, garde: 2 },
+  { cout: 320000, rareteMin: 4, multiplicateur: 5, garde: 2 }
 ] as const
 export const REBIRTH_MAX = PALIERS.length
 
