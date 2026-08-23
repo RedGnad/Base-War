@@ -16,7 +16,7 @@ import { voler } from './theft'
  * donc une base retiree ne coute rien.
  */
 
-type Vue = { socle: Entity; etiquette: Entity; objets: Entity[]; signature: string }
+type Vue = { socle: Entity; etiquette: Entity; objets: Entity[]; signature: string; ownerId: string }
 const vues = new Map<number, Vue>()   // clef = entite synchronisee du Plot
 
 function creerVue(x: number, z: number): Vue {
@@ -48,9 +48,17 @@ function creerVue(x: number, z: number): Vue {
       scale: Vector3.create(0.45, 0.45, 0.45)
     })
     MeshRenderer.setBox(o)
+    MeshCollider.setBox(o)
+    // C'est l'OBJET qu'on vise, pas la base: le voleur choisit sa cible, comme chez le #1.
+    PointerEvents.create(o, {
+      pointerEvents: [
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Prendre' } },
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Prendre' } }
+      ]
+    })
     objets.push(o)
   }
-  return { socle, etiquette, objets, signature: '' }
+  return { socle, etiquette, objets, signature: '', ownerId: '' }
 }
 
 function detruireVue(v: Vue): void {
@@ -62,12 +70,15 @@ function detruireVue(v: Vue): void {
 export function setupPlots(): void {
   // Une frappe sur n'importe quelle base declenche la demande de vol. Le SERVEUR
   // choisit la cible par proximite et refuse tout ce qui doit l'etre.
+  // On vise UN OBJET precis. Taper le socle ne vole rien: il faut designer sa prise.
   engine.addSystem(() => {
     for (const v of vues.values()) {
-      if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.socle) ||
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.socle)
-      ) { voler(); break }
+      for (let k = 0; k < v.objets.length; k++) {
+        if (
+          inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.objets[k]) ||
+          inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.objets[k])
+        ) { voler(v.ownerId, k); return }
+      }
     }
   })
 
@@ -87,6 +98,7 @@ export function setupPlots(): void {
       const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.items.join(',')}`
       if (sig === v.signature) continue
       v.signature = sig
+      v.ownerId = p.ownerId
 
       const txt = TextShape.getMutableOrNull(v.etiquette)
       if (txt !== null) {

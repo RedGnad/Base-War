@@ -75,6 +75,9 @@ export function setupTheft(): void {
   })
 }
 
-export function voler(): void { void room.send('stealItem', {}) }
+/** Le voleur designe SA cible: quel joueur, quel emplacement. */
+export function voler(ownerId = '', slot = -1): void {
+  void room.send('stealItem', { ownerId, slot })
+}
 export function verrouiller(): void { void room.send('activateLock', {}) }
 export function reprendre(): void { void room.send('reclaim', {}) }

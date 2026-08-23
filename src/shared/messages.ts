@@ -22,8 +22,13 @@ export const MESSAGES = {
    */
   serverLog: Schemas.Map({ line: Schemas.String }),
 
-  /** client -> serveur: je prends un objet sur l'emplacement d'a cote. */
-  stealItem: Schemas.Map({}),
+  /**
+   * client -> serveur: je veux CET objet-la, chez CE joueur.
+   * Le voleur choisit sa cible, comme chez le #1 (wiki: « check what Brainrots are on
+   * each floor »). Le client exprime une INTENTION, il n'affirme rien: le serveur
+   * verifie la portee, le verrou, l'existence de l'objet, et decide seul.
+   */
+  stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /** client -> serveur: je protege mon emplacement. */
   activateLock: Schemas.Map({}),
   /** client -> serveur: je reprends mon bien au voleur qui est pres de moi. */

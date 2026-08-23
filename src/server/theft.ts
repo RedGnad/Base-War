@@ -68,16 +68,21 @@ export function delivrerAlertes(address: string): void {
 }
 
 export function startTheft(): void {
-  room.onMessage('stealItem', (_d, ctx) => {
+  room.onMessage('stealItem', (d, ctx) => {
     const voleur = ctx?.from?.toLowerCase()
     if (!voleur) return
+    const vise = (d.ownerId ?? '').toLowerCase()
+    if (vise === voleur) { refus(voleur, 'vol', 'c est ta propre base'); return }
 
     // ANTI-TRICHE: le serveur lit LUI-MEME la position. Il ne croit rien du client.
     const p = positionDe(voleur)
     if (p === null) { refus(voleur, 'vol', 'position inconnue'); return }
 
-    const cibles = basesProches(p, PORTEE_VOL, voleur)
-    if (cibles.length === 0) { refus(voleur, 'vol', 'aucune base a portee'); return }
+    // Le voleur DESIGNE sa cible; le serveur ne retient que celles qu'il verifie a portee.
+    const aPortee = basesProches(p, PORTEE_VOL, voleur)
+    if (aPortee.length === 0) { refus(voleur, 'vol', 'aucune base a portee'); return }
+    const cibles = vise === '' ? aPortee : aPortee.filter((b) => b.address === vise)
+    if (cibles.length === 0) { refus(voleur, 'vol', 'cette base n est pas a portee'); return }
 
     const maintenant = Date.now()
     for (const c of cibles) {
@@ -89,10 +94,13 @@ export function startTheft(): void {
       }
       if (c.items.length === 0) { refus(voleur, 'vol', `${c.name} n'a rien a prendre`); continue }
 
-      // On prend le PLUS RARE: le vol doit compter, pas grappiller.
-      let idx = 0
-      for (let i = 1; i < c.items.length; i++) if (c.items[i] > c.items[idx]) idx = i
-      const r = retirerObjet(c.address, idx)
+      // L'OBJET DESIGNE. Le serveur verifie que l'emplacement existe; a defaut il
+      // refuse plutot que de choisir a la place du joueur.
+      const slot = d.slot
+      if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
+        refus(voleur, 'vol', 'cet objet n existe plus'); continue
+      }
+      const r = retirerObjet(c.address, slot)
       if (r === null) { refus(voleur, 'vol', 'objet deja parti'); continue }
 
       if (!ajouterObjet(voleur, r)) {
