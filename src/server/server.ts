@@ -4,6 +4,7 @@ import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startCrate } from './crate'
+import { startPlots, attribuerPlot, poserObjet, coinsDe } from './plots'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -100,13 +101,16 @@ export function startServer(): void {
     })()
   })
 
+  startPlots()
+
   // La caisse: le serveur valide la proximite et tire la rarete lui-meme.
   startCrate((address, rarity) => {
     const n = (counts.get(address) ?? 0) + 1
     counts.set(address, n)
     dirty.add(address)
     publish(address)
-    console.log(`[SERVER] ${address} recupere un objet de rarete ${rarity}, total ${n}`)
+    void poserObjet(address, rarity)
+    console.log(`[SERVER] ${address} recupere une rarete ${rarity}, total ${n}, ${coinsDe(address)} pieces`)
   })
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.
@@ -128,6 +132,7 @@ export function startServer(): void {
       void (async () => {
         const n = await load(address)
         publish(address)
+        await attribuerPlot(address)
         console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
       })()
     }

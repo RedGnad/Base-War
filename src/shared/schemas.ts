@@ -41,6 +41,21 @@ export const Crate = engine.defineComponent('friendzone::crate', {
   breakSeq: Schemas.Int
 })
 
+/**
+ * Un emplacement. Il en existe 8, TOUJOURS presents, occupes ou non.
+ * Le serveur les publie meme quand leur proprietaire est absent: c'est la regle
+ * d'eligibilite « Empty venues are not eligible » qui l'impose.
+ */
+export const Plot = engine.defineComponent('friendzone::plot', {
+  index: Schemas.Int,
+  ownerId: Schemas.String,
+  ownerName: Schemas.String,
+  /** raretes posees, dans l'ordre. Longueur = nombre d'objets visibles. */
+  items: Schemas.Array(Schemas.Int),
+  /** le proprietaire est-il connecte en ce moment */
+  ownerPresent: Schemas.Boolean
+})
+
 /** Un objet tombe, pose sur l'emplacement d'un joueur. */
 export const Loot = engine.defineComponent('friendzone::loot', {
   rarity: Schemas.Int,
@@ -57,6 +72,16 @@ export const SYNC_ID = {
 
 /** Distance maximale a la caisse pour qu'un coup soit accepte par le serveur. */
 export const PORTEE_COUP = 4
+
+/** Les 8 emplacements, en cercle autour de la caisse. Scene = 32x32 m, centre (16,16). */
+export const NB_PLOTS = 8
+export const PLOT_RAYON = 11
+export const PLOT_MAX_OBJETS = 6
+
+export function plotPosition(index: number): { x: number; y: number; z: number } {
+  const a = (index / NB_PLOTS) * Math.PI * 2
+  return { x: 16 + Math.cos(a) * PLOT_RAYON, y: 0, z: 16 + Math.sin(a) * PLOT_RAYON }
+}
 
 /** Periode du battement de coeur, et seuil au-dela duquel on considere le serveur mort. */
 export const BEAT_MS = 2000
@@ -79,4 +104,5 @@ export function registerValidators(): void {
   ServerBeat.validateBeforeChange(serverOnly)
   Crate.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
+  Plot.validateBeforeChange(serverOnly)
 }
