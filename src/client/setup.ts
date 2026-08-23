@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material,
+  engine, Transform, MeshRenderer, MeshCollider, Material, SkyboxTime,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
@@ -32,6 +32,12 @@ export function startClient(): void {
   setupTouchHud()
   reportPlatform()
   applyThiefPenalty(false)
+
+  // HEURE FIXE. Sans ca le ciel suit l'heure du monde: un juge qui visite la nuit
+  // verrait une scene noire, et notre premiere impression serait une loterie.
+  // 16h00 = 57600 s: lumiere chaude et rasante, ombres longues, le meilleur eclairage
+  // pour lire un batiment et ses etages.
+  SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 57600 })
 
   setupCrate()
   setupPlots()
