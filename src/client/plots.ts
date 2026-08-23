@@ -1,8 +1,9 @@
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem
+  PointerEvents, PointerEventType, InputAction, inputSystem,
+  Tween, TweenSequence, TweenLoop, EasingFunction
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3 } from '@dcl/sdk/math'
+import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
 import { voler } from './theft'
@@ -138,9 +139,25 @@ export function setupPlots(): void {
         if (tr === null) continue
         const d = slotPosition(k)
         if (k < p.items.length) {
+          // Taille, lueur et rotation portent la rarete: lisible de loin, sans texte.
+          const r = rarity(p.items[k])
           tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
-          const c = Color4.fromHexString(rarity(p.items[k]).couleur + 'ff')
-          Material.setPbrMaterial(v.objets[k], { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.35 })
+          tr.scale = Vector3.create(r.taille, r.taille, r.taille)
+          const c = Color4.fromHexString(r.couleur + 'ff')
+          Material.setPbrMaterial(v.objets[k], {
+            albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.35, metallic: 0.6
+          })
+          if (r.tours > 0) {
+            Tween.createOrReplace(v.objets[k], {
+              mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
+              duration: Math.round(360000 / r.tours),
+              easingFunction: EasingFunction.EF_LINEAR
+            })
+            TweenSequence.createOrReplace(v.objets[k], { sequence: [], loop: TweenLoop.TL_RESTART })
+          } else {
+            Tween.deleteFrom(v.objets[k])
+            TweenSequence.deleteFrom(v.objets[k])
+          }
         } else {
           tr.position = Vector3.create(t.position.x, -5, t.position.z)
         }
