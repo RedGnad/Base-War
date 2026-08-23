@@ -3,7 +3,7 @@ import {
   PointerEventType, InputAction, inputSystem, Tween, EasingFunction, TextShape, Billboard
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { Crate } from '../shared/schemas'
+import { Crate, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarity } from '../shared/loot-table'
 
@@ -25,7 +25,7 @@ const ETATS = [
 export function setupCrate(): void {
   // Le visuel est LOCAL: le serveur possede l'etat, le client ne fait que le peindre.
   const box = engine.addEntity()
-  Transform.create(box, { position: Vector3.create(16, 1, 16), scale: Vector3.create(1.6, 1.6, 1.6) })
+  Transform.create(box, { position: Vector3.create(CENTRE.x, 1, CENTRE.z), scale: Vector3.create(1.6, 1.6, 1.6) })
   MeshRenderer.setBox(box)
   MeshCollider.setBox(box)
   Material.setPbrMaterial(box, { albedoColor: Color4.fromHexString(ETATS[0].couleur + 'ff') })
@@ -37,7 +37,7 @@ export function setupCrate(): void {
   })
 
   const label = engine.addEntity()
-  Transform.create(label, { position: Vector3.create(16, 2.6, 16), scale: Vector3.create(0.6, 0.6, 0.6) })
+  Transform.create(label, { position: Vector3.create(CENTRE.x, 2.6, CENTRE.z), scale: Vector3.create(0.6, 0.6, 0.6) })
   Billboard.create(label, {})
   TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
 

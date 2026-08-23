@@ -20,7 +20,7 @@ const OUTFITS = [
 ]
 
 export function spawnTestAvatars(count: number): void {
-  const centre = Vector3.create(16, 0, 16)
+  const centre = Vector3.create(40, 0, 40)
   const rayon = 6
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2

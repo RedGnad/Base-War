@@ -88,14 +88,47 @@ export const REPRISE_FENETRE_MS = 20_000  // 3.5 fenetre pour reprendre son bien
 export const PORTEE_VOL = 4
 export const PORTEE_REPRISE = 6
 
-/** Les 8 emplacements, en cercle autour de la caisse. Scene = 32x32 m, centre (16,16). */
-export const NB_PLOTS = 8
-export const PLOT_RAYON = 11
+/**
+ * DISPOSITION EN ANNEAUX, dimensionnee le 23 Aug apres la question « et si on a 100 joueurs ».
+ *
+ * Motif copie des jeux de reference (memo §3.1): une base par joueur, creee a l'arrivee,
+ * liberee au depart. Ce qui NE se copie pas, c'est le « serveur de 6 »: Decentraland ne
+ * partitionne pas le monde, il n'y a qu'un serveur autoritaire par scene.
+ *
+ * Plafond reel, formule officielle des limites (entites = 200 x parcelles, et seules les
+ * entites RENDUES comptent, doc `scene-limitations`): a 25 parcelles, 5 000 entites pour
+ * ~9 par base, soit ~550. Les parcelles sont GRATUITES dans un World (jusqu'a 90 000).
+ * Le vrai plafond est le rendu mobile: ~1 000 appels de dessin recommandes, donc de
+ * l'ordre de 100 bases affichees. C'est notre chiffre de dimensionnement.
+ *
+ * Les anneaux gardent le lieu DENSE quand il y a peu de monde, et l'etendent sans
+ * redessiner quand il y en a beaucoup.
+ */
+export const ANNEAUX = [
+  { rayon: 9, places: 6 },
+  { rayon: 15, places: 12 },
+  { rayon: 21, places: 18 },
+  { rayon: 27, places: 24 },
+  { rayon: 33, places: 30 }
+] as const
+
+/** 90 bases affichables. Au-dela on n'affiche plus, on ne casse pas. */
+export const MAX_BASES = ANNEAUX.reduce((n, a) => n + a.places, 0)
+/** Objets visibles au maximum sur une base. */
 export const PLOT_MAX_OBJETS = 6
+/** Centre de la scene: 25 parcelles = 80x80 m. */
+export const CENTRE = { x: 40, z: 40 }
 
 export function plotPosition(index: number): { x: number; y: number; z: number } {
-  const a = (index / NB_PLOTS) * Math.PI * 2
-  return { x: 16 + Math.cos(a) * PLOT_RAYON, y: 0, z: 16 + Math.sin(a) * PLOT_RAYON }
+  let reste = index
+  for (const a of ANNEAUX) {
+    if (reste < a.places) {
+      const ang = (reste / a.places) * Math.PI * 2
+      return { x: CENTRE.x + Math.cos(ang) * a.rayon, y: 0, z: CENTRE.z + Math.sin(ang) * a.rayon }
+    }
+    reste -= a.places
+  }
+  return { x: CENTRE.x, y: 0, z: CENTRE.z }
 }
 
 /** Periode du battement de coeur, et seuil au-dela duquel on considere le serveur mort. */

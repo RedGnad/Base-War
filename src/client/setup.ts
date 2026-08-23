@@ -4,7 +4,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
-import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS } from '../shared/schemas'
+import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
@@ -35,7 +35,7 @@ export function startClient(): void {
 
   // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le juger a l'oeil.
   const toggle = engine.addEntity()
-  Transform.create(toggle, { position: Vector3.create(22, 1, 16), scale: Vector3.create(1, 1, 1) })
+  Transform.create(toggle, { position: Vector3.create(CENTRE.x + 6, 1, CENTRE.z), scale: Vector3.create(1, 1, 1) })
   MeshRenderer.setBox(toggle)
   MeshCollider.setBox(toggle)
   Material.setPbrMaterial(toggle, { albedoColor: Color4.fromHexString('#c03030ff') })

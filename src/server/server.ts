@@ -4,7 +4,7 @@ import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startCrate } from './crate'
-import { startPlots, attribuerPlot, poserObjet, coinsDe } from './plots'
+import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -119,22 +119,39 @@ export function startServer(): void {
   // documentee cote serveur pour savoir qui est present.
   // Sans hydratation, un joueur qui revient voit zero jusqu'a ce qu'il agisse: c'est le
   // defaut "lieu vide" en miniature, exactement ce que la regle d'eligibilite punit.
-  const seen = new Set<string>()
+  // ARRIVEES ET DEPARTS, tous deux par PlayerIdentityData.
+  // Le depart compte autant que l'arrivee: c'est lui qui laisse la base visible et
+  // pillable, ce qui fait vivre le lieu quand personne n'est connecte.
+  const presents = new Set<string>()
   let sinceCheck = 0
   engine.addSystem((dt: number) => {
     sinceCheck += dt
     if (sinceCheck < 1) return
     sinceCheck = 0
+
+    const ici = new Set<string>()
     for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
-      const address = id.address?.toLowerCase()
-      if (!address || seen.has(address)) continue
-      seen.add(address)
+      const a = id.address?.toLowerCase()
+      if (a) ici.add(a)
+    }
+
+    for (const address of ici) {
+      if (presents.has(address)) continue
+      presents.add(address)
       void (async () => {
         const n = await load(address)
         publish(address)
-        await attribuerPlot(address)
+        await accueillir(address)
         console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
       })()
+    }
+
+    for (const address of [...presents]) {
+      if (ici.has(address)) continue
+      presents.delete(address)
+      dirty.add(address)
+      auRevoir(address)
+      void flush()
     }
   })
 }

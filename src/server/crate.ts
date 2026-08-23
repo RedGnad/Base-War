@@ -1,15 +1,15 @@
 import { engine, Transform, PlayerIdentityData, AvatarBase, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
-import { Crate, SYNC_ID, PORTEE_COUP } from '../shared/schemas'
+import { Crate, SYNC_ID, PORTEE_COUP, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rollRarity } from './loot'
 
 const COUPS_POUR_CASSER = 3
 const REAPPARITION_MS = 2500
 
-/** Position de la caisse, en metres locaux a la scene (4 parcelles = 0..32). */
-export const CRATE_POS = Vector3.create(16, 1, 16)
+/** Position de la caisse: le centre du lieu (25 parcelles = 0..80). */
+export const CRATE_POS = Vector3.create(CENTRE.x, 1, CENTRE.z)
 
 let crate = engine.addEntity()
 
