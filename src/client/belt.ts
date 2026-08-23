@@ -3,7 +3,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Belt, beltPosition, TAPIS_LONGUEUR, CENTRE } from '../shared/schemas'
+import { Belt, TAPIS_LONGUEUR, CENTRE, FOSSE_PROFONDEUR } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { boite } from '../shared/loot-table'
 
@@ -27,6 +27,29 @@ export function setupBelt(): void {
   MeshRenderer.setBox(bande)
   MeshCollider.setBox(bande)
   Material.setPbrMaterial(bande, { albedoColor: Color4.fromHexString('#8e2b2bff'), roughness: 0.8 })
+
+  // LA FOSSE au bout du tapis. Ce qui n'est pas achete y tombe: une disparition seche
+  // ne se lit pas, et on rate l'occasion de montrer ce qu'on vient de laisser filer.
+  const bord = CENTRE.x + TAPIS_LONGUEUR / 2 + 1.6
+  const fosse = engine.addEntity()
+  Transform.create(fosse, {
+    position: Vector3.create(bord + 0.6, -FOSSE_PROFONDEUR / 2, CENTRE.z),
+    scale: Vector3.create(3.4, FOSSE_PROFONDEUR, 3.4)
+  })
+  MeshRenderer.setBox(fosse)
+  Material.setPbrMaterial(fosse, { albedoColor: Color4.fromHexString('#12100eff'), roughness: 1 })
+
+  // Margelle: sans elle, le trou se lit comme un defaut de terrain et non comme une fosse.
+  for (const [dx, dz, sx, sz] of [[0, 2.0, 4.2, 0.4], [0, -2.0, 4.2, 0.4], [2.0, 0, 0.4, 4.2]]) {
+    const m = engine.addEntity()
+    Transform.create(m, {
+      position: Vector3.create(bord + 0.6 + dx, 0.25, CENTRE.z + dz),
+      scale: Vector3.create(sx, 0.5, sz)
+    })
+    MeshRenderer.setBox(m)
+    MeshCollider.setBox(m)
+    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#4a4038ff'), roughness: 0.9 })
+  }
 
   engine.addSystem(() => {
     const vivants = new Set<number>()

@@ -102,13 +102,23 @@ export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temp
 export const TAPIS_INTERVALLE_S = 5      // un article toutes les 5 s
 export const PORTEE_ACHAT = 5
 
-/** Position d'un article selon son avancee. Le tapis traverse le lieu d'ouest en est. */
+/**
+ * Position d'un article selon son avancee. Le tapis traverse le lieu d'ouest en est.
+ *
+ * Au-dela de 1, l'article TOMBE DANS LA FOSSE au bout du tapis. Une boite que personne
+ * n'a prise doit finir quelque part: une disparition seche ne se lit pas, et rate
+ * l'occasion de montrer ce qu'on vient de laisser passer.
+ */
+export const CHUTE_FIN = 0.22        // part de course consacree a la chute
+export const FOSSE_PROFONDEUR = 4.5
+
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
-  return {
-    x: CENTRE.x - TAPIS_LONGUEUR / 2 + progres * TAPIS_LONGUEUR,
-    y: 1.15,
-    z: CENTRE.z
-  }
+  const surTapis = Math.min(progres, 1)
+  const x = CENTRE.x - TAPIS_LONGUEUR / 2 + surTapis * TAPIS_LONGUEUR
+  if (progres <= 1) return { x, y: 1.15, z: CENTRE.z }
+  // chute acceleree: t au carre, comme une vraie chute
+  const t = Math.min((progres - 1) / CHUTE_FIN, 1)
+  return { x: x + t * 1.4, y: 1.15 - t * t * FOSSE_PROFONDEUR, z: CENTRE.z }
 }
 
 /** Prix d'un article, croissant avec la rarete. */

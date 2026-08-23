@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, TAPIS_DUREE_S, TAPIS_INTERVALLE_S, PORTEE_ACHAT, PRIX_RARETE
+  Belt, beltPosition, TAPIS_DUREE_S, TAPIS_INTERVALLE_S, PORTEE_ACHAT, CHUTE_FIN
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { jour } from './journal'
@@ -72,7 +72,9 @@ export function startBelt(): void {
     }
     for (const a of [...articles]) {
       a.progres += dt / TAPIS_DUREE_S
-      if (a.progres >= 1) { retirer(a); continue }
+      // On ne retire qu'APRES la chute: la boite non prise tombe dans la fosse,
+      // et on voit ce qu'on vient de laisser passer.
+      if (a.progres >= 1 + CHUTE_FIN) { retirer(a); continue }
       const c = Belt.getMutableOrNull(a.entity)
       if (c !== null) c.progres = a.progres
       const t = Transform.getMutableOrNull(a.entity)
@@ -93,6 +95,11 @@ export function startBelt(): void {
     // ANTI-TRICHE: le serveur mesure la distance lui-meme, comme pour la caisse.
     const p = positionDe(a)
     if (p === null) { void room.send('actionRejected', { action: 'achat', raison: 'position inconnue', antiCheat: false }, { to: [a] }); return }
+    // Une boite deja tombee n'est plus achetable, meme si le client la voit encore.
+    if (art.progres >= 1) {
+      void room.send('actionRejected', { action: 'achat', raison: 'elle est tombee', antiCheat: false }, { to: [a] })
+      return
+    }
     const pos = beltPosition(art.progres)
     const dist = Vector3.distance(p, Vector3.create(pos.x, pos.y, pos.z))
     if (dist > PORTEE_ACHAT) {
