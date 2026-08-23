@@ -2,26 +2,83 @@
   "version": 1,
   "components": [
     {
-      "name": "composite::root",
+      "name": "core-schema::Tags",
       "jsonSchema": {
         "type": "object",
         "properties": {
-          "src": {
-            "type": "string",
-            "serializationType": "utf8-string"
-          },
-          "entities": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "serializationType": "utf8-string"
+            },
+            "serializationType": "array"
+          }
+        },
+        "serializationType": "map"
+      },
+      "data": {
+        "0": {
+          "json": {
+            "tags": [
+              "Tag Group 1",
+              "Tag Group 2",
+              "Tag Group 3",
+              "Tag Group 4"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "inspector::Selection",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "gizmo": {
+            "type": "integer",
+            "serializationType": "int32"
+          }
+        },
+        "serializationType": "map"
+      },
+      "data": {
+        "0": {
+          "json": {
+            "gizmo": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "inspector::Nodes",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "value": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "src": {
+                "entity": {
                   "type": "integer",
                   "serializationType": "entity"
                 },
-                "dest": {
-                  "type": "integer",
-                  "serializationType": "entity"
+                "open": {
+                  "type": "boolean",
+                  "serializationType": "optional",
+                  "optionalJsonSchema": {
+                    "type": "boolean",
+                    "serializationType": "boolean"
+                  }
+                },
+                "children": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "serializationType": "entity"
+                  },
+                  "serializationType": "array"
                 }
               },
               "serializationType": "map"
@@ -31,10 +88,30 @@
         },
         "serializationType": "map"
       },
-      "data": {}
+      "data": {
+        "0": {
+          "json": {
+            "value": [
+              {
+                "entity": 0,
+                "open": true,
+                "children": []
+              },
+              {
+                "entity": 1,
+                "children": []
+              },
+              {
+                "entity": 2,
+                "children": []
+              }
+            ]
+          }
+        }
+      }
     },
     {
-      "name": "inspector::SceneMetadata",
+      "name": "inspector::SceneMetadata-v5",
       "jsonSchema": {
         "type": "object",
         "properties": {
@@ -71,7 +148,7 @@
                 "T",
                 "A"
               ],
-              "default": "T",
+              "default": "A",
               "serializationType": "enum-string",
               "enumObject": {
                 "Teen": "T",
@@ -227,14 +304,14 @@
                         "type": "object",
                         "properties": {
                           "single": {
-                            "type": "integer",
-                            "serializationType": "int32"
+                            "type": "number",
+                            "serializationType": "float32"
                           },
                           "range": {
                             "type": "array",
                             "items": {
-                              "type": "integer",
-                              "serializationType": "int32"
+                              "type": "number",
+                              "serializationType": "float32"
                             },
                             "serializationType": "array"
                           }
@@ -245,14 +322,14 @@
                         "type": "object",
                         "properties": {
                           "single": {
-                            "type": "integer",
-                            "serializationType": "int32"
+                            "type": "number",
+                            "serializationType": "float32"
                           },
                           "range": {
                             "type": "array",
                             "items": {
-                              "type": "integer",
-                              "serializationType": "int32"
+                              "type": "number",
+                              "serializationType": "float32"
                             },
                             "serializationType": "array"
                           }
@@ -263,14 +340,14 @@
                         "type": "object",
                         "properties": {
                           "single": {
-                            "type": "integer",
-                            "serializationType": "int32"
+                            "type": "number",
+                            "serializationType": "float32"
                           },
                           "range": {
                             "type": "array",
                             "items": {
-                              "type": "integer",
-                              "serializationType": "int32"
+                              "type": "number",
+                              "serializationType": "float32"
                             },
                             "serializationType": "array"
                           }
@@ -287,16 +364,16 @@
                       "type": "object",
                       "properties": {
                         "x": {
-                          "type": "integer",
-                          "serializationType": "int32"
+                          "type": "number",
+                          "serializationType": "float32"
                         },
                         "y": {
-                          "type": "integer",
-                          "serializationType": "int32"
+                          "type": "number",
+                          "serializationType": "float32"
                         },
                         "z": {
-                          "type": "integer",
-                          "serializationType": "int32"
+                          "type": "number",
+                          "serializationType": "float32"
                         }
                       },
                       "serializationType": "map"
@@ -307,6 +384,67 @@
               },
               "serializationType": "array"
             }
+          },
+          "skyboxConfig": {
+            "type": "object",
+            "serializationType": "optional",
+            "optionalJsonSchema": {
+              "type": "object",
+              "properties": {
+                "fixedTime": {
+                  "type": "integer",
+                  "serializationType": "optional",
+                  "optionalJsonSchema": {
+                    "type": "integer",
+                    "serializationType": "int32"
+                  }
+                },
+                "transitionMode": {
+                  "type": "integer",
+                  "serializationType": "optional",
+                  "optionalJsonSchema": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 0,
+                    "serializationType": "enum-int",
+                    "enumObject": {
+                      "0": "TM_FORWARD",
+                      "1": "TM_BACKWARD",
+                      "TM_FORWARD": 0,
+                      "TM_BACKWARD": 1
+                    }
+                  }
+                }
+              },
+              "serializationType": "map"
+            }
+          },
+          "creator": {
+            "type": "string",
+            "serializationType": "optional",
+            "optionalJsonSchema": {
+              "type": "string",
+              "serializationType": "utf8-string"
+            }
+          },
+          "disableNearbyVoiceChat": {
+            "type": "boolean",
+            "serializationType": "optional",
+            "optionalJsonSchema": {
+              "type": "boolean",
+              "serializationType": "boolean"
+            }
+          },
+          "hideLandscapeTerrain": {
+            "type": "boolean",
+            "serializationType": "optional",
+            "optionalJsonSchema": {
+              "type": "boolean",
+              "serializationType": "boolean"
+            }
           }
         },
         "serializationType": "map"
@@ -314,8 +452,8 @@
       "data": {
         "0": {
           "json": {
-            "name": "SDK7 Scene Template",
-            "description": "template scene with SDK7",
+            "name": "Friendzone WIP",
+            "description": "Work in progress",
             "thumbnail": "images/scene-thumbnail.png",
             "categories": [],
             "author": "SDK",
@@ -326,6 +464,18 @@
                 {
                   "x": 0,
                   "y": 0
+                },
+                {
+                  "x": 0,
+                  "y": 1
+                },
+                {
+                  "x": 1,
+                  "y": 0
+                },
+                {
+                  "x": 1,
+                  "y": 1
                 }
               ],
               "base": {
@@ -368,67 +518,11 @@
                   "z": 8
                 }
               }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "name": "inspector::Nodes",
-      "jsonSchema": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "entity": {
-                  "type": "integer",
-                  "serializationType": "entity"
-                },
-                "open": {
-                  "type": "boolean",
-                  "serializationType": "optional",
-                  "optionalJsonSchema": {
-                    "type": "boolean",
-                    "serializationType": "boolean"
-                  }
-                },
-                "children": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer",
-                    "serializationType": "entity"
-                  },
-                  "serializationType": "array"
-                }
-              },
-              "serializationType": "map"
-            },
-            "serializationType": "array"
-          }
-        },
-        "serializationType": "map"
-      },
-      "data": {
-        "0": {
-          "json": {
-            "value": [
-              {
-                "entity": 0,
-                "open": true,
-                "children": []
-              },
-              {
-                "entity": 1,
-                "children": []
-              },
-              {
-                "entity": 2,
-                "children": []
-              }
-            ]
+            ],
+            "skyboxConfig": {},
+            "creator": "",
+            "disableNearbyVoiceChat": false,
+            "hideLandscapeTerrain": false
           }
         }
       }
@@ -465,7 +559,7 @@
             "value": [
               {
                 "type": "play_animation",
-                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"animation\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"loop\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}}},\"serializationType\":\"map\"}"
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"animation\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"loop\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}},\"shouldReset\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}}},\"serializationType\":\"map\"}"
               },
               {
                 "type": "stop_animation",
@@ -477,7 +571,7 @@
               },
               {
                 "type": "start_tween",
-                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"move_item\",\"rotate_item\",\"scale_item\"],\"default\":\"move_item\",\"serializationType\":\"enum-string\",\"enumObject\":{\"MOVE_ITEM\":\"move_item\",\"ROTATE_ITEM\":\"rotate_item\",\"SCALE_ITEM\":\"scale_item\"}},\"end\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"z\":{\"type\":\"number\"},\"w\":{\"type\":\"number\"}},\"serializationType\":\"vector3\"},\"interpolationType\":{\"type\":\"string\",\"enum\":[\"linear\",\"easeinquad\",\"easeoutquad\",\"easequad\",\"easeinsine\",\"easeoutsine\",\"easeinoutsine\",\"easeinexpo\",\"easeoutexpo\",\"easeinoutexpo\",\"easeinelastic\",\"easeoutelastic\",\"easeinoutelastic\",\"easeinbounce\",\"easeoutbounce\",\"easeinoutbounce\"],\"default\":\"linear\",\"serializationType\":\"enum-string\",\"enumObject\":{\"LINEAR\":\"linear\",\"EASEINQUAD\":\"easeinquad\",\"EASEOUTQUAD\":\"easeoutquad\",\"EASEQUAD\":\"easequad\",\"EASEINSINE\":\"easeinsine\",\"EASEOUTSINE\":\"easeoutsine\",\"EASESINE\":\"easeinoutsine\",\"EASEINEXPO\":\"easeinexpo\",\"EASEOUTEXPO\":\"easeoutexpo\",\"EASEEXPO\":\"easeinoutexpo\",\"EASEINELASTIC\":\"easeinelastic\",\"EASEOUTELASTIC\":\"easeoutelastic\",\"EASEELASTIC\":\"easeinoutelastic\",\"EASEINBOUNCE\":\"easeinbounce\",\"EASEOUTEBOUNCE\":\"easeoutbounce\",\"EASEBOUNCE\":\"easeinoutbounce\"}},\"duration\":{\"type\":\"number\",\"serializationType\":\"float32\"},\"relative\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}},\"serializationType\":\"map\"}"
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"move_item\",\"rotate_item\",\"scale_item\",\"keep_rotating_item\"],\"default\":\"move_item\",\"serializationType\":\"enum-string\",\"enumObject\":{\"MOVE_ITEM\":\"move_item\",\"ROTATE_ITEM\":\"rotate_item\",\"SCALE_ITEM\":\"scale_item\",\"KEEP_ROTATING_ITEM\":\"keep_rotating_item\"}},\"end\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"z\":{\"type\":\"number\"},\"w\":{\"type\":\"number\"}},\"serializationType\":\"vector3\"},\"interpolationType\":{\"type\":\"string\",\"enum\":[\"linear\",\"easeinquad\",\"easeoutquad\",\"easequad\",\"easeinsine\",\"easeoutsine\",\"easeinoutsine\",\"easeinexpo\",\"easeoutexpo\",\"easeinoutexpo\",\"easeinelastic\",\"easeoutelastic\",\"easeinoutelastic\",\"easeinbounce\",\"easeoutbounce\",\"easeinoutbounce\"],\"default\":\"linear\",\"serializationType\":\"enum-string\",\"enumObject\":{\"LINEAR\":\"linear\",\"EASEINQUAD\":\"easeinquad\",\"EASEOUTQUAD\":\"easeoutquad\",\"EASEQUAD\":\"easequad\",\"EASEINSINE\":\"easeinsine\",\"EASEOUTSINE\":\"easeoutsine\",\"EASESINE\":\"easeinoutsine\",\"EASEINEXPO\":\"easeinexpo\",\"EASEOUTEXPO\":\"easeoutexpo\",\"EASEEXPO\":\"easeinoutexpo\",\"EASEINELASTIC\":\"easeinelastic\",\"EASEOUTELASTIC\":\"easeoutelastic\",\"EASEELASTIC\":\"easeinoutelastic\",\"EASEINBOUNCE\":\"easeinbounce\",\"EASEOUTEBOUNCE\":\"easeoutbounce\",\"EASEBOUNCE\":\"easeinoutbounce\"}},\"duration\":{\"type\":\"number\",\"serializationType\":\"float32\"},\"relative\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"},\"direction\":{\"type\":\"object\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"z\":{\"type\":\"number\"},\"w\":{\"type\":\"number\"}},\"serializationType\":\"vector3\"}},\"speed\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}}},\"serializationType\":\"map\"}"
               },
               {
                 "type": "set_counter",
@@ -493,7 +587,7 @@
               },
               {
                 "type": "play_sound",
-                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"src\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"loop\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}},\"volume\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}}},\"serializationType\":\"map\"}"
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"src\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"loop\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}},\"volume\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}},\"global\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}}},\"serializationType\":\"map\"}"
               },
               {
                 "type": "stop_sound",
@@ -529,7 +623,7 @@
               },
               {
                 "type": "teleport_player",
-                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\",\"serializationType\":\"int32\"},\"y\":{\"type\":\"integer\",\"serializationType\":\"int32\"}},\"serializationType\":\"map\"}"
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"mode\":{\"type\":\"string\",\"enum\":[\"to_coordinates\",\"to_world\"],\"default\":\"to_coordinates\",\"serializationType\":\"enum-string\",\"enumObject\":{\"TO_COORDINATES\":\"to_coordinates\",\"TO_WORLD\":\"to_world\"}},\"x\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"int32\"}},\"y\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"int32\"}},\"realm\":{\"type\":\"string\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"}}},\"serializationType\":\"map\"}"
               },
               {
                 "type": "move_player",
@@ -596,6 +690,10 @@
                 "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
               },
               {
+                "type": "player_face_item",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
                 "type": "place_on_player",
                 "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
               },
@@ -642,6 +740,74 @@
               {
                 "type": "heal_player",
                 "jsonSchema": "{\"type\":\"object\",\"properties\":{\"multiplier\":{\"type\":\"integer\",\"serializationType\":\"int32\"}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "claim_airdrop",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "lights_on",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "lights_off",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "lights_modify",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"active\":{\"type\":\"boolean\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"boolean\",\"serializationType\":\"boolean\"}},\"color\":{\"type\":\"object\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"object\",\"properties\":{\"r\":{\"type\":\"number\"},\"g\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"serializationType\":\"color3\"}},\"intensity\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "change_camera",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"virtualCameraEntity\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"entity\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "change_text",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"fontSize\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}},\"color\":{\"type\":\"object\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"object\",\"properties\":{\"r\":{\"type\":\"number\"},\"g\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"},\"a\":{\"type\":\"number\"}},\"serializationType\":\"color4\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "stop_tween",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "slide_texture",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"direction\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\",\"serializationType\":\"float32\"},\"y\":{\"type\":\"number\",\"serializationType\":\"float32\"}},\"serializationType\":\"map\"},\"speed\":{\"type\":\"number\",\"serializationType\":\"float32\"},\"movementType\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"enum\":[0,1],\"default\":0,\"serializationType\":\"enum-int\",\"enumObject\":{\"0\":\"TMT_OFFSET\",\"1\":\"TMT_TILING\",\"TMT_OFFSET\":0,\"TMT_TILING\":1}}},\"duration\":{\"type\":\"number\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"number\",\"serializationType\":\"float32\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "freeze_player",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "unfreeze_player",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "change_collisions",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"visibleCollisions\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"int32\"}},\"invisibleCollisions\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"int32\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "change_skybox",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"time\":{\"type\":\"integer\",\"serializationType\":\"int32\"},\"direction\":{\"type\":\"integer\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"integer\",\"serializationType\":\"int32\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "reset_skybox",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "call_script_method",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"scriptPath\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"methodName\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"params\":{\"type\":\"object\",\"serializationType\":\"optional\",\"optionalJsonSchema\":{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "log_to_console",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"message\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"}},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "delete",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "spawn_entity",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"src\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"position\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"z\":{\"type\":\"number\"},\"w\":{\"type\":\"number\"}},\"serializationType\":\"vector3\"}},\"serializationType\":\"map\"}"
               }
             ]
           }
