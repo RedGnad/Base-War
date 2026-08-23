@@ -47,6 +47,8 @@ export const Crate = engine.defineComponent('friendzone::crate', {
  * d'eligibilite « Empty venues are not eligible » qui l'impose.
  */
 export const Plot = engine.defineComponent('friendzone::plot', {
+  /** nombre d'etages ouverts chez ce joueur: 1 a 3 */
+  etages: Schemas.Int,
   index: Schemas.Int,
   ownerId: Schemas.String,
   ownerName: Schemas.String,
@@ -114,8 +116,46 @@ export const ANNEAUX = [
 
 /** 90 bases affichables. Au-dela on n'affiche plus, on ne casse pas. */
 export const MAX_BASES = ANNEAUX.reduce((n, a) => n + a.places, 0)
-/** Objets visibles au maximum sur une base. */
-export const PLOT_MAX_OBJETS = 6
+/**
+ * LA BASE EST UN BATIMENT, pas un tapis.
+ * Source: wiki du #1, page `Base`: *« The Base is a building that can currently only have
+ * up to 3 floors, depending on how much rebirths you have »*, avec des emplacements qui
+ * passent d'environ 10 a 31 au fil de la progression.
+ *
+ * Consequence de jeu, et c'est le coeur: le voleur doit MONTER pour atteindre le rare,
+ * pendant que son malus de vitesse et de saut le penalise. *« it is good to check what
+ * Brainrots are on each floor »*. La disposition verticale EST la defense.
+ */
+export const ETAGE_HAUTEUR = 3.2
+export const SLOTS_PAR_ETAGE = 6
+export const ETAGES_MAX = 3
+
+/** Les etages se debloquent a la collecte. Seuils en nombre d'objets recuperes. */
+export const SEUILS_ETAGE = [0, 10, 25] as const
+
+export function etagesOuverts(objetsCollectes: number): number {
+  let n = 1
+  for (let i = 1; i < SEUILS_ETAGE.length; i++) if (objetsCollectes >= SEUILS_ETAGE[i]) n = i + 1
+  return Math.min(n, ETAGES_MAX)
+}
+
+export function placesOuvertes(objetsCollectes: number): number {
+  return etagesOuverts(objetsCollectes) * SLOTS_PAR_ETAGE
+}
+
+/** Plafond absolu d'objets visibles sur une base. */
+export const PLOT_MAX_OBJETS = SLOTS_PAR_ETAGE * ETAGES_MAX
+
+/**
+ * Position d'un emplacement dans le batiment. Les objets sont ranges du plus RARE au
+ * plus commun, donc le plus convoite finit en HAUT: le voleur doit grimper pour l'avoir.
+ */
+export function slotPosition(slot: number): { dx: number; dy: number; dz: number } {
+  const etage = Math.floor(slot / SLOTS_PAR_ETAGE)
+  const k = slot % SLOTS_PAR_ETAGE
+  const a = (k / SLOTS_PAR_ETAGE) * Math.PI * 2
+  return { dx: Math.cos(a) * 1.15, dy: 0.55 + etage * ETAGE_HAUTEUR, dz: Math.sin(a) * 1.15 }
+}
 /** Centre de la scene: 25 parcelles = 80x80 m. */
 export const CENTRE = { x: 40, z: 40 }
 

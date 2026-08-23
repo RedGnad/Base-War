@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, AvatarBase, timers } from '@dcl/
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
-import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition } from '../shared/schemas'
+import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { jour, viderJournal } from './journal'
 
@@ -32,7 +32,7 @@ type Base = {
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
 }
-type Profil = { coins: number; items: number[]; alertes?: object[] }
+type Profil = { coins: number; items: number[]; collectes?: number; alertes?: object[] }
 
 const bases = new Map<string, Base>()
 const profils = new Map<string, Profil>()
@@ -58,13 +58,23 @@ function presents(): Set<string> {
   return s
 }
 
+/**
+ * Les objets sont ranges du plus COMMUN au plus RARE. Comme la position d'un emplacement
+ * monte avec son index, le plus convoite finit a l'etage le plus haut: le voleur doit
+ * grimper pour l'avoir, ralenti par son malus. C'est la defense par la geometrie.
+ */
+function ranger(items: number[]): number[] {
+  return [...items].sort((x, y) => x - y)
+}
+
 function publier(b: Base, ici?: Set<string>): void {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return
+  c.etages = etagesOuverts(profils.get(b.address)?.collectes ?? 0)
   c.index = b.place
   c.ownerId = b.address
   c.ownerName = b.name
-  c.items = [...b.items]
+  c.items = ranger(b.items)
   c.ownerPresent = (ici ?? presents()).has(b.address)
 }
 
@@ -76,7 +86,7 @@ function creerBase(address: string, name: string, items: number[], lastSeen: num
   const e = engine.addEntity()
   const p = plotPosition(place)
   Transform.create(e, { position: Vector3.create(p.x, 0, p.z) })
-  Plot.create(e, { index: place, ownerId: address, ownerName: name, items: [...items], ownerPresent: false, lockedUntil: 0 })
+  Plot.create(e, { etages: 1, index: place, ownerId: address, ownerName: name, items: ranger(items), ownerPresent: false, lockedUntil: 0 })
   syncEntity(e, [Plot.componentId, Transform.componentId])
   const b: Base = { address, name, items: [...items], place, entity: e, lastSeen }
   bases.set(address, b)
@@ -142,7 +152,12 @@ export async function accueillir(address: string): Promise<void> {
   const stocke: Profil | null = brut ? JSON.parse(brut) : null
   // Objet de bienvenue au TOUT PREMIER passage seulement: une base n'est jamais nue.
   const items = stocke?.items && stocke.items.length > 0 ? stocke.items : [0]
-  const profil: Profil = { coins: stocke?.coins ?? 0, items: [...items] }
+  const profil: Profil = {
+    coins: stocke?.coins ?? 0,
+    items: [...items],
+    collectes: stocke?.collectes ?? items.length,
+    alertes: stocke?.alertes ?? []
+  }
   profils.set(address, profil)
   profilsSales.add(address)
 
@@ -194,12 +209,17 @@ export function auRevoir(address: string): void {
 export async function poserObjet(address: string, rarity: number): Promise<boolean> {
   const profil = profils.get(address)
   if (!profil) return false
+  const ouvertes = placesOuvertes(profil.collectes ?? 0)
   const b = bases.get(address)
-  if (b && b.items.length >= PLOT_MAX_OBJETS) {
-    jour(`base de ${b.name} pleine (${PLOT_MAX_OBJETS})`)
+  if (profil.items.length >= ouvertes) {
+    jour(`base de ${b?.name ?? address.slice(0, 8)} pleine (${ouvertes} places ouvertes)`)
     return false
   }
   profil.items.push(rarity)
+  profil.collectes = (profil.collectes ?? 0) + 1
+  const avant = etagesOuverts((profil.collectes ?? 1) - 1)
+  const apres = etagesOuverts(profil.collectes ?? 1)
+  if (apres > avant) jour(`${b?.name ?? address.slice(0, 8)} ouvre l'etage ${apres} (${profil.collectes} objets collectes)`)
   profilsSales.add(address)
   if (b) { b.items = [...profil.items]; basesSales.add(address); publier(b) }
   jour(`rarete ${rarity} posee par ${address.slice(0, 8)} (${profil.items.length} objets)`)
@@ -256,7 +276,7 @@ export function retirerObjet(address: string, index: number): number | null {
 export function ajouterObjet(address: string, rarity: number): boolean {
   const prof = profils.get(address)
   if (!prof) return false
-  if (prof.items.length >= PLOT_MAX_OBJETS) return false
+  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0)) return false
   prof.items.push(rarity)
   profilsSales.add(address)
   const b = bases.get(address)

@@ -3,7 +3,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Plot, PLOT_MAX_OBJETS } from '../shared/schemas'
+import { Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
 import { voler } from './theft'
 
@@ -16,7 +16,7 @@ import { voler } from './theft'
  * donc une base retiree ne coute rien.
  */
 
-type Vue = { socle: Entity; etiquette: Entity; objets: Entity[]; signature: string; ownerId: string }
+type Vue = { socle: Entity; etiquette: Entity; planchers: Entity[]; objets: Entity[]; signature: string; ownerId: string }
 const vues = new Map<number, Vue>()   // clef = entite synchronisee du Plot
 
 function creerVue(x: number, z: number): Vue {
@@ -39,12 +39,27 @@ function creerVue(x: number, z: number): Vue {
   Billboard.create(etiquette, {})
   TextShape.create(etiquette, { text: '', fontSize: 3, textColor: Color4.White() })
 
+  // Les planchers des etages superieurs. Ils apparaissent quand le joueur les debloque:
+  // un batiment qui pousse est une progression VISIBLE de loin, pour lui et pour les autres.
+  const planchers: Entity[] = []
+  for (let e = 1; e < ETAGES_MAX; e++) {
+    const f = engine.addEntity()
+    Transform.create(f, {
+      position: Vector3.create(x, 0.15 + e * ETAGE_HAUTEUR, z),
+      scale: Vector3.create(0, 0, 0)
+    })
+    MeshRenderer.setBox(f)
+    MeshCollider.setBox(f)
+    Material.setPbrMaterial(f, { albedoColor: Color4.fromHexString('#525c6bff') })
+    planchers.push(f)
+  }
+
   const objets: Entity[] = []
   for (let k = 0; k < PLOT_MAX_OBJETS; k++) {
     const o = engine.addEntity()
-    const a = (k / PLOT_MAX_OBJETS) * Math.PI * 2
+    const d = slotPosition(k)
     Transform.create(o, {
-      position: Vector3.create(x + Math.cos(a) * 1.0, -5, z + Math.sin(a) * 1.0),
+      position: Vector3.create(x + d.dx, -5, z + d.dz),
       scale: Vector3.create(0.45, 0.45, 0.45)
     })
     MeshRenderer.setBox(o)
@@ -58,12 +73,13 @@ function creerVue(x: number, z: number): Vue {
     })
     objets.push(o)
   }
-  return { socle, etiquette, objets, signature: '', ownerId: '' }
+  return { socle, etiquette, planchers, objets, signature: '', ownerId: '' }
 }
 
 function detruireVue(v: Vue): void {
   engine.removeEntity(v.socle)
   engine.removeEntity(v.etiquette)
+  for (const f of v.planchers) engine.removeEntity(f)
   for (const o of v.objets) engine.removeEntity(o)
 }
 
@@ -95,7 +111,7 @@ export function setupPlots(): void {
         vues.set(id, v)
       }
 
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.items.join(',')}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${p.items.join(',')}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
@@ -111,12 +127,18 @@ export function setupPlots(): void {
         albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
       })
 
+      // Les planchers debloques apparaissent, les autres restent a l'echelle zero.
+      for (let e = 0; e < v.planchers.length; e++) {
+        const ft = Transform.getMutableOrNull(v.planchers[e])
+        if (ft !== null) ft.scale = (e + 2) <= p.etages ? Vector3.create(3.0, 0.25, 3.0) : Vector3.create(0, 0, 0)
+      }
+
       for (let k = 0; k < v.objets.length; k++) {
         const tr = Transform.getMutableOrNull(v.objets[k])
         if (tr === null) continue
-        const a = (k / PLOT_MAX_OBJETS) * Math.PI * 2
+        const d = slotPosition(k)
         if (k < p.items.length) {
-          tr.position = Vector3.create(t.position.x + Math.cos(a) * 1.0, 0.55, t.position.z + Math.sin(a) * 1.0)
+          tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
           const c = Color4.fromHexString(rarity(p.items[k]).couleur + 'ff')
           Material.setPbrMaterial(v.objets[k], { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.35 })
         } else {
