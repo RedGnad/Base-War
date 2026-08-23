@@ -105,7 +105,15 @@ export async function attribuerPlot(address: string): Promise<number> {
   if (libre === -1) libre = plots.findIndex((p) => !presents().has(p.ownerId))
   if (libre === -1) libre = 0
 
-  plots[libre] = { ownerId: address, ownerName: nomDe(address), items: plots[libre].items ?? [] }
+  // OBJET DE BIENVENUE: un emplacement fraichement pris n'est JAMAIS nu.
+  // Sans lui, on prend un emplacement et on repart avec un socle vide a son nom,
+  // ce qui donne exactement l'image d'abandon que la regle d'eligibilite punit.
+  const existants = plots[libre].items ?? []
+  plots[libre] = {
+    ownerId: address,
+    ownerName: nomDe(address),
+    items: existants.length > 0 ? existants : [0]
+  }
   profil = { plotIndex: libre, coins: profil?.coins ?? 0 }
   profils.set(address, profil)
   plotsSales.add(libre)

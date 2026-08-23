@@ -10,7 +10,7 @@ import { rarity } from '../shared/loot-table'
  * il ne cree, ne deplace et ne supprime aucun objet de jeu de son propre chef.
  */
 
-type Vue = { socle: Entity; etiquette: Entity; objets: Entity[]; signature: string }
+type Vue = { socle: Entity; etiquette: Entity; balise: Entity; objets: Entity[]; signature: string }
 const vues: Vue[] = []
 
 function creerVue(i: number): Vue {
@@ -30,6 +30,15 @@ function creerVue(i: number): Vue {
   Billboard.create(etiquette, {})
   TextShape.create(etiquette, { text: 'libre', fontSize: 3, textColor: Color4.fromHexString('#8890a0ff') })
 
+  const balise = engine.addEntity()
+  Transform.create(balise, { position: Vector3.create(pos.x, 1.2, pos.z), scale: Vector3.create(0, 0, 0) })
+  MeshRenderer.setBox(balise)
+  Material.setPbrMaterial(balise, {
+    albedoColor: Color4.fromHexString('#ffd166ff'),
+    emissiveColor: Color4.fromHexString('#ffd166ff'),
+    emissiveIntensity: 0.8
+  })
+
   const objets: Entity[] = []
   for (let k = 0; k < PLOT_MAX_OBJETS; k++) {
     const o = engine.addEntity()
@@ -41,7 +50,7 @@ function creerVue(i: number): Vue {
     MeshRenderer.setBox(o)
     objets.push(o)
   }
-  return { socle, etiquette, objets, signature: '' }
+  return { socle, etiquette, balise, objets, signature: '' }
 }
 
 export function setupPlots(): void {
@@ -74,17 +83,26 @@ export function setupPlots(): void {
       const t = TextShape.getMutableOrNull(v.etiquette)
       if (t !== null) {
         if (p.ownerId === '') {
-          t.text = 'libre'
-          t.textColor = Color4.fromHexString('#8890a0ff')
+          // Un emplacement libre est une INVITATION, pas un trou. La difference decide
+          // si un visiteur seul voit un lieu concu ou un terrain abandonne.
+          t.text = 'LIBRE\ncasse une caisse\npour le prendre'
+          t.textColor = Color4.fromHexString('#ffd166ff')
         } else {
           // Le nom reste affiche meme absent: un emplacement occupe n'est jamais vide a l'ecran.
           t.text = p.ownerPresent ? p.ownerName : `${p.ownerName}\n(absent)`
           t.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
         }
       }
+      // Un socle libre s'eclaire faiblement: il se lit comme disponible, pas comme mort.
+      const libre = p.ownerId === ''
       Material.setPbrMaterial(v.socle, {
-        albedoColor: Color4.fromHexString(p.ownerId === '' ? '#3a3f4bff' : (p.ownerPresent ? '#4a5568ff' : '#40454fff'))
+        albedoColor: Color4.fromHexString(libre ? '#4a4326ff' : (p.ownerPresent ? '#4a5568ff' : '#40454fff')),
+        emissiveColor: libre ? Color4.fromHexString('#ffd166ff') : undefined,
+        emissiveIntensity: libre ? 0.12 : 0
       })
+      // Balise verticale sur un emplacement libre: visible de loin, invite a s'approcher.
+      const bal = Transform.getMutableOrNull(v.balise)
+      if (bal !== null) bal.scale = libre ? Vector3.create(0.18, 2.4, 0.18) : Vector3.create(0, 0, 0)
 
       const pos = plotPosition(p.index)
       for (let k = 0; k < v.objets.length; k++) {
