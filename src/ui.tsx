@@ -34,7 +34,8 @@ const uiComponent = () => (
       <Label value={`serveur: ${view.serverAlive ? 'VIVANT' : 'silencieux'}`} fontSize={12}
              color={view.serverAlive ? Color4.Green() : Color4.Red()} />
       <Label value={`caisse: ${crateView.hits} / ${crateView.maxHits}`} fontSize={15} color={Color4.White()} />
-      <Label value={`objets: ${view.objets}`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
+      <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
+             fontSize={18} color={Color4.fromHexString('#ffd166ff')} />
       <Label value={theftView.malusJusqua > 0 ? 'MALUS VOLEUR actif' : (theftView.refus === '' ? '' : theftView.refus)}
              fontSize={12}
              color={theftView.malusJusqua > 0 ? Color4.fromHexString('#ff6060ff') : Color4.Gray()} />

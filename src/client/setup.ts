@@ -4,7 +4,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
-import { PlayerTaps, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
+import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
@@ -18,7 +18,8 @@ export const view = {
   serverAlive: false,
   lastBeatValue: 0,
   lastBeatSeenAt: 0,
-  malusActif: false
+  malusActif: false,
+  etages: 1
 }
 
 /** SPIKE 1.2: avatars de mesure. 0 = mesure de reference. */
@@ -65,14 +66,16 @@ export function startClient(): void {
       myAddress = me.userId.toLowerCase()
       console.log(`[CLIENT] mon adresse: ${myAddress}`)
     }
-    for (const [, taps] of engine.getEntitiesWith(PlayerTaps)) {
-      if (taps.playerId.toLowerCase() === myAddress) {
-        if (taps.count !== view.objets) {
-          console.log(`[CLIENT] total objets restitue: ${taps.count}`)
-          view.objets = taps.count
-        }
-        return
+    // Source de verite: MA base, publiee par le serveur. Le compteur du spike 1.1
+    // (PlayerTaps) est retire: il comptait les taps, pas les objets, et il mentait.
+    for (const [, p] of engine.getEntitiesWith(Plot)) {
+      if (p.ownerId.toLowerCase() !== myAddress) continue
+      if (p.items.length !== view.objets || p.etages !== view.etages) {
+        view.objets = p.items.length
+        view.etages = p.etages
+        console.log(`[CLIENT] ma base: ${view.objets} objets, ${view.etages} etage(s)`)
       }
+      return
     }
   })
 
