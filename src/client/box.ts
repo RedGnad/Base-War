@@ -1,10 +1,14 @@
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
-  InputAction, inputSystem, Tween, EasingFunction, Entity, AudioSource
+  InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
+import { Plot } from '../shared/schemas'
 import { rarity, boite, RARITIES } from '../shared/loot-table'
+
+let monAdresse = ''
 
 /**
  * OUVERTURE D'UNE BOITE. C'est LE moment du jeu: la donnee dit qu'une boucle entiere
@@ -61,6 +65,12 @@ export function setupBox(): void {
 
   room.onMessage('inventory', (d) => { boxView.stock = [...d.boites] })
 
+  engine.addSystem(() => {
+    if (monAdresse !== '') return
+    const me = getPlayer()
+    if (me !== null) monAdresse = me.userId.toLowerCase()
+  })
+
   room.onMessage('boxResult', (d) => {
     // On lance la roulette VERS le resultat serveur. Duree fixe, ralentissement continu.
     boxView.roule = true
@@ -72,7 +82,16 @@ export function setupBox(): void {
     restant = 2.6
     prochainPas = 0.045
     pasCourant = 0
+
+    // On memorise ou etait la boite AVANT de la ranger: c'est de la que part l'objet.
+    const t = Transform.getOrNull(boite3d)
+    const depart = t ? Vector3.create(t.position.x, t.position.y, t.position.z) : null
     rangerBoite()
+    if (depart !== null && d.etat === 'expose') {
+      // L'envoi part a la FIN de la roulette, pas avant: sinon on voit le resultat
+      // filer vers la base pendant qu'on attend encore de savoir ce que c'est.
+      timers.setTimeout(() => envoyerVersBase(depart, d.rarity), 2700)
+    }
   })
 
   engine.addSystem((dt: number) => {
@@ -130,8 +149,56 @@ export function setupBox(): void {
 }
 
 function rangerBoite(): void {
+  // SUPPRIMER LE TWEEN D'ABORD. Celui du dernier coup continue d'ecrire l'echelle a
+  // chaque image et ecrase le masquage: la boite restait plantee au sol.
+  Tween.deleteFrom(boite3d)
   const t = Transform.getMutableOrNull(boite3d)
   if (t !== null) { t.scale = Vector3.create(0, 0, 0); t.position = Vector3.create(0, -10, 0) }
+}
+
+/**
+ * L'OBJET PART VERS LA BASE. Comportement de la reference:
+ * *« You can buy one, and the Brainrot will go to your base »*.
+ * Sans ce trajet, rien ne relie visuellement ce qu'on vient d'ouvrir a l'endroit ou
+ * ca se met a rapporter.
+ */
+function envoyerVersBase(depart: Vector3, rarete: number): void {
+  const cible = positionDeMaBase()
+  if (cible === null) return
+
+  const e = engine.addEntity()
+  const r = rarity(rarete)
+  Transform.create(e, { position: depart, scale: Vector3.create(r.taille, r.taille, r.taille) })
+  MeshRenderer.setBox(e)
+  const c = Color4.fromHexString(r.couleur + 'ff')
+  Material.setPbrMaterial(e, { albedoColor: c, emissiveColor: c, emissiveIntensity: 1.2 })
+
+  // Il passe PAR LE HAUT: une trajectoire rectiligne se lit mal et traverse les murs.
+  const haut = Vector3.create((depart.x + cible.x) / 2, Math.max(depart.y, cible.y) + 5, (depart.z + cible.z) / 2)
+  Tween.createOrReplace(e, {
+    mode: Tween.Mode.Move({ start: depart, end: haut }),
+    duration: 420,
+    easingFunction: EasingFunction.EF_EASEOUTQUAD
+  })
+  TweenSequence.createOrReplace(e, {
+    sequence: [{
+      mode: Tween.Mode.Move({ start: haut, end: cible }),
+      duration: 520,
+      easingFunction: EasingFunction.EF_EASEINQUAD
+    }]
+  })
+  timers.setTimeout(() => engine.removeEntity(e), 1100)
+}
+
+/** Position de MA base, lue dans l'etat autoritaire. */
+function positionDeMaBase(): Vector3 | null {
+  if (monAdresse === '') return null
+  for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
+    if (p.ownerId.toLowerCase() !== monAdresse) continue
+    const t = Transform.get(ent)
+    return Vector3.create(t.position.x, 1.4, t.position.z)
+  }
+  return null
 }
 
 /** Fait apparaitre la boite devant le joueur et arme les trois coups. */
