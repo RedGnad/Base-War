@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, AvatarBase, timers } from '@dcl/
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
-import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes, coutRebirth, REBIRTH_MAX } from '../shared/schemas'
+import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition, etagesOuverts, placesOuvertes, coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { jour, viderJournal } from './journal'
 import { room } from '../shared/messages'
@@ -329,16 +329,27 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
   if (!p) return { ok: false, raison: 'profil inconnu' }
   const palier = p.rebirths ?? 0
   if (palier >= REBIRTH_MAX) return { ok: false, raison: 'palier maximum atteint' }
-  const cout = coutRebirth(palier)
-  if (p.coins < cout) return { ok: false, raison: `il te faut ${Math.ceil(cout - p.coins)} pieces de plus` }
+  const exige = paliers(palier)
+  if (p.coins < exige.cout) return { ok: false, raison: `il te faut ${Math.ceil(exige.cout - p.coins)} pieces de plus` }
 
-  p.coins -= cout
+  // Le palier exige aussi de POSSEDER un objet assez rare: sans ca on pourrait monter
+  // en accumulant du commun, et la rarete perdrait tout son sens.
+  const meilleur = p.items.length === 0 ? -1 : Math.max(...p.items)
+  if (meilleur < exige.rareteMin) {
+    return { ok: false, raison: `il te faut un objet de rarete ${exige.rareteMin} ou mieux` }
+  }
+
+  // SACRIFICE: le palier prend les pieces ET les objets, sauf les meilleurs qu'on garde.
+  // C'est ce qui rend le palier signifiant plutot qu'automatique.
+  p.coins -= exige.cout
+  const tries = [...p.items].sort((a, b) => b - a)
+  p.items = tries.slice(0, exige.garde)
   p.rebirths = palier + 1
   profilsSales.add(address)
   const b = bases.get(address)
-  if (b) { basesSales.add(address); publier(b) }
+  if (b) { b.items = [...p.items]; basesSales.add(address); publier(b) }
   const et = etagesOuverts(p.collectes ?? 0, p.rebirths)
-  jour(`${b?.name ?? address.slice(0, 8)} franchit le palier ${p.rebirths} (-${cout} pieces, ${et} etages)`)
+  jour(`${b?.name ?? address.slice(0, 8)} franchit le palier ${p.rebirths}: -${exige.cout} pieces, garde ${exige.garde} objet(s), revenu x${exige.multiplicateur}, ${et} etages`)
   return { ok: true, palier: p.rebirths, etages: et }
 }
 
@@ -365,7 +376,9 @@ export function startPlots(): void {
       let gain = 0
       for (const r of profil.items) gain += GAIN_PAR_SECONDE[r] ?? 1
       if (gain === 0) continue
-      profil.coins += gain * secondes
+      // Le multiplicateur des paliers s'applique ici: c'est lui qui fait ACCELERER la
+      // boucle. Sans lui, chaque palier ne ferait que reculer le joueur.
+      profil.coins += gain * multiplicateurRevenu(profil.rebirths ?? 0) * secondes
       profilsSales.add(address)
     }
   })
@@ -379,10 +392,13 @@ export function startPlots(): void {
     for (const [address, p] of profils) {
       if (!ici.has(address)) continue
       const palier = p.rebirths ?? 0
+      const suivant = palier >= REBIRTH_MAX ? null : paliers(palier)
       void room.send('wallet', {
         coins: Math.floor(p.coins),
-        prochainPalier: palier >= REBIRTH_MAX ? 0 : coutRebirth(palier),
-        palier
+        prochainPalier: suivant ? suivant.cout : 0,
+        palier,
+        rareteMin: suivant ? suivant.rareteMin : 0,
+        multiplicateur: multiplicateurRevenu(palier)
       }, { to: [address] })
     }
   }, 1500)

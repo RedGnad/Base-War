@@ -51,7 +51,7 @@ const uiComponent = () => (
     >
       <Label value={`ma base: ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}`}
              fontSize={17} color={Color4.fromHexString('#ffd166ff')} />
-      <Label value={`${theftView.coins} pieces${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · serveur silencieux'}`}
+      <Label value={`${theftView.coins} pieces${theftView.multiplicateur > 1 ? ' x' + theftView.multiplicateur : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · serveur silencieux'}`}
              fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
     </UiEntity>
 

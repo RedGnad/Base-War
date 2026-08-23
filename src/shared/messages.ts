@@ -30,7 +30,7 @@ export const MESSAGES = {
    */
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
-  wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int }),
+  wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int }),
 
   /** client -> serveur: je franchis un palier. Le serveur verifie que j'ai les pieces. */
   rebirth: Schemas.Map({}),

@@ -141,11 +141,30 @@ export const ETAGES_MAX = 3
  * C'est ce qui donne un BUT aux pieces. Sans lui elles s'accumulent sans rien acheter,
  * et le gain passif ne sert a rien.
  */
-export const COUT_REBIRTH = [500, 2500, 12000, 60000] as const
-export const REBIRTH_MAX = COUT_REBIRTH.length
+/**
+ * Page `Rebirth` du wiki, mot pour mot: *« takes all your brainrots and most of your money,
+ * but gives [...] extra slots and money multiplier »*, et *« the requirements begin to
+ * include higher income and RARER BRAINROTS »*.
+ *
+ * Donc le palier coute DES DEUX COTES (pieces ET objets) et paie DES DEUX COTES
+ * (multiplicateur de revenu, places, verrou). Un cout en pieces seul serait trop maigre:
+ * c'est le sacrifice des objets qui rend le palier signifiant, et le multiplicateur qui
+ * fait accelerer la boucle au lieu de la faire stagner.
+ */
+export const PALIERS = [
+  { cout: 500,   rareteMin: 1, multiplicateur: 2,  garde: 1 },
+  { cout: 2500,  rareteMin: 2, multiplicateur: 4,  garde: 1 },
+  { cout: 12000, rareteMin: 3, multiplicateur: 9,  garde: 2 },
+  { cout: 60000, rareteMin: 4, multiplicateur: 20, garde: 2 }
+] as const
+export const REBIRTH_MAX = PALIERS.length
 
-export function coutRebirth(palier: number): number {
-  return COUT_REBIRTH[Math.min(palier, COUT_REBIRTH.length - 1)]
+export function paliers(n: number) { return PALIERS[Math.min(n, PALIERS.length - 1)] }
+export function coutRebirth(palier: number): number { return paliers(palier).cout }
+
+/** Multiplicateur de revenu cumule apres n paliers. */
+export function multiplicateurRevenu(n: number): number {
+  return n <= 0 ? 1 : PALIERS[Math.min(n, PALIERS.length) - 1].multiplicateur
 }
 
 /**

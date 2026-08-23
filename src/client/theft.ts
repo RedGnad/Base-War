@@ -14,6 +14,8 @@ export const theftView = {
   coins: 0,
   palier: 0,
   prochainPalier: 0,
+  rareteMin: 0,
+  multiplicateur: 1,
   alerte: '',
   alerteCouleur: '#ffffff',
   alerteJusqua: 0,
@@ -71,6 +73,8 @@ export function setupTheft(): void {
     theftView.coins = d.coins
     theftView.palier = d.palier
     theftView.prochainPalier = d.prochainPalier
+    theftView.rareteMin = d.rareteMin
+    theftView.multiplicateur = d.multiplicateur
   })
 
   room.onMessage('rebirthDone', (d) => {
