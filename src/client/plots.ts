@@ -6,7 +6,7 @@ import {
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition,
-  rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR
+  rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR, TREMIE_LARGEUR
 } from '../shared/schemas'
 import { rarity } from '../shared/loot-table'
 import { voler } from './theft'
@@ -72,7 +72,10 @@ function construireEtage(x: number, z: number, etage: number): Etage {
   const h = MUR_HAUTEUR
   const ep = MUR_EPAISSEUR
 
-  const plancher = bloc(x, y + 0.12, z, c, 0.24, c, PLANCHER)
+  // LE PLANCHER LAISSE UNE BANDE OUVERTE cote rampe. Sans cette tremie, la rampe monte
+  // dans le plafond et les etages sont inaccessibles: c'est le bug signale.
+  // Une seule dalle, decalee, plutot qu'un decoupage complique.
+  const plancher = bloc(x - TREMIE_LARGEUR / 2, y + 0.12, z, c - TREMIE_LARGEUR, 0.24, c, PLANCHER)
   // Les trois cotes sont VITRES: on voit le butin de partout, a tous les etages.
   // Seuls les montants et le linteau restent pleins, pour que le batiment garde une
   // structure lisible et que l'entree se distingue.
@@ -223,7 +226,7 @@ export function setupPlots(): void {
           const tr = Transform.getMutableOrNull(ent)
           if (tr !== null) tr.scale = ouvert ? Vector3.create(sx, sy, sz) : Vector3.create(0, 0, 0)
         }
-        mettre(et.plancher, BASE_COTE, 0.24, BASE_COTE)
+        mettre(et.plancher, BASE_COTE - TREMIE_LARGEUR, 0.24, BASE_COTE)
         mettre(et.murs[0], BASE_COTE, MUR_HAUTEUR, MUR_EPAISSEUR)
         mettre(et.murs[1], MUR_EPAISSEUR, MUR_HAUTEUR, BASE_COTE)
         mettre(et.murs[2], MUR_EPAISSEUR, MUR_HAUTEUR, BASE_COTE)

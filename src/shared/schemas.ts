@@ -253,9 +253,18 @@ export function slotPosition(slot: number): { dx: number; dy: number; dz: number
   }
 }
 
-/** L'escalier monte le long du mur droit, centre pour rester dans l'emprise. */
+/**
+ * La rampe monte DANS la tremie, la bande de plancher laissee libre cote +X.
+ * Elle doit etre centree sur cette bande, sinon elle debouche sous une dalle.
+ */
+export const TREMIE_LARGEUR = 2.6
+
 export function rampePosition(etage: number): { dx: number; dy: number; dz: number } {
-  return { dx: BASE_COTE / 2 - 0.85, dy: etage * ETAGE_HAUTEUR + ETAGE_HAUTEUR / 2, dz: 0 }
+  return {
+    dx: BASE_COTE / 2 - TREMIE_LARGEUR / 2,
+    dy: etage * ETAGE_HAUTEUR + ETAGE_HAUTEUR / 2,
+    dz: 0
+  }
 }
 /** Centre de la scene: 25 parcelles = 80x80 m. */
 export const CENTRE = { x: 40, z: 40 }
