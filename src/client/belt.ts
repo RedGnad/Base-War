@@ -3,7 +3,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Belt, TAPIS_LONGUEUR, CENTRE, FOSSE_PROFONDEUR } from '../shared/schemas'
+import { Belt, TAPIS_LONGUEUR, CENTRE, TAPIS_HAUTEUR } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { boite } from '../shared/loot-table'
 
@@ -18,41 +18,65 @@ type Vue = { objet: Entity; etiquette: Entity }
 const vues = new Map<number, Vue>()
 
 export function setupBelt(): void {
-  // Le tapis lui-meme: une bande large qui traverse le lieu. C'est le repere central.
+  // LE TAPIS, SURELEVE sur des pieds. Deux raisons: il se lit comme un convoyeur et
+  // non comme un tapis peint au sol, et surtout il laisse la place a une VRAIE fosse
+  // en dessous (on ne peut pas creuser sous y=0 dans Decentraland).
   const bande = engine.addEntity()
   Transform.create(bande, {
-    position: Vector3.create(CENTRE.x, 0.5, CENTRE.z),
-    scale: Vector3.create(TAPIS_LONGUEUR + 2, 0.9, 2.6)
+    position: Vector3.create(CENTRE.x, TAPIS_HAUTEUR, CENTRE.z),
+    scale: Vector3.create(TAPIS_LONGUEUR + 2, 0.35, 2.6)
   })
   MeshRenderer.setBox(bande)
   MeshCollider.setBox(bande)
   Material.setPbrMaterial(bande, { albedoColor: Color4.fromHexString('#8e2b2bff'), roughness: 0.8 })
 
-  // LA FOSSE, exactement au bout du tapis. Une boite non achetee y bascule.
-  // On ne peut pas creuser le sol (Decentraland interdit d'aller sous y=0), donc on
-  // construit un PUITS EN SURFACE: quatre parois qui montent, ouvert dessus, avec un
-  // fond noir. Le regard lit un trou parce qu'il en voit l'interieur sombre.
-  const bx = CENTRE.x + TAPIS_LONGUEUR / 2 + 0.2
-  const RAYON = 2.0
-  const HAUT = 1.05        // juste sous le niveau du tapis, pour que la boite y plonge
+  // Pieds et rambardes: sans eux la bande flotte et le regard ne comprend pas la hauteur.
+  for (let i = -3; i <= 3; i++) {
+    const pied = engine.addEntity()
+    Transform.create(pied, {
+      position: Vector3.create(CENTRE.x + i * ((TAPIS_LONGUEUR + 2) / 7), TAPIS_HAUTEUR / 2, CENTRE.z),
+      scale: Vector3.create(0.3, TAPIS_HAUTEUR, 0.3)
+    })
+    MeshRenderer.setBox(pied)
+    MeshCollider.setBox(pied)
+    Material.setPbrMaterial(pied, { albedoColor: Color4.fromHexString('#3f4650ff'), roughness: 0.9 })
+  }
+  for (const dz of [-1.42, 1.42]) {
+    const r = engine.addEntity()
+    Transform.create(r, {
+      position: Vector3.create(CENTRE.x, TAPIS_HAUTEUR + 0.3, CENTRE.z + dz),
+      scale: Vector3.create(TAPIS_LONGUEUR + 2, 0.24, 0.16)
+    })
+    MeshRenderer.setBox(r)
+    Material.setPbrMaterial(r, { albedoColor: Color4.fromHexString('#5a6270ff'), roughness: 0.85 })
+  }
+
+  // LA FOSSE, sous le bout du tapis. Maintenant que le tapis est a 2,2 m, la boite
+  // tombe de deux metres dans un renfoncement ouvert: ca se lit enfin comme un trou.
+  const bx = CENTRE.x + TAPIS_LONGUEUR / 2 + 1.3
+  const R = 2.2
 
   const fond = engine.addEntity()
-  Transform.create(fond, { position: Vector3.create(bx, 0.04, CENTRE.z), scale: Vector3.create(RAYON * 2, 0.08, RAYON * 2) })
+  Transform.create(fond, { position: Vector3.create(bx, 0.1, CENTRE.z), scale: Vector3.create(R * 2, 0.2, R * 2) })
   MeshRenderer.setBox(fond)
-  Material.setPbrMaterial(fond, { albedoColor: Color4.fromHexString('#0a0908ff'), roughness: 1 })
+  MeshCollider.setBox(fond)
+  Material.setPbrMaterial(fond, { albedoColor: Color4.fromHexString('#0d0c0aff'), roughness: 1 })
 
+  // Parois basses (0,9 m): assez pour cacher le fond de loin et lire un renfoncement,
+  // assez basses pour qu'on voie la boite s'y ecraser.
+  const H = 0.9
   for (const [dx, dz, sx, sz] of [
-    [0, RAYON, RAYON * 2, 0.18], [0, -RAYON, RAYON * 2, 0.18],
-    [RAYON, 0, 0.18, RAYON * 2], [-RAYON, 0, 0.18, RAYON * 2]
+    [0, R, R * 2, 0.2], [0, -R, R * 2, 0.2],
+    [R, 0, 0.2, R * 2], [-R, 0, 0.2, R * 2]
   ]) {
     const m = engine.addEntity()
     Transform.create(m, {
-      position: Vector3.create(bx + dx, HAUT / 2, CENTRE.z + dz),
-      scale: Vector3.create(sx, HAUT, sz)
+      position: Vector3.create(bx + dx, H / 2, CENTRE.z + dz),
+      scale: Vector3.create(sx, H, sz)
     })
     MeshRenderer.setBox(m)
     MeshCollider.setBox(m)
-    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#2a2622ff'), roughness: 0.95 })
+    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#3a342cff'), roughness: 0.95 })
   }
 
   engine.addSystem(() => {

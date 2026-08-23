@@ -6,7 +6,6 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { spawnTestAvatars } from '../spikes/avatars'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from '../spikes/locomotion'
 import { setupBox } from './box'
 import { setupPlots } from './plots'
@@ -24,15 +23,15 @@ export const view = {
   etages: 1
 }
 
-/** SPIKE 1.2: avatars de mesure. 0 = mesure de reference. */
-export const SPIKE_AVATARS = 8
-
 export function startClient(): void {
   console.log('[CLIENT] demarrage')
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
-  if (SPIKE_AVATARS > 0) spawnTestAvatars(SPIKE_AVATARS)
   setupTouchHud()
   reportPlatform()
+  // VITESSE DE BASE RELEVEE. La camera mobile n'est PAS pilotable par la scene
+  // (`screenDelta` vaut 0 sur telephone), donc le seul levier de confort est la
+  // locomotion. Le lieu fait 80 m: a 8 m/s il faut 10 s pour le traverser, et un juge
+  // n'a que 3 minutes. Le malus du voleur garde son ratio mesure (-41 %).
   applyThiefPenalty(false)
 
   // HEURE FIXE. Sans ca le ciel suit l'heure du monde: un juge qui visite la nuit
@@ -46,26 +45,6 @@ export function startClient(): void {
   setupTheft()
   setupBelt()
   setupSlots()
-
-  // SPIKE 1.3: caisse rouge qui bascule le malus du voleur, pour le juger a l'oeil.
-  const toggle = engine.addEntity()
-  Transform.create(toggle, { position: Vector3.create(CENTRE.x + 6, 1, CENTRE.z), scale: Vector3.create(1, 1, 1) })
-  MeshRenderer.setBox(toggle)
-  MeshCollider.setBox(toggle)
-  Material.setPbrMaterial(toggle, { albedoColor: Color4.fromHexString('#c03030ff') })
-  PointerEvents.create(toggle, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Basculer le malus voleur' } }
-    ]
-  })
-  let malus = false
-  engine.addSystem(() => {
-    if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, toggle)) {
-      malus = !malus
-      applyThiefPenalty(malus)
-      view.malusActif = malus
-    }
-  })
 
   // SOURCE DE VERITE: le composant synchronise, publie par le serveur des notre entree.
   let myAddress = ''

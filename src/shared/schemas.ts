@@ -110,17 +110,25 @@ export const PORTEE_ACHAT = 5
  * l'occasion de montrer ce qu'on vient de laisser passer.
  */
 export const CHUTE_FIN = 0.22        // part de course consacree a la chute
-export const FOSSE_PROFONDEUR = 1.0   // du tapis (1,15) au fond du puits (0,15)
+export const FOSSE_PROFONDEUR = 2.4   // du tapis (2,65) au fond de la fosse (0,25)
+
+/**
+ * Le tapis est SURELEVE. Au sol, aucune fosse n'est possible: Decentraland interdit
+ * de descendre sous y=0, donc le "trou" ne pouvait etre qu'un bac pose par-dessus, ce
+ * qui ne se lit pas. Sur pieds a 2,2 m, la chute fait 2 m dans un vrai renfoncement.
+ * Hauteur choisie pour rester a portee de main d'un avatar (1,8 m).
+ */
+export const TAPIS_HAUTEUR = 2.2
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const surTapis = Math.min(progres, 1)
   const x = CENTRE.x - TAPIS_LONGUEUR / 2 + surTapis * TAPIS_LONGUEUR
-  if (progres <= 1) return { x, y: 1.15, z: CENTRE.z }
+  if (progres <= 1) return { x, y: TAPIS_HAUTEUR + 0.45, z: CENTRE.z }
   // Chute VERTICALE, dans l'axe du tapis. Une derive laterale se lisait comme un
   // objet ejecte, pas comme un objet qui bascule dans un trou.
   // Acceleration en t au carre: une chute a vitesse constante n'a pas de poids.
   const t = Math.min((progres - 1) / CHUTE_FIN, 1)
-  return { x, y: 1.15 - t * t * FOSSE_PROFONDEUR, z: CENTRE.z }
+  return { x, y: TAPIS_HAUTEUR + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTRE.z }
 }
 
 /** Prix d'un article, croissant avec la rarete. */

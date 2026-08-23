@@ -7,10 +7,17 @@ import { getPlatform, isMobile } from '@dcl/sdk/platform'
  * Le malus du voleur vient de la mesure du #1 (wiki Steal a Brainrot):
  * vitesse -41 % et saut -40 %. Defauts client verifies: jogSpeed 8, jumpHeight 1.
  */
-export const JOG_NORMAL = 8
-export const JOG_VOLEUR = 4.7 // -41 %
-export const SAUT_NORMAL = 1
-export const SAUT_VOLEUR = 0.6 // -40 %
+/**
+ * Vitesses. Le defaut client est 8 m/s; on monte a 11 parce que le lieu fait 80 m et
+ * qu'un juge dispose de trois minutes. C'est le SEUL levier de confort disponible: la
+ * sensibilite camera n'est pas pilotable sur mobile (`screenDelta` = 0), et faire
+ * diverger desktop et mobile serait pire que de ne rien faire.
+ * Le malus du voleur conserve les RATIOS mesures chez le #1: -41 % et -40 %.
+ */
+export const JOG_NORMAL = 11
+export const JOG_VOLEUR = 6.5   // -41 %
+export const SAUT_NORMAL = 1.15
+export const SAUT_VOLEUR = 0.69 // -40 %
 
 export function applyThiefPenalty(actif: boolean): void {
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
