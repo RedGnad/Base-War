@@ -59,8 +59,18 @@ const uiComponent = () => (
         value={`${theftView.coins} pieces${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
         fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
       <Label
-        value={`${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}${view.serverAlive ? '' : ' · SERVEUR SILENCIEUX'}`}
-        fontSize={13} color={view.serverAlive ? Color4.fromHexString('#c8d0dcff') : Color4.Red()} />
+        value={
+          !view.serverAlive ? 'SERVEUR SILENCIEUX'
+          : !theftView.basePosee ? 'pose ta base pour que tes objets rapportent'
+          : theftView.revenu === 0 ? 'ouvre une boite pour commencer a gagner'
+          : `+${theftView.revenu}/s · ${view.objets} objets · ${view.etages} etage${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · palier ' + theftView.palier : ''}`
+        }
+        fontSize={13}
+        color={
+          !view.serverAlive ? Color4.Red()
+          : (!theftView.basePosee || theftView.revenu === 0) ? Color4.fromHexString('#ffd166ff')
+          : Color4.fromHexString('#8fe08fff')
+        } />
     </UiEntity>
 
     {/* HAUT-CENTRE, sous l'etat: fil d'activite, non actionnable. */}

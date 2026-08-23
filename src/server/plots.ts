@@ -458,8 +458,17 @@ export function startPlots(): void {
     const ici = presents()
     for (const [address, profil] of profils) {
       if (!ici.has(address)) continue
+
+      // UN OBJET NE RAPPORTE QUE S'IL EST EXPOSE.
+      // Sans cette regle, jouer SANS poser sa base est strictement meilleur: on gagne
+      // sans etre visible, donc sans pouvoir etre vole. Le risque zero paierait autant
+      // que le risque, et toute la couche sociale s'effondrerait.
+      // Le prix du revenu, c'est de s'exposer.
+      const base = bases.get(address)
+      if (!base) continue
+
       let gain = 0
-      for (const r of profil.items) gain += GAIN_PAR_SECONDE[r] ?? 1
+      for (const r of base.items) gain += GAIN_PAR_SECONDE[r] ?? 1
       if (gain === 0) continue
       // Le multiplicateur des paliers s'applique ici: c'est lui qui fait ACCELERER la
       // boucle. Sans lui, chaque palier ne ferait que reculer le joueur.
@@ -478,7 +487,13 @@ export function startPlots(): void {
       if (!ici.has(address)) continue
       const palier = p.rebirths ?? 0
       const suivant = palier >= REBIRTH_MAX ? null : paliers(palier)
+      const b = bases.get(address)
+      let revenu = 0
+      if (b) for (const r of b.items) revenu += GAIN_PAR_SECONDE[r] ?? 1
+      revenu = Math.round(revenu * multiplicateurRevenu(palier))
       void room.send('wallet', {
+        revenu,
+        basePosee: b !== undefined,
         coins: Math.floor(p.coins),
         prochainPalier: suivant ? suivant.cout : 0,
         palier,
