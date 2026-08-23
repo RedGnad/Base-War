@@ -4,13 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { Plot, MAX_BASES, PLOT_MAX_OBJETS, plotPosition } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
-import { room } from '../shared/messages'
-
-/** Journalise cote serveur ET relaie au client, seule fenetre de diagnostic. */
-function jour(line: string): void {
-  jour(`${line}`)
-  void room.send('serverLog', { line })
-}
+import { jour, viderJournal } from './journal'
 
 /**
  * ALLOCATION DYNAMIQUE DES BASES.
@@ -241,6 +235,8 @@ export function startPlots(): void {
     }
   })
 
+  // Le tampon de journal se vide plus vite que les sauvegardes: on veut voir vite.
+  timers.setInterval(() => { viderJournal() }, 1000)
   timers.setInterval(() => { void sauver() }, SAUVE_MS)
   timers.setInterval(() => {
     const ici = presents()

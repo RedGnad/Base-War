@@ -77,14 +77,25 @@ export function startClient(): void {
   // Vivacite du serveur: on suit l'instant CLIENT du dernier CHANGEMENT de valeur.
   // Un instantane CRDT laisse par un serveur eteint porte un horodatage credible
   // mais ne change plus, donc il ne peut pas se faire passer pour vivant.
+  // UN SEUL changement observe ne prouve RIEN: un instantane CRDT laisse par un serveur
+  // mort porte une valeur credible, et la voir pour la premiere fois ressemble a un
+  // battement. Il faut DEUX changements distincts pour conclure qu'une horloge tourne.
+  let changements = 0
   engine.addSystem(() => {
     let value = 0
     for (const [, b] of engine.getEntitiesWith(ServerBeat)) value = b.at > value ? b.at : value
     const now = Date.now()
     if (value !== 0 && value !== view.lastBeatValue) {
       view.lastBeatValue = value
-      view.lastBeatSeenAt = now
+      changements += 1
+      if (changements >= 2) view.lastBeatSeenAt = now
     }
-    view.serverAlive = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
+    const vivant = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
+    if (vivant !== view.serverAlive) {
+      // Transition journalisee: c'est le seul signal fiable pour savoir si l'isolat
+      // serveur a demarre, plante, ou s'est eteint faute de joueur.
+      console.log(`[CLIENT] serveur ${vivant ? 'VIVANT' : 'SILENCIEUX'} (dernier battement il y a ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)
+    }
+    view.serverAlive = vivant
   })
 }

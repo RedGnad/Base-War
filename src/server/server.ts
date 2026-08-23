@@ -5,6 +5,7 @@ import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startCrate } from './crate'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
+import { jour, viderJournal, rejouerJournal } from './journal'
 
 // Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
 // via import() dynamique, et il ne definit AUCUN composant au niveau module.
@@ -83,6 +84,10 @@ export function startServer(): void {
     if (b !== null) b.at = Date.now()
   }, BEAT_MS)
 
+  // Vidage du tampon de journal des le depart: c'est notre seule fenetre de diagnostic,
+  // elle doit vivre avant tout code susceptible de jeter.
+  timers.setInterval(() => { viderJournal() }, 1000)
+
   timers.setInterval(() => {
     void flush()
   }, SAVE_EVERY_MS)
@@ -142,6 +147,7 @@ export function startServer(): void {
         const n = await load(address)
         publish(address)
         await accueillir(address)
+        rejouerJournal(address)
         console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
       })()
     }

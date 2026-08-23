@@ -11,7 +11,7 @@ const uiComponent = () => (
   <UiEntity
     uiTransform={{
       width: 340, height: 190,
-      margin: '24px 0 0 24px', padding: 12,
+      margin: '110px 0 0 24px', padding: 12,
       flexDirection: 'column', justifyContent: 'space-between'
     }}
     uiBackground={{ color: Color4.create(0, 0, 0, 0.65) }}
