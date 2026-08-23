@@ -6,7 +6,10 @@ import { view } from './client/setup'
 import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
-import { rarity, boite, RARITIES } from './shared/loot-table'
+import { RARITIES } from './shared/loot-table'
+
+/** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
+const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256]
 import { slotView, basculerPose, poserIci } from './client/slots'
 
 /**
@@ -91,7 +94,7 @@ const uiComponent = () => (
     )}
 
     {/* CENTRE: LA ROULETTE. Le moment du jeu: elle defile, ralentit, s'arrete. */}
-    {(boxView.roule || boxView.resultat >= 0 && !boxView.ouverture && boxView.message !== '') && (
+    {(boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
           width: 460, height: 130, positionType: 'absolute',
@@ -105,8 +108,13 @@ const uiComponent = () => (
           fontSize={boxView.roule ? 34 : 44}
           color={Color4.fromHexString((RARITIES[boxView.index]?.couleur ?? '#ffffff') + 'ff')} />
         <Label
-          value={boxView.roule ? '...' : (boxView.message !== '' ? boxView.message : 'pose sur ta base')}
-          fontSize={15} color={Color4.fromHexString('#c8d0dcff')} />
+          value={boxView.roule
+            ? '...'
+            : (boxView.message !== ''
+                ? boxView.message
+                : `+${GAIN_PAR_SECONDE_UI[boxView.resultat] ?? 1} pieces/s  ·  pose sur ta base`)}
+          fontSize={15}
+          color={Color4.fromHexString(boxView.message !== '' ? '#ff8080ff' : '#8fe08fff')} />
       </UiEntity>
     )}
 

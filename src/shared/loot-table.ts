@@ -30,10 +30,10 @@ export function rarity(id: number) {
  * serveur, comme le tirage. Le client ne connait que le nom, le prix et la couleur.
  */
 export const BOITES = [
-  { id: 0, nom: 'Boite simple', prix: 25,   couleur: '#9aa3ad', taille: 0.55 },
-  { id: 1, nom: 'Bonne boite',  prix: 120,  couleur: '#4ec04e', taille: 0.62 },
-  { id: 2, nom: 'Boite rare',   prix: 600,  couleur: '#3d8ef0', taille: 0.70 },
-  { id: 3, nom: 'Boite epique', prix: 2600, couleur: '#a855f7', taille: 0.80 }
+  { id: 0, nom: 'Boite simple', prix: 60,    couleur: '#9aa3ad', taille: 0.55 },
+  { id: 1, nom: 'Bonne boite',  prix: 500,   couleur: '#4ec04e', taille: 0.62 },
+  { id: 2, nom: 'Boite rare',   prix: 4000,  couleur: '#3d8ef0', taille: 0.70 },
+  { id: 3, nom: 'Boite epique', prix: 32000, couleur: '#a855f7', taille: 0.80 }
 ] as const
 
 export function boite(id: number) {

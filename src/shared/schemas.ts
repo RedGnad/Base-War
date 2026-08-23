@@ -110,15 +110,17 @@ export const PORTEE_ACHAT = 5
  * l'occasion de montrer ce qu'on vient de laisser passer.
  */
 export const CHUTE_FIN = 0.22        // part de course consacree a la chute
-export const FOSSE_PROFONDEUR = 4.5
+export const FOSSE_PROFONDEUR = 1.0   // du tapis (1,15) au fond du puits (0,15)
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const surTapis = Math.min(progres, 1)
   const x = CENTRE.x - TAPIS_LONGUEUR / 2 + surTapis * TAPIS_LONGUEUR
   if (progres <= 1) return { x, y: 1.15, z: CENTRE.z }
-  // chute acceleree: t au carre, comme une vraie chute
+  // Chute VERTICALE, dans l'axe du tapis. Une derive laterale se lisait comme un
+  // objet ejecte, pas comme un objet qui bascule dans un trou.
+  // Acceleration en t au carre: une chute a vitesse constante n'a pas de poids.
   const t = Math.min((progres - 1) / CHUTE_FIN, 1)
-  return { x: x + t * 1.4, y: 1.15 - t * t * FOSSE_PROFONDEUR, z: CENTRE.z }
+  return { x, y: 1.15 - t * t * FOSSE_PROFONDEUR, z: CENTRE.z }
 }
 
 /** Prix d'un article, croissant avec la rarete. */
@@ -221,10 +223,10 @@ export const PORTE_LARGEUR = 2.0
  * fait accelerer la boucle au lieu de la faire stagner.
  */
 export const PALIERS = [
-  { cout: 500,   rareteMin: 1, multiplicateur: 2,  garde: 1 },
-  { cout: 2500,  rareteMin: 2, multiplicateur: 4,  garde: 1 },
-  { cout: 12000, rareteMin: 3, multiplicateur: 9,  garde: 2 },
-  { cout: 60000, rareteMin: 4, multiplicateur: 20, garde: 2 }
+  { cout: 1500,   rareteMin: 1, multiplicateur: 2, garde: 1 },
+  { cout: 12000,  rareteMin: 2, multiplicateur: 3, garde: 1 },
+  { cout: 90000,  rareteMin: 3, multiplicateur: 5, garde: 2 },
+  { cout: 700000, rareteMin: 4, multiplicateur: 8, garde: 2 }
 ] as const
 export const REBIRTH_MAX = PALIERS.length
 

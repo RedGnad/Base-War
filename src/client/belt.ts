@@ -28,27 +28,31 @@ export function setupBelt(): void {
   MeshCollider.setBox(bande)
   Material.setPbrMaterial(bande, { albedoColor: Color4.fromHexString('#8e2b2bff'), roughness: 0.8 })
 
-  // LA FOSSE au bout du tapis. Ce qui n'est pas achete y tombe: une disparition seche
-  // ne se lit pas, et on rate l'occasion de montrer ce qu'on vient de laisser filer.
-  const bord = CENTRE.x + TAPIS_LONGUEUR / 2 + 1.6
-  const fosse = engine.addEntity()
-  Transform.create(fosse, {
-    position: Vector3.create(bord + 0.6, -FOSSE_PROFONDEUR / 2, CENTRE.z),
-    scale: Vector3.create(3.4, FOSSE_PROFONDEUR, 3.4)
-  })
-  MeshRenderer.setBox(fosse)
-  Material.setPbrMaterial(fosse, { albedoColor: Color4.fromHexString('#12100eff'), roughness: 1 })
+  // LA FOSSE, exactement au bout du tapis. Une boite non achetee y bascule.
+  // On ne peut pas creuser le sol (Decentraland interdit d'aller sous y=0), donc on
+  // construit un PUITS EN SURFACE: quatre parois qui montent, ouvert dessus, avec un
+  // fond noir. Le regard lit un trou parce qu'il en voit l'interieur sombre.
+  const bx = CENTRE.x + TAPIS_LONGUEUR / 2 + 0.2
+  const RAYON = 2.0
+  const HAUT = 1.05        // juste sous le niveau du tapis, pour que la boite y plonge
 
-  // Margelle: sans elle, le trou se lit comme un defaut de terrain et non comme une fosse.
-  for (const [dx, dz, sx, sz] of [[0, 2.0, 4.2, 0.4], [0, -2.0, 4.2, 0.4], [2.0, 0, 0.4, 4.2]]) {
+  const fond = engine.addEntity()
+  Transform.create(fond, { position: Vector3.create(bx, 0.04, CENTRE.z), scale: Vector3.create(RAYON * 2, 0.08, RAYON * 2) })
+  MeshRenderer.setBox(fond)
+  Material.setPbrMaterial(fond, { albedoColor: Color4.fromHexString('#0a0908ff'), roughness: 1 })
+
+  for (const [dx, dz, sx, sz] of [
+    [0, RAYON, RAYON * 2, 0.18], [0, -RAYON, RAYON * 2, 0.18],
+    [RAYON, 0, 0.18, RAYON * 2], [-RAYON, 0, 0.18, RAYON * 2]
+  ]) {
     const m = engine.addEntity()
     Transform.create(m, {
-      position: Vector3.create(bord + 0.6 + dx, 0.25, CENTRE.z + dz),
-      scale: Vector3.create(sx, 0.5, sz)
+      position: Vector3.create(bx + dx, HAUT / 2, CENTRE.z + dz),
+      scale: Vector3.create(sx, HAUT, sz)
     })
     MeshRenderer.setBox(m)
     MeshCollider.setBox(m)
-    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#4a4038ff'), roughness: 0.9 })
+    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#2a2622ff'), roughness: 0.95 })
   }
 
   engine.addSystem(() => {

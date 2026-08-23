@@ -30,6 +30,8 @@ export const boxView = {
   roule: false,
   index: 0,
   resultat: -1,
+  /** instant jusqu'auquel le resultat reste affiche apres l'arret de la roulette */
+  resultatJusqua: 0,
   message: ''
 }
 
@@ -110,8 +112,14 @@ export function setupBox(): void {
       if (restant <= 0) {
         boxView.roule = false
         boxView.index = boxView.resultat
+        // Le resultat RESTE a l'ecran: sans ce temps de lecture, la roulette s'arrete
+        // et il ne se passe visiblement rien. C'est le paiement du geste.
+        boxView.resultatJusqua = Date.now() + 3200
         console.log(`[CLIENT] boite ouverte -> ${rarity(boxView.resultat).nom}`)
       }
+    } else if (boxView.resultat >= 0 && Date.now() > boxView.resultatJusqua) {
+      boxView.resultat = -1
+      boxView.message = ''
     }
   })
 }

@@ -22,8 +22,16 @@ export function rollRarity(): number {
   return 0
 }
 
-/** Valeur en pieces par seconde d'un objet pose, croissante avec la rarete. */
-export const GAIN_PAR_SECONDE = [1, 3, 8, 20, 60]
+/**
+ * Revenu par objet et par seconde. Progression x4 par palier de rarete.
+ *
+ * Les PRIX des boites progressent x8, donc PLUS VITE que le revenu: le temps pour
+ * s'offrir la boite du palier suivant AUGMENTE (10 s, puis 21, puis 42). Sans cet ecart,
+ * la progression se trivialise. Mesure du 24 Aug qui a impose la refonte: avec des
+ * valeurs lineaires, une base pleine produisait 2 400 pieces/s contre une boite a 2 600,
+ * soit une boite epique par seconde sans rien faire.
+ */
+export const GAIN_PAR_SECONDE = [1, 4, 16, 64, 256]
 
 /**
  * Repartition PAR BOITE, cote serveur uniquement.

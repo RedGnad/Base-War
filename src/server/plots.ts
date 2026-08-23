@@ -448,7 +448,13 @@ export function startPlots(): void {
     if (acc < 1) return
     const secondes = acc
     acc = 0
+    // LE REVENU NE COURT QUE POUR LES JOUEURS PRESENTS.
+    // Sans cette garde, un joueur parti cinq minutes revenait avec un million de pieces:
+    // la boucle parcourait TOUS les profils charges en memoire. Un revenu hors ligne
+    // serait une fonctionnalite a part entiere, avec un plafond, pas un effet de bord.
+    const ici = presents()
     for (const [address, profil] of profils) {
+      if (!ici.has(address)) continue
       let gain = 0
       for (const r of profil.items) gain += GAIN_PAR_SECONDE[r] ?? 1
       if (gain === 0) continue
