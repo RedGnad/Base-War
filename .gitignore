@@ -9,8 +9,19 @@ yarn-debug.log*
 yarn-error.log*
 *.corrupt/
 
-# Transcriptions des videos d'un tiers: SYNTHESE seulement dans le depot Master, jamais
-# le texte integral. Ce depot est public et ce contenu ne nous appartient pas.
-# Commande de regeneration a l'identique: en-tete de data/aywen-*.md dans Master.
+# Generated at build/preview time
+main.crdt
+main*.crdt
+
+# Editor and tooling, not part of the scene
+.cursor/
+cursor.config
+cursorignore
+dclcontext
+.editor/
+.vscode/
+CLAUDE.md
+
+# Local research material, not ours to redistribute
 local/
 ytenv/
