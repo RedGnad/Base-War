@@ -2,9 +2,9 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, AvatarMask, timers
+  CameraType, CameraModeArea, AvatarMask, timers
 } from '@dcl/sdk/ecs'
-import { triggerSceneEmote, stopEmote, movePlayerTo } from '~system/RestrictedActions'
+import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
@@ -87,18 +87,24 @@ const BOUCHE = Vector3.create(0, 0.138, 0.250)
 const MAIN_POS = Vector3.create(0.045, 0.015, 0)
 const MAIN_ROT = Quaternion.fromEulerDegrees(-90, 0, 180)
 /** Where the view model sits relative to the camera: right, below, ahead. */
-const VUE_POS = Vector3.create(0.20, -0.24, 0.34)
+const VUE_POS = Vector3.create(0.13, -0.20, 0.52)
 const VUE_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
 /** The same, pulled to centre and closer when aiming down the barrel. */
-const VISEE_POS = Vector3.create(0.02, -0.14, 0.26)
+const VISEE_POS = Vector3.create(0.05, -0.16, 0.58)
 /** Beyond this many other players, distant ones go unarmed: one renderer per mesh adds up. */
 const ARMES_MAX = 10
 /** Muzzle rise on the shot, in degrees, decayed back to rest. */
 const RECUL_DEG = 20
 /** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
 const TIR_MS = 300
-/** Cosine of the heading error tolerated before the body is turned back. 0.94 is 20 degrees. */
-const CAP_TOLERANCE = 0.94
+/**
+ * The first-person volume that rides the player while the weapon is out. A camera area is
+ * a region and not a per-player flag, so it stays barely wider than one body: anyone
+ * standing closer than sixty centimetres would be pulled into it as well.
+ */
+const ZONE_VISEE = Vector3.create(1.2, 2.6, 1.2)
+/** How long the explorer takes to slide from one camera mode to the other. */
+const TRANSITION_MS = 350
 
 const armes = new Map<string, Gun>()
 let vue: Gun | null = null
@@ -106,6 +112,8 @@ let flash = 0 as unknown as Entity
 let moi = ''
 let dernierTir = 0
 let flashScale = 0
+let zoneVisee: Entity | null = null
+let vueVisibleApres = 0
 let dernierRecensement = 0
 let nomCible = ''
 let adresseCible = ''
@@ -156,7 +164,10 @@ function rafraichirVisibilite(): void {
     const arme = enJoue.has(a)
     montrer(g, a === moi ? arme && !combatView.firstPerson : arme)
   }
-  montrer(vue, combatView.aiming && combatView.firstPerson)
+  // The camera slides between the two modes while CameraMode flips at once, so a view
+  // model shown on the flip is briefly drawn at third-person distance and fills the
+  // screen. It waits for the move to finish.
+  montrer(vue, combatView.aiming && combatView.firstPerson && Date.now() >= vueVisibleApres)
 
   const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
   if (porteur !== null) {
@@ -166,6 +177,7 @@ function rafraichirVisibilite(): void {
 }
 
 export function setupCombat(): void {
+
 
   // View model: one entity parented to the camera, shown only in first person.
   const ancre = engine.addEntity()
@@ -203,6 +215,7 @@ export function setupCombat(): void {
 }
 
 function appliquerVue(fp: boolean): void {
+  if (fp && !combatView.firstPerson) vueVisibleApres = Date.now() + TRANSITION_MS
   combatView.firstPerson = fp
   rafraichirVisibilite()
 }
@@ -312,19 +325,32 @@ function gunSystem(dt: number): void {
     }
   }
 
+  if (zoneVisee !== null) {
+    const moiT = Transform.getOrNull(engine.PlayerEntity)
+    if (moiT !== null) {
+      Transform.getMutable(zoneVisee).position =
+        Vector3.create(moiT.position.x, moiT.position.y + 1, moiT.position.z)
+    }
+  }
+
   rafraichirVisibilite()
   viser()
 }
 
+
 /**
- * Turn the body to face the shot.
+ * Weapon out or weapon away. Everything that depends on the state is set from here.
  *
- * In third person the avatar keeps whatever heading it last walked on, while the shot and
- * the reticle both follow the camera. Measured on a live client the two sat ninety degrees
- * apart, which would have the character aiming at nothing while the bullet went elsewhere.
- * Called once when the weapon comes up, never per frame.
+ * Drawing forces first person, and that is not a matter of taste: the shot, the reticle
+ * and the aiming pose all have to mean one direction. In third person the body keeps the
+ * heading it last walked on while the camera looks elsewhere, measured ninety degrees
+ * apart on a live client, so the character would aim at nothing while the round went
+ * somewhere else. Turning the body back with movePlayerTo was the alternative, and that
+ * call is documented as interruptible by player input, so it cannot be issued every frame
+ * and always leaves drift. First person has the body track the camera exactly and for
+ * nothing: measured identical to the hundredth of a degree, before and after a 192 degree
+ * turn. Holstering drops the area and the explorer restores the camera the player chose.
  */
-/** Weapon out or weapon away. Everything that depends on the state is set from here. */
 function degainer(on: boolean): void {
   if (combatView.aiming === on) return
   combatView.aiming = on
@@ -334,33 +360,13 @@ function degainer(on: boolean): void {
   void room.send('aim', { on })
   if (on) {
     void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
-    orienterVersLaVisee()
+    zoneVisee = engine.addEntity()
+    Transform.create(zoneVisee, { position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
+    CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
     void stopEmote({})
+    if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
   }
-}
-
-function orienterVersLaVisee(): void {
-  const cam = Transform.getOrNull(engine.CameraEntity)
-  const moiT = Transform.getOrNull(engine.PlayerEntity)
-  if (cam === null || moiT === null) return
-  const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
-  const plat = Math.sqrt(f.x * f.x + f.z * f.z)
-  if (plat < 0.0001) return
-
-  // Only when the body has actually drifted. Auto fire calls this once per round, and
-  // movePlayerTo is documented as interruptible by player input: re-issuing it while the
-  // heading is already right would fight the joystick for nothing.
-  const b = Vector3.rotate(Vector3.create(0, 0, 1), moiT.rotation)
-  const bp = Math.sqrt(b.x * b.x + b.z * b.z)
-  if (bp > 0.0001 && (f.x * b.x + f.z * b.z) / (plat * bp) > CAP_TOLERANCE) return
-
-  void movePlayerTo({
-    newRelativePosition: moiT.position,
-    avatarTarget: Vector3.create(
-      moiT.position.x + (f.x / plat) * 4, moiT.position.y, moiT.position.z + (f.z / plat) * 4
-    )
-  })
 }
 
 /**
@@ -430,7 +436,6 @@ function tirer(now: number): boolean {
     z: moiT.position.z + (f.z / plat) * SHOT_RANGE
   })
 
-  orienterVersLaVisee()
   flashScale = 0.5
   Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
   recul = 1
