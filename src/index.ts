@@ -7,7 +7,18 @@ import { isServer } from '@dcl/sdk/network'
 import { registerValidators } from './shared/schemas'
 import './shared/messages'
 
-import { setupUi } from './ui'
+// PAS D'IMPORT STATIQUE DE `./ui`.
+// Bug trouve le 24 Aug apres dix heures de serveur muet: `main()` tourne DES DEUX COTES,
+// donc un import statique charge tout l'arbre qu'il tire, y compris sur le serveur
+// headless. `ui.tsx` tire `client/plots.ts` et `client/travel.ts`, qui importent
+// `~system/RestrictedActions` (`movePlayerTo`, pose le 24 Aug pour l'ascenseur et les
+// raccourcis). C'est une API de CONTEXTE CLIENT: sur le serveur, le chargement du module
+// echoue et l'isolat meurt au demarrage, SANS UN SEUL MESSAGE, puisque le relais de
+// journal n'a pas encore ete installe.
+// Le skill le dit pour MessageBus et le principe est le meme: du code de contexte client
+// ne doit jamais se trouver dans le graphe de modules du serveur.
+// REGLE: seuls `shared/schemas` et `shared/messages` sont statiques (ils DOIVENT tourner
+// avant le scellement du moteur). Tout le reste se charge dans sa branche.
 
 export function main(): void {
   // Gardes d'ecriture: appele des deux cotes, no-op sur un client.
@@ -20,8 +31,9 @@ export function main(): void {
     // tardif est sans danger.
     void import('./server/server').then(({ startServer }) => startServer())
   } else {
-    void import('./client/setup').then(({ startClient }) => {
+    void import('./client/setup').then(async ({ startClient }) => {
       startClient()
+      const { setupUi } = await import('./ui')
       setupUi()
     })
   }
