@@ -29,11 +29,28 @@ export function rarity(id: number) {
  * Chaque boite a sa propre repartition. Les POIDS ne sont PAS ici: ils vivent cote
  * serveur, comme le tirage. Le client ne connait que le nom, le prix et la couleur.
  */
+/**
+ * PRIX x4, EXACTEMENT COMME LE REVENU x4.
+ *
+ * Principe tycoon: le TEMPS DE RETOUR d'un achat doit rester CONSTANT. Si le prix croit
+ * plus vite que le revenu, acheter mieux devient de moins en moins rentable, et c'est
+ * exactement la sensation de grind.
+ *
+ * Mes prix precedents croissaient en x8 contre un revenu en x4:
+ *   Basic  60 ->   1/s : 60 s de retour
+ *   Good  500 ->   4/s : 125 s
+ *   Rare 4000 ->  16/s : 250 s
+ *   Epic 32000 -> 64/s : 500 s      <- chaque palier DOUBLAIT l'attente
+ *
+ * Corrige, chaque boite se rembourse en 60 s, quel que soit son palier.
+ * La progression vient du CUMUL (emplacements, multiplicateurs), pas de la degradation
+ * de chaque achat.
+ */
 export const BOITES = [
-  { id: 0, nom: 'Basic Crate', prix: 60,    couleur: '#9aa3ad', taille: 0.55 },
-  { id: 1, nom: 'Good Crate',  prix: 500,   couleur: '#4ec04e', taille: 0.62 },
-  { id: 2, nom: 'Rare Crate',   prix: 4000,  couleur: '#3d8ef0', taille: 0.70 },
-  { id: 3, nom: 'Epic Crate', prix: 32000, couleur: '#a855f7', taille: 0.80 }
+  { id: 0, nom: 'Basic Crate', prix: 60,   couleur: '#9aa3ad', taille: 0.55 },
+  { id: 1, nom: 'Good Crate',  prix: 240,  couleur: '#4ec04e', taille: 0.62 },
+  { id: 2, nom: 'Rare Crate',  prix: 960,  couleur: '#3d8ef0', taille: 0.70 },
+  { id: 3, nom: 'Epic Crate',  prix: 3840, couleur: '#a855f7', taille: 0.80 }
 ] as const
 
 export function boite(id: number) {

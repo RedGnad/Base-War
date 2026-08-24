@@ -276,19 +276,26 @@ export function multiplicateurRevenu(n: number): number {
 }
 
 /**
- * L'ETAGE S'ACHETE. C'est +6 emplacements, donc la plus grosse amelioration du jeu:
- * il ne peut pas tomber gratuitement en ramassant des objets, comme c'etait le cas.
+ * L'ETAGE S'ACHETE, ET SON PRIX EST CALCULE, pas devine.
  *
- * Il devient LE puits a pieces principal, et il cree la decision qui manquait:
- *   - acheter un ETAGE  -> plus de place, on garde tout
- *   - franchir un PALIER -> multiplicateur, mais ca EFFACE presque tout le butin
- * Deux couts comparables au meme moment, deux benefices opposes.
+ * Un etage n'ajoute pas du revenu: il ajoute 6 EMPLACEMENTS VIDES. Sa valeur reelle est
+ * donc 6 x le revenu de ce qu'on y mettra, et l'investissement reel est
+ * `prix de l'etage + prix de le remplir`.
  *
- * Prix cales sur ce que les nouveaux emplacements produisent en ~4 minutes:
- *   etage 2: +6 places remplies de Peu communs = 24/s -> 4 min = 5 760
- *   etage 3: +6 places remplies de Rares       = 96/s -> 4 min = 23 000
+ * REGLE: l'investissement TOTAL se rembourse en 120 s, soit le double du retour d'une
+ * boite seule (60 s). Un etage est un engagement, pas un achat impulsif.
+ *
+ *   etage 2, rempli de Good (240 la boite, 4/s l'objet):
+ *     remplir = 6 x 240 = 1 440 · gain = 6 x 4 = 24/s
+ *     cible   = 24 x 120 = 2 880 · PRIX = 2 880 - 1 440 = 1 440
+ *   etage 3, rempli de Rare (960 la boite, 16/s l'objet):
+ *     remplir = 6 x 960 = 5 760 · gain = 6 x 16 = 96/s
+ *     cible   = 96 x 120 = 11 520 · PRIX = 11 520 - 5 760 = 5 760
+ *
+ * Il en sort une regle limpide: **un etage coute exactement ce que coute de le remplir**,
+ * et le ressenti est identique a chaque palier.
  */
-export const PRIX_ETAGE = [0, 4000, 30000] as const
+export const PRIX_ETAGE = [0, 1440, 5760] as const
 
 export function prixEtage(etageVise: number): number {
   return PRIX_ETAGE[Math.max(0, Math.min(etageVise - 1, PRIX_ETAGE.length - 1))]
