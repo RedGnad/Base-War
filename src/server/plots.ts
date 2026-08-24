@@ -59,6 +59,13 @@ type Profil = {
   dernierJour?: number
   /** jours consecutifs de connexion, 1 a 7 puis retour a 1 */
   serie?: number
+  /**
+   * INDEX DE DECOUVERTE: codes d'objets deja obtenus au moins une fois.
+   * *« ce menu index qui permet de voir quelle machine on a trouve et lesquelles il
+   *  nous reste a trouver »*. Avec 98 combinaisons, c'est ce qui leur donne un sens:
+   * sans lui, un Gold Epic n'est qu'un cube violet de plus.
+   */
+  vus?: number[]
   x?: number
   z?: number
   /** horodatage du dernier DEPLACEMENT (pas du premier placement) */
@@ -335,6 +342,12 @@ export function etatPrevisible(address: string): RangementResultat {
 export function ajouterObjet(address: string, rarity: number): RangementResultat {
   const prof = profils.get(address)
   if (!prof) return 'plein'
+  // On note la decouverte AVANT tout refus: avoir vu un objet compte, meme si la base
+  // est pleine et qu'on ne peut pas le garder.
+  if (!(prof.vus ?? []).includes(rarity)) {
+    prof.vus = [...(prof.vus ?? []), rarity]
+    profilsSales.add(address)
+  }
   if (prof.items.length >= placesOuvertes(prof.etagesAchetes ?? 0)) return 'plein'
   prof.items.push(rarity)
   profilsSales.add(address)
@@ -630,6 +643,10 @@ export function deplacerObjet(address: string, de: number, vers: number): boolea
   return true
 }
 
+export function vusDe(address: string): number[] {
+  return [...(profils.get(address)?.vus ?? [])]
+}
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)
@@ -708,6 +725,7 @@ export function startPlots(): void {
         multiplicateur: multiplicateurRevenu(palier)
       }, { to: [address] })
       void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
+      void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })
     }
   }, 1500)
 

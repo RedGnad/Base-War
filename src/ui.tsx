@@ -7,6 +7,7 @@ import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collec
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
+import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
@@ -54,6 +55,21 @@ const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
 const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
+
+    <IndexPanel />
+
+    {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
+        appartient au profil et aux controles camera du client mobile. */}
+    <UiEntity
+      uiTransform={{ width: 108, height: 36, positionType: 'absolute', position: { top: 12, right: 24 } }}
+    >
+      <Button
+        uiTransform={{ width: 108, height: 36 }}
+        value={indexView.ouvert ? 'CLOSE' : `INDEX ${indexView.vus.length}`}
+        variant={indexView.ouvert ? 'primary' : 'secondary'}
+        fontSize={12}
+        onMouseDown={basculerIndex} />
+    </UiEntity>
 
     {/* HAUT-CENTRE: etat, non actionnable. */}
     <UiEntity

@@ -71,6 +71,9 @@ export const MESSAGES = {
    */
   moveItem: Schemas.Map({ de: Schemas.Int, vers: Schemas.Int }),
 
+  /** serveur -> le joueur: la liste de ce qu'il a deja decouvert. */
+  index: Schemas.Map({ vus: Schemas.Array(Schemas.Int) }),
+
   /** client -> serveur: j'encaisse ma reserve. */
   collect: Schemas.Map({}),
   /** serveur -> le collecteur: combien a ete verse. */

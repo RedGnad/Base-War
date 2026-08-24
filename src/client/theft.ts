@@ -2,6 +2,7 @@ import { engine, AudioSource, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
 import { rarity } from '../shared/loot-table'
+import { indexView } from './index-ui'
 import { applyThiefPenalty } from './locomotion'
 
 /**
@@ -95,6 +96,8 @@ export function setupTheft(): void {
     alerter(`PALIER ${d.palier} — ${d.etages} etages`, '#f5a524', 6000)
     console.log(`[CLIENT] palier ${d.palier}, ${d.etages} etages`)
   })
+
+  room.onMessage('index', (d) => { indexView.vus = [...d.vus] })
 
   room.onMessage('collected', (d) => {
     alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)
