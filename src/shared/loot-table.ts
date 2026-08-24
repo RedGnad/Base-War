@@ -31,7 +31,13 @@ export function rarity(id: number) {
  * Notre budget mesure est de 47 textures pour 250 000 triangles: la geometrie est
  * abondante, la texture est rare. Les mutations tombent exactement du bon cote.
  *
- * Multiplicateurs et noms releves sur la page `Mutations` du wiki de la reference.
+ * Les multiplicateurs suivent la progression relevee sur la page `Mutations` du wiki de
+ * la reference. Les NOMS, eux, sont du vocabulaire de butin universel (Gold, Diamond,
+ * Lava, Galaxy, Cursed, Divine, Rainbow...), employe par des centaines de jeux.
+ * UNE exception a ete retiree le 24 Aug: « Bloodrot » etait un compose direct de
+ * « Brainrot », le mot invente par la reference. Reprendre un neologisme proprietaire,
+ * c'est signer sa copie, et le reglement de l'evenement exige *« Be original and not
+ * used in past Decentraland competitions »*. Renomme « Blood ».
  * Sept raretes x quatorze mutations = **98 valeurs d'objets distinctes**, contre 5 avant.
  * C'est ce qui fait passer la duree de vie du contenu de 19 minutes a plusieurs heures.
  */
@@ -39,7 +45,7 @@ export const MUTATIONS = [
   { id: 0,  nom: '',            mult: 1,    couleur: '',        poids: 1000 },
   { id: 1,  nom: 'Gold',        mult: 1.25, couleur: '#ffd700', poids: 220 },
   { id: 2,  nom: 'Diamond',     mult: 1.5,  couleur: '#b9f2ff', poids: 120 },
-  { id: 3,  nom: 'Bloodrot',    mult: 2,    couleur: '#8b0000', poids: 70 },
+  { id: 3,  nom: 'Blood',       mult: 2,    couleur: '#8b0000', poids: 70 },
   { id: 4,  nom: 'Candy',       mult: 4,    couleur: '#ff9ecd', poids: 34 },
   { id: 5,  nom: 'Lava',        mult: 6,    couleur: '#ff5722', poids: 20 },
   { id: 6,  nom: 'Galaxy',      mult: 7,    couleur: '#5b2c8d', poids: 14 },

@@ -42,10 +42,19 @@ function monterUnEtage(v: Vue): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   const actuel = moi === null ? 0 : Math.max(0, Math.round(moi.position.y / ETAGE_HAUTEUR))
   const cible = actuel + 1 >= ouverts ? 0 : actuel + 1
-  const y = cible * ETAGE_HAUTEUR + 0.2
+  const y = cible * ETAGE_HAUTEUR + 0.3
+  // ON DEPOSE SUR LE PLANCHER PLEIN, PAS DANS LA TREMIE.
+  // Defaut trouve par le calcul le 24 Aug: la sortie etait a dx = +4,0 alors que la
+  // dalle s'arrete a dx = +2,5. On etait donc teleporte a 1,5 m au-dela du plancher,
+  // dans la cage d'escalier, et on retombait aussitot. Le joueur croyait a un ascenseur
+  // casse; c'etait une coordonnee jamais confrontee a la geometrie.
+  // +1,96 est le milieu entre le dernier objet (bord a +1,425) et le vide (+2,5).
+  const SORTIE_DX = 1.96
   void movePlayerTo({
-    newRelativePosition: Vector3.create(t.position.x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, y, t.position.z + 1.4),
-    cameraTarget: Vector3.create(t.position.x, y + 1, t.position.z - 2)
+    newRelativePosition: Vector3.create(t.position.x + SORTIE_DX, y, t.position.z + 3.0),
+    // ET ON REGARDE VERS LES OBJETS. Arriver face au vide ne dit pas ou l'on est;
+    // arriver face a son butin situe immediatement l'etage.
+    cameraTarget: Vector3.create(t.position.x - 1.2, y + 0.8, t.position.z - 2.2)
   })
 }
 import { voler, revendre, monAdresseClient, deplacer, offrir, alerter } from './theft'
@@ -142,12 +151,48 @@ function construireEtage(x: number, z: number, etage: number): Etage {
   const rampe = engine.addEntity()
   Transform.create(rampe, {
     position: Vector3.create(x + r.dx, y + ETAGE_HAUTEUR / 2, z + r.dz),
-    scale: Vector3.create(1.1, 0.18, RAMPE_LONGUEUR),
+    scale: Vector3.create(TREMIE_LARGEUR - 0.3, 0.18, RAMPE_LONGUEUR),
     rotation: Quaternion.fromEulerDegrees(-RAMPE_ANGLE, 0, 0)
   })
   MeshRenderer.setBox(rampe)
   MeshCollider.setBox(rampe)
   Material.setPbrMaterial(rampe, { albedoColor: Color4.fromHexString('#c9a227ff'), roughness: 0.7, metallic: 0.3 })
+
+  // DEUX RAILS, ENFANTS DE LA RAMPE pour suivre sa pente sans un calcul de plus.
+  // Une rampe de 1,1 m au milieu d'une tremie de 3 m laissait 95 cm de vide de chaque
+  // cote: on montait sur une planche bordee de deux trous. Elle est portee a 2,7 m,
+  // c'est-a-dire la largeur de sa cage moins un jeu de 15 cm, et bordee.
+  for (const cote of [-1, 1]) {
+    const rail = engine.addEntity()
+    Transform.create(rail, {
+      parent: rampe,
+      position: Vector3.create(cote * 0.5, 3.0, 0),
+      scale: Vector3.create(0.06, 6.0, 1.0)
+    })
+    MeshRenderer.setBox(rail)
+    MeshCollider.setBox(rail)
+    Material.setPbrMaterial(rail, { albedoColor: Color4.fromHexString('#7d8698ff'), roughness: 0.6, metallic: 0.4 })
+  }
+
+  // ============================================================================
+  // GARDE-CORPS DE LA TREMIE.
+  // Le plancher plein s'arrete a dx = +2,5 et le vide court jusqu'a +5,5: c'est un
+  // trou de 3 x 11 m au milieu de l'etage, sans rien autour. On y tombait en marchant,
+  // et l'ascenseur y deposait le joueur (voir plus bas). Un escalier sans garde-corps
+  // n'est pas un choix de style, c'est un plancher inacheve.
+  //
+  // Trois cotes seulement: le quatrieme, cote -X, est l'arrivee de la rampe. Une
+  // barriere sur les quatre cotes fermerait l'acces qu'elle est censee securiser.
+  // ============================================================================
+  const RAIL_H = 1.1
+  const bordTremie = c / 2 - TREMIE_LARGEUR
+  murs.push(
+    // le long du vide, cote interieur: c'est celui-la qu'on longe en circulant
+    bloc(x + bordTremie, y + RAIL_H / 2, z, 0.12, RAIL_H, c, '#7d8698'),
+    // les deux extremites de la tremie
+    bloc(x + c / 2 - TREMIE_LARGEUR / 2, y + RAIL_H / 2, z - c / 2 + 0.06, TREMIE_LARGEUR, RAIL_H, 0.12, '#7d8698'),
+    bloc(x + c / 2 - TREMIE_LARGEUR / 2, y + RAIL_H / 2, z + c / 2 - 0.06, TREMIE_LARGEUR, RAIL_H, 0.12, '#7d8698')
+  )
 
   return { plancher, murs, rampe }
 }
