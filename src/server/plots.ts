@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
-  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide,
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX,
   DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
@@ -46,6 +46,8 @@ type Profil = {
   boites?: number[]
   collectes?: number
   rebirths?: number
+  /** etages ACHETES, au-dela du rez-de-chaussee */
+  etagesAchetes?: number
   x?: number
   z?: number
   /** horodatage du dernier DEPLACEMENT (pas du premier placement) */
@@ -90,7 +92,7 @@ function publier(b: Base, ici?: Set<string>): void {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return
   const pr = profils.get(b.address)
-  c.etages = etagesOuverts(pr?.collectes ?? 0, pr?.rebirths ?? 0)
+  c.etages = etagesOuverts(pr?.etagesAchetes ?? 0)
   c.rebirths = pr?.rebirths ?? 0
   c.ownerId = b.address
   c.ownerName = b.name
@@ -183,6 +185,7 @@ export async function accueillir(address: string): Promise<void> {
     items: [...items],
     boites: premiere ? [0] : (stocke?.boites ?? []),
     collectes: stocke?.collectes ?? items.length,
+    etagesAchetes: stocke?.etagesAchetes ?? 0,
     rebirths: stocke?.rebirths ?? 0,
     alertes: stocke?.alertes ?? []
   }
@@ -224,7 +227,7 @@ export function auRevoir(address: string): void {
 export async function poserObjet(address: string, rarity: number): Promise<boolean> {
   const profil = profils.get(address)
   if (!profil) return false
-  const ouvertes = placesOuvertes(profil.collectes ?? 0, profil.rebirths ?? 0)
+  const ouvertes = placesOuvertes(profil.etagesAchetes ?? 0)
   const b = bases.get(address)
   if (profil.items.length >= ouvertes) {
     jour(`base de ${b?.name ?? address.slice(0, 8)} pleine (${ouvertes} places ouvertes)`)
@@ -232,9 +235,6 @@ export async function poserObjet(address: string, rarity: number): Promise<boole
   }
   profil.items.push(rarity)
   profil.collectes = (profil.collectes ?? 0) + 1
-  const avant = etagesOuverts((profil.collectes ?? 1) - 1)
-  const apres = etagesOuverts(profil.collectes ?? 1)
-  if (apres > avant) jour(`${b?.name ?? address.slice(0, 8)} ouvre l'etage ${apres} (${profil.collectes} objets collectes)`)
   profilsSales.add(address)
   if (b) { b.items = [...profil.items]; basesSales.add(address); publier(b) }
   jour(`rarete ${rarity} posee par ${address.slice(0, 8)} (${profil.items.length} objets)`)
@@ -297,7 +297,7 @@ export type RangementResultat = 'expose' | 'en-stock' | 'plein'
 export function ajouterObjet(address: string, rarity: number): RangementResultat {
   const prof = profils.get(address)
   if (!prof) return 'plein'
-  if (prof.items.length >= placesOuvertes(prof.collectes ?? 0, prof.rebirths ?? 0)) return 'plein'
+  if (prof.items.length >= placesOuvertes(prof.etagesAchetes ?? 0)) return 'plein'
   prof.items.push(rarity)
   profilsSales.add(address)
   const b = bases.get(address)
@@ -368,7 +368,7 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
   profilsSales.add(address)
   const b = bases.get(address)
   if (b) { b.items = [...p.items]; basesSales.add(address); publier(b) }
-  const et = etagesOuverts(p.collectes ?? 0, p.rebirths)
+  const et = etagesOuverts(p.etagesAchetes ?? 0)
   jour(`${b?.name ?? address.slice(0, 8)} franchit le palier ${p.rebirths}: -${exige.cout} pieces, garde ${exige.garde} objet(s), revenu x${exige.multiplicateur}, ${et} etages`)
   return { ok: true, palier: p.rebirths, etages: et }
 }
@@ -470,6 +470,36 @@ export function revendreObjet(address: string, index: number): { ok: boolean; ga
   return { ok: true, gain }
 }
 
+/**
+ * ACHAT D'UN ETAGE. Le vrai puits a pieces: +6 emplacements, et on garde tout.
+ * A opposer au palier, qui donne un multiplicateur mais efface presque le butin.
+ */
+export function acheterEtage(address: string): { ok: boolean; raison?: string; etages?: number; cout?: number } {
+  const p = profils.get(address)
+  if (!p) return { ok: false, raison: 'no profile' }
+  const actuels = 1 + (p.etagesAchetes ?? 0)
+  if (actuels >= ETAGES_MAX) return { ok: false, raison: 'max floors reached' }
+  const cout = prixEtage(actuels + 1)
+  if (p.coins < cout) return { ok: false, raison: `need ${Math.ceil(cout - p.coins)} more coins` }
+
+  p.coins -= cout
+  p.etagesAchetes = (p.etagesAchetes ?? 0) + 1
+  profilsSales.add(address)
+  const b = bases.get(address)
+  if (b) { basesSales.add(address); publier(b) }
+  const et = etagesOuverts(p.etagesAchetes)
+  jour(`${b?.name ?? address.slice(0, 8)} achete l'etage ${et} pour ${cout}`)
+  return { ok: true, etages: et, cout }
+}
+
+/** Prix du prochain etage, 0 si le maximum est atteint. */
+export function prixProchainEtage(address: string): number {
+  const p = profils.get(address)
+  if (!p) return 0
+  const actuels = 1 + (p.etagesAchetes ?? 0)
+  return actuels >= ETAGES_MAX ? 0 : prixEtage(actuels + 1)
+}
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)
@@ -532,6 +562,7 @@ export function startPlots(): void {
         revenu,
         basePosee: b !== undefined,
         verrouSec: Math.max(0, Math.ceil((lock - Date.now()) / 1000)),
+        prixEtage: prixProchainEtage(address),
         aReprendre: aQuelqueChoseAReprendre(address),
         coins: Math.floor(p.coins),
         prochainPalier: suivant ? suivant.cout : 0,

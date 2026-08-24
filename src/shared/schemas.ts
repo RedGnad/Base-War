@@ -265,28 +265,35 @@ export function multiplicateurRevenu(n: number): number {
 }
 
 /**
- * Seuils de deblocage des etages, en objets collectes.
- * CALES SUR LA CONTRAINTE DE JUGEMENT, pas sur une courbe de progression longue: un juge
- * dispose de trois minutes. Si le 2e etage exigeait 10 objets (30 coups de caisse), il ne
- * verrait jamais son batiment grandir, et c'est precisement le moment qui donne envie de
- * rester. 4 objets = 12 coups, atteignable dans la premiere minute.
- * Le jeu de reference fait monter les etages avec les rebirths (progression longue): on
- * garde la MECANIQUE, on resserre la COURBE pour le format juge.
+ * L'ETAGE S'ACHETE. C'est +6 emplacements, donc la plus grosse amelioration du jeu:
+ * il ne peut pas tomber gratuitement en ramassant des objets, comme c'etait le cas.
+ *
+ * Il devient LE puits a pieces principal, et il cree la decision qui manquait:
+ *   - acheter un ETAGE  -> plus de place, on garde tout
+ *   - franchir un PALIER -> multiplicateur, mais ca EFFACE presque tout le butin
+ * Deux couts comparables au meme moment, deux benefices opposes.
+ *
+ * Prix cales sur ce que les nouveaux emplacements produisent en ~4 minutes:
+ *   etage 2: +6 places remplies de Peu communs = 24/s -> 4 min = 5 760
+ *   etage 3: +6 places remplies de Rares       = 96/s -> 4 min = 23 000
  */
-export const SEUILS_ETAGE = [0, 4, 10] as const
+export const PRIX_ETAGE = [0, 4000, 30000] as const
+
+export function prixEtage(etageVise: number): number {
+  return PRIX_ETAGE[Math.max(0, Math.min(etageVise - 1, PRIX_ETAGE.length - 1))]
+}
 
 /**
  * Les etages viennent de DEUX sources: la collecte (visible vite, pour le juge de passage)
  * et le rebirth (le vrai palier, qui coute des pieces). On prend le plus genereux des deux.
  */
-export function etagesOuverts(objetsCollectes: number, rebirths = 0): number {
-  let n = 1
-  for (let i = 1; i < SEUILS_ETAGE.length; i++) if (objetsCollectes >= SEUILS_ETAGE[i]) n = i + 1
-  return Math.min(Math.max(n, 1 + rebirths), ETAGES_MAX)
+/** Les etages ne viennent QUE de l'achat. Le palier, lui, ne donne qu'un multiplicateur. */
+export function etagesOuverts(etagesAchetes = 0): number {
+  return Math.min(1 + etagesAchetes, ETAGES_MAX)
 }
 
-export function placesOuvertes(objetsCollectes: number, rebirths = 0): number {
-  return etagesOuverts(objetsCollectes, rebirths) * SLOTS_PAR_ETAGE
+export function placesOuvertes(etagesAchetes = 0): number {
+  return etagesOuverts(etagesAchetes) * SLOTS_PAR_ETAGE
 }
 
 /**

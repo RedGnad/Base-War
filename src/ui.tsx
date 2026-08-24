@@ -3,7 +3,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { theftView, verrouiller, reprendre, franchirPalier } from './client/theft'
+import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { RARITIES } from './shared/loot-table'
@@ -178,8 +178,8 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 620, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -400 },
+        width: 760, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -470 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
@@ -210,6 +210,16 @@ const uiComponent = () => (
         fontSize={14}
         onMouseDown={() => { if (!slotView.actif) basculerPose(); else if (slotView.valide) poserIci(); else basculerPose() }}
       />
+      {/* L'ETAGE: le vrai puits a pieces. A cote du palier pour que la decision soit
+          visible d'un coup d'oeil: plus de place, ou un multiplicateur qui efface tout. */}
+      {theftView.prixEtage > 0 && (
+        <Button
+          uiTransform={{ width: 140, height: 54 }}
+          value={theftView.coins >= theftView.prixEtage ? '+1 FLOOR' : `FLOOR ${theftView.prixEtage}`}
+          variant={theftView.coins >= theftView.prixEtage ? 'primary' : 'secondary'}
+          fontSize={13}
+          onMouseDown={acheterEtage} />
+      )}
       {theftView.prochainPalier > 0 && (
         <Button
           uiTransform={{ width: 150, height: 54 }}

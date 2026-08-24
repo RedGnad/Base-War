@@ -30,7 +30,7 @@ export const MESSAGES = {
    */
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
-  wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Int, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean }),
+  wallet: Schemas.Map({ coins: Schemas.Int, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Int, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean, prixEtage: Schemas.Int }),
 
   /**
    * client -> serveur: je pose ma base sur l'emplacement n.
@@ -63,6 +63,11 @@ export const MESSAGES = {
   rebirth: Schemas.Map({}),
   /** serveur -> l'auteur: palier franchi. */
   rebirthDone: Schemas.Map({ palier: Schemas.Int, etages: Schemas.Int }),
+
+  /** client -> serveur: j'achete un etage de plus. */
+  buyFloor: Schemas.Map({}),
+  /** serveur -> l'acheteur: etage ouvert. */
+  floorBought: Schemas.Map({ etages: Schemas.Int, cout: Schemas.Int }),
 
   /** client -> serveur: je revends MON objet n pour faire de la place. */
   sellItem: Schemas.Map({ slot: Schemas.Int }),
