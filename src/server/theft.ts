@@ -13,7 +13,7 @@ import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
   nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe,
-  poserBase, positionsBases, revendreObjet, acheterEtage, rechargeVerrou
+  poserBase, positionsBases, revendreObjet, acheterEtage, rechargeVerrou, collecter
 } from './plots'
 
 /**
@@ -165,6 +165,14 @@ export function startTheft(): void {
     const ps = positionsBases()
     void room.send('basePositions', { xs: ps.map((q) => q.x), zs: ps.map((q) => q.z) })
   }, 2500)
+
+  room.onMessage('collect', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const gain = collecter(a)
+    if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
+    void room.send('collected', { gain }, { to: [a] })
+  })
 
   room.onMessage('buyFloor', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

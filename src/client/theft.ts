@@ -22,6 +22,7 @@ export const theftView = {
   aReprendre: false,
   prixEtage: 0,
   rechargeSec: 0,
+  reserve: 0,
   alerte: '',
   alerteCouleur: '#ffffff',
   alerteJusqua: 0,
@@ -87,11 +88,29 @@ export function setupTheft(): void {
     theftView.aReprendre = d.aReprendre
     theftView.prixEtage = d.prixEtage
     theftView.rechargeSec = d.rechargeSec
+    theftView.reserve = d.reserve
   })
 
   room.onMessage('rebirthDone', (d) => {
     alerter(`PALIER ${d.palier} — ${d.etages} etages`, '#f5a524', 6000)
     console.log(`[CLIENT] palier ${d.palier}, ${d.etages} etages`)
+  })
+
+  room.onMessage('collected', (d) => {
+    alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)
+  })
+
+  room.onMessage('offlineEarnings', (d) => {
+    // La fenetre de retour: c'est ELLE qui fait revenir le joueur, elle doit rester
+    // longtemps et dire combien de temps a couru.
+    const min = Math.round(d.secondes / 60)
+    alerter(`WELCOME BACK  ·  +${d.gain} coins earned in ${min} min away`, '#ffd166', 9000)
+    console.log(`[CLIENT] hors ligne: +${d.gain} en ${min} min`)
+  })
+
+  room.onMessage('dailyReward', (d) => {
+    alerter(`DAY ${d.jour}/7  ·  free crate!`, '#4dd2ff', 7000)
+    console.log(`[CLIENT] recompense du jour ${d.jour}`)
   })
 
   room.onMessage('floorBought', (d) => {
@@ -124,6 +143,7 @@ export function reprendre(): void { void room.send('reclaim', {}) }
 export function franchirPalier(): void { void room.send('rebirth', {}) }
 export function revendre(slot: number): void { void room.send('sellItem', { slot }) }
 export function acheterEtage(): void { void room.send('buyFloor', {}) }
+export function collecter(): void { void room.send('collect', {}) }
 
 /** Adresse du joueur local, resolue une fois. */
 let _adresse = ''

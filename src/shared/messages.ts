@@ -30,7 +30,7 @@ export const MESSAGES = {
    */
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
-  wallet: Schemas.Map({ coins: Schemas.Float, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Float, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean, prixEtage: Schemas.Int, rechargeSec: Schemas.Int }),
+  wallet: Schemas.Map({ coins: Schemas.Float, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Float, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean, prixEtage: Schemas.Int, rechargeSec: Schemas.Int, reserve: Schemas.Int }),
 
   /**
    * client -> serveur: je pose ma base sur l'emplacement n.
@@ -63,6 +63,16 @@ export const MESSAGES = {
   rebirth: Schemas.Map({}),
   /** serveur -> l'auteur: palier franchi. */
   rebirthDone: Schemas.Map({ palier: Schemas.Int, etages: Schemas.Int }),
+
+  /** client -> serveur: j'encaisse ma reserve. */
+  collect: Schemas.Map({}),
+  /** serveur -> le collecteur: combien a ete verse. */
+  collected: Schemas.Map({ gain: Schemas.Int }),
+  /** serveur -> le joueur: sa recompense quotidienne. */
+  dailyReward: Schemas.Map({ jour: Schemas.Int, boite: Schemas.Int }),
+
+  /** serveur -> le joueur qui revient: ce qu'il a gagne pendant son absence. */
+  offlineEarnings: Schemas.Map({ gain: Schemas.Int, secondes: Schemas.Int }),
 
   /** client -> serveur: j'achete un etage de plus. */
   buyFloor: Schemas.Map({}),

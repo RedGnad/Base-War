@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
-  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS,
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS, HORS_LIGNE_TAUX, HORS_LIGNE_PLAFOND_MS, RESERVE_PLAFOND_S, RECOMPENSES_JOUR,
   DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
@@ -51,6 +51,14 @@ type Profil = {
   etagesAchetes?: number
   /** fin du dernier verrou, pour le temps de recharge */
   finVerrou?: number
+  /** derniere seconde ou le joueur etait present, pour les gains hors ligne */
+  vuA?: number
+  /** argent produit mais PAS ENCORE encaisse */
+  reserve?: number
+  /** jour (AAAAMMJJ) de la derniere recompense quotidienne reclamee */
+  dernierJour?: number
+  /** jours consecutifs de connexion, 1 a 7 puis retour a 1 */
+  serie?: number
   x?: number
   z?: number
   /** horodatage du dernier DEPLACEMENT (pas du premier placement) */
@@ -526,6 +534,71 @@ export function prixProchainEtage(address: string): number {
   return actuels >= ETAGES_MAX ? 0 : prixEtage(actuels + 1)
 }
 
+/**
+ * Calcule et verse les gains accumules pendant l'absence. Retourne de quoi afficher
+ * la fenetre de retour, ou null s'il n'y a rien a annoncer.
+ */
+export function encaisserHorsLigne(address: string): { gain: number; secondes: number } | null {
+  const p = profils.get(address)
+  if (!p || p.vuA === undefined) return null
+  const ecoule = Math.min(Date.now() - p.vuA, HORS_LIGNE_PLAFOND_MS)
+  if (ecoule < 60_000) return null          // moins d'une minute: rien a annoncer
+
+  // On calcule sur les objets STOCKES, car la base peut ne pas etre encore rechargee.
+  let parSeconde = 0
+  for (const code of p.items) parSeconde += revenuObjet(code, GAIN_PAR_SECONDE)
+  parSeconde *= multiplicateurRevenu(p.rebirths ?? 0) * HORS_LIGNE_TAUX
+  if (parSeconde <= 0) return null
+
+  const gain = Math.floor(parSeconde * (ecoule / 1000))
+  if (gain <= 0) return null
+  p.coins += gain
+  p.vuA = Date.now()
+  profilsSales.add(address)
+  jour(`${nomDe(address)} encaisse ${gain} hors ligne (${Math.round(ecoule / 60000)} min a ${Math.round(HORS_LIGNE_TAUX * 100)} %)`)
+  return { gain, secondes: Math.floor(ecoule / 1000) }
+}
+
+/** Encaisse la reserve. Retourne ce qui a ete verse. */
+export function collecter(address: string): number {
+  const p = profils.get(address)
+  if (!p) return 0
+  const r = Math.floor(p.reserve ?? 0)
+  if (r <= 0) return 0
+  p.coins += r
+  p.reserve = 0
+  profilsSales.add(address)
+  return r
+}
+
+export function reserveDe(address: string): number {
+  return Math.floor(profils.get(address)?.reserve ?? 0)
+}
+
+/**
+ * Recompense quotidienne. Le JOUR 1 se debloque immediatement a la premiere visite:
+ * c'est lui qui annonce la boucle des sept jours.
+ */
+export function reclamerQuotidienne(address: string): { jour: number; boite: number } | null {
+  const p = profils.get(address)
+  if (!p) return null
+  const d = new Date()
+  const jourCle = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate()
+  if (p.dernierJour === jourCle) return null      // deja pris aujourd'hui
+
+  // Serie: +1 si c'etait hier, sinon on repart a 1. Pas de palier long au-dela de 7.
+  const hier = new Date(Date.now() - 86400_000)
+  const hierCle = hier.getUTCFullYear() * 10000 + (hier.getUTCMonth() + 1) * 100 + hier.getUTCDate()
+  p.serie = p.dernierJour === hierCle ? Math.min((p.serie ?? 0) + 1, 7) : 1
+  p.dernierJour = jourCle
+
+  const boite = RECOMPENSES_JOUR[p.serie - 1] ?? 0
+  p.boites = [...(p.boites ?? []), boite]
+  profilsSales.add(address)
+  jour(`${nomDe(address)} recoit sa recompense du jour ${p.serie}: boite ${boite}`)
+  return { jour: p.serie, boite }
+}
+
 export function marquerSale(address: string): void {
   basesSales.add(address)
   const p = profils.get(address); const b = bases.get(address)
@@ -564,7 +637,12 @@ export function startPlots(): void {
       if (gain === 0) continue
       // Le multiplicateur des paliers s'applique ici: c'est lui qui fait ACCELERER la
       // boucle. Sans lui, chaque palier ne ferait que reculer le joueur.
-      profil.coins += gain * multiplicateurRevenu(profil.rebirths ?? 0) * secondes
+      // L'argent va dans la RESERVE, pas directement au solde: c'est le bouton COLLECT
+      // qui l'encaisse. La reserve plafonne, donc laisser tourner ne paie pas.
+      const parSeconde = gain * multiplicateurRevenu(profil.rebirths ?? 0)
+      const plafond = parSeconde * RESERVE_PLAFOND_S
+      profil.reserve = Math.min((profil.reserve ?? 0) + parSeconde * secondes, plafond)
+      profil.vuA = Date.now()
       profilsSales.add(address)
     }
   })
@@ -589,6 +667,7 @@ export function startPlots(): void {
         basePosee: b !== undefined,
         verrouSec: Math.max(0, Math.ceil((lock - Date.now()) / 1000)),
         prixEtage: prixProchainEtage(address),
+        reserve: reserveDe(address),
         rechargeSec: Math.ceil(rechargeVerrou(address) / 1000),
         aReprendre: aQuelqueChoseAReprendre(address),
         coins: p.coins,

@@ -3,7 +3,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, poserObjet, coinsDe } from './plots'
+import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne } from './plots'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
@@ -141,6 +141,13 @@ export function startServer(): void {
         const n = await load(address)
         publish(address)
         await accueillir(address)
+        // Les gains hors ligne sont verses AVANT tout le reste: c'est la premiere
+        // chose que le joueur doit voir en revenant, c'est ce qui l'a fait revenir.
+        const hl = encaisserHorsLigne(address)
+        if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
+        // La recompense du jour arrive juste apres: deux bonnes nouvelles a l'arrivee.
+        const dq = reclamerQuotidienne(address)
+        if (dq !== null) void room.send('dailyReward', dq, { to: [address] })
         verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied
         delivrerAlertes(address)  // ce qui s'est passe pendant l'absence
         rejouerJournal(address)

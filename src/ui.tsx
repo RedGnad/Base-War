@@ -3,7 +3,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage } from './client/theft'
+import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collecter } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -186,11 +186,19 @@ const uiComponent = () => (
         Voler ne passe plus par un bouton: on tape l'objet convoite. */}
     <UiEntity
       uiTransform={{
-        width: 760, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -470 },
+        width: 890, height: 58, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -535 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
+      {/* COLLECT est le geste le plus frequent du jeu: il vient en premier.
+          « il faut simplifier la vie des joueurs, ils ont vraiment pas votre temps ». */}
+      <Button
+        uiTransform={{ width: 130, height: 54 }}
+        value={theftView.reserve > 0 ? `COLLECT ${formatRevenu(theftView.reserve)}` : 'COLLECT'}
+        variant={theftView.reserve > 0 ? 'primary' : 'secondary'}
+        fontSize={14}
+        onMouseDown={collecter} />
       <Button
         uiTransform={{ width: 120, height: 54 }}
         value={boxView.stock.length > 0 ? `OPEN (${boxView.stock.length})` : 'OPEN'}

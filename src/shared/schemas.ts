@@ -352,6 +352,46 @@ export function placesOuvertes(etagesAchetes = 0): number {
  */
 export const DELAI_DEPLACEMENT_MS = 180_000
 
+/**
+ * GAINS HORS LIGNE. Cite par le praticien comme l'une des trois « mecaniques virales »
+ * que quasi tous les jeux ont, et son levier de RETOUR numero un:
+ *   « meme si le joueur est deconnecte, le jeu continue d'accumuler l'argent des
+ *    machines. Des qu'il se reconnecte, on lui affiche cette fenetre qui lui indique
+ *    combien il a gagne [...] la personne a envie de revenir »
+ *
+ * J'avais SUPPRIME cette accumulation en corrigeant un bug (un million de pieces en
+ * cinq minutes). L'erreur etait de retirer la fonctionnalite au lieu de la PLAFONNER.
+ *
+ * Deux gardes qui rendent la chose saine:
+ *  - un TAUX REDUIT: hors ligne on ne gagne qu'une fraction, sinon rester connecte
+ *    n'a plus d'interet et le jeu se joue tout seul
+ *  - un PLAFOND de duree: au-dela, l'accumulation s'arrete. C'est ce qui donne envie
+ *    de revenir SOUVENT plutot que de laisser mijoter une semaine
+ */
+export const HORS_LIGNE_TAUX = 0.35        // 35 % du revenu normal
+export const HORS_LIGNE_PLAFOND_MS = 4 * 3600_000   // 4 heures d'accumulation maximum
+
+/**
+ * COLLECTE MANUELLE. Le praticien insiste: *« on a fait un bouton parce que sur Roblox,
+ * il faut SIMPLIFIER la vie des joueurs. Ils ont vraiment pas votre temps. »*
+ *
+ * L'argent s'accumule dans une reserve, et un bouton l'encaisse. Deux effets:
+ *  - un GESTE regulier au lieu d'un compteur qui monte tout seul, donc une raison de
+ *    revenir a l'ecran et une petite recompense a chaque fois
+ *  - la reserve PLAFONNE, donc laisser tourner sans rien faire ne paie pas
+ */
+export const RESERVE_PLAFOND_S = 600      // 10 minutes de production accumulables
+
+/**
+ * RECOMPENSES QUOTIDIENNES SUR 7 JOURS. Decidees des le memo (§3.1) sur la foi du
+ * praticien: *« pour augmenter la retention apres une semaine, on a rajoute des
+ * recompenses si on se connecte chaque jour pendant une semaine »*.
+ * La recompense du JOUR 1 se debloque immediatement: c'est elle qui annonce la boucle.
+ * Pas de palier long: le badge « streak 30 jours » du champ n'est atteint que par
+ * 3 036 joueurs, contre 1 440 pour « 100 jours » (mesure du memo).
+ */
+export const RECOMPENSES_JOUR = [0, 0, 1, 1, 2, 2, 3] as const   // type de boite offerte
+
 /** Valeur de revente d'un objet: 30 secondes de sa production. */
 export const REVENTE_SECONDES = 30
 
