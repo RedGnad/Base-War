@@ -1,7 +1,7 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  STEAL_RANGE, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
+  STEAL_RANGE, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, STEAL_HOLD_RANGE, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS
 } from '../shared/schemas'
 
@@ -69,7 +69,82 @@ export function hasSomethingToRecover(address: string): boolean {
   return larcins.some((l) => l.victim === address && t - l.quand <= RECOVER_WINDOW_MS)
 }
 
+type EnCours = { victim: string; slot: number; code: number; fin: number; total: number }
+const enCours = new Map<string, EnCours>()
+
+/** Un vol en cours est-il ouvert sur cette base ? Sert a la sentinelle et a la reprise. */
+export function volEnCoursSur(address: string): boolean {
+  for (const v of enCours.values()) if (v.victim === address) return true
+  return false
+}
+
 export function startTheft(): void {
+  // RESOLUTION DES VOLS EN COURS. Un seul systeme, cadence a la seconde.
+  let acc = 0
+  engine.addSystem((dt) => {
+    acc += dt
+    if (acc < 0.5) return
+    acc = 0
+    const maintenant = Date.now()
+    for (const [thief, v] of [...enCours]) {
+      const b = baseDe(v.victim)
+      if (b === undefined) { enCours.delete(thief); continue }
+
+      // S'ELOIGNER ANNULE. C'est ce qui donne un sens au ralentissement: fuir la base
+      // pendant l'action fait perdre l'action.
+      const p = positionOf(thief)
+      if (p === null || Math.sqrt((p.x - b.x) ** 2 + (p.z - b.z) ** 2) > STEAL_HOLD_RANGE) {
+        enCours.delete(thief)
+        void room.send('stealFailed', { reason: 'you left the base' }, { to: [thief] })
+        continue
+      }
+
+      // LA SENTINELLE AGIT PENDANT L'ACTION, pas a la place de l'action.
+      if (useSentryCharge(v.victim)) {
+        const left = sentriesOf(v.victim)
+        setLock(v.victim, maintenant + SENTRY_LOCK_MS)
+        enCours.delete(thief)
+        void room.send('sentryBlocked', {
+          ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left, lockSec: Math.round(SENTRY_LOCK_MS / 1000)
+        }, { to: [thief] })
+        void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
+        const info = { type: 'sentry', byName: displayName(thief), left }
+        if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
+        else storeAlert(v.victim, info)
+        log(`${b.name} sentry blocked ${displayName(thief)} (${left} charge(s) left)`)
+        continue
+      }
+
+      const restant = v.fin - maintenant
+      if (restant > 0) {
+        void room.send('stealProgress', {
+          ownerName: b.name, rarity: rarityOf(v.code), mutation: mutationDe(v.code),
+          restantMs: restant, totalMs: v.total
+        }, { to: [thief] })
+        continue
+      }
+
+      // ABOUTI: l'objet change enfin de main.
+      enCours.delete(thief)
+      const idx = b.items.indexOf(v.code)
+      if (idx < 0) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
+      const r = removeItem(v.victim, idx)
+      if (r === null) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
+      if (!addItem(thief, r)) {
+        addItem(v.victim, r)
+        void room.send('stealFailed', { reason: 'your base is full' }, { to: [thief] })
+        continue
+      }
+      larcins.push({ thief, victim: v.victim, rarity: r, quand: maintenant })
+      const nomV = displayName(thief)
+      const rar = rarityOf(r), mut = mutationDe(r)
+      storeAlert(v.victim, { byName: nomV, rarity: rar, mutation: mut })
+      void room.send('youWereRobbed', { byName: nomV, rarity: rar, mutation: mut }, { to: [v.victim] })
+      void room.send('stolen', { byName: nomV, fromName: b.name, rarity: rar, mutation: mut })
+      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}`)
+    }
+  })
+
   room.onMessage('stealItem', (d, ctx) => {
     const thief = ctx?.from?.toLowerCase()
     if (!thief) return
@@ -93,46 +168,35 @@ export function startTheft(): void {
       }
       if (c.items.length === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
 
-      if (useSentryCharge(c.address)) {
-        const left = sentriesOf(c.address)
-        setLock(c.address, maintenant + SENTRY_LOCK_MS)
-        void room.send('sentryBlocked', {
-          ownerName: c.name, gelMs: SENTRY_FREEZE_MS, left,
-          lockSec: Math.round(SENTRY_LOCK_MS / 1000)
-        }, { to: [thief] })
-        const info = { type: 'sentry', byName: displayName(thief), left }
-        if (presents().has(c.address)) void room.send('sentryTriggered', info, { to: [c.address] })
-        else storeAlert(c.address, info)
-        log(`${c.name} sentry blocked ${displayName(thief)} (${left} charge(s) left)`)
-        continue
-      }
 
       const slot = d.slot
       if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
         refus(thief, 'steal', 'that item is gone'); continue
       }
-      const r = removeItem(c.address, slot)
-      if (r === null) { refus(thief, 'steal', 'item already taken'); continue }
+      if (enCours.has(thief)) { refus(thief, 'steal', 'you are already taking something'); return }
 
-      if (!addItem(thief, r)) {
-        addItem(c.address, r)
-        refus(thief, 'steal', 'your base is full')
-        return
+      // ON NE TRANSFERE RIEN ICI. On ouvre une tentative minutee: c'est pendant celle-ci
+      // que la defense agit et que le voleur est vulnerable.
+      const code = c.items[slot]
+      const duree = STEAL_BASE_MS + rarityOf(code) * STEAL_PER_RARITY_MS
+      enCours.set(thief, { victim: c.address, slot, code, fin: maintenant + duree, total: duree })
+      void room.send('thiefPenalty', { ms: duree + 2000 }, { to: [thief] })
+      void room.send('stealProgress', {
+        ownerName: c.name, rarity: rarityOf(code), mutation: mutationDe(code),
+        restantMs: duree, totalMs: duree
+      }, { to: [thief] })
+      const nomV = displayName(thief)
+      if (presents().has(c.address)) {
+        void room.send('beingRobbed', { byName: nomV, rarity: rarityOf(code), restantMs: duree }, { to: [c.address] })
       }
-
-      larcins.push({ thief, victim: c.address, rarity: r, quand: maintenant })
-
-      const thiefName = displayName(thief)
-      const rar = rarityOf(r), mut = mutationDe(r)
-      storeAlert(c.address, { byName: thiefName, rarity: rar, mutation: mut })
-      void room.send('youWereRobbed', { byName: thiefName, rarity: rar, mutation: mut }, { to: [c.address] })
-
-      void room.send('thiefPenalty', { ms: PENALTY_MS }, { to: [thief] })
-
-      void room.send('stolen', { byName: thiefName, fromName: c.name, rarity: rar, mutation: mut })
-      log(`${thiefName} a vole un ${itemName(rar, mut)} a ${c.name}`)
+      log(`${nomV} starts taking a ${itemName(rarityOf(code), mutationDe(code))} from ${c.name} (${Math.round(duree / 1000)}s)`)
       return
     }
+  })
+
+  room.onMessage('cancelSteal', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (a && enCours.delete(a)) void room.send('stealFailed', { reason: 'cancelled' }, { to: [a] })
   })
 
   room.onMessage('claimSlot', (d, ctx) => {
@@ -178,7 +242,7 @@ export function startTheft(): void {
     const bc = baseDe(cible)
     if (p === null || bc === undefined) { refus(a, 'gift', 'position unknown'); return }
     const dist = Vector3.distance(p, Vector3.create(bc.x, p.y, bc.z))
-    if (dist > STEAL_RANGE) { refus(a, 'gift', `too far (${dist.toFixed(1)}m)`, true); return }
+    if (dist > GIFT_RANGE) { refus(a, 'gift', `too far (${dist.toFixed(1)}m)`, true); return }
 
     const r = giftItem(a, cible, d.slot)
     if (!r.ok) { refus(a, 'gift', r.reason ?? 'refused'); return }

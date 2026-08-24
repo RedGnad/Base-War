@@ -7,6 +7,10 @@ import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
 
 export const theftView = {
+  stealing: false,
+  stealTarget: '',
+  stealLeftMs: 0,
+  stealTotalMs: 1,
   presents: 1,
   prime: 0,
   sentries: 0,
@@ -67,6 +71,7 @@ export function setupTheft(): void {
   })
 
   room.onMessage('stolen', (d) => {
+    theftView.stealing = false
     pushToFeed(`${d.byName} a pris un ${rarity(d.rarity).name} a ${d.fromName}`)
   })
   room.onMessage('reclaimed', (d) => {
@@ -96,6 +101,20 @@ export function setupTheft(): void {
   })
   room.onMessage('gifted', (d) => {
     pushToFeed(`${d.byName} gifted ${rarity(d.rarity).name} to ${d.toName}`)
+  })
+
+  room.onMessage('stealProgress', (d) => {
+    theftView.stealing = true
+    theftView.stealTarget = d.ownerName
+    theftView.stealLeftMs = d.restantMs
+    theftView.stealTotalMs = Math.max(1, d.totalMs)
+  })
+  room.onMessage('stealFailed', (d) => {
+    theftView.stealing = false
+    alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', 4000)
+  })
+  room.onMessage('beingRobbed', (d) => {
+    alerter(`${d.byName.toUpperCase()} IS TAKING YOUR ${rarity(d.rarity).name.toUpperCase()}!`, '#ff6b6b', Math.max(3000, d.restantMs))
   })
 
   room.onMessage('wallet', (d) => {
@@ -155,10 +174,15 @@ export function setupTheft(): void {
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 
-  engine.addSystem(() => {
+  engine.addSystem((dt) => {
+    if (theftView.stealing) {
+      theftView.stealLeftMs = Math.max(0, theftView.stealLeftMs - dt * 1000)
+    }
     if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''
   })
 }
+
+export function cancelSteal(): void { theftView.stealing = false; void room.send('cancelSteal', {}) }
 
 export function steal(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })

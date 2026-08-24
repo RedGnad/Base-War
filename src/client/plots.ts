@@ -156,6 +156,9 @@ function createView(x: number, z: number): View {
     scale: Vector3.create(0, 0, 0)
   })
   MeshRenderer.setBox(door)
+  // A shield you can walk through is a lie. It had a renderer and no collider, so it
+  // looked like a wall and stopped nothing.
+  MeshCollider.setBox(door)
   Material.setPbrMaterial(door, {
     albedoColor: Color4.create(0.30, 0.85, 1.0, 0.16),
     emissiveColor: Color4.fromHexString('#4dd2ffff'),

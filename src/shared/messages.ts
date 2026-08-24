@@ -44,6 +44,15 @@ export const MESSAGES = {
   tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int }),
   timeGift: Schemas.Map({ crate: Schemas.Int, minutes: Schemas.Int }),
 
+  /** client -> server: cancel the steal I started. */
+  cancelSteal: Schemas.Map({}),
+  /** server -> thief: steal in progress, with its remaining time. */
+  stealProgress: Schemas.Map({ ownerName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, restantMs: Schemas.Int, totalMs: Schemas.Int }),
+  /** server -> thief: the attempt ended without the item. */
+  stealFailed: Schemas.Map({ reason: Schemas.String }),
+  /** server -> the victim, live: someone is taking something right now. */
+  beingRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, restantMs: Schemas.Int }),
+
   outbid: Schemas.Map({ convoyId: Schemas.Int }),
   outbidLost: Schemas.Map({ byName: Schemas.String, rembourse: Schemas.Int, crateTier: Schemas.Int }),
   outbidWon: Schemas.Map({ fromName: Schemas.String, price: Schemas.Int, crateTier: Schemas.Int }),

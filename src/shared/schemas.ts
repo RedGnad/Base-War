@@ -56,6 +56,33 @@ export const Belt = engine.defineComponent('basetycoon::belt', {
  * Triggering it also re-locks the base, otherwise a thief just waits out the freeze and
  * drains all charges in a minute.
  */
+/**
+ * STEALING TAKES TIME. Source, stealabrainrot.fandom.com:
+ *   `Stealing`  distinguishes "when a Brainrot IS BEING STOLEN" (the alert fires then)
+ *               from "if they steal your brainrot SUCCESSFULLY" (later).
+ *   `Methods_Of_Stealing` names "the base timer" and prices traps against it:
+ *               "when the base timer reaches a MINIMUM of (7 multiplied by the number of
+ *               traps) seconds" — so freezes STACK, 7 s each.
+ *
+ * An instant transfer leaves no window for any defence to act and nothing to carry, which
+ * is why a sentry could only delay. During the timer the thief is slowed, visibly holding
+ * the item, and cancelling is as simple as leaving the base.
+ *
+ * 6 s base + 2 s per rarity tier: taking a Secret is a 18 s commitment, taking a Common
+ * is 6. The rarest item is therefore the most exposed, which is what makes placing it
+ * high a real decision.
+ */
+export const STEAL_BASE_MS = 6000
+export const STEAL_PER_RARITY_MS = 2000
+/** Leaving this radius mid-theft cancels it. Slightly wider than STEAL_RANGE so a step back is not fatal. */
+export const STEAL_HOLD_RANGE = 7
+/**
+ * GIFT_RANGE is deliberately wider than STEAL_RANGE: the walls sit 5.5 m from the base
+ * centre, so a 4 m range forced the giver INSIDE the building. You break in to take, you
+ * leave a gift at the door.
+ */
+export const GIFT_RANGE = 9
+
 export const SENTRY_CHARGES = 3
 export const SENTRY_SECONDS = 120
 export const SENTRY_MIN_PRICE = 240
@@ -82,6 +109,14 @@ export const CONVOY_SPEED = 2.0
 export const CONVOY_MIN_S = 8
 export const CONVOY_OUTBID = 1.5
 export const CONVOY_RANGE = 6
+/**
+ * A player who has just been outbid cannot be outbid again for 30 s.
+ * Without it a rich player can take every crate a beginner buys, forever. The victim is
+ * always refunded in full, so the cost is time, not money — but time is what a newcomer
+ * has least of. 30 s echoes the reference's own anti-grief pattern: `Methods_Of_Stealing`
+ * notes "Sammy adding the 30 seconds anti-steal cooldown".
+ */
+export const OUTBID_IMMUNITY_MS = 30_000
 
 export const Convoy = engine.defineComponent('basetycoon::convoy', {
   convoyId: Schemas.Int,

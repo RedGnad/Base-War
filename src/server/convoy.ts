@@ -2,7 +2,7 @@ import { engine, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE
+  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE, OUTBID_IMMUNITY_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -24,6 +24,8 @@ type State = {
 }
 
 const convoys = new Map<number, State>()
+/** Address -> instant until which they cannot be outbid again. */
+const immunite = new Map<string, number>()
 let prochainId = 1
 
 function durationMs(depart: { x: number; z: number }, cible: { x: number; z: number }): number {
@@ -97,12 +99,18 @@ export function runConvoys(): void {
     const dist = Math.sqrt((ici.x - p.x) ** 2 + (ici.z - p.z) ** 2)
     if (dist > CONVOY_RANGE) { refus(a, `too far (${dist.toFixed(1)}m)`, true); return }
 
+    const jusqua = immunite.get(e.owner) ?? 0
+    if (jusqua > Date.now()) {
+      refus(a, `${displayName(e.owner)} was just outbid, ${Math.ceil((jusqua - Date.now()) / 1000)}s left`)
+      return
+    }
     const price = Math.ceil(e.pricePaid * CONVOY_OUTBID)
     if (!depenser(a, price)) { refus(a, `you need ${price} coins`); return }
 
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.
     crediter(e.owner, e.pricePaid)
+    immunite.set(e.owner, Date.now() + OUTBID_IMMUNITY_MS)
     const previous = e.owner
     void room.send('outbidLost', { byName: displayName(a), rembourse: e.pricePaid, crateTier: e.crateTier }, { to: [previous] })
 

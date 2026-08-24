@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate } from './client/box'
 import { placementView } from './client/plots'
@@ -292,6 +292,33 @@ const uiComponent = () => (
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
       >
         <Label value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
+      </UiEntity>
+    )}
+
+    {theftView.stealing && (
+      <UiEntity
+        uiTransform={{
+          width: 460, height: 76, positionType: 'absolute',
+          position: { bottom: 210, left: '50%' }, margin: { left: -230 },
+          flexDirection: 'column', padding: 10
+        }}
+        uiBackground={{ color: Color4.create(0.24, 0.06, 0.06, 0.9) }}
+      >
+        <Label
+          value={`TAKING FROM ${theftView.stealTarget.toUpperCase()}  ·  ${(theftView.stealLeftMs / 1000).toFixed(1)}s`}
+          fontSize={16} color={Color4.fromHexString('#ff9b9bff')}
+          uiTransform={{ width: '100%', height: 24 }} textAlign="middle-center" />
+        <UiEntity
+          uiTransform={{ width: '100%', height: 12, margin: { top: 4, bottom: 4 } }}
+          uiBackground={{ color: Color4.create(1, 1, 1, 0.14) }}
+        >
+          <UiEntity
+            uiTransform={{ width: `${Math.max(0, Math.min(100, 100 - (theftView.stealLeftMs / theftView.stealTotalMs) * 100))}%`, height: 12 }}
+            uiBackground={{ color: Color4.fromHexString('#ff6b6bff') }} />
+        </UiEntity>
+        <Label value="stay close - walking away cancels it" fontSize={12}
+          color={Color4.fromHexString('#c9a0a0ff')}
+          uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />
       </UiEntity>
     )}
 
