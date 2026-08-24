@@ -36,7 +36,10 @@ const CRATE_WEIGHTS = [
 ]
 
 export function rollCrate(crateId: number): number {
-  const poids = CRATE_WEIGHTS[Math.max(0, Math.min(crateId, CRATE_WEIGHTS.length - 1))]
+  // Index by TIER, never by crate id: a themed crate keeps its tier's rarity odds, and
+  // its id sits past the end of this table.
+  const tier = crate(crateId).tier
+  const poids = CRATE_WEIGHTS[Math.max(0, Math.min(tier, CRATE_WEIGHTS.length - 1))]
   const total = poids.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
   for (let i = 0; i < poids.length; i++) {
@@ -46,7 +49,12 @@ export function rollCrate(crateId: number): number {
   return 0
 }
 
-const POIDS_APPARITION = [55, 28, 13, 4]
+/**
+ * How often each crate shows up on the belt. Themed crates are rarer than their tier:
+ * they are the reason to keep watching, and seeing one is meant to feel like an event.
+ * Order matches CRATES: Basic, Good, Rare, Epic, Gold, Lava, Cursed.
+ */
+const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1]
 
 export function rollCrateTier(): number {
   const total = POIDS_APPARITION.reduce((a, b) => a + b, 0)
@@ -58,14 +66,20 @@ export function rollCrateTier(): number {
   return 0
 }
 
-import { MUTATIONS } from '../shared/loot-table'
+import { crate, MUTATIONS } from '../shared/loot-table'
 
-export function rollMutation(): number {
-  const total = MUTATIONS.reduce((a, m) => a + m.poids, 0)
+/**
+ * A themed crate multiplies its own mutation's weight; every other weight is untouched,
+ * so the tail stays reachable and a Lava Box can still yield a Phantom.
+ */
+export function rollMutation(crateId = 0): number {
+  const c = crate(crateId)
+  const poids = MUTATIONS.map((m) => (c.theme === m.id ? m.poids * c.weight : m.poids))
+  const total = poids.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
-  for (const m of MUTATIONS) {
-    n -= m.poids
-    if (n <= 0) return m.id
+  for (let i = 0; i < MUTATIONS.length; i++) {
+    n -= poids[i]
+    if (n <= 0) return MUTATIONS[i].id
   }
   return 0
 }

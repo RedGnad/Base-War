@@ -137,7 +137,7 @@ export function startBelt(): void {
     advanceQuest(a, 'ouvrir')
     if (d.crateTier >= 1) advanceQuest(a, 'ouvrirRare')
     const rarity = rollCrate(d.crateTier)
-    const mut = rollMutation()
+    const mut = rollMutation(d.crateTier)
     const code = encoder(rarity, mut)
     const prevu = etatPrevisible(a)
     log(`${displayName(a)} ouvre une crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, pose differee)`)
