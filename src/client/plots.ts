@@ -35,7 +35,7 @@ import { voler, revendre, monAdresseClient, deplacer, offrir, alerter } from './
 type Etage = { plancher: Entity; murs: Entity[]; rampe: Entity }
 type Vue = {
   socle: Entity; etiquette: Entity; porte: Entity
-  etages: Etage[]; objets: Entity[]; signature: string; ownerId: string
+  etages: Etage[]; objets: Entity[]; sentinelle: Entity; signature: string; ownerId: string
 }
 
 // Materiaux clairs: sous un ciel de 16h, un batiment gris fonce devient une silhouette
@@ -164,6 +164,20 @@ function creerVue(x: number, z: number): Vue {
     ]
   })
 
+  // LA SENTINELLE, sur le toit. Un texte se lit de pres; une forme se voit de loin, et
+  // c'est de loin qu'on choisit quelle base on va tenter.
+  const sentinelle = engine.addEntity()
+  Transform.create(sentinelle, {
+    position: Vector3.create(x, ETAGES_MAX * ETAGE_HAUTEUR + 0.35, z),
+    scale: Vector3.create(0, 0, 0)
+  })
+  MeshRenderer.setCylinder(sentinelle, 0.25, 0.45)
+  Material.setPbrMaterial(sentinelle, {
+    albedoColor: Color4.fromHexString('#4dd2ffff'),
+    emissiveColor: Color4.fromHexString('#4dd2ffff'),
+    emissiveIntensity: 1.6, metallic: 0.8, roughness: 0.2
+  })
+
   const etiquette = engine.addEntity()
   Transform.create(etiquette, { position: Vector3.create(x, ETAGES_MAX * ETAGE_HAUTEUR + 1.0, z), scale: Vector3.create(0.6, 0.6, 0.6) })
   Billboard.create(etiquette, {})
@@ -188,7 +202,7 @@ function creerVue(x: number, z: number): Vue {
     })
     objets.push(o)
   }
-  return { socle, etiquette, porte, etages, objets, signature: '', ownerId: '' }
+  return { socle, etiquette, porte, sentinelle, etages, objets, signature: '', ownerId: '' }
 }
 
 function detruireVue(v: Vue): void {
@@ -269,7 +283,7 @@ export function setupPlots(): void {
       // sinon soit l'etiquette ne se rafraichit jamais, soit on repeint 30 fois/s.
       const secondesVerrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
       const monBase = p.ownerId.toLowerCase() === monAdresseClient()
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${p.donnes}|${p.recus}|${monBase ? placementView.selection : -1}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${p.donnes}|${p.recus}|${p.sentinelles}|${monBase ? placementView.selection : -1}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
@@ -306,7 +320,17 @@ export function setupPlots(): void {
         const bilan = (p.donnes > 0 || p.recus > 0)
           ? `\n${p.recus} received  ·  ${p.donnes} given`
           : ''
-        txt.text = `${p.ownerName}${etat}${bilan}`
+        // LA DEFENSE SE LIT AVANT D'ENTRER. C'est ce qui fait du raid une decision au lieu
+        // d'un ramassage: on voit ce qu'on risque, et on choisit une autre base ou on tente.
+        const garde = p.sentinelles > 0 ? `\nSENTRY x${p.sentinelles}` : ''
+        const ts = Transform.getMutableOrNull(v.sentinelle)
+        if (ts !== null) {
+          // Elle grandit avec ses charges: une sentinelle a une charge se voit plus petite
+          // qu'une sentinelle a trois, donc la faiblesse aussi se lit de loin.
+          const k = p.sentinelles === 0 ? 0 : 0.6 + p.sentinelles * 0.18
+          ts.scale = Vector3.create(k, k, k)
+        }
+        txt.text = `${p.ownerName}${etat}${garde}${bilan}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
       }
       Material.setPbrMaterial(v.socle, {

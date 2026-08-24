@@ -1,4 +1,4 @@
-import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings } from '@dcl/sdk/ecs'
+import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 
 /**
@@ -18,6 +18,19 @@ export const JOG_NORMAL = 11
 export const JOG_VOLEUR = 6.5   // -41 %
 export const SAUT_NORMAL = 1.15
 export const SAUT_VOLEUR = 0.69 // -40 %
+
+/**
+ * GEL: la sentinelle a intercepte. On descend la vitesse au minimum pendant la duree
+ * exacte du `Trap` de la reference (7 s).
+ * On passe par `AvatarLocomotionSettings` et NON par `InputModifier`: le second est
+ * documente comme sans effet hors client de bureau DCL 2.0, alors que le premier est
+ * deja MESURE en jeu chez nous. Une defense qui ne s'applique pas sur le telephone du
+ * juge n'existe pas, et 43 % du bareme est sur le mobile.
+ */
+export function applyFreeze(ms: number): void {
+  AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, { jogSpeed: 0.6, jumpHeight: 0.2 })
+  timers.setTimeout(() => applyThiefPenalty(false), ms)
+}
 
 export function applyThiefPenalty(actif: boolean): void {
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {

@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
   coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS, HORS_LIGNE_TAUX, HORS_LIGNE_PLAFOND_MS, RESERVE_PLAFOND_S, RECOMPENSES_JOUR,
-  DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
+  DELAI_DEPLACEMENT_MS, REVENTE_SECONDES, SENTINELLE_CHARGES, SENTINELLE_SECONDES, SENTINELLE_MINIMUM
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { revenuObjet, rareteDe } from '../shared/loot-table'
@@ -60,6 +60,8 @@ type Profil = {
   dernierJour?: number
   /** jours consecutifs de connexion, 1 a 7 puis retour a 1 */
   serie?: number
+  /** charges de sentinelle restantes */
+  sentinelles?: number
   /** objets OFFERTS a d'autres joueurs, et objets RECUS. Compteurs de reputation. */
   donnes?: number
   recus?: number
@@ -100,7 +102,7 @@ function nomDe(address: string): string {
   return address.slice(0, 8)
 }
 
-function presents(): Set<string> {
+export function presents(): Set<string> {
   const s = new Set<string>()
   for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
     const a = id.address?.toLowerCase()
@@ -136,6 +138,7 @@ function publier(b: Base, ici?: Set<string>): void {
   c.ownerPresent = (ici ?? presents()).has(b.address)
   c.donnes = pr?.donnes ?? 0
   c.recus = pr?.recus ?? 0
+  c.sentinelles = pr?.sentinelles ?? 0
 }
 
 /** Cree la base d'un joueur. Retourne null si le lieu affiche deja son maximum. */
@@ -589,6 +592,42 @@ export function socialDe(address: string): { donnes: number; recus: number } {
   return { donnes: p?.donnes ?? 0, recus: p?.recus ?? 0 }
 }
 
+/** Prix de la sentinelle pour CE joueur: 120 s de sa production, plancher 240. */
+export function prixSentinelle(address: string): number {
+  return Math.max(SENTINELLE_MINIMUM, Math.floor(revenuParSeconde(address) * SENTINELLE_SECONDES))
+}
+
+export function acheterSentinelle(address: string): { ok: boolean; raison?: string; charges?: number; cout?: number } {
+  const p = profils.get(address)
+  if (!p) return { ok: false, raison: 'unknown profile' }
+  if (!bases.has(address)) return { ok: false, raison: 'place your base first' }
+  // On RECHARGE a plein plutot que d'empiler: un compteur qui monte sans limite rendrait
+  // une base imprenable, et une base imprenable retire le jeu a tout le monde.
+  if ((p.sentinelles ?? 0) >= SENTINELLE_CHARGES) return { ok: false, raison: 'sentry already full' }
+  const cout = prixSentinelle(address)
+  if (p.coins < cout) return { ok: false, raison: `you need ${Math.ceil(cout - p.coins)} more coins` }
+  p.coins -= cout
+  p.sentinelles = SENTINELLE_CHARGES
+  profilsSales.add(address)
+  const b = bases.get(address)
+  if (b) publier(b)
+  jour(`${nomAffiche(address)} arme sa sentinelle (${cout})`)
+  return { ok: true, charges: SENTINELLE_CHARGES, cout }
+}
+
+/** Consomme une charge. Renvoie true si la sentinelle a INTERCEPTE le vol. */
+export function consommerSentinelle(address: string): boolean {
+  const p = profils.get(address)
+  if (!p || (p.sentinelles ?? 0) <= 0) return false
+  p.sentinelles = (p.sentinelles ?? 0) - 1
+  profilsSales.add(address)
+  const b = bases.get(address)
+  if (b) publier(b)
+  return true
+}
+
+export function sentinellesDe(address: string): number { return profils.get(address)?.sentinelles ?? 0 }
+
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 export function toutesLesBases(): Base[] { return [...bases.values()] }
 /**
@@ -981,7 +1020,9 @@ export function startPlots(): void {
         // ecouteur (le serveur detecte l'arrivee par PlayerIdentityData, le client
         // s'abonne dans startClient): un envoi unique n'a aucune garantie d'etre entendu.
         // Le portefeuille, lui, repart en boucle: l'etat converge forcement.
-        tutoEtape: etapeTuto(address)
+        tutoEtape: etapeTuto(address),
+        sentinelles: p.sentinelles ?? 0,
+        prixSentinelle: prixSentinelle(address)
       }, { to: [address] })
       void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })

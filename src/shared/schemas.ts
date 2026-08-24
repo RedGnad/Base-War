@@ -66,6 +66,12 @@ export const Plot = engine.defineComponent('friendzone::plot', {
    */
   donnes: Schemas.Int,
   recus: Schemas.Int,
+  /**
+   * SENTINELLE: charges de defense AUTOMATIQUE restantes.
+   * Synchronisee, donc LISIBLE DE L'EXTERIEUR avant d'entrer. C'est la moitie du jeu:
+   * le voleur voit ce qu'il risque et decide, au lieu de ramasser.
+   */
+  sentinelles: Schemas.Int,
   /** horodatage serveur jusqu'auquel l'emplacement est protege. Int64 obligatoire. */
   lockedUntil: Schemas.Int64
 })
@@ -104,6 +110,31 @@ export const Belt = engine.defineComponent('friendzone::belt', {
   /** vide tant que personne n'a paye */
   acheteurNom: Schemas.String
 })
+
+/**
+ * LA SENTINELLE, defense automatique.
+ *
+ * Source, `stealabrainrot.fandom.com` page `Gears`, texte exact:
+ *   All-Seeing Sentry: *« Use this sentry turret as means of AUTOMATED PROTECTION for you
+ *   and your items »*
+ *   Trap: *« Place traps that freeze thieves for 7 SECONDS »*
+ *
+ * Pourquoi elle et pas les gears TENUS (Bat, Taser, Medusa's Head, Rage Table) qui renvoient
+ * aussi l'objet: ceux-la exigent un proprietaire CONNECTE au moment du vol. A 191 330 joueurs
+ * simultanes c'est un choix raisonnable; chez nous, ou le lieu le plus frequente de la
+ * plateforme comptait ONZE joueurs et ou les juges testent seuls, c'est une mecanique morte.
+ * La sentinelle est la SEULE defense de la reference qui agisse en l'absence de son
+ * proprietaire, et c'est exactement la question qu'on ne savait pas resoudre.
+ *
+ * Elle a des CHARGES et pas une duree: une defense qui expire punit celui qui se deconnecte,
+ * une defense qui se consomme punit celui qui se fait beaucoup voler. La seconde est juste.
+ */
+export const SENTINELLE_CHARGES = 3
+/** Cout = 120 s de la production du proprietaire, plancher 240 (quatre boites de base). */
+export const SENTINELLE_SECONDES = 120
+export const SENTINELLE_MINIMUM = 240
+/** 7 s, la valeur exacte du `Trap` de la reference. */
+export const SENTINELLE_GEL_MS = 7000
 
 export const TAPIS_LONGUEUR = 26
 export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider

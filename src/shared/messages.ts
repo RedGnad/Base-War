@@ -30,7 +30,7 @@ export const MESSAGES = {
    */
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /** serveur -> chaque joueur: son solde et le cout du prochain palier. */
-  wallet: Schemas.Map({ coins: Schemas.Float, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Float, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean, prixEtage: Schemas.Int, rechargeSec: Schemas.Int, reserve: Schemas.Int, tutoEtape: Schemas.Int }),
+  wallet: Schemas.Map({ coins: Schemas.Float, prochainPalier: Schemas.Int, palier: Schemas.Int, rareteMin: Schemas.Int, multiplicateur: Schemas.Int, revenu: Schemas.Float, basePosee: Schemas.Boolean, verrouSec: Schemas.Int, aReprendre: Schemas.Boolean, prixEtage: Schemas.Int, rechargeSec: Schemas.Int, reserve: Schemas.Int, tutoEtape: Schemas.Int, sentinelles: Schemas.Int, prixSentinelle: Schemas.Int }),
 
   /**
    * client -> serveur: je pose ma base sur l'emplacement n.
@@ -92,6 +92,15 @@ export const MESSAGES = {
   tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int }),
   /** serveur -> le joueur: cadeau des 15 minutes de presence continue. */
   timeGift: Schemas.Map({ boite: Schemas.Int, minutes: Schemas.Int }),
+
+  /** client -> serveur: j'arme ma sentinelle. Le serveur verifie les pieces. */
+  buySentry: Schemas.Map({}),
+  /** serveur -> l'acheteur: elle est armee. */
+  sentryBought: Schemas.Map({ charges: Schemas.Int, cout: Schemas.Int }),
+  /** serveur -> LE VOLEUR: la sentinelle l'a intercepte, et le gele. */
+  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, restant: Schemas.Int }),
+  /** serveur -> LE PROPRIETAIRE: sa sentinelle a servi (differe s'il etait absent). */
+  sentryTriggered: Schemas.Map({ byName: Schemas.String, restant: Schemas.Int }),
 
   /**
    * client -> serveur: je LAISSE mon objet `slot` sur la base de `ownerId`.

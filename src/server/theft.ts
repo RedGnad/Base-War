@@ -1,14 +1,14 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS,
+  PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS, SENTINELLE_GEL_MS,
   VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS
 } from '../shared/schemas'
 
 /** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
-import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes, offrirObjet, baseDe } from './plots'
+import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes, offrirObjet, baseDe, consommerSentinelle, sentinellesDe, acheterSentinelle, presents } from './plots'
 import { tutoFait } from './onboarding'
 import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
@@ -73,6 +73,10 @@ export function delivrerAlertes(address: string): void {
     // Les alertes de VOL et de DON passent par le meme depot. Ce sont les deux faces du
     // meme evenement social: quelqu'un est venu chez toi pendant ton absence.
     const x = alerte as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
+    if (x.type === 'sentry') {
+      void room.send('sentryTriggered', { byName: x.byName, restant: (x as { restant?: number }).restant ?? 0 }, { to: [address] })
+      continue
+    }
     if (x.type === 'gift') {
       const code = x.code ?? 0
       void room.send('wasGifted', { byName: x.byName, rarity: rareteDe(code), mutation: mutationDe(code) }, { to: [address] })
@@ -115,6 +119,23 @@ export function startTheft(): void {
         continue
       }
       if (c.items.length === 0) { refus(voleur, 'steal', `${c.name} has nothing to take`); continue }
+
+      // LA SENTINELLE INTERCEPTE, et elle agit meme si le proprietaire est deconnecte.
+      // Elle est testee AVANT que l'objet ne bouge: intercepter puis rendre laisserait une
+      // fenetre ou l'objet n'appartient a personne.
+      if (consommerSentinelle(c.address)) {
+        const restant = sentinellesDe(c.address)
+        void room.send('sentryBlocked', {
+          ownerName: c.name, gelMs: SENTINELLE_GEL_MS, restant
+        }, { to: [voleur] })
+        // Le proprietaire l'apprend, present ou non: une defense qui agit sans le dire
+        // ne se paie qu'une fois.
+        const info = { type: 'sentry', byName: nomAffiche(voleur), restant }
+        if (presents().has(c.address)) void room.send('sentryTriggered', info, { to: [c.address] })
+        else deposerAlerte(c.address, info)
+        jour(`sentinelle de ${c.name} bloque ${nomAffiche(voleur)} (${restant} charge(s) restante(s))`)
+        continue
+      }
 
       // L'OBJET DESIGNE. Le serveur verifie que l'emplacement existe; a defaut il
       // refuse plutot que de choisir a la place du joueur.
@@ -181,6 +202,14 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (!deplacerObjet(a, d.de, d.vers)) refus(a, 'move', 'cannot move there')
+  })
+
+  room.onMessage('buySentry', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = acheterSentinelle(a)
+    if (!r.ok) { refus(a, 'sentry', r.raison ?? 'refused'); return }
+    void room.send('sentryBought', { charges: r.charges ?? 0, cout: r.cout ?? 0 }, { to: [a] })
   })
 
   room.onMessage('giveItem', (d, ctx) => {

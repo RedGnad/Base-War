@@ -3,7 +3,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collecter } from './client/theft'
+import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collecter, armerSentinelle } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
@@ -83,6 +83,13 @@ function prochaineAction(): { libelle: string; pret: boolean; action: () => void
   // une boite non ouverte est une recompense qui attend
   if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: ouvrirMeilleure }
   // puis les achats, le moins cher d'abord
+  // LA SENTINELLE PASSE AVANT L'ETAGE quand elle est a sec ET qu'il y a quelque chose a
+  // proteger. Un etage de plus sur une base sans defense, c'est offrir six emplacements
+  // de plus a piller.
+  if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0
+      && theftView.prixSentinelle > 0 && theftView.coins >= theftView.prixSentinelle) {
+    return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: true, action: armerSentinelle }
+  }
   if (theftView.prixEtage > 0 && theftView.coins >= theftView.prixEtage) {
     return { libelle: '+1 FLOOR', pret: true, action: acheterEtage }
   }
@@ -176,7 +183,7 @@ const uiComponent = () => (
           : theftView.revenu === 0 ? 'open a crate to start earning'
           // On MONTRE la reserve qui se remplit: sans ca, le bouton COLLECT sort de
           // nulle part et personne ne comprend d'ou vient l'argent.
-          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting  ·  ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
+          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting  ·  ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.sentinelles > 0 ? '  ·  sentry ' + theftView.sentinelles : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
         }
         fontSize={13}
         color={

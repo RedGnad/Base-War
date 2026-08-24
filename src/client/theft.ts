@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
 import { rarity } from '../shared/loot-table'
 import { indexView } from './index-ui'
-import { applyThiefPenalty } from './locomotion'
+import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
 
 /**
@@ -13,6 +13,8 @@ import { tutoView } from './tutorial'
  */
 
 export const theftView = {
+  sentinelles: 0,
+  prixSentinelle: 0,
   coins: 0,
   palier: 0,
   prochainPalier: 0,
@@ -77,6 +79,17 @@ export function setupTheft(): void {
   room.onMessage('reclaimed', (d) => {
     ajouterAuFil(`${d.byName} a repris son ${rarity(d.rarity).nom} a ${d.fromName}`)
   })
+  room.onMessage('sentryBlocked', (d) => {
+    applyFreeze(d.gelMs)
+    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 6000)
+  })
+  room.onMessage('sentryTriggered', (d) => {
+    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.restant} charge${d.restant === 1 ? '' : 's'} left`, '#4dd2ff', 7000)
+  })
+  room.onMessage('sentryBought', (d) => {
+    alerter(`SENTRY ARMED  ·  ${d.charges} charges  ·  -${d.cout} coins`, '#4dd2ff', 4000)
+  })
+
   room.onMessage('gaveItem', (d) => {
     const r = rarity(d.rarity)
     alerter(`GIFTED TO ${d.toName.toUpperCase()}: ${r.nom.toUpperCase()}`, '#8fe08f', 5000)
@@ -94,6 +107,8 @@ export function setupTheft(): void {
   room.onMessage('wallet', (d) => {
     // Le portefeuille porte aussi l'etape du tutoriel: voir le commentaire cote serveur.
     tutoView.etape = d.tutoEtape
+    theftView.sentinelles = d.sentinelles
+    theftView.prixSentinelle = d.prixSentinelle
     theftView.coins = Math.floor(d.coins)
     theftView.palier = d.palier
     theftView.prochainPalier = d.prochainPalier
@@ -170,6 +185,7 @@ export function revendre(slot: number): void { void room.send('sellItem', { slot
 /** Le don: mon objet `slot` part sur la base de `ownerId`. Miroir de `voler`. */
 export function offrir(ownerId: string, slot: number): void { void room.send('giveItem', { ownerId, slot }) }
 export function acheterEtage(): void { void room.send('buyFloor', {}) }
+export function armerSentinelle(): void { void room.send('buySentry', {}) }
 export function collecter(): void { void room.send('collect', {}) }
 export function deplacer(de: number, vers: number): void { void room.send('moveItem', { de, vers }) }
 
