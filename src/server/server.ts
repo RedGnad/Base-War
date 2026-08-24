@@ -41,7 +41,7 @@ async function load(address: string): Promise<number> {
   const raw = await Storage.player.get<string>(address, STORAGE_KEY)
   const n = raw ? (JSON.parse(raw).count ?? 0) : 0
   counts.set(address, n)
-  console.log(`[SERVER] charge ${address} -> ${n} (brut: ${raw === undefined ? 'absent' : raw})`)
+  console.log(`[SERVER] loaded ${address} -> ${n}`)
   return n
 }
 
@@ -62,7 +62,7 @@ async function flush(): Promise<void> {
 }
 
 export function startServer(): void {
-  console.log('[SERVER] demarrage')
+  console.log('[SERVER] start')
 
   const beat = engine.addEntity()
   ServerBeat.create(beat, { at: Date.now() })
@@ -126,7 +126,7 @@ export function startServer(): void {
         lockOnArrival(address)    // grace period on arrival
         delivrerAlertes(address)  // what happened while away
         replayLog(address)
-        console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
+        console.log(`[SERVER] ${address} between, state restitue: ${n}`)
       })()
     }
 

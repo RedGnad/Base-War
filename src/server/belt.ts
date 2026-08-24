@@ -141,7 +141,7 @@ export function startBelt(): void {
     const code = encoder(rarity, mut)
     const prevu = etatPrevisible(a)
     log(`${displayName(a)} ouvre une crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, pose differee)`)
-    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, etat: prevu }, { to: [a] })
+    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: prevu }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 
     inFlight.set(a, code)
@@ -155,5 +155,5 @@ export function startBelt(): void {
     }, POSE_DIFFEREE_MS)
   })
 
-  log('tapis pret')
+  log('belt ready')
 }

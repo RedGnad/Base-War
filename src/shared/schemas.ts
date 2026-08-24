@@ -145,16 +145,16 @@ export const DOOR_WIDTH = 2.0
 export const PRESTIGE_TIERS = Array.from({ length: MAX_PRESTIGE }, (_, i) => {
   const n = i + 1
   return {
-    cout: lifetimeForPrestige(n),
+    cost: lifetimeForPrestige(n),
     minRarity: Math.min(1 + Math.floor(i / 2), PRODUCTION_PER_RARITY.length - 1),
     multiplier: prestigeMultiplier(n),
-    keeps: i < 2 ? 1 : 2
+    guard: i < 2 ? 1 : 2
   }
-}) as ReadonlyArray<{ cout: number; minRarity: number; multiplier: number; keeps: number }>
+}) as ReadonlyArray<{ cost: number; minRarity: number; multiplier: number; guard: number }>
 export const REBIRTH_MAX = PRESTIGE_TIERS.length
 
 export function prestigeTier(n: number) { return PRESTIGE_TIERS[Math.min(n, PRESTIGE_TIERS.length - 1)] }
-export function coutRebirth(prestige: number): number { return prestigeTier(prestige).cout }
+export function coutRebirth(prestige: number): number { return prestigeTier(prestige).cost }
 
 export function incomeMultiplier(n: number): number {
   return n <= 0 ? 1 : PRESTIGE_TIERS[Math.min(n, PRESTIGE_TIERS.length) - 1].multiplier
@@ -187,7 +187,7 @@ export const DAILY_REWARDS = [0, 0, 1, 1, 2, 2, 3] as const   // type de crate o
 export const RESELL_SECONDS = 30
 
 export const GRILLE = 2                    // snap step, in metres
-export const MIN_BASE_GAP = 15          // 11 m de base + 4 m de rue entre deux voisins
+export const MIN_BASE_GAP = 15          // 11 m de base + 4 m de rue between deux voisins
 export const EDGE_MARGIN = 7                // from the scene edge
 export const BELT_CLEARANCE = 6               // from the belt, so it stays clear
 

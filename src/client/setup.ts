@@ -28,7 +28,7 @@ export const view = {
 }
 
 export function startClient(): void {
-  console.log('[CLIENT] demarrage')
+  console.log('[CLIENT] start')
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
   setupTouchHud()
   reportPlatform()
@@ -77,10 +77,10 @@ export function startClient(): void {
       changements += 1
       if (changements >= 2) view.lastBeatSeenAt = now
     }
-    const vivant = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
-    if (vivant !== view.serverAlive) {
-      console.log(`[CLIENT] serveur ${vivant ? 'VIVANT' : 'SILENCIEUX'} (dernier battement il y a ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)
+    const alive = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
+    if (alive !== view.serverAlive) {
+      console.log(`[CLIENT] server ${alive ? 'ALIVE' : 'SILENT'} (last beat ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)
     }
-    view.serverAlive = vivant
+    view.serverAlive = alive
   })
 }

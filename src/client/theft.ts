@@ -23,7 +23,7 @@ export const theftView = {
   floorPrice: 0,
   rechargeSec: 0,
   pending: 0,
-  alerte: '',
+  alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
   fil: [] as string[],
@@ -33,7 +33,7 @@ export const theftView = {
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
 
 export function alerter(texte: string, color: string, durationMs = 6000): void {
-  theftView.alerte = texte
+  theftView.alert = texte
   theftView.alertColor = color
   theftView.alerteJusqua = Date.now() + durationMs
 }
@@ -46,7 +46,7 @@ function pushToFeed(ligne: string): void {
 export function setupTheft(): void {
   sonneur = engine.addEntity()
   Transform.create(sonneur, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alerte-steal.wav', playing: false, loop: false, volume: 1 })
+  AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alert-steal.wav', playing: false, loop: false, volume: 1 })
 
   room.onMessage('youWereRobbed', (d) => {
     const r = rarity(d.rarity)
@@ -77,10 +77,10 @@ export function setupTheft(): void {
     alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s`, '#ff6b6b', 6500)
   })
   room.onMessage('sentryTriggered', (d) => {
-    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.restant} charge${d.restant === 1 ? '' : 's'} left`, '#4dd2ff', 7000)
+    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left`, '#4dd2ff', 7000)
   })
   room.onMessage('sentryBought', (d) => {
-    alerter(`SENTRY ARMED  ·  ${d.charges} charges  ·  -${d.cout} coins`, '#4dd2ff', 4000)
+    alerter(`SENTRY ARMED  ·  ${d.charges} charges  ·  -${d.cost} coins`, '#4dd2ff', 4000)
   })
 
   room.onMessage('gaveItem', (d) => {
@@ -132,7 +132,7 @@ export function setupTheft(): void {
   room.onMessage('offlineEarnings', (d) => {
     const min = Math.round(d.seconds / 60)
     alerter(`WELCOME BACK  ·  +${d.gain} coins earned in ${min} min away`, '#ffd166', 9000)
-    console.log(`[CLIENT] hors ligne: +${d.gain} en ${min} min`)
+    console.log(`[CLIENT] offline: +${d.gain} over ${min} min`)
   })
 
   room.onMessage('dailyReward', (d) => {
@@ -142,7 +142,7 @@ export function setupTheft(): void {
 
   room.onMessage('floorBought', (d) => {
     alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', 5000)
-    console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cout}`)
+    console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cost}`)
   })
 
   room.onMessage('sold', (d) => {
@@ -156,7 +156,7 @@ export function setupTheft(): void {
   })
 
   engine.addSystem(() => {
-    if (theftView.alerte !== '' && Date.now() > theftView.alerteJusqua) theftView.alerte = ''
+    if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''
   })
 }
 
@@ -171,7 +171,7 @@ export function gift(ownerId: string, slot: number): void { void room.send('give
 export function buyFloorFor(): void { void room.send('buyFloor', {}) }
 export function armSentry(): void { void room.send('buySentry', {}) }
 export function collectPending(): void { void room.send('collect', {}) }
-export function moveItemBetweenSlots(de: number, vers: number): void { void room.send('moveItem', { de, vers }) }
+export function moveItemBetweenSlots(de: number, to: number): void { void room.send('moveItem', { de, to }) }
 
 let _adresse = ''
 export function monAdresseClient(): string { return _adresse }

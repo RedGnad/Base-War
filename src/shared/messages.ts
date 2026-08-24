@@ -24,13 +24,13 @@ export const MESSAGES = {
   bought: Schemas.Map({ byName: Schemas.String, crateTier: Schemas.Int, price: Schemas.Int }),
 
   openBox: Schemas.Map({ crateTier: Schemas.Int }),
-  boxResult: Schemas.Map({ crateTier: Schemas.Int, rarity: Schemas.Int, mutation: Schemas.Int, etat: Schemas.String }),
+  boxResult: Schemas.Map({ crateTier: Schemas.Int, rarity: Schemas.Int, mutation: Schemas.Int, state: Schemas.String }),
   inventory: Schemas.Map({ crates: Schemas.Array(Schemas.Int) }),
 
   rebirth: Schemas.Map({}),
   rebirthDone: Schemas.Map({ prestige: Schemas.Int, floors: Schemas.Int }),
 
-  moveItem: Schemas.Map({ de: Schemas.Int, vers: Schemas.Int }),
+  moveItem: Schemas.Map({ de: Schemas.Int, to: Schemas.Int }),
 
   index: Schemas.Map({ vus: Schemas.Array(Schemas.Int) }),
 
@@ -51,9 +51,9 @@ export const MESSAGES = {
   convoyArrived: Schemas.Map({ crateTier: Schemas.Int }),
 
   buySentry: Schemas.Map({}),
-  sentryBought: Schemas.Map({ charges: Schemas.Int, cout: Schemas.Int }),
-  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, restant: Schemas.Int, lockSec: Schemas.Int }),
-  sentryTriggered: Schemas.Map({ byName: Schemas.String, restant: Schemas.Int }),
+  sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int }),
+  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int }),
+  sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int }),
 
   giveItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   gaveItem: Schemas.Map({ toName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
@@ -67,7 +67,7 @@ export const MESSAGES = {
   offlineEarnings: Schemas.Map({ gain: Schemas.Int, seconds: Schemas.Int }),
 
   buyFloor: Schemas.Map({}),
-  floorBought: Schemas.Map({ floors: Schemas.Int, cout: Schemas.Int }),
+  floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int }),
 
   sellItem: Schemas.Map({ slot: Schemas.Int }),
   sold: Schemas.Map({ gain: Schemas.Int, rarity: Schemas.Int }),

@@ -30,7 +30,7 @@ export function setupTouchHud(): void {
     InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
     InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])
-  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick keeps')
+  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick guard')
 }
 
 export function reportPlatform(): void {

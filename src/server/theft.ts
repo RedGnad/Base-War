@@ -17,7 +17,7 @@ import {
   placeBase, basePoints, sellItemFromBase, buyFloorFor, lockCooldown, collectPending, moveItemTo
 } from './plots'
 
-type Larcin = { thief: string; victime: string; rarity: number; quand: number }
+type Larcin = { thief: string; victim: string; rarity: number; quand: number }
 const larcins: Larcin[] = []
 
 export function recordPrestige(_address: string, _itemsFound: number): void { /* remplace par les prestigeTier */ }
@@ -39,19 +39,19 @@ function refus(address: string, action: string, reason: string, antiCheat = fals
 }
 
 export function lockOnArrival(address: string): void {
-  const jusqua = Date.now() + LOCK_ON_ARRIVAL_MS + lockBonus(address)
-  if (setLock(address, jusqua)) {
-    log(`${displayName(address)} protege ${Math.round((jusqua - Date.now()) / 1000)} s a l'arrivee`)
+  const until = Date.now() + LOCK_ON_ARRIVAL_MS + lockBonus(address)
+  if (setLock(address, until)) {
+    log(`${displayName(address)} shielded ${Math.round((until - Date.now()) / 1000)}s on arrival`)
   }
 }
 
 export function delivrerAlertes(address: string): void {
   const a = takeAlerts(address)
   if (a.length === 0) return
-  for (const alerte of a) {
-    const x = alerte as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
+  for (const alert of a) {
+    const x = alert as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
     if (x.type === 'sentry') {
-      void room.send('sentryTriggered', { byName: x.byName, restant: (x as { restant?: number }).restant ?? 0 }, { to: [address] })
+      void room.send('sentryTriggered', { byName: x.byName, left: (x as { left?: number }).left ?? 0 }, { to: [address] })
       continue
     }
     if (x.type === 'gift') {
@@ -61,12 +61,12 @@ export function delivrerAlertes(address: string): void {
     }
     void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity ?? 0, mutation: x.mutation ?? 0 }, { to: [address] })
   }
-  log(`${a.length} alerte(s) differee(s) delivree(s) a ${displayName(address)}`)
+  log(`${a.length} alert(s) differee(s) delivree(s) a ${displayName(address)}`)
 }
 
 export function hasSomethingToRecover(address: string): boolean {
   const t = Date.now()
-  return larcins.some((l) => l.victime === address && t - l.quand <= RECOVER_WINDOW_MS)
+  return larcins.some((l) => l.victim === address && t - l.quand <= RECOVER_WINDOW_MS)
 }
 
 export function startTheft(): void {
@@ -94,16 +94,16 @@ export function startTheft(): void {
       if (c.items.length === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
 
       if (useSentryCharge(c.address)) {
-        const restant = sentriesOf(c.address)
+        const left = sentriesOf(c.address)
         setLock(c.address, maintenant + SENTRY_LOCK_MS)
         void room.send('sentryBlocked', {
-          ownerName: c.name, gelMs: SENTRY_FREEZE_MS, restant,
+          ownerName: c.name, gelMs: SENTRY_FREEZE_MS, left,
           lockSec: Math.round(SENTRY_LOCK_MS / 1000)
         }, { to: [thief] })
-        const info = { type: 'sentry', byName: displayName(thief), restant }
+        const info = { type: 'sentry', byName: displayName(thief), left }
         if (presents().has(c.address)) void room.send('sentryTriggered', info, { to: [c.address] })
         else storeAlert(c.address, info)
-        log(`sentry de ${c.name} bloque ${displayName(thief)} (${restant} charge(s) restante(s))`)
+        log(`${c.name} sentry blocked ${displayName(thief)} (${left} charge(s) left)`)
         continue
       }
 
@@ -120,7 +120,7 @@ export function startTheft(): void {
         return
       }
 
-      larcins.push({ thief, victime: c.address, rarity: r, quand: maintenant })
+      larcins.push({ thief, victim: c.address, rarity: r, quand: maintenant })
 
       const thiefName = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
@@ -158,7 +158,7 @@ export function startTheft(): void {
   room.onMessage('moveItem', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    if (!moveItemTo(a, d.de, d.vers)) refus(a, 'move', 'cannot move there')
+    if (!moveItemTo(a, d.de, d.to)) refus(a, 'move', 'cannot move there')
   })
 
   room.onMessage('buySentry', (_d, ctx) => {
@@ -166,7 +166,7 @@ export function startTheft(): void {
     if (!a) return
     const r = buySentryFor(a)
     if (!r.ok) { refus(a, 'sentry', r.reason ?? 'refused'); return }
-    void room.send('sentryBought', { charges: r.charges ?? 0, cout: r.cout ?? 0 }, { to: [a] })
+    void room.send('sentryBought', { charges: r.charges ?? 0, cost: r.cost ?? 0 }, { to: [a] })
   })
 
   room.onMessage('giveItem', (d, ctx) => {
@@ -198,7 +198,7 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const r = claimQuestReward(a, d.slot)
-    if ('erreur' in r) { refus(a, 'quest', r.erreur); return }
+    if ('error' in r) { refus(a, 'quest', r.error); return }
     void room.send('dailyReward', { log: 0, crate: r.crate }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     pushQuests(a)
@@ -221,7 +221,7 @@ export function startTheft(): void {
     if (!a) return
     const r = buyFloorFor(a)
     if (!r.ok) { refus(a, 'floor', r.reason ?? 'refused'); return }
-    void room.send('floorBought', { floors: r.floors ?? 1, cout: r.cout ?? 0 }, { to: [a] })
+    void room.send('floorBought', { floors: r.floors ?? 1, cost: r.cost ?? 0 }, { to: [a] })
   })
 
   room.onMessage('sellItem', (d, ctx) => {
@@ -248,43 +248,43 @@ export function startTheft(): void {
     const reste = lockCooldown(a)
     if (reste > 0) { refus(a, 'lock', `recharging, ${Math.ceil(reste / 1000)}s`); return }
     const duration = LOCK_FREE_MS + lockBonus(a)
-    const jusqua = Date.now() + duration
-    if (!setLock(a, jusqua)) { refus(a, 'lock', 'no base placed'); return }
+    const until = Date.now() + duration
+    if (!setLock(a, until)) { refus(a, 'lock', 'no base placed'); return }
     log(`${displayName(a)} locked sa base ${Math.round(duration / 1000)} s`)
   })
 
   room.onMessage('reclaim', (_d, ctx) => {
-    const victime = ctx?.from?.toLowerCase()
-    if (!victime) return
-    const p = positionOf(victime)
-    if (p === null) { refus(victime, 'recover', 'position unknown'); return }
+    const victim = ctx?.from?.toLowerCase()
+    if (!victim) return
+    const p = positionOf(victim)
+    if (p === null) { refus(victim, 'recover', 'position unknown'); return }
 
     const maintenant = Date.now()
     for (let i = larcins.length - 1; i >= 0; i--) {
       const l = larcins[i]
-      if (l.victime !== victime) continue
+      if (l.victim !== victim) continue
       if (maintenant - l.quand > RECOVER_WINDOW_MS) continue
 
       const pv = positionOf(l.thief)
-      if (pv === null) { refus(victime, 'recover', 'the thief is gone'); continue }
+      if (pv === null) { refus(victim, 'recover', 'the thief is gone'); continue }
       const d = Vector3.distance(p, pv)
       if (d > RECOVER_RANGE) {
-        refus(victime, 'recover', `${displayName(l.thief)} is ${d.toFixed(1)}m away, get closer`)
+        refus(victim, 'recover', `${displayName(l.thief)} is ${d.toFixed(1)}m away, get closer`)
         continue
       }
 
       const items = basesProches(pv, 0.1, '').find((b) => b.address === l.thief)
       const idx = items ? items.items.lastIndexOf(l.rarity) : -1
       const r = idx >= 0 ? removeItem(l.thief, idx) : null
-      if (r === null) { refus(victime, 'recover', 'they no longer have it'); continue }
+      if (r === null) { refus(victim, 'recover', 'they no longer have it'); continue }
 
-      addItem(victime, r)
+      addItem(victim, r)
       larcins.splice(i, 1)
-      void room.send('reclaimed', { byName: displayName(victime), fromName: displayName(l.thief), rarity: r })
-      log(`${displayName(victime)} a repris sa rarity ${r} a ${displayName(l.thief)}`)
+      void room.send('reclaimed', { byName: displayName(victim), fromName: displayName(l.thief), rarity: r })
+      log(`${displayName(victim)} a repris sa rarity ${r} a ${displayName(l.thief)}`)
       return
     }
-    refus(victime, 'recover', 'nothing to recover')
+    refus(victim, 'recover', 'nothing to recover')
   })
 
   timers.setInterval(() => {
@@ -292,5 +292,5 @@ export function startTheft(): void {
     while (larcins.length > 0 && larcins[0].quand < t) larcins.shift()
   }, 10000)
 
-  log('couche steal prete')
+  log('steal layer ready')
 }

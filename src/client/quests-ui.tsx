@@ -27,18 +27,18 @@ export function setupQuests(): void {
   })
 }
 
-function reclamer(slot: number): void { void room.send('claimQuest', { slot }) }
+function claim(slot: number): void { void room.send('claimQuest', { slot }) }
 
 export function questsToClaim(): number {
   let n = 0
   for (let i = 0; i < questsView.ids.length; i++) {
     if (questsView.progres[i] >= questsView.cibles[i] && questsView.pris[i] !== 1) n++
   }
-  if (n === 0 && toutesFinies() && questsView.pris[3] !== 1) n = 1
+  if (n === 0 && allQuestsDone() && questsView.pris[3] !== 1) n = 1
   return n
 }
 
-function toutesFinies(): boolean {
+function allQuestsDone(): boolean {
   if (questsView.ids.length === 0) return false
   for (let i = 0; i < questsView.ids.length; i++) {
     if (questsView.progres[i] < questsView.cibles[i]) return false
@@ -46,7 +46,7 @@ function toutesFinies(): boolean {
   return true
 }
 
-function Ligne(props: { i: number }): ReactEcs.JSX.Element {
+function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   const i = props.i
   const q = QUESTS[questsView.ids[i]]
   const fait = questsView.progres[i] ?? 0
@@ -84,7 +84,7 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
           value={fini ? 'CLAIM' : `+1 crate`}
           variant={fini ? 'primary' : 'secondary'}
           fontSize={13}
-          onMouseDown={() => { if (fini) reclamer(i) }} />
+          onMouseDown={() => { if (fini) claim(i) }} />
       )}
     </UiEntity>
   )
@@ -92,7 +92,7 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
 
 export function QuestsPanel(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
-  const tout = toutesFinies()
+  const allDone = allQuestsDone()
   return (
     <UiEntity
       uiTransform={{
@@ -107,22 +107,22 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
       <Label value="resets every day at 00:00 UTC" fontSize={13} color={Color4.fromHexString('#7d879bff')}
         uiTransform={{ width: '100%', height: 20, margin: { bottom: 10 } }} textAlign="middle-left" />
 
-      {questsView.ids.map((_, i) => <Ligne i={i} />)}
+      {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
       <UiEntity
         uiTransform={{ width: '100%', height: 46, flexDirection: 'row', alignItems: 'center', margin: { top: 4 } }}
         uiBackground={{ color: Color4.create(1, 1, 1, 0.05) }}
       >
         <Label value="ALL THREE  ·  bonus rare crate" fontSize={15}
-          color={tout ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
+          color={allDone ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
           uiTransform={{ width: 370, height: 40 }} textAlign="middle-left" />
         {questsView.pris[3] === 1 ? (
           <Label value="CLAIMED" fontSize={13} color={Color4.fromHexString('#6f7a6fff')}
             uiTransform={{ width: 110, height: 40 }} textAlign="middle-center" />
         ) : (
           <Button uiTransform={{ width: 110, height: 38 }}
-            value={tout ? 'CLAIM' : 'LOCKED'} variant={tout ? 'primary' : 'secondary'} fontSize={13}
-            onMouseDown={() => { if (tout) reclamer(3) }} />
+            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} fontSize={13}
+            onMouseDown={() => { if (allDone) claim(3) }} />
         )}
       </UiEntity>
 

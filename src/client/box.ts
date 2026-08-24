@@ -23,7 +23,7 @@ export const boxView = {
   resultat: -1,
   resultatMutation: 0,
   resultatJusqua: 0,
-  etat: 'expose',
+  state: 'expose',
   message: ''
 }
 
@@ -34,7 +34,7 @@ let sonReveal: Entity
 const eclats: Entity[] = []
 let prochainPas = 0
 let pasCourant = 0
-let restant = 0
+let left = 0
 
 export function setupBox(): void {
   crateMesh = engine.addEntity()
@@ -77,13 +77,13 @@ export function setupBox(): void {
     boxView.roule = true
     boxView.resultat = d.rarity
     boxView.resultatMutation = d.mutation
-    boxView.etat = d.etat
-    restant = 2.6
+    boxView.state = d.state
+    left = 2.6
     prochainPas = 0.045
     pasCourant = 0
 
     const depart = lastPosition
-    if (depart !== null && d.etat === 'expose') {
+    if (depart !== null && d.state === 'expose') {
       timers.setTimeout(() => sendToBase(depart, d.rarity, d.mutation), 2700)
     }
   })
@@ -127,14 +127,14 @@ export function setupBox(): void {
     }
 
     if (boxView.roule) {
-      restant -= dt
+      left -= dt
       pasCourant += dt
       if (pasCourant >= prochainPas) {
         pasCourant = 0
         boxView.index = (boxView.index + 1) % RARITIES.length
         prochainPas = Math.min(0.34, prochainPas * 1.085)
       }
-      if (restant <= 0) {
+      if (left <= 0) {
         boxView.roule = false
         boxView.index = boxView.resultat
         jouer(sonReveal)
@@ -262,7 +262,7 @@ export function openCrate(crateTier: number): void {
   }
 
   const p = Transform.get(engine.PlayerEntity)
-  const avant = Vector3.rotate(Vector3.create(0, 0, 2), p.rotation)
+  const before = Vector3.rotate(Vector3.create(0, 0, 2), p.rotation)
   const b = crate(crateTier)
 
   boxView.opening = true
@@ -272,7 +272,7 @@ export function openCrate(crateTier: number): void {
 
   const t = Transform.getMutableOrNull(crateMesh)
   if (t !== null) {
-    t.position = Vector3.create(p.position.x + avant.x, 1.1, p.position.z + avant.z)
+    t.position = Vector3.create(p.position.x + before.x, 1.1, p.position.z + before.z)
     t.scale = Vector3.create(b.size, b.size, b.size)
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }

@@ -234,7 +234,7 @@ export function setupPlots(): void {
             if (placementView.selection === -1) {
               placementView.selection = k
             } else if (placementView.selection === k) {
-              placementView.selection = -1          // meme item: on relache
+              placementView.selection = -1          // same item: on relache
             } else {
               moveItemBetweenSlots(placementView.selection, k)  // echange des deux places
               placementView.selection = -1
@@ -292,8 +292,8 @@ export function setupPlots(): void {
       const txt = TextShape.getMutableOrNull(v.label)
       if (txt !== null) {
         const lock = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
-        const etat = lock > 0 ? `\nLOCKED ${lock}s` : (p.ownerPresent ? '' : '\n(away)')
-        const bilan = (p.given > 0 || p.received > 0)
+        const state = lock > 0 ? `\nLOCKED ${lock}s` : (p.ownerPresent ? '' : '\n(away)')
+        const ledger = (p.given > 0 || p.received > 0)
           ? `\n${p.received} received  ·  ${p.given} given`
           : ''
         const ta = Transform.getMutableOrNull(v.ascenseur)
@@ -304,13 +304,13 @@ export function setupPlots(): void {
             t.position.x + BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, h / 2, t.position.z + 1.4
           )
         }
-        const keeps = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
+        const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
         const ts = Transform.getMutableOrNull(v.sentry)
         if (ts !== null) {
           const k = p.sentries === 0 ? 0 : 0.6 + p.sentries * 0.18
           ts.scale = Vector3.create(k, k, k)
         }
-        txt.text = `${p.ownerName}${etat}${keeps}${bilan}`
+        txt.text = `${p.ownerName}${state}${guard}${ledger}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
       }
       Material.setPbrMaterial(v.plinth, {
@@ -361,13 +361,13 @@ export function setupPlots(): void {
         : 'Steal'
       for (let k = 0; k < v.items.length; k++) {
         const code = p.items[k]
-        const libelle = code === undefined
+        const label = code === undefined
           ? verbe
           : `${verbe} ${itemName(rarityOf(code), mutationDe(code))} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: libelle } },
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: libelle } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: label } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: label } }
           ]
         })
       }

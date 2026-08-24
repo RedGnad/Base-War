@@ -42,32 +42,32 @@ export function setupUi() {
 
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
-function prochaineAction(): { libelle: string; pret: boolean; action: () => void } {
+function prochaineAction(): { label: string; ready: boolean; action: () => void } {
   if (slotView.active) {
     return slotView.valid
-      ? { libelle: 'PLACE HERE', pret: true, action: placeHere }
-      : { libelle: slotView.reason.toUpperCase(), pret: false, action: basculerPose }
+      ? { label: 'PLACE HERE', ready: true, action: placeHere }
+      : { label: slotView.reason.toUpperCase(), ready: false, action: basculerPose }
   }
-  if (theftView.canRecover) return { libelle: 'RECOVER!', pret: true, action: recover }
-  if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
-  if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: openBestCrate }
+  if (theftView.canRecover) return { label: 'RECOVER!', ready: true, action: recover }
+  if (!theftView.basePosee) return { label: 'BUILD BASE', ready: true, action: basculerPose }
+  if (boxView.stock.length > 0) return { label: `OPEN (${boxView.stock.length})`, ready: true, action: openBestCrate }
   if (theftView.basePosee && view.items > 0 && theftView.sentries === 0
       && theftView.sentryPrice > 0 && theftView.coins >= theftView.sentryPrice) {
-    return { libelle: `SENTRY ${formatIncome(theftView.sentryPrice)}`, pret: true, action: armSentry }
+    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, ready: true, action: armSentry }
   }
   if (theftView.floorPrice > 0 && theftView.coins >= theftView.floorPrice) {
-    return { libelle: '+1 FLOOR', pret: true, action: buyFloorFor }
+    return { label: '+1 FLOOR', ready: true, action: buyFloorFor }
   }
   if (theftView.nextPrestige > 0 && theftView.coins >= theftView.nextPrestige) {
-    return { libelle: `PRESTIGE x${theftView.multiplier + 1}`, pret: true, action: doPrestige }
+    return { label: `PRESTIGE x${theftView.multiplier + 1}`, ready: true, action: doPrestige }
   }
   if (theftView.basePosee && view.items > 0 && theftView.sentries === 0 && theftView.sentryPrice > 0
       && (theftView.floorPrice === 0 || theftView.sentryPrice <= theftView.floorPrice)) {
-    return { libelle: `SENTRY ${formatIncome(theftView.sentryPrice)}`, pret: false, action: armSentry }
+    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, ready: false, action: armSentry }
   }
-  if (theftView.floorPrice > 0) return { libelle: `FLOOR ${formatIncome(theftView.floorPrice)}`, pret: false, action: buyFloorFor }
-  if (theftView.nextPrestige > 0) return { libelle: `PRESTIGE ${formatIncome(theftView.nextPrestige)}`, pret: false, action: doPrestige }
-  return { libelle: 'ALL MAXED', pret: false, action: () => {} }
+  if (theftView.floorPrice > 0) return { label: `FLOOR ${formatIncome(theftView.floorPrice)}`, ready: false, action: buyFloorFor }
+  if (theftView.nextPrestige > 0) return { label: `PRESTIGE ${formatIncome(theftView.nextPrestige)}`, ready: false, action: doPrestige }
+  return { label: 'ALL MAXED', ready: false, action: () => {} }
 }
 
 const uiComponent = () => (
@@ -245,9 +245,9 @@ const uiComponent = () => (
               ? (RARITIES[boxView.index]?.color ?? '#ffffff')
               : itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
         <Label
-          value={boxView.roule ? '...' : ETATS[boxView.etat]?.(boxView.resultat) ?? ''}
+          value={boxView.roule ? '...' : ETATS[boxView.state]?.(boxView.resultat) ?? ''}
           fontSize={15}
-          color={Color4.fromHexString(boxView.etat === 'expose' ? '#8fe08fff' : '#ffd166ff')} />
+          color={Color4.fromHexString(boxView.state === 'expose' ? '#8fe08fff' : '#ffd166ff')} />
       </UiEntity>
     )}
 
@@ -295,7 +295,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {theftView.alerte !== '' && (
+    {theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
           width: 520, height: 70, positionType: 'absolute',
@@ -304,7 +304,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.85) }}
       >
-        <Label value={theftView.alerte} fontSize={23} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
+        <Label value={theftView.alert} fontSize={23} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}
 
@@ -329,7 +329,7 @@ const uiComponent = () => (
         return (
           <Button
             uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
-            value={a.libelle} variant={a.pret ? 'primary' : 'secondary'}
+            value={a.label} variant={a.ready ? 'primary' : 'secondary'}
             fontSize={15} onMouseDown={a.action} />
         )
       })()}

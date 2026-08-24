@@ -11,7 +11,7 @@ import {
 } from './plots'
 import { crate } from '../shared/loot-table'
 
-type Etat = {
+type State = {
   id: number
   entity: ReturnType<typeof engine.addEntity>
   crateTier: number
@@ -23,7 +23,7 @@ type Etat = {
   durationMs: number
 }
 
-const convoys = new Map<number, Etat>()
+const convoys = new Map<number, State>()
 let prochainId = 1
 
 function durationMs(depart: { x: number; z: number }, cible: { x: number; z: number }): number {
@@ -31,7 +31,7 @@ function durationMs(depart: { x: number; z: number }, cible: { x: number; z: num
   return Math.max(CONVOY_MIN_S, d / CONVOY_SPEED) * 1000
 }
 
-function publish(e: Etat): void {
+function publish(e: State): void {
   const c = Convoy.getMutableOrNull(e.entity)
   if (c === null) return
   c.convoyId = e.id
@@ -43,7 +43,7 @@ function publish(e: Etat): void {
   c.cibleX = e.cible.x;   c.cibleZ = e.cible.z
 }
 
-function position(e: Etat, t: number): { x: number; z: number } {
+function position(e: State, t: number): { x: number; z: number } {
   const k = Math.max(0, Math.min(1, t))
   return { x: e.depart.x + (e.cible.x - e.depart.x) * k, z: e.depart.z + (e.cible.z - e.depart.z) * k }
 }
@@ -52,17 +52,17 @@ function position(e: Etat, t: number): { x: number; z: number } {
  * Starts a convoy. Returns false when the buyer has no base yet: the caller then delivers
  * straight to inventory, rather than blocking a purchase and breaking the tutorial order.
  */
-export function startConvoy(buyer: string, crateTier: number, price: number, depuis: { x: number; z: number }): boolean {
+export function startConvoy(buyer: string, crateTier: number, price: number, from: { x: number; z: number }): boolean {
   const b = baseDe(buyer)
   if (b === undefined) return false
 
-  const e: Etat = {
+  const e: State = {
     id: prochainId++,
     entity: engine.addEntity(),
     crateTier,
     pricePaid: price,
     owner: buyer,
-    depart: { x: depuis.x, z: depuis.z },
+    depart: { x: from.x, z: from.z },
     cible: { x: b.x, z: b.z },
     debutMs: Date.now(),
     durationMs: 0
@@ -78,7 +78,7 @@ export function startConvoy(buyer: string, crateTier: number, price: number, dep
   })
   syncEntity(e.entity, [Convoy.componentId, Transform.componentId])
   convoys.set(e.id, e)
-  log(`convoy ${e.id}: ${crate(crateTier).name} vers ${displayName(buyer)}, fenetre ${Math.round(e.durationMs / 1000)} s`)
+  log(`convoy ${e.id}: ${crate(crateTier).name} to ${displayName(buyer)}, window ${Math.round(e.durationMs / 1000)}s`)
   return true
 }
 
@@ -103,8 +103,8 @@ export function runConvoys(): void {
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.
     crediter(e.owner, e.pricePaid)
-    const evince = e.owner
-    void room.send('outbidLost', { byName: displayName(a), rembourse: e.pricePaid, crateTier: e.crateTier }, { to: [evince] })
+    const previous = e.owner
+    void room.send('outbidLost', { byName: displayName(a), rembourse: e.pricePaid, crateTier: e.crateTier }, { to: [previous] })
 
     const nb = baseDe(a)
     if (nb === undefined) return
@@ -116,11 +116,11 @@ export function runConvoys(): void {
     e.durationMs = durationMs(e.depart, e.cible)
     publish(e)
 
-    void room.send('outbidWon', { fromName: displayName(evince), price, crateTier: e.crateTier }, { to: [a] })
-    void room.send('outbidFeed', { byName: displayName(a), fromName: displayName(evince), price })
+    void room.send('outbidWon', { fromName: displayName(previous), price, crateTier: e.crateTier }, { to: [a] })
+    void room.send('outbidFeed', { byName: displayName(a), fromName: displayName(previous), price })
     advanceQuest(a, 'outbid')
     pushQuests(a)
-    log(`convoy ${e.id}: ${displayName(a)} rachete a ${displayName(evince)} pour ${price}`)
+    log(`convoy ${e.id}: ${displayName(a)} outbid ${displayName(previous)} for ${price}`)
   })
 
   engine.addSystem(() => {
@@ -137,14 +137,14 @@ export function runConvoys(): void {
       addCrate(e.owner, e.crateTier)
       void room.send('inventory', { crates: cratesOf(e.owner) }, { to: [e.owner] })
       void room.send('convoyArrived', { crateTier: e.crateTier }, { to: [e.owner] })
-      log(`convoy ${id}: livre a ${displayName(e.owner)}`)
+      log(`convoy ${id}: delivered to ${displayName(e.owner)}`)
       Convoy.deleteFrom(e.entity)
       engine.removeEntity(e.entity)
       convoys.delete(id)
     }
   })
 
-  log('convoys prets')
+  log('convoys ready')
 }
 
 function refus(a: string, reason: string, antiCheat = false): void {
