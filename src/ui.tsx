@@ -448,7 +448,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
       >
-        <Label value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={20} color={Color4.fromHexString('#ffd166ff')} />
+        <Label value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} />
       </UiEntity>
     )}
 
@@ -488,7 +488,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.85) }}
       >
-        <Label value={theftView.alert} fontSize={23} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
+        <Label value={theftView.alert} fontSize={TYPE.title} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}
 
