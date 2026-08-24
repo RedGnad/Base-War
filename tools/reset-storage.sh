@@ -2,32 +2,36 @@
 # Remise a zero du stockage local de developpement.
 #
 # PIEGE: vider le fichier pendant qu'un serveur tourne ne sert a RIEN. Le serveur garde
-# l'etat en memoire et le reecrit a sa prochaine sauvegarde. Il faut donc attendre qu'il
-# se taise (il s'eteint ~2 min apres le depart du dernier joueur), effacer, puis verifier
-# que rien ne revient.
+# l'etat en memoire et le reecrit a sa prochaine sauvegarde. On attend donc le silence,
+# on efface, puis on VERIFIE que rien n'est revenu.
+#
+# A lancer APERCU FERME (ou apres etre sorti de la scene depuis 2 min).
 F="node_modules/@dcl/sdk-commands/.runtime-data/server-storage.json"
-[ -f "$F" ] || { echo "  pas de stockage a effacer"; exit 0; }
+VIDE='{"env":{},"world":{},"players":{}}'
 
-echo "  attente du silence du serveur (sortir de la scene ou fermer l'apercu)..."
-last=""
-stable=0
-for i in $(seq 1 90); do
+[ -f "$F" ] || { echo "$VIDE" > "$F"; echo "  stockage cree vide"; exit 0; }
+
+echo "  attente du silence du serveur (max 40 s)..."
+last=""; stable=0
+for i in $(seq 1 20); do
   cur=$(stat -f %m "$F" 2>/dev/null)
-  if [ "$cur" = "$last" ]; then stable=$((stable+1)); else stable=0; fi
+  [ "$cur" = "$last" ] && stable=$((stable+1)) || stable=0
   last="$cur"
-  [ $stable -ge 8 ] && break        # 8 lectures identiques a 2 s = 16 s sans ecriture
+  [ $stable -ge 5 ] && break     # 5 lectures identiques a 2 s = 10 s sans ecriture
   sleep 2
 done
 
-if [ $stable -lt 8 ]; then
-  echo "  ECHEC: le stockage est encore ecrit, un serveur tourne. Ferme l'apercu et relance."
+if [ $stable -lt 5 ]; then
+  echo "  ECHEC: le stockage est encore ecrit, un serveur tourne."
+  echo "         Ferme l'apercu dans le Creator Hub, puis relance."
   exit 1
 fi
 
-echo '{"env":{},"world":{},"players":{}}' > "$F"
-sleep 6
-if [ "$(cat "$F")" = '{"env":{},"world":{},"players":{}}' ]; then
-  echo "  remise a zero confirmee: bases, butin, pieces et paliers effaces"
+echo "$VIDE" > "$F"
+sleep 5
+if [ "$(cat "$F")" = "$VIDE" ]; then
+  echo "  REMISE A ZERO CONFIRMEE"
+  echo "    bases, butin, pieces, etages et paliers effaces"
 else
   echo "  ECHEC: un serveur a reecrit le fichier juste apres l'effacement"
   exit 1
