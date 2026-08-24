@@ -6,4 +6,11 @@ bin/
 **/.DS_Store
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*.corrupt/
+yarn-error.log*
+*.corrupt/
+
+# Transcriptions des videos d'un tiers: SYNTHESE seulement dans le depot Master, jamais
+# le texte integral. Ce depot est public et ce contenu ne nous appartient pas.
+# Commande de regeneration a l'identique: en-tete de data/aywen-*.md dans Master.
+local/
+ytenv/
