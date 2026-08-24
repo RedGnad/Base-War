@@ -31,18 +31,19 @@ export function rollRarity(): number {
  * valeurs lineaires, une base pleine produisait 2 400 pieces/s contre une boite a 2 600,
  * soit une boite epique par seconde sans rien faire.
  */
-export const GAIN_PAR_SECONDE = [1, 4, 16, 64, 256]
+export const GAIN_PAR_SECONDE = [1, 4, 16, 64, 256, 1024, 4096]
 
 /**
  * Repartition PAR BOITE, cote serveur uniquement.
  * Chaque ligne donne les poids des 5 raretes. Une boite chere ne garantit rien: elle
  * DEPLACE la distribution. C'est ce qui garde la revelation interessante a tous les prix.
  */
+/** Sept raretes desormais. Les deux dernieres sont volontairement tres rares. */
 const POIDS_BOITE = [
-  [78, 18,  3,  0.9, 0.1],   // simple
-  [40, 42, 15,  2.7, 0.3],   // bonne
-  [10, 34, 43, 12,   1.0],   // rare
-  [ 2, 12, 36, 42,   8.0]    // epique
+  [78, 18,   3,   0.9,  0.1,  0.02, 0.002],  // Basic
+  [40, 42,  15,   2.7,  0.3,  0.06, 0.006],  // Good
+  [10, 34,  43,  12,    1.0,  0.20, 0.020],  // Rare
+  [ 2, 12,  36,  42,    8.0,  0.90, 0.090],  // Epic
 ]
 
 export function rollBoite(idBoite: number): number {
@@ -65,6 +66,24 @@ export function rollTypeBoite(): number {
   for (let i = 0; i < POIDS_APPARITION.length; i++) {
     n -= POIDS_APPARITION[i]
     if (n <= 0) return i
+  }
+  return 0
+}
+
+/**
+ * TIRAGE DE LA MUTATION, independant de la rarete.
+ * Deux tirages separes: c'est ce qui cree la surprise composee (« un Rare... DORE ! »)
+ * et qui multiplie la table d'objets par 14 sans un seul maillage de plus.
+ * Poids releves sur la page `Mutations`: Gold est la plus commune, Phantom la plus rare.
+ */
+import { MUTATIONS } from '../shared/loot-table'
+
+export function rollMutation(): number {
+  const total = MUTATIONS.reduce((a, m) => a + m.poids, 0)
+  let n = Math.random() * total
+  for (const m of MUTATIONS) {
+    n -= m.poids
+    if (n <= 0) return m.id
   }
   return 0
 }

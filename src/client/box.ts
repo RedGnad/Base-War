@@ -6,7 +6,7 @@ import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
-import { rarity, boite, RARITIES } from '../shared/loot-table'
+import { rarity, boite, RARITIES, mutation, nomObjet, couleurObjet } from '../shared/loot-table'
 
 let monAdresse = ''
 
@@ -34,6 +34,7 @@ export const boxView = {
   roule: false,
   index: 0,
   resultat: -1,
+  resultatMutation: 0,
   /** instant jusqu'auquel le resultat reste affiche apres l'arret de la roulette */
   resultatJusqua: 0,
   /** 'expose' | 'en-stock' | 'plein' */
@@ -98,6 +99,7 @@ export function setupBox(): void {
     // On lance la roulette VERS le resultat serveur. Duree fixe, ralentissement continu.
     boxView.roule = true
     boxView.resultat = d.rarity
+    boxView.resultatMutation = d.mutation
     // On dit la VERITE sur ce qui vient d'arriver a l'objet. Annoncer « pose sur ta
     // base » quand il n'y a pas de base laisse le joueur devant un compteur immobile
     // sans aucun moyen de comprendre.
@@ -111,7 +113,7 @@ export function setupBox(): void {
     if (depart !== null && d.etat === 'expose') {
       // L'envoi part a la FIN de la roulette, pas avant: sinon on voit le resultat
       // filer vers la base pendant qu'on attend encore de savoir ce que c'est.
-      timers.setTimeout(() => envoyerVersBase(depart, d.rarity), 2700)
+      timers.setTimeout(() => envoyerVersBase(depart, d.rarity, d.mutation), 2700)
     }
   })
 
@@ -174,7 +176,7 @@ export function setupBox(): void {
         // Le resultat RESTE a l'ecran: sans ce temps de lecture, la roulette s'arrete
         // et il ne se passe visiblement rien. C'est le paiement du geste.
         boxView.resultatJusqua = Date.now() + 3200
-        console.log(`[CLIENT] boite ouverte -> ${rarity(boxView.resultat).nom}`)
+        console.log(`[CLIENT] boite ouverte -> ${nomObjet(boxView.resultat, boxView.resultatMutation)}`)
       }
     } else if (boxView.resultat >= 0 && Date.now() > boxView.resultatJusqua) {
       boxView.resultat = -1
@@ -252,7 +254,7 @@ function rangerBoite(): void {
  * Sans ce trajet, rien ne relie visuellement ce qu'on vient d'ouvrir a l'endroit ou
  * ca se met a rapporter.
  */
-function envoyerVersBase(depart: Vector3, rarete: number): void {
+function envoyerVersBase(depart: Vector3, rarete: number, mut = 0): void {
   const cible = positionDeMaBase()
   if (cible === null) return
 
@@ -260,7 +262,7 @@ function envoyerVersBase(depart: Vector3, rarete: number): void {
   const r = rarity(rarete)
   Transform.create(e, { position: depart, scale: Vector3.create(r.taille, r.taille, r.taille) })
   MeshRenderer.setBox(e)
-  const c = Color4.fromHexString(r.couleur + 'ff')
+  const c = Color4.fromHexString(couleurObjet(rarete, mut) + 'ff')
   Material.setPbrMaterial(e, { albedoColor: c, emissiveColor: c, emissiveIntensity: 1.2 })
 
   // Il passe PAR LE HAUT: une trajectoire rectiligne se lit mal et traverse les murs.

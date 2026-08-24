@@ -6,10 +6,10 @@ import { view } from './client/setup'
 import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
-import { RARITIES } from './shared/loot-table'
+import { RARITIES, nomObjet, couleurObjet, mutation } from './shared/loot-table'
 
 /** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
-const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256]
+const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256, 1024, 4096]
 
 /** Ce qu'on dit au joueur selon ce qui est REELLEMENT arrive a son objet. */
 const ETATS: Record<string, (r: number) => string> = {
@@ -120,10 +120,18 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.88) }}
       >
+        {/* Pendant la roulette on ne montre que la rarete qui defile; a l'arret on
+            revele le NOM COMPLET, mutation comprise: « Gold Epic » se lit autrement
+            qu'« Epic », et c'est la toute la surprise composee. */}
         <Label
-          value={RARITIES[boxView.index]?.nom ?? ''}
-          fontSize={boxView.roule ? 34 : 44}
-          color={Color4.fromHexString((RARITIES[boxView.index]?.couleur ?? '#ffffff') + 'ff')} />
+          value={boxView.roule
+            ? (RARITIES[boxView.index]?.nom ?? '')
+            : nomObjet(boxView.resultat, boxView.resultatMutation)}
+          fontSize={boxView.roule ? 32 : (mutation(boxView.resultatMutation).mult > 1 ? 38 : 44)}
+          color={Color4.fromHexString(
+            (boxView.roule
+              ? (RARITIES[boxView.index]?.couleur ?? '#ffffff')
+              : couleurObjet(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
         <Label
           value={boxView.roule ? '...' : ETATS[boxView.etat]?.(boxView.resultat) ?? ''}
           fontSize={15}

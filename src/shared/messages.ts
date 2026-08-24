@@ -55,7 +55,7 @@ export const MESSAGES = {
    * Le resultat est decide par le SERVEUR; la roulette du client n'est que du theatre
    * qui atterrit dessus. C'est ainsi que fonctionne toute loterie honnete.
    */
-  boxResult: Schemas.Map({ typeBoite: Schemas.Int, rarity: Schemas.Int, etat: Schemas.String }),
+  boxResult: Schemas.Map({ typeBoite: Schemas.Int, rarity: Schemas.Int, mutation: Schemas.Int, etat: Schemas.String }),
   /** serveur -> chaque joueur: son stock de boites non ouvertes, par type. */
   inventory: Schemas.Map({ boites: Schemas.Array(Schemas.Int) }),
 
@@ -81,11 +81,11 @@ export const MESSAGES = {
   /** serveur -> l'auteur: refus, avec la raison. */
   actionRejected: Schemas.Map({ action: Schemas.String, raison: Schemas.String, antiCheat: Schemas.Boolean }),
   /** serveur -> LA VICTIME uniquement: alerte nominative. */
-  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int }),
+  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   /** serveur -> le voleur: applique-toi le malus (le client seul controle sa locomotion). */
   thiefPenalty: Schemas.Map({ ms: Schemas.Int }),
   /** serveur -> tous: un vol a eu lieu, pour le fil d'activite. */
-  stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int }),
+  stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   /** serveur -> tous: un bien a ete repris. */
   reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int }),
 

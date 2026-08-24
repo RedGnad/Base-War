@@ -8,7 +8,7 @@ import {
   Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition,
   rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR, TREMIE_LARGEUR
 } from '../shared/schemas'
-import { rarity } from '../shared/loot-table'
+import { rarity, rareteDe, mutationDe, couleurObjet, mutation } from '../shared/loot-table'
 import { voler, revendre, monAdresseClient } from './theft'
 
 /**
@@ -299,17 +299,22 @@ export function setupPlots(): void {
         const d = slotPosition(k)
         if (k < p.items.length) {
           // Taille, lueur et rotation portent la rarete: lisible de loin, sans texte.
-          const r = rarity(p.items[k])
+          // La MUTATION domine l'apparence: un Gold Common doit se voir comme dore,
+          // pas comme un commun gris. C'est ce qui rend une mutation desirable a voler.
+          const code = p.items[k]
+          const r = rarity(rareteDe(code))
+          const m = mutation(mutationDe(code))
           tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
-          tr.scale = Vector3.create(r.taille, r.taille, r.taille)
-          const c = Color4.fromHexString(r.couleur + 'ff')
+          const taille = r.taille * (m.mult > 1 ? 1.12 : 1)
+          tr.scale = Vector3.create(taille, taille, taille)
+          const c = Color4.fromHexString(couleurObjet(rareteDe(code), mutationDe(code)) + 'ff')
           Material.setPbrMaterial(v.objets[k], {
             albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.35, metallic: 0.6
           })
-          if (r.tours > 0) {
+          if (r.tours > 0 || m.mult > 1) {
             Tween.createOrReplace(v.objets[k], {
               mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
-              duration: Math.round(360000 / r.tours),
+              duration: Math.round(360000 / Math.max(1, r.tours + (m.mult > 1 ? 30 : 0))),
               easingFunction: EasingFunction.EF_LINEAR
             })
             TweenSequence.createOrReplace(v.objets[k], { sequence: [], loop: TweenLoop.TL_RESTART })

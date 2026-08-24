@@ -8,6 +8,7 @@ import {
 /** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
+import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
@@ -66,8 +67,8 @@ export function delivrerAlertes(address: string): void {
   const a = retirerAlertes(address)
   if (a.length === 0) return
   for (const alerte of a) {
-    const x = alerte as { byName: string; rarity: number }
-    void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity }, { to: [address] })
+    const x = alerte as { byName: string; rarity: number; mutation?: number }
+    void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity, mutation: x.mutation ?? 0 }, { to: [address] })
   }
   jour(`${a.length} alerte(s) differee(s) delivree(s) a ${nomAffiche(address)}`)
 }
@@ -125,16 +126,19 @@ export function startTheft(): void {
 
       // 3.3 alerte nominative a la victime. Deposee si elle est absente.
       const nomVoleur = nomAffiche(voleur)
-      deposerAlerte(c.address, { byName: nomVoleur, rarity: r })
-      void room.send('youWereRobbed', { byName: nomVoleur, rarity: r }, { to: [c.address] })
+      // L'alerte porte le NOM COMPLET de ce qu'on vient de perdre: se faire prendre un
+      // « Gold Epic » ne se vit pas comme perdre un « Epic » nu.
+      const rar = rareteDe(r), mut = mutationDe(r)
+      deposerAlerte(c.address, { byName: nomVoleur, rarity: rar, mutation: mut })
+      void room.send('youWereRobbed', { byName: nomVoleur, rarity: rar, mutation: mut }, { to: [c.address] })
 
       // 3.4 malus du voleur. La locomotion est cote client: le serveur la DEMANDE.
       // Limite assumee: un client modifie peut l'ignorer. Le TRANSFERT, lui, est
       // autoritaire, et c'est ce qui compte.
       void room.send('thiefPenalty', { ms: MALUS_DUREE_MS }, { to: [voleur] })
 
-      void room.send('stolen', { byName: nomVoleur, fromName: c.name, rarity: r })
-      jour(`${nomVoleur} a vole une rarete ${r} a ${c.name}`)
+      void room.send('stolen', { byName: nomVoleur, fromName: c.name, rarity: rar, mutation: mut })
+      jour(`${nomVoleur} a vole un ${nomObjet(rar, mut)} a ${c.name}`)
       return
     }
   })

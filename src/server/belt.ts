@@ -6,9 +6,9 @@ import {
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { jour } from './journal'
-import { rollTypeBoite, rollBoite } from './loot'
+import { rollTypeBoite, rollBoite, rollMutation } from './loot'
 import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible } from './plots'
-import { BOITES } from '../shared/loot-table'
+import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 
 /**
  * LE TAPIS, cote serveur. Les articles defilent, n'importe qui peut en acheter un,
@@ -148,14 +148,19 @@ export function startBelt(): void {
     // Sinon l'objet apparait sur la base avant que la roulette ne l'ait revele: le
     // joueur voit le resultat par la fenetre avant l'annonce, et le decalage se voit.
     // Le hasard est fige des maintenant, seule sa mise en scene attend.
+    // DEUX TIRAGES SEPARES: la rarete, puis la mutation. C'est ce qui cree la surprise
+    // composee (« un Rare... DORE ! ») et multiplie la table par 14 sans un maillage
+    // de plus.
     const rarity = rollBoite(d.typeBoite)
+    const mut = rollMutation()
+    const code = encoder(rarity, mut)
     const prevu = etatPrevisible(a)
-    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity} (${prevu}, pose differee)`)
-    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, etat: prevu }, { to: [a] })
+    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> ${nomObjet(rarity, mut)} (${prevu}, pose differee)`)
+    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, mutation: mut, etat: prevu }, { to: [a] })
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
 
     timers.setTimeout(() => {
-      const reel = ajouterObjet(a, rarity)
+      const reel = ajouterObjet(a, code)
       if (reel !== prevu) jour(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${nomAffiche(a)}`)
     }, POSE_DIFFEREE_MS)
   })

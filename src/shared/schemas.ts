@@ -264,12 +264,31 @@ export const PORTE_LARGEUR = 2.0
  * courbe de reference. On y arrive par CALCUL, pas par imitation: c'est la meme
  * conclusion atteinte independamment, ce qui la rend plus solide qu'une transposition.
  */
-export const PALIERS = [
-  { cout: 14400,  rareteMin: 1, multiplicateur: 2, garde: 1 },
-  { cout: 57600,  rareteMin: 2, multiplicateur: 3, garde: 1 },
-  { cout: 230400, rareteMin: 3, multiplicateur: 4, garde: 2 },
-  { cout: 921600, rareteMin: 4, multiplicateur: 5, garde: 2 }
-] as const
+/**
+ * DOUZE paliers, generes par la REGLE calculee plutot qu'ecrits un par un.
+ *
+ * Cout(n) = 12 emplacements x revenu de la rarete exigee x 300 s.
+ * La rarete exigee monte d'un cran tous les deux paliers, et plafonne a Secret (6).
+ * Multiplicateur: +1 par palier, comme la reference (x0.5, x1, x2, x3...).
+ *
+ * Douze paliers au lieu de quatre, parce que la mesure est sans appel: notre contenu
+ * s'epuisait en 19 minutes de jeu actif. La reference en a 19, et c'est le NOMBRE de
+ * marches qui fait tenir un jeu des semaines, pas la lenteur de chacune.
+ */
+const REVENU_RARETE = [1, 4, 16, 64, 256, 1024, 4096]
+const SLOTS_PLEINS = 12
+const RETOUR_PALIER_S = 300
+
+export const PALIERS = Array.from({ length: 12 }, (_, i) => {
+  const rareteMin = Math.min(1 + Math.floor(i / 2), REVENU_RARETE.length - 1)
+  const cout = SLOTS_PLEINS * REVENU_RARETE[rareteMin] * RETOUR_PALIER_S
+  return {
+    cout,
+    rareteMin,
+    multiplicateur: 2 + i,
+    garde: i < 2 ? 1 : 2
+  }
+}) as ReadonlyArray<{ cout: number; rareteMin: number; multiplicateur: number; garde: number }>
 export const REBIRTH_MAX = PALIERS.length
 
 export function paliers(n: number) { return PALIERS[Math.min(n, PALIERS.length - 1)] }

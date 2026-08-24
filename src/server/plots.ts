@@ -8,6 +8,7 @@ import {
   DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
+import { revenuObjet, rareteDe } from '../shared/loot-table'
 import { jour, viderJournal } from './journal'
 import { aQuelqueChoseAReprendre } from './theft'
 import { room } from '../shared/messages'
@@ -87,7 +88,9 @@ function presents(): Set<string> {
  * grimper pour l'avoir, ralenti par son malus. C'est la defense par la geometrie.
  */
 function ranger(items: number[]): number[] {
-  return [...items].sort((x, y) => x - y)
+  // Trie par REVENU REEL, pas par rarete brute: un Gold Common peut rapporter plus
+  // qu'un Rare nu, et c'est lui qui doit monter a l'etage le mieux defendu.
+  return [...items].sort((x, y) => revenuObjet(x, GAIN_PAR_SECONDE) - revenuObjet(y, GAIN_PAR_SECONDE))
 }
 
 function publier(b: Base, ici?: Set<string>): void {
@@ -377,7 +380,7 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
 
   // Le palier exige aussi de POSSEDER un objet assez rare: sans ca on pourrait monter
   // en accumulant du commun, et la rarete perdrait tout son sens.
-  const meilleur = p.items.length === 0 ? -1 : Math.max(...p.items)
+  const meilleur = p.items.length === 0 ? -1 : Math.max(...p.items.map(rareteDe))
   if (meilleur < exige.rareteMin) {
     return { ok: false, raison: `il te faut un objet de rarete ${exige.rareteMin} ou mieux` }
   }
@@ -483,7 +486,7 @@ export function revendreObjet(address: string, index: number): { ok: boolean; ga
   if (!p || !b) return { ok: false, raison: 'no base' }
   if (index < 0 || index >= b.items.length) return { ok: false, raison: 'no such item' }
   const r = b.items[index]
-  const gain = Math.round((GAIN_PAR_SECONDE[r] ?? 1) * REVENTE_SECONDES * multiplicateurRevenu(p.rebirths ?? 0))
+  const gain = Math.round(revenuObjet(r, GAIN_PAR_SECONDE) * REVENTE_SECONDES * multiplicateurRevenu(p.rebirths ?? 0))
   b.items.splice(index, 1)
   p.items = [...b.items]
   p.coins += gain
@@ -557,7 +560,7 @@ export function startPlots(): void {
       if (!base) continue
 
       let gain = 0
-      for (const r of base.items) gain += GAIN_PAR_SECONDE[r] ?? 1
+      for (const code of base.items) gain += revenuObjet(code, GAIN_PAR_SECONDE)
       if (gain === 0) continue
       // Le multiplicateur des paliers s'applique ici: c'est lui qui fait ACCELERER la
       // boucle. Sans lui, chaque palier ne ferait que reculer le joueur.
@@ -578,7 +581,7 @@ export function startPlots(): void {
       const suivant = palier >= REBIRTH_MAX ? null : paliers(palier)
       const b = bases.get(address)
       let revenu = 0
-      if (b) for (const r of b.items) revenu += GAIN_PAR_SECONDE[r] ?? 1
+      if (b) for (const code of b.items) revenu += revenuObjet(code, GAIN_PAR_SECONDE)
       revenu = Math.round(revenu * multiplicateurRevenu(palier))
       const lock = b ? (Plot.getOrNull(b.entity)?.lockedUntil ?? 0) : 0
       void room.send('wallet', {
