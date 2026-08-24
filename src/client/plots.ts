@@ -14,6 +14,13 @@ import {
 
 /** Miroir du bareme serveur, pour afficher ce qu'un objet rapporte. */
 const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
+
+/**
+ * SELECTION POUR DEPLACER. Sur mobile il n'y a ni glisser ni clic droit: le motif qui
+ * marche est TAPER LA SOURCE puis TAPER LA DESTINATION. L'objet selectionne monte et
+ * grossit, pour qu'on voie ce qu'on tient.
+ */
+export const placementView = { selection: -1 }
 import { voler, revendre, monAdresseClient, deplacer } from './theft'
 
 /**
