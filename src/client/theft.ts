@@ -144,6 +144,7 @@ export function franchirPalier(): void { void room.send('rebirth', {}) }
 export function revendre(slot: number): void { void room.send('sellItem', { slot }) }
 export function acheterEtage(): void { void room.send('buyFloor', {}) }
 export function collecter(): void { void room.send('collect', {}) }
+export function deplacer(de: number, vers: number): void { void room.send('moveItem', { de, vers }) }
 
 /** Adresse du joueur local, resolue une fois. */
 let _adresse = ''

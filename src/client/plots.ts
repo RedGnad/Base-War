@@ -14,7 +14,7 @@ import {
 
 /** Miroir du bareme serveur, pour afficher ce qu'un objet rapporte. */
 const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
-import { voler, revendre, monAdresseClient } from './theft'
+import { voler, revendre, monAdresseClient, deplacer } from './theft'
 
 /**
  * Rendu DYNAMIQUE des bases: une vue apparait quand le serveur cree une base, disparait
@@ -204,11 +204,19 @@ export function setupPlots(): void {
           inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.objets[k]) ||
           inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.objets[k])
         ) {
-          // MEME GESTE, CIBLE DIFFERENTE: chez soi on revend pour faire de la place,
-          // chez les autres on vole. C'est la seule facon de remplacer un Commun par
-          // un Epique quand la base est pleine.
-          if (v.ownerId.toLowerCase() === monAdresseClient()) revendre(k)
-          else voler(v.ownerId, k)
+          // CHEZ SOI: on SELECTIONNE, puis un second tap deplace. Chez les autres: on vole.
+          if (v.ownerId.toLowerCase() === monAdresseClient()) {
+            if (placementView.selection === -1) {
+              placementView.selection = k
+            } else if (placementView.selection === k) {
+              placementView.selection = -1          // meme objet: on relache
+            } else {
+              deplacer(placementView.selection, k)  // echange des deux places
+              placementView.selection = -1
+            }
+          } else {
+            voler(v.ownerId, k)
+          }
           return
         }
       }
@@ -233,7 +241,8 @@ export function setupPlots(): void {
       // Le decompte du verrou entre dans la signature a la SECONDE, pas a l'image:
       // sinon soit l'etiquette ne se rafraichit jamais, soit on repeint 30 fois/s.
       const secondesVerrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}`
+      const monBase = p.ownerId.toLowerCase() === monAdresseClient()
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${monBase ? placementView.selection : -1}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
@@ -241,8 +250,10 @@ export function setupPlots(): void {
       // Le libelle du survol dit ce que le geste FERA, et ca depend de qui possede.
       // Le survol NOMME l'objet et dit ce qu'il rapporte: sans ca, une base de six
       // cubes colores ne se lit pas, et une mutation ne se distingue pas d'une rarete.
-      const mien = p.ownerId.toLowerCase() === monAdresseClient()
-      const verbe = mien ? 'Sell' : 'Steal'
+      const mien = monBase
+      const verbe = mien
+        ? (placementView.selection === -1 ? 'Move' : 'Swap here')
+        : 'Steal'
       for (let k = 0; k < v.objets.length; k++) {
         const code = p.items[k]
         const libelle = code === undefined
@@ -315,8 +326,9 @@ export function setupPlots(): void {
           const code = p.items[k]
           const r = rarity(rareteDe(code))
           const m = mutation(mutationDe(code))
-          tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
-          const taille = r.taille * (m.mult > 1 ? 1.12 : 1)
+          const choisi = mien && placementView.selection === k
+          tr.position = Vector3.create(t.position.x + d.dx, d.dy + (choisi ? 0.55 : 0), t.position.z + d.dz)
+          const taille = r.taille * (m.mult > 1 ? 1.12 : 1) * (choisi ? 1.25 : 1)
           tr.scale = Vector3.create(taille, taille, taille)
           const c = Color4.fromHexString(couleurObjet(rareteDe(code), mutationDe(code)) + 'ff')
           Material.setPbrMaterial(v.objets[k], {

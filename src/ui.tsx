@@ -6,6 +6,8 @@ import { view } from './client/setup'
 import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collecter } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
+import { placementView } from './client/plots'
+import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
 /** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
@@ -151,6 +153,26 @@ const uiComponent = () => (
         uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
       >
         <Label value="pose ta base : tes objets n y rapportent rien sans elle" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
+      </UiEntity>
+    )}
+
+    {/* Un objet selectionne: on dit quoi faire, et on offre la revente ici. Sans ce
+        rappel, taper son propre objet parait sans effet. */}
+    {placementView.selection >= 0 && (
+      <UiEntity
+        uiTransform={{
+          width: 460, height: 46, positionType: 'absolute',
+          position: { bottom: 150, left: '50%' }, margin: { left: -230 },
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          padding: 6
+        }}
+        uiBackground={{ color: Color4.create(0.05, 0.12, 0.05, 0.85) }}
+      >
+        <Label value="tap another slot to move it" fontSize={14} color={Color4.fromHexString('#8fe08fff')} />
+        <Button
+          uiTransform={{ width: 110, height: 34 }}
+          value="SELL IT" variant="secondary" fontSize={13}
+          onMouseDown={() => { revendre(placementView.selection); placementView.selection = -1 }} />
       </UiEntity>
     )}
 

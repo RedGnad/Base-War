@@ -95,10 +95,14 @@ function presents(): Set<string> {
  * monte avec son index, le plus convoite finit a l'etage le plus haut: le voleur doit
  * grimper pour l'avoir, ralenti par son malus. C'est la defense par la geometrie.
  */
+/**
+ * On NE TRIE PLUS. Le rangement etait automatique (du plus commun au plus rare), ce qui
+ * privait le joueur de la seule decision spatiale du jeu: mettre son objet rare EN HAUT
+ * le protege (le voleur doit grimper, ralenti par son malus) mais l'eloigne de lui.
+ * L'ordre du tableau EST le placement choisi.
+ */
 function ranger(items: number[]): number[] {
-  // Trie par REVENU REEL, pas par rarete brute: un Gold Common peut rapporter plus
-  // qu'un Rare nu, et c'est lui qui doit monter a l'etage le mieux defendu.
-  return [...items].sort((x, y) => revenuObjet(x, GAIN_PAR_SECONDE) - revenuObjet(y, GAIN_PAR_SECONDE))
+  return [...items]
 }
 
 function publier(b: Base, ici?: Set<string>): void {
@@ -597,6 +601,33 @@ export function reclamerQuotidienne(address: string): { jour: number; boite: num
   profilsSales.add(address)
   jour(`${nomDe(address)} recoit sa recompense du jour ${p.serie}: boite ${boite}`)
   return { jour: p.serie, boite }
+}
+
+/** Deplace un objet d'un emplacement a un autre, ou l'echange si la cible est prise. */
+export function deplacerObjet(address: string, de: number, vers: number): boolean {
+  const p = profils.get(address)
+  const b = bases.get(address)
+  if (!p || !b) return false
+  const max = placesOuvertes(p.etagesAchetes ?? 0)
+  if (de < 0 || de >= b.items.length) return false
+  if (vers < 0 || vers >= max) return false
+  if (de === vers) return false
+
+  const it = [...b.items]
+  if (vers < it.length) {
+    // Echange: deux objets permutent leurs places.
+    const t = it[de]; it[de] = it[vers]; it[vers] = t
+  } else {
+    // Deplacement vers une place vide: on retire puis on ajoute a la fin. Les places
+    // vides intermediaires n'existent pas, le tableau reste compact.
+    const [obj] = it.splice(de, 1)
+    it.push(obj)
+  }
+  b.items = it
+  p.items = [...it]
+  basesSales.add(address); profilsSales.add(address)
+  publier(b)
+  return true
 }
 
 export function marquerSale(address: string): void {

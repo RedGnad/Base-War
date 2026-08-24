@@ -64,6 +64,13 @@ export const MESSAGES = {
   /** serveur -> l'auteur: palier franchi. */
   rebirthDone: Schemas.Map({ palier: Schemas.Int, etages: Schemas.Int }),
 
+  /**
+   * client -> serveur: je deplace MON objet de l'emplacement `de` vers `vers`.
+   * Le placement devient une DECISION: mettre son objet rare en haut le protege
+   * (le voleur doit grimper, ralenti), le mettre en bas le rend facile a reprendre.
+   */
+  moveItem: Schemas.Map({ de: Schemas.Int, vers: Schemas.Int }),
+
   /** client -> serveur: j'encaisse ma reserve. */
   collect: Schemas.Map({}),
   /** serveur -> le collecteur: combien a ete verse. */
