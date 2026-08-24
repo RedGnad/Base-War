@@ -182,6 +182,7 @@ export function setupCombat(): void {
 
 
 
+
   // View model: one entity parented to the camera, shown only in first person.
   const ancre = engine.addEntity()
   Transform.create(ancre, { parent: engine.CameraEntity, position: VUE_POS, rotation: VUE_ROT })
@@ -292,7 +293,15 @@ function gunSystem(dt: number): void {
     degainer(!combatView.aiming)
   }
 
-  if (combatView.aiming && combatView.targetName !== '' && combatView.cooldown === 0 && tirer(now)) {
+  // Two ways to fire, and neither needs its own button.
+  //
+  // The shot leaves on its own when the reticle locks a target, which is the mode Fortnite
+  // recommends to players new to mobile. A tap anywhere fires as well, which is another of
+  // the three modes that game ships, so a player who wants the trigger has it without a
+  // control taking up room. The cooldown gates both, so they cannot stack.
+  const tapote = combatView.aiming && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
+  const seul = combatView.aiming && combatView.targetName !== '' && combatView.cooldown === 0
+  if ((tapote || seul) && tirer(now)) {
     // The shot clip is one-shot and displaces the held pose, so the aim is put back when
     // it ends, otherwise the arm would drop between two rounds.
     void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
@@ -328,14 +337,6 @@ function gunSystem(dt: number): void {
     }
   }
 
-  if (zoneVisee !== null) {
-    const moiT = Transform.getOrNull(engine.PlayerEntity)
-    if (moiT !== null) {
-      Transform.getMutable(zoneVisee).position =
-        Vector3.create(moiT.position.x, moiT.position.y + 1, moiT.position.z)
-    }
-  }
-
   rafraichirVisibilite()
   viser()
 }
@@ -365,8 +366,11 @@ function degainer(on: boolean): void {
     const c = CameraMode.getOrNull(engine.CameraEntity)
     prefereVuePremiere = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    // Parented, not chased. Written to the player's position every frame it trailed by a
+    // frame, so a running player reached the leading edge of a box this tight, dropped out
+    // of the region, and the camera flipped back and forth. As a child it cannot lag.
     zoneVisee = engine.addEntity()
-    Transform.create(zoneVisee, { position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
+    Transform.create(zoneVisee, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
     CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
     void stopEmote({})
