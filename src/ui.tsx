@@ -42,7 +42,16 @@ export function setupUi() {
 
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
-function prochaineAction(): { label: string; ready: boolean; action: () => void } {
+/**
+ * Announcement backdrop, tinted by the crate. A fixed dark brown made every tier look the
+ * same; a wash of the crate's own colour lets the eye read the tier before the words.
+ */
+function announceBackdrop(): Color4 {
+  const c = Color4.fromHexString(beltView.annonceColor + 'ff')
+  return Color4.create(c.r * 0.22, c.g * 0.22, c.b * 0.22, 0.9)
+}
+
+function nextAction(): { label: string; ready: boolean; action: () => void } {
   if (slotView.active) {
     return slotView.valid
       ? { label: 'PLACE HERE', ready: true, action: placeHere }
@@ -220,7 +229,7 @@ const uiComponent = () => (
           position: { top: 176, left: '50%' }, margin: { left: -210 },
           justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: bandeauAnnonce() }}
+        uiBackground={{ color: announceBackdrop() }}
       >
         <Label
           value={beltView.annonce}
@@ -355,7 +364,7 @@ const uiComponent = () => (
       )}
 
       {(() => {
-        const a = prochaineAction()
+        const a = nextAction()
         return (
           <Button
             uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
