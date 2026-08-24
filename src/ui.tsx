@@ -211,7 +211,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
       >
-        <Label value="pose ta base : tes objets n y rapportent rien sans elle" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
+        <Label value="place your base first: items earn nothing without one" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 
@@ -267,49 +267,59 @@ const uiComponent = () => (
         « Minimize options. Show only what the player needs right now and progressively
         disclose the rest. » Nous en avions HUIT en permanence: illisible, et sur un
         telephone chaque bouton mange un pouce.
-        Trois au maximum: le geste constant, l'action urgente du moment, et la defense.
+        REGLE TENUE PARTOUT ICI: on n'affiche JAMAIS un bouton avec lequel le joueur ne
+        peut rien faire. Un bouton mort n'est pas neutre, il occupe un pouce, il attire
+        le regard, et il oblige a deviner ce qu'il veut dire.
+        Les boutons sont ranges A GAUCHE avec un ecart fixe: en `space-between`, retirer
+        un bouton ecarterait les deux autres aux extremites et la barre bougerait sous
+        les doigts d'un tap a l'autre.
         Decalee a gauche: le coin bas-droit appartient aux boutons du client mobile. */}
     <UiEntity
       uiTransform={{
         width: 470, height: 62, positionType: 'absolute',
         position: { bottom: 24, left: '50%' }, margin: { left: -320 },
-        flexDirection: 'row', justifyContent: 'space-between'
+        flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
-      {/* 1. COLLECT n'apparait QUE s'il y a quelque chose a encaisser.
-          Un bouton toujours visible qui ne fait rien au demarrage est pire qu'absent:
-          il occupe la place principale et n'apprend rien. */}
-      {theftView.reserve > 0 && (
+      {/* 1. COLLECT: seulement s'il y a quelque chose a encaisser. */}
+      {theftView.reserve > 0 && !slotView.actif && (
         <Button
-          uiTransform={{ width: 160, height: 58 }}
+          uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
           value={`COLLECT ${formatRevenu(theftView.reserve)}`}
           variant="primary"
           fontSize={15}
           onMouseDown={collecter} />
       )}
 
-      {/* 2. UNE seule action selon l'etat, par ordre d'urgence. */}
+      {/* 2. UNE seule action selon l'etat, par ordre d'urgence. Toujours presente:
+             c'est elle qui porte le pas suivant, jusqu'a BUILD BASE au tout debut. */}
       {(() => {
         const a = prochaineAction()
         return (
           <Button
-            uiTransform={{ width: 160, height: 58 }}
+            uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
             value={a.libelle} variant={a.pret ? 'primary' : 'secondary'}
             fontSize={15} onMouseDown={a.action} />
         )
       })()}
 
-      {/* 3. La defense, sensible au temps. */}
-      <Button
-        uiTransform={{ width: 140, height: 58 }}
-        value={
-          theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s`
-          : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
-          : 'LOCK'
-        }
-        variant={theftView.verrouSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
-        fontSize={14}
-        onMouseDown={verrouiller} />
+      {/* 3. LOCK: seulement quand il y a une base ET quelque chose dedans.
+             Sans base il ne protege rien; base vide, il gaspillerait sa recharge de
+             150 s pour proteger zero objet. Il apparait donc au moment exact ou le
+             joueur a quelque chose a perdre, ce qui l'explique tout seul.
+             Cache aussi pendant la pose: un etat modal ne garde que son propre geste. */}
+      {theftView.basePosee && view.objets > 0 && !slotView.actif && (
+        <Button
+          uiTransform={{ width: 140, height: 58 }}
+          value={
+            theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s`
+            : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
+            : 'LOCK'
+          }
+          variant={theftView.verrouSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
+          fontSize={14}
+          onMouseDown={verrouiller} />
+      )}
     </UiEntity>
   </UiEntity>
 )
