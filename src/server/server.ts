@@ -126,7 +126,7 @@ export function startServer(): void {
         lockOnArrival(address)    // grace period on arrival
         delivrerAlertes(address)  // what happened while away
         replayLog(address)
-        console.log(`[SERVER] ${address} between, state restitue: ${n}`)
+        console.log(`[SERVER] ${address} joined, state restored: ${n}`)
       })()
     }
 
