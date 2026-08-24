@@ -9,6 +9,7 @@ import { jour } from './journal'
 import { rollTypeBoite, rollBoite, rollMutation } from './loot'
 import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete, pousserQuetes } from './plots'
 import { tutoFait } from './onboarding'
+import { lancerConvoi } from './convoi'
 import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 
 /**
@@ -121,8 +122,14 @@ export function startBelt(): void {
     }
 
     // La boite part FERMEE dans le stock: le hasard se revele a l'ouverture, pas a l'achat.
-    ajouterBoite(a, art.typeBoite)
-    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    // LA BOITE NE REJOINT PLUS L'INVENTAIRE D'UN COUP: elle part en convoi vers la base
+    // de l'acheteur, et reste rachetable pendant tout le trajet. `lancerConvoi` rend
+    // false si l'acheteur n'a pas encore de base: dans ce cas on livre directement,
+    // comme avant, plutot que d'interdire l'achat et de casser l'ordre du tutoriel.
+    if (!lancerConvoi(a, art.typeBoite, art.prix, { x: pos.x, z: pos.z })) {
+      ajouterBoite(a, art.typeBoite)
+      void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    }
     tutoFait(a, 3)
     avancerQuete(a, 'acheter')
     pousserQuetes(a)

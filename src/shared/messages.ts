@@ -93,6 +93,20 @@ export const MESSAGES = {
   /** serveur -> le joueur: cadeau des 15 minutes de presence continue. */
   timeGift: Schemas.Map({ boite: Schemas.Int, minutes: Schemas.Int }),
 
+  /**
+   * client -> serveur: je RACHETE ce convoi. Le serveur verifie la portee, les pieces,
+   * et que ce n'est pas deja le mien. Le client n'annonce jamais un prix.
+   */
+  outbid: Schemas.Map({ convoiId: Schemas.Int }),
+  /** serveur -> l'evince: on lui a repris sa boite, et voici son remboursement. */
+  outbidLost: Schemas.Map({ byName: Schemas.String, rembourse: Schemas.Int, typeBoite: Schemas.Int }),
+  /** serveur -> le nouvel acheteur: il l'a emportee. */
+  outbidWon: Schemas.Map({ fromName: Schemas.String, prix: Schemas.Int, typeBoite: Schemas.Int }),
+  /** serveur -> tous: fil d'activite. */
+  outbidFeed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, prix: Schemas.Int }),
+  /** serveur -> le proprietaire: le convoi est arrive a bon port. */
+  convoiArrived: Schemas.Map({ typeBoite: Schemas.Int }),
+
   /** client -> serveur: j'arme ma sentinelle. Le serveur verifie les pieces. */
   buySentry: Schemas.Map({}),
   /** serveur -> l'acheteur: elle est armee. */

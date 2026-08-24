@@ -16,6 +16,7 @@ import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
 import { setupTravel } from './travel'
 import { setupVenue } from './venue'
+import { setupConvoi } from './convoi'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -50,6 +51,7 @@ export function startClient(): void {
   setupTheft()
   setupBelt()
   setupSlots()
+  setupConvoi()
   setupQuests()
   setupTutorial()
   setupTravel()

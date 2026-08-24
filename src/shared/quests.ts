@@ -28,6 +28,7 @@ export type TypeQuete =
   | 'poser'       // poser un objet sur sa base
   | 'banquer'     // total de pieces encaissees dans la journee
   | 'offrir'      // objets laisses sur la base d'un autre joueur
+  | 'racheter'    // convois rachetes a un autre joueur en cours de route
 
 export type Quete = { type: TypeQuete; cible: number; texte: string }
 
@@ -40,7 +41,8 @@ export const QUETES: readonly Quete[] = [
   { type: 'poser',      cible: 6,    texte: 'Place 6 items on your base' },
   { type: 'banquer',    cible: 2000, texte: 'Bank 2,000 coins' },
   { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon crates or better' },
-  { type: 'offrir',     cible: 1,    texte: 'Leave an item on someone else\'s base' }
+  { type: 'offrir',     cible: 1,    texte: 'Leave an item on someone else\'s base' },
+  { type: 'racheter',   cible: 1,    texte: 'Outbid a crate on its way to another base' }
 ]
 
 /** Boite payee par une quete, et bonus si les trois sont finies. */

@@ -173,6 +173,62 @@ export function primePresence(nbPresents: number): number {
   return Math.min(PRIME_PRESENCE_PLAFOND, Math.max(0, nbPresents - 1) * PRIME_PRESENCE_PAR_JOUEUR)
 }
 
+/**
+ * LE CONVOI: une boite achetee ne se teleporte plus, elle MARCHE jusqu'a la base de
+ * l'acheteur, et pendant tout le trajet n'importe qui peut la lui RACHETER.
+ *
+ * Source, `stealabrainrot.fandom.com`, page `Red Carpet`, mot pour mot:
+ *   *« You can buy one, and the Brainrot will go to your base. However, **other people
+ *   can buy it when it walks to your base and can buy it for 150% of its base cost**,
+ *   and it will change its direction to that player and so on. »*
+ *
+ * C'est la mecanique qui remplit le minute-a-minute chez la reference. Notre tapis etait
+ * une BOUTIQUE (« tape quand tu peux payer »); il devient une ENCHERE SOUS PRESSION
+ * (« quand achetes-tu, et qui va te le reprendre »). Meme objet a l'ecran, une decision
+ * au lieu de zero.
+ *
+ * ---- LA FENETRE D'ENCHERE, CHIFFREE ----
+ * Duree du trajet = max(plancher, distance / vitesse). Elle EST la fenetre.
+ *   - vitesse 2,0 m/s: un joueur court a 11 m/s, il RATTRAPE donc toujours le convoi.
+ *     L'enchere se joue sur l'attention et l'argent, jamais sur la vitesse de course:
+ *     c'est la seule version jouable au doigt sur telephone.
+ *   - plancher 8 s: sans lui, une base collee au tapis serait INCONTESTABLE (6 m = 3 s),
+ *     et « habiter pres du tapis » deviendrait strictement dominant.
+ * Distances reelles sur notre carte: 6 m au plus pres, 47 m dans un coin.
+ * Fenetre obtenue: de 8 s a 23 s.
+ *
+ * ---- L'ARBITRAGE QUE CA CREE ----
+ * pres du tapis: fenetre courte, mais premiere base que croisent les voleurs.
+ * loin du tapis: fenetre longue, mais a l'ecart. Le placement libre a enfin une
+ * consequence chiffree; jusqu'ici il n'en avait aucune.
+ *
+ * ---- LE REMBOURSEMENT, et pourquoi il est DEDUIT et non source ----
+ * Le wiki ne dit pas si l'acheteur evince est rembourse. Mais s'il ne l'etait pas,
+ * acheter tot serait strictement perdant et personne n'acheterait jamais avant la fin du
+ * tapis, ce qui contredit la strategie que ce meme wiki decrit. Le remboursement integral
+ * est donc la seule lecture coherente. `[DEDUIT]`
+ */
+export const CONVOI_VITESSE = 2.0
+export const CONVOI_DUREE_MIN_S = 8
+/** Le rachat coute 150 % de ce qu'a paye le detenteur actuel. Il peut donc s'empiler. */
+export const CONVOI_SURENCHERE = 1.5
+/** Portee pour racheter: on doit etre DEVANT le convoi, comme pour acheter sur le tapis. */
+export const CONVOI_PORTEE = 6
+
+export const Convoi = engine.defineComponent('friendzone::convoi', {
+  /** identifiant stable pendant tout le trajet */
+  convoiId: Schemas.Int,
+  typeBoite: Schemas.Int,
+  /** ce qu'a paye le detenteur actuel: la surenchere s'en deduit */
+  prixPaye: Schemas.Int,
+  proprietaire: Schemas.String,
+  nomProprietaire: Schemas.String,
+  /** avancee de 0 (depart) a 1 (arrivee), pour que le client interpole sans calcul */
+  progres: Schemas.Float,
+  departX: Schemas.Float, departZ: Schemas.Float,
+  cibleX: Schemas.Float, cibleZ: Schemas.Float
+})
+
 export const TAPIS_LONGUEUR = 26
 export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider
 export const TAPIS_INTERVALLE_S = 5      // un article toutes les 5 s
@@ -575,4 +631,5 @@ export function registerValidators(): void {
   Crate.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
+  Convoi.validateBeforeChange(serverOnly)
 }

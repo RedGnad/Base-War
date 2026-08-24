@@ -102,6 +102,9 @@ export function setupTheft(): void {
     // les deux faces du meme evenement social, et ils doivent se lire au meme endroit.
     alerter(`${d.byName} LEFT YOU A ${r.nom.toUpperCase()}!`, r.couleur, 8000)
   })
+  room.onMessage('outbidFeed', (d) => {
+    ajouterAuFil(`${d.byName} outbid ${d.fromName} for ${d.prix}`)
+  })
   room.onMessage('gifted', (d) => {
     ajouterAuFil(`${d.byName} gifted ${rarity(d.rarity).nom} to ${d.toName}`)
   })
