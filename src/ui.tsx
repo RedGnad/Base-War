@@ -98,6 +98,13 @@ function prochaineAction(): { libelle: string; pret: boolean; action: () => void
     return { libelle: `PRESTIGE x${theftView.multiplicateur + 1}`, pret: true, action: franchirPalier }
   }
   // rien d'urgent: on annonce le prochain palier atteignable
+  // QUAND RIEN N'EST ENCORE PAYABLE, on montre le prochain achat LE MOINS CHER, pas le
+  // premier de la liste. La sentinelle coute 120 s de production, l'etage 300: annoncer
+  // l'etage a un joueur qui n'a ni l'un ni l'autre lui donne le mauvais objectif.
+  if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0 && theftView.prixSentinelle > 0
+      && (theftView.prixEtage === 0 || theftView.prixSentinelle <= theftView.prixEtage)) {
+    return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: false, action: armerSentinelle }
+  }
   if (theftView.prixEtage > 0) return { libelle: `FLOOR ${formatRevenu(theftView.prixEtage)}`, pret: false, action: acheterEtage }
   if (theftView.prochainPalier > 0) return { libelle: `PRESTIGE ${formatRevenu(theftView.prochainPalier)}`, pret: false, action: franchirPalier }
   return { libelle: 'MOVE BASE', pret: false, action: basculerPose }

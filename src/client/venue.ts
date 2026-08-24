@@ -23,8 +23,8 @@ import { CENTRE, TAPIS_LONGUEUR, ECART_TAPIS } from '../shared/schemas'
  */
 
 const COTE = 80
-const SOL = Color4.fromHexString('#39404fff')
-const PLACE = Color4.fromHexString('#4a5468ff')
+const SOL = Color4.fromHexString('#5c667aff')
+const PLACE = Color4.fromHexString('#8b93a4ff')
 const ACCENT = Color4.fromHexString('#4dd2ffff')
 
 function plaque(x: number, z: number, w: number, d: number, y: number, c: Color4): void {
@@ -47,7 +47,7 @@ export function setupVenue(): void {
   // 2. LA PLACE, autour du tapis. Elle deborde de 3 m de chaque cote de la bande ou aucune
   //    base ne peut etre posee: la zone claire coincide donc EXACTEMENT avec l'espace
   //    public, et le joueur lit la regle de construction sans qu'on la lui dise.
-  plaque(CENTRE.x, CENTRE.z, TAPIS_LONGUEUR + 12, ECART_TAPIS * 2 + 6, 0.02, PLACE)
+  plaque(CENTRE.x, CENTRE.z, TAPIS_LONGUEUR + 12, ECART_TAPIS * 2 + 6, 0.06, PLACE)
 
   // 3. LA LIMITE. Quatre murs bas, poses sur le bord, hauteur d'appui: ils bornent sans
   //    enfermer et sans couper la vue sur les bases.
@@ -70,16 +70,16 @@ export function setupVenue(): void {
 
   // 4. LE RYTHME VERTICAL: six mats de part et d'autre du tapis, avec une tete lumineuse.
   //    Deux entites par mat, douze mats: 24 entites sur les 5 000 disponibles.
-  for (let i = 0; i < 6; i++) {
-    const x = CENTRE.x - TAPIS_LONGUEUR / 2 + (i * TAPIS_LONGUEUR) / 5
+  for (let i = 0; i < 4; i++) {
+    const x = CENTRE.x - TAPIS_LONGUEUR / 2 + (i * TAPIS_LONGUEUR) / 3
     for (const dz of [-ECART_TAPIS - 1, ECART_TAPIS + 1]) {
       const mat = engine.addEntity()
-      Transform.create(mat, { position: Vector3.create(x, 3.0, CENTRE.z + dz), scale: Vector3.create(0.22, 6.0, 0.22) })
+      Transform.create(mat, { position: Vector3.create(x, 2.1, CENTRE.z + dz), scale: Vector3.create(0.18, 4.2, 0.18) })
       MeshRenderer.setBox(mat)
       Material.setPbrMaterial(mat, { albedoColor: Color4.fromHexString('#2b3242ff'), metallic: 0.7, roughness: 0.4 })
 
       const tete = engine.addEntity()
-      Transform.create(tete, { position: Vector3.create(x, 6.1, CENTRE.z + dz), scale: Vector3.create(0.5, 0.16, 0.5) })
+      Transform.create(tete, { position: Vector3.create(x, 4.3, CENTRE.z + dz), scale: Vector3.create(0.42, 0.14, 0.42) })
       MeshRenderer.setBox(tete)
       Material.setPbrMaterial(tete, { albedoColor: ACCENT, emissiveColor: ACCENT, emissiveIntensity: 2.2 })
     }

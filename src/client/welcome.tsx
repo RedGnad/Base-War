@@ -38,7 +38,7 @@ export const WelcomePanel = () => {
         uiTransform={{ width: 620, height: 380, flexDirection: 'column', padding: 26, justifyContent: 'space-between' }}
         uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.97) }}
       >
-        <Label value="FRIENDZONE" fontSize={38} color={Color4.fromHexString('#ffd166ff')} uiTransform={{ height: 46 }} />
+        <Label value="BASE TYCOON" fontSize={38} color={Color4.fromHexString('#ffd166ff')} uiTransform={{ height: 46 }} />
         <Label
           value="Collect, display, and steal. Your loot earns while it's on show: and while it's on show, anyone can take it."
           fontSize={16} color={Color4.fromHexString('#c8d0dcff')} uiTransform={{ height: 46 }} />
