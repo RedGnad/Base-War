@@ -4,8 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Boss, BOSS_PV, BOSS_RESPAWN_MS, BOSS_PORTEE, BOSS_POSITION, BOSS_BOITE, BOSS_BOITE_MEILLEUR, SYNC_ID } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { jour } from './journal'
-import { positionDe, nomAffiche, ajouterBoite, boitesDe, avancerQuete } from './plots'
-import { pousserQuetes } from './theft'
+import { positionDe, nomAffiche, ajouterBoite, boitesDe, avancerQuete, pousserQuetes } from './plots'
 
 let entite = 0 as unknown as ReturnType<typeof engine.addEntity>
 /** degats portes par joueur sur le boss EN COURS, remis a zero a chaque reapparition */

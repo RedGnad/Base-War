@@ -7,8 +7,7 @@ import {
 import { room } from '../shared/messages'
 import { jour } from './journal'
 import { rollTypeBoite, rollBoite, rollMutation } from './loot'
-import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete } from './plots'
-import { pousserQuetes } from './theft'
+import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete, pousserQuetes } from './plots'
 import { tutoFait } from './onboarding'
 import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 

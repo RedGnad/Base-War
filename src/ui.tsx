@@ -11,7 +11,7 @@ import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
 import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
 import { bossView } from './client/boss'
-import { WelcomePanel } from './client/welcome'
+import { WelcomePanel, welcomeView } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
@@ -100,11 +100,12 @@ const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <WelcomePanel />
-    <IndexPanel />
-    <QuestsPanel />
+    {!welcomeView.ouvert && <IndexPanel />}
+    {!welcomeView.ouvert && <QuestsPanel />}
 
     {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
         appartient au profil et aux controles camera du client mobile. */}
+    {!welcomeView.ouvert && (
     <UiEntity
       uiTransform={{
         width: 240, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
@@ -127,6 +128,7 @@ const uiComponent = () => (
         fontSize={12}
         onMouseDown={basculerIndex} />
     </UiEntity>
+    )}
 
     {/* GAUCHE: LE TUTORIEL, tant qu'il reste une etape.
         Il ne se lit pas, il se SUIT: le serveur n'avance l'etape que quand l'action a

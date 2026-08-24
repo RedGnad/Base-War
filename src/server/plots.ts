@@ -487,6 +487,21 @@ export function reclamerQuete(address: string, slot: number): { boite: number } 
   return { boite }
 }
 
+
+/**
+ * Renvoie au joueur l'etat de ses quetes.
+ * Appele APRES chaque action comptee, pas seulement a l'entree: une barre de progression
+ * qui n'avance qu'au rechargement de la scene ne se lit pas comme une progression.
+ */
+export function pousserQuetes(address: string): void {
+  const q = etatQuetes(address)
+  if (q === null) return
+  void room.send('quests', {
+    ids: q.ids, progres: q.progres, cibles: q.cibles, pris: q.pris,
+    jour: q.jour, jourPris: q.jourPris
+  }, { to: [address] })
+}
+
 export function nomAffiche(address: string): string {
   return bases.get(address)?.name ?? nomDe(address)
 }
@@ -913,6 +928,12 @@ export function startPlots(): void {
       }, { to: [address] })
       void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })
+      // LES QUETES AUSSI. Elles etaient envoyees UNE FOIS a l'arrivee, et le panneau
+      // s'ouvrait vide: le serveur detecte l'arrivee par PlayerIdentityData, le client
+      // ne s'abonne que dans startClient, et le premier envoi peut donc partir avant
+      // qu'il n'ecoute. Tout etat que le joueur doit pouvoir consulter A TOUT MOMENT
+      // appartient a cette boucle, pas a un envoi unique.
+      pousserQuetes(address)
     }
   }, 1500)
 

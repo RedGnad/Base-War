@@ -8,7 +8,7 @@ import {
 /** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
-import { avancerQuete, etatQuetes, reclamerQuete, boitesDe } from './plots'
+import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes } from './plots'
 import { tutoFait } from './onboarding'
 import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
@@ -56,19 +56,6 @@ function refus(address: string, action: string, raison: string, antiCheat = fals
   void room.send('actionRejected', { action, raison, antiCheat }, { to: [address] })
 }
 
-/**
- * Renvoie au joueur l'etat de ses quetes.
- * Appele APRES chaque action comptee, pas seulement a l'entree: une barre de progression
- * qui n'avance qu'au rechargement de la scene ne se lit pas comme une progression.
- */
-export function pousserQuetes(address: string): void {
-  const q = etatQuetes(address)
-  if (q === null) return
-  void room.send('quests', {
-    ids: q.ids, progres: q.progres, cibles: q.cibles, pris: q.pris,
-    jour: q.jour, jourPris: q.jourPris
-  }, { to: [address] })
-}
 
 /** 3.1 verrou automatique a l'arrivee: on ne se fait pas piller en posant le pied. */
 export function verrouArrivee(address: string): void {

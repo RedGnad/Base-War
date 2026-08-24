@@ -5,8 +5,7 @@ import {
   MACHINES, REPS_PAR_SERIE, ENTRAINEMENT_SECONDES, ENTRAINEMENT_MINIMUM,
   ENTRAINEMENT_RECHARGE_MS, PORTEE_MACHINE
 } from '../shared/training'
-import { positionDe, revenuParSeconde, crediter, nomAffiche, avancerQuete } from './plots'
-import { pousserQuetes } from './theft'
+import { positionDe, revenuParSeconde, crediter, nomAffiche, avancerQuete, pousserQuetes } from './plots'
 import { tutoFait } from './onboarding'
 
 type Serie = { machine: number; reps: number; finRecharge: number }
