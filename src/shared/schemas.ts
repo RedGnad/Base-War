@@ -300,26 +300,26 @@ export function multiplicateurRevenu(n: number): number {
 }
 
 /**
- * L'ETAGE S'ACHETE, ET SON PRIX EST CALCULE, pas devine.
+ * L'ETAGE S'ACHETE, ET SON PRIX SUIT LA MEME REGLE QUE LE PALIER.
  *
- * Un etage n'ajoute pas du revenu: il ajoute 6 EMPLACEMENTS VIDES. Sa valeur reelle est
- * donc 6 x le revenu de ce qu'on y mettra, et l'investissement reel est
- * `prix de l'etage + prix de le remplir`.
+ * ERREUR CORRIGEE le 24 Aug: j'avais price l'etage sur 120 s de remboursement et le
+ * palier sur 300 s, alors que les deux produisent LE MEME EFFET a leur premier cran:
+ *   etage 2  : 6 -> 12 emplacements = revenu DOUBLE
+ *   palier 1 : x1 -> x2             = revenu DOUBLE
+ * L'etage ressortait 5 fois moins cher pour le meme gain, et il ecrasait le palier.
+ * Le choix que je pretendais creer n'existait pas.
  *
- * REGLE: l'investissement TOTAL se rembourse en 120 s, soit le double du retour d'une
- * boite seule (60 s). Un etage est un engagement, pas un achat impulsif.
+ * Regle unique: remboursement en 300 s, remplissage compris.
+ *   etage 2, rempli de Good (240 la boite, 4/s): remplir 1 440 · gain 24/s
+ *            cible 24 x 300 = 7 200 · PRIX = 7 200 - 1 440 = 5 760
+ *   etage 3, rempli de Rare (960 la boite, 16/s): remplir 5 760 · gain 96/s
+ *            cible 96 x 300 = 28 800 · PRIX = 28 800 - 5 760 = 23 040
  *
- *   etage 2, rempli de Good (240 la boite, 4/s l'objet):
- *     remplir = 6 x 240 = 1 440 · gain = 6 x 4 = 24/s
- *     cible   = 24 x 120 = 2 880 · PRIX = 2 880 - 1 440 = 1 440
- *   etage 3, rempli de Rare (960 la boite, 16/s l'objet):
- *     remplir = 6 x 960 = 5 760 · gain = 6 x 16 = 96/s
- *     cible   = 96 x 120 = 11 520 · PRIX = 11 520 - 5 760 = 5 760
- *
- * Il en sort une regle limpide: **un etage coute exactement ce que coute de le remplir**,
- * et le ressenti est identique a chaque palier.
+ * L'etage reste MOINS cher que le palier (5 760 contre 14 400), et c'est justifie:
+ * le multiplicateur d'un palier s'applique a TOUT et se cumule sur 12 crans, la ou les
+ * etages plafonnent a 3. On paie plus cher ce qui n'a pas de plafond.
  */
-export const PRIX_ETAGE = [0, 1440, 5760] as const
+export const PRIX_ETAGE = [0, 5760, 23040] as const
 
 export function prixEtage(etageVise: number): number {
   return PRIX_ETAGE[Math.max(0, Math.min(etageVise - 1, PRIX_ETAGE.length - 1))]
