@@ -544,13 +544,13 @@ export function tenterRebirth(address: string): { ok: boolean; raison?: string; 
   const palier = p.rebirths ?? 0
   if (palier >= REBIRTH_MAX) return { ok: false, raison: 'max prestige reached' }
   const exige = paliers(palier)
-  if (p.coins < exige.cout) return { ok: false, raison: `il te faut ${Math.ceil(exige.cout - p.coins)} pieces de plus` }
+  if (p.coins < exige.cout) return { ok: false, raison: `you need ${Math.ceil(exige.cout - p.coins)} more coins` }
 
   // Le palier exige aussi de POSSEDER un objet assez rare: sans ca on pourrait monter
   // en accumulant du commun, et la rarete perdrait tout son sens.
   const meilleur = p.items.length === 0 ? -1 : Math.max(...p.items.map(rareteDe))
   if (meilleur < exige.rareteMin) {
-    return { ok: false, raison: `il te faut un objet de rarete ${exige.rareteMin} ou mieux` }
+    return { ok: false, raison: `you need an item of rarity ${exige.rareteMin} or better` }
   }
 
   // SACRIFICE: le palier prend les pieces ET les objets, sauf les meilleurs qu'on garde.
