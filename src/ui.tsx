@@ -45,6 +45,18 @@ export function setupUi() {
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
 /**
+ * Action buttons, sized for a thumb rather than a mouse.
+ *
+ * Decentraland overrides a 16:9 virtual screen to 1600x720 on a phone, so on a handset in
+ * landscape (roughly 844x390 logical) the UI scale factor is min(844/1600, 390/720) = 0.53.
+ * The old 58 px buttons therefore measured 31 pt, under the 44 pt floor Apple, Material and
+ * WCAG 2.5.5 all converge on, and their 10 px margins measured 5 pt against a recommended 8.
+ * 96 and 20 virtual pixels put both back over the line with room to spare.
+ */
+const BTN_H = 96
+const BTN_GAP = 20
+
+/**
  * Announcement backdrop, tinted by the crate. A fixed dark brown made every tier look the
  * same; a wash of the crate's own colour lets the eye read the tier before the words.
  */
@@ -399,17 +411,17 @@ const uiComponent = () => (
 
     <UiEntity
       uiTransform={{
-        width: 700, height: 62, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -350 },
+        width: 840, height: 100, positionType: 'absolute',
+        position: { bottom: 26, left: '50%' }, margin: { left: -420 },
         flexDirection: 'row', justifyContent: 'center'
       }}
     >
       {theftView.pending > 0 && !slotView.active && (
         <Button
-          uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
+          uiTransform={{ width: 190, height: BTN_H, margin: { right: BTN_GAP } }}
           value={`COLLECT ${formatIncome(theftView.pending)}`}
           variant="primary"
-          fontSize={15}
+          fontSize={17}
           onMouseDown={collectPending} />
       )}
 
@@ -417,42 +429,39 @@ const uiComponent = () => (
         const a = nextAction()
         return (
           <Button
-            uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
+            uiTransform={{ width: 200, height: BTN_H, margin: { right: BTN_GAP } }}
             value={a.label} variant={a.ready ? 'primary' : 'secondary'}
-            fontSize={15} onMouseDown={a.action} />
+            fontSize={17} onMouseDown={a.action} />
         )
       })()}
 
       {theftView.basePosee && view.items > 0 && !slotView.active && (
         <Button
-          uiTransform={{ width: 140, height: 58, margin: { right: 10 } }}
+          uiTransform={{ width: 170, height: BTN_H, margin: { right: BTN_GAP } }}
           value={
             theftView.lockSec > 0 ? `LOCKED ${theftView.lockSec}s`
             : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
             : 'LOCK'
           }
           variant={theftView.lockSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
-          fontSize={14}
+          fontSize={16}
           onMouseDown={lockBase} />
       )}
 
       {/*
-        The fire control. uiInputBinding holds IA_SECONDARY down while the button is
-        pressed, so one element serves the phone, where there is no key, and the desktop,
-        where F alone told the player nothing. pointerFilter blocks the click so aiming at
-        the button does not also click whatever stands behind it in the world.
+        The weapon control, and there is only one: it draws and holsters. While the weapon
+        is out the shot leaves on its own, so no trigger button competes for a thumb.
+        uiInputBinding carries IA_SECONDARY, so the same element serves the phone, where
+        there is no key, and the desktop, where F alone told the player nothing.
+        pointerFilter blocks the tap so hitting the button does not also click the world.
       */}
       {!slotView.active && (
         <Button
-          uiTransform={{ width: 150, height: 58, pointerFilter: 'block' }}
+          uiTransform={{ width: 180, height: BTN_H, pointerFilter: 'block' }}
           uiInputBinding={{ actions: [InputAction.IA_SECONDARY] }}
-          value={
-            combatView.cooldown > 0 ? 'RELOADING'
-            : combatView.aiming ? 'RELEASE TO FIRE'
-            : 'HOLD TO AIM  F'
-          }
-          variant={combatView.aiming && combatView.targetName !== '' ? 'primary' : 'secondary'}
-          fontSize={11} />
+          value={combatView.aiming ? 'HOLSTER' : 'DRAW  F'}
+          variant={combatView.aiming ? 'primary' : 'secondary'}
+          fontSize={17} />
       )}
     </UiEntity>
   </UiEntity>

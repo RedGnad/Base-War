@@ -24,12 +24,18 @@ const RIG = path.join(__dirname, 'reference-rig.glb')
 /** A Decentraland-rigged avatar from the open model catalog, used only for its armature. */
 const RIG_URL = 'https://models.dclregenesislabs.xyz/blobs/bafkreidb6iorouc4gzjfpebv2ungg5fnpx3pqpnt5drkzmtuks4lh336cy'
 
-// The aim is two-handed: the gun hand forward and slightly inboard, the other supporting
-// it just below. The right arm joint sits at (-0.177, 1.466, 0) with 0.540 m of reach.
-const AIM_R = [-0.10, 1.50, 0.50]
-const AIM_L = [-0.02, 1.46, 0.44]
-const KICK_R = [-0.11, 1.60, 0.44]
-const KICK_L = [-0.03, 1.55, 0.39]
+// One hand on the gun, the other down at the side. A two-handed grip needs the support
+// arm to cross the chest, which is where an arm rig looks wrong first, and the pistol
+// reads fine one-handed. Positions are world metres in rig space: forward +Z, up +Y.
+const AIM_R = [-0.13, 1.47, 0.48]
+const AIM_L = [0.21, 0.96, 0.06]
+const KICK_R = [-0.14, 1.57, 0.42]
+const KICK_L = [0.21, 0.96, 0.06]
+// Where each elbow is pushed. Without this the solver picks any joint configuration that
+// lands the wrist, including ones no shoulder can reach: an arm has more freedom than a
+// point target constrains, so the elbow has to be told where to go.
+const POLE_R = [-0.6, -1, -0.35]
+const POLE_L = [0.6, -1, -0.35]
 
 function get(url) {
   return new Promise((resolve, reject) => {
@@ -92,32 +98,97 @@ async function main() {
     return [m[12], m[13], m[14]]
   }
 
-  /** Coordinate descent on the euler angles of the two arm joints. */
-  function solve(armBone, foreBone, handBone, target, seed) {
-    const p = seed ? seed.slice() : [0, 0, 0, 0, 0, 0]
-    const poses = () => ({ [armBone]: qeuler(p[0], p[1], p[2]), [foreBone]: qeuler(p[3], p[4], p[5]) })
-    const err = () => { const h = handPos(handBone, poses()); return Math.hypot(h[0] - target[0], h[1] - target[1], h[2] - target[2]) }
-    let step = 40
-    for (let pass = 0; pass < 400 && step > 0.05; pass++) {
-      let improved = false
-      for (let i = 0; i < 6; i++) {
-        const base = err()
-        p[i] += step; if (err() < base) { improved = true; continue }
-        p[i] -= 2 * step; if (err() < base) { improved = true; continue }
-        p[i] += step
-      }
-      if (!improved) step *= 0.6
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+  const scale = (a, k) => [a[0] * k, a[1] * k, a[2] * k]
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+  const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l] }
+
+  /** World matrix of a node, with a map of joint rotations applied on the way down. */
+  function worldOf(name, poses) {
+    let k = byName[name]; const chain = []
+    while (k !== undefined) { chain.unshift(k); k = parent[k] }
+    let m = I
+    for (const j of chain) {
+      const n = rig.nodes[j]
+      m = mul(m, trs(n.translation || [0, 0, 0], (poses && poses[n.name]) || n.rotation || [0, 0, 0, 1], n.scale || [1, 1, 1]))
     }
-    return { angles: p, rot: poses(), error: err(), hand: handPos(handBone, poses()) }
+    return m
+  }
+  const originOf = (name, poses) => { const m = worldOf(name, poses); return [m[12], m[13], m[14]] }
+  /** The node's world basis, unit length: the rig scales uniformly so this is a pure rotation. */
+  const basisOf = (name, poses) => {
+    const m = worldOf(name, poses)
+    return [norm([m[0], m[1], m[2]]), norm([m[4], m[5], m[6]]), norm([m[8], m[9], m[10]])]
+  }
+  /** Express a world direction in the space of that basis. */
+  const intoBasis = (B, v) => [dot(B[0], v), dot(B[1], v), dot(B[2], v)]
+
+  /** Shortest rotation carrying a onto b. */
+  function arc(a, b) {
+    const d = dot(a, b)
+    if (d < -0.999999) {
+      let ax = cross([1, 0, 0], a)
+      if (Math.hypot(ax[0], ax[1], ax[2]) < 1e-6) ax = cross([0, 0, 1], a)
+      ax = norm(ax)
+      return [ax[0], ax[1], ax[2], 0]
+    }
+    const c = cross(a, b)
+    const q = [c[0], c[1], c[2], 1 + d]
+    const l = Math.hypot(q[0], q[1], q[2], q[3])
+    return [q[0] / l, q[1] / l, q[2] / l, q[3] / l]
   }
 
-  function pose(rt, lt, seedR, seedL) {
-    const R = solve('Avatar_RightArm', 'Avatar_RightForeArm', 'Avatar_RightHand', rt, seedR)
-    const L = solve('Avatar_LeftArm', 'Avatar_LeftForeArm', 'Avatar_LeftHand', lt, seedL)
+  /**
+   * Analytic two-bone IK.
+   *
+   * The wrist target fixes three numbers while the shoulder and elbow together offer more
+   * than three, so the arm is under-determined and a search will happily return a pose no
+   * shoulder can hold. The law of cosines fixes how far the elbow is bent, and the pole
+   * vector picks which way it points; nothing is left to chance. Bones run along their own
+   * local +Y, so each joint rotation is the shortest arc from +Y onto the direction wanted.
+   */
+  function solveArm(armBone, foreBone, handBone, target, pole, poses) {
+    const base = Object.assign({}, poses)
+    const S = originOf(armBone, base)
+    const L1 = Math.hypot(...sub(originOf(foreBone, base), S))
+    const L2 = Math.hypot(...sub(originOf(handBone, base), originOf(foreBone, base)))
+
+    let toT = sub(target, S)
+    let d = Math.hypot(...toT)
+    const dMin = Math.abs(L1 - L2) + 1e-4
+    const dMax = L1 + L2 - 1e-3
+    const reached = d <= dMax
+    if (d < dMin || d > dMax) { d = Math.min(dMax, Math.max(dMin, d)); toT = scale(norm(toT), d) }
+    const axis = norm(toT)
+
+    // Elbow: on the circle where both bone lengths agree, at the angle the pole asks for.
+    const a = (d * d + L1 * L1 - L2 * L2) / (2 * d)
+    const h = Math.sqrt(Math.max(0, L1 * L1 - a * a))
+    let side = sub(pole, scale(axis, dot(pole, axis)))
+    if (Math.hypot(...side) < 1e-6) side = cross(axis, [1, 0, 0])
+    side = norm(side)
+    const elbow = add(add(S, scale(axis, a)), scale(side, h))
+
+    const upperBasis = basisOf(rig.nodes[parent[byName[armBone]]].name, base)
+    const rArm = arc([0, 1, 0], norm(intoBasis(upperBasis, norm(sub(elbow, S)))))
+    const withArm = Object.assign({}, base, { [armBone]: rArm })
+    const foreBasis = basisOf(armBone, withArm)
+    const rFore = arc([0, 1, 0], norm(intoBasis(foreBasis, norm(sub(add(S, toT), elbow)))))
+
+    const rot = { [armBone]: rArm, [foreBone]: rFore }
+    const hand = originOf(handBone, Object.assign({}, base, rot))
+    return { rot, elbow, hand, reached, error: Math.hypot(...sub(hand, target)) }
+  }
+
+  function pose(rt, lt) {
+    const R = solveArm('Avatar_RightArm', 'Avatar_RightForeArm', 'Avatar_RightHand', rt, POLE_R)
+    const L = solveArm('Avatar_LeftArm', 'Avatar_LeftForeArm', 'Avatar_LeftHand', lt, POLE_L)
     return { rot: Object.assign({}, R.rot, L.rot), R, L }
   }
 
-  /** Only the posed bones get channels, so an unmasked client still keeps its legs. */
+
   function write(outPath, keyframes) {
     const bones = [...new Set(keyframes.flatMap((k) => Object.keys(k.rot)))]
     const keep = [byName['Armature'], ...rig.skins[0].joints]
@@ -172,8 +243,11 @@ async function main() {
   }
 
   const aim = pose(AIM_R, AIM_L)
-  const kick = pose(KICK_R, KICK_L, aim.R.angles, aim.L.angles)
-  const report = (label, s) => console.log(`${label.padEnd(11)} ${s.hand.map((v) => v.toFixed(3)).join(', ')}   residual ${(s.error * 1000).toFixed(1)} mm`)
+  const kick = pose(KICK_R, KICK_L)
+  const report = (label, s) => console.log(
+    `${label.padEnd(11)} wrist ${s.hand.map((v) => v.toFixed(3)).join(', ')}` +
+    `   elbow ${s.elbow.map((v) => v.toFixed(3)).join(', ')}` +
+    `   residual ${(s.error * 1000).toFixed(1)} mm${s.reached ? '' : '  [OUT OF REACH, clamped]'}`)
   report('aim right', aim.R); report('aim left', aim.L)
   report('kick right', kick.R); report('kick left', kick.L)
 

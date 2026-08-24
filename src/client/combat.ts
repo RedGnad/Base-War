@@ -2,7 +2,7 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, AvatarMask
+  CameraType, AvatarMask, timers
 } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote, movePlayerTo } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
@@ -95,13 +95,16 @@ const VISEE_POS = Vector3.create(0.02, -0.14, 0.26)
 const ARMES_MAX = 10
 /** Muzzle rise on the shot, in degrees, decayed back to rest. */
 const RECUL_DEG = 20
+/** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
+const TIR_MS = 300
+/** Cosine of the heading error tolerated before the body is turned back. 0.94 is 20 degrees. */
+const CAP_TOLERANCE = 0.94
 
 const armes = new Map<string, Gun>()
 let vue: Gun | null = null
 let flash = 0 as unknown as Entity
 let moi = ''
 let dernierTir = 0
-let arme = false
 let flashScale = 0
 let dernierRecensement = 0
 let nomCible = ''
@@ -163,6 +166,7 @@ function rafraichirVisibilite(): void {
 }
 
 export function setupCombat(): void {
+
   // View model: one entity parented to the camera, shown only in first person.
   const ancre = engine.addEntity()
   Transform.create(ancre, { parent: engine.CameraEntity, position: VUE_POS, rotation: VUE_ROT })
@@ -261,29 +265,24 @@ function gunSystem(dt: number): void {
   const reste = dernierTir + SHOT_COOLDOWN_MS - now
   combatView.cooldown = reste > 0 ? reste / SHOT_COOLDOWN_MS : 0
 
+  // One control, and it toggles rather than being held.
+  //
+  // Holding costs a thumb, and on a phone the other one is already on the joystick, which
+  // leaves nothing to look around with. Drawing is a state instead, and while the weapon
+  // is out the shot leaves on its own as soon as the reticle locks someone. That is the
+  // fire mode Fortnite recommends to players new to mobile, and a judge here has five
+  // minutes: a second button for the trigger would buy nothing and cost a thumb.
   if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
-    arme = true
-    combatView.aiming = true
-    setAiming(true)
-    enJoue.add(moi)
-    void room.send('aim', { on: true })
-    void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
-    orienterVersLaVisee()
+    degainer(!combatView.aiming)
   }
-  // Release fires. PET_UP is the normal path; polling isPressed is the backstop, because
-  // a release landing while the button is unmounted would otherwise never arrive and
-  // would leave the player stuck at aiming speed for good.
-  if (arme && (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_UP)
-    || !inputSystem.isPressed(InputAction.IA_SECONDARY))) {
-    arme = false
-    combatView.aiming = false
-    setAiming(false)
-    enJoue.delete(moi)
-    void room.send('aim', { on: false })
-    // The shot clip replaces the held pose, then the avatar falls back to its idle. A
-    // release the cooldown swallowed fires nothing, so it just lowers the arms.
-    if (tirer(now)) void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
-    else void stopEmote({})
+
+  if (combatView.aiming && combatView.targetName !== '' && combatView.cooldown === 0 && tirer(now)) {
+    // The shot clip is one-shot and displaces the held pose, so the aim is put back when
+    // it ends, otherwise the arm would drop between two rounds.
+    void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
+    timers.setTimeout(() => {
+      if (combatView.aiming) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    }, TIR_MS + 20)
   }
 
   // The view model pulls to centre while aiming, and stops being written once it is
@@ -325,6 +324,22 @@ function gunSystem(dt: number): void {
  * apart, which would have the character aiming at nothing while the bullet went elsewhere.
  * Called once when the weapon comes up, never per frame.
  */
+/** Weapon out or weapon away. Everything that depends on the state is set from here. */
+function degainer(on: boolean): void {
+  if (combatView.aiming === on) return
+  combatView.aiming = on
+  setAiming(on)
+  if (on) enJoue.add(moi)
+  else enJoue.delete(moi)
+  void room.send('aim', { on })
+  if (on) {
+    void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    orienterVersLaVisee()
+  } else {
+    void stopEmote({})
+  }
+}
+
 function orienterVersLaVisee(): void {
   const cam = Transform.getOrNull(engine.CameraEntity)
   const moiT = Transform.getOrNull(engine.PlayerEntity)
@@ -332,6 +347,14 @@ function orienterVersLaVisee(): void {
   const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
   const plat = Math.sqrt(f.x * f.x + f.z * f.z)
   if (plat < 0.0001) return
+
+  // Only when the body has actually drifted. Auto fire calls this once per round, and
+  // movePlayerTo is documented as interruptible by player input: re-issuing it while the
+  // heading is already right would fight the joystick for nothing.
+  const b = Vector3.rotate(Vector3.create(0, 0, 1), moiT.rotation)
+  const bp = Math.sqrt(b.x * b.x + b.z * b.z)
+  if (bp > 0.0001 && (f.x * b.x + f.z * b.z) / (plat * bp) > CAP_TOLERANCE) return
+
   void movePlayerTo({
     newRelativePosition: moiT.position,
     avatarTarget: Vector3.create(
@@ -407,6 +430,7 @@ function tirer(now: number): boolean {
     z: moiT.position.z + (f.z / plat) * SHOT_RANGE
   })
 
+  orienterVersLaVisee()
   flashScale = 0.5
   Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
   recul = 1
