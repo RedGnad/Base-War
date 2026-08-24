@@ -1,19 +1,17 @@
-name: test-build
+name: build
 
 on:
   push:
   pull_request:
 
 jobs:
-  lint-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 24
-      - name: install dependencies
-        run: npm install
-      - name: npm run build
-        run: npm run build
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
