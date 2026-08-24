@@ -1,7 +1,7 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS, SENTINELLE_GEL_MS,
+  PORTEE_VOL, PORTEE_REPRISE, VERROU_ARRIVEE_MS, VERROU_GRATUIT_MS, SENTINELLE_GEL_MS, SENTINELLE_VERROU_MS,
   VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS
 } from '../shared/schemas'
 
@@ -125,8 +125,13 @@ export function startTheft(): void {
       // fenetre ou l'objet n'appartient a personne.
       if (consommerSentinelle(c.address)) {
         const restant = sentinellesDe(c.address)
+        // LE REVERROUILLAGE est ce qui empeche la boucle « je me fais geler, j'attends
+        // 7 s, je recommence jusqu'a vider les charges ». Sans lui la sentinelle retarde
+        // au lieu de dissuader.
+        poserVerrou(c.address, maintenant + SENTINELLE_VERROU_MS)
         void room.send('sentryBlocked', {
-          ownerName: c.name, gelMs: SENTINELLE_GEL_MS, restant
+          ownerName: c.name, gelMs: SENTINELLE_GEL_MS, restant,
+          verrouSec: Math.round(SENTINELLE_VERROU_MS / 1000)
         }, { to: [voleur] })
         // Le proprietaire l'apprend, present ou non: une defense qui agit sans le dire
         // ne se paie qu'une fois.

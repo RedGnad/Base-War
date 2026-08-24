@@ -98,7 +98,7 @@ export const MESSAGES = {
   /** serveur -> l'acheteur: elle est armee. */
   sentryBought: Schemas.Map({ charges: Schemas.Int, cout: Schemas.Int }),
   /** serveur -> LE VOLEUR: la sentinelle l'a intercepte, et le gele. */
-  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, restant: Schemas.Int }),
+  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, restant: Schemas.Int, verrouSec: Schemas.Int }),
   /** serveur -> LE PROPRIETAIRE: sa sentinelle a servi (differe s'il etait absent). */
   sentryTriggered: Schemas.Map({ byName: Schemas.String, restant: Schemas.Int }),
 

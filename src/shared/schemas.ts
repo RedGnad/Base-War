@@ -135,6 +135,16 @@ export const SENTINELLE_SECONDES = 120
 export const SENTINELLE_MINIMUM = 240
 /** 7 s, la valeur exacte du `Trap` de la reference. */
 export const SENTINELLE_GEL_MS = 7000
+/**
+ * ET ELLE REVERROUILLE LA BASE. Sans ca, le voleur attend 7 s, revient, et vide les
+ * trois charges en une minute: la sentinelle ne fait que RETARDER, elle ne dissuade rien.
+ * Le verrou de 60 s est la valeur de la reference (wiki `Base`: *« The Base has a lock of
+ * 60 seconds »*), on la reutilise plutot que d'inventer un second delai.
+ * Consequence: vider une sentinelle a trois charges coute TROIS MINUTES d'attente, pendant
+ * lesquelles le proprietaire peut revenir et la reamorcer. La base reste prenable, elle
+ * n'est plus gratuite.
+ */
+export const SENTINELLE_VERROU_MS = 60_000
 
 export const TAPIS_LONGUEUR = 26
 export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider
@@ -244,7 +254,15 @@ export const ETAGES_MAX = 3
  * monter la rampe sans se coincer. La reference va jusqu'a 31 emplacements, donc l'emprise
  * doit rester genereuse.
  */
-export const BASE_COTE = 8.0
+/**
+ * COTE DE LA BASE, porte de 8 a 11 m le 24 Aug sur retour utilisateur (« les bases peuvent
+ * etre plus spacieuses »).
+ * Ce n'est pas cosmetique. A 8 m, avec six emplacements par etage plus la tremie de la
+ * rampe, un avatar frotte les objets en circulant, et un objet qu'on ne peut pas atteindre
+ * proprement est un objet involable: c'est la mecanique qui se degrade, pas le decor.
+ * 11 m laisse ~1,2 m de passage entre deux rangees et devant la rampe.
+ */
+export const BASE_COTE = 11.0
 /**
  * La rampe doit TENIR DANS le batiment. Franchir `ETAGE_HAUTEUR` sous un angle a
  * demande une longueur de h/sin(a). A 32 degres pour 3,2 m il fallait 6,0 m, donc elle
@@ -435,7 +453,7 @@ export const RECOMPENSES_JOUR = [0, 0, 1, 1, 2, 2, 3] as const   // type de boit
 export const REVENTE_SECONDES = 30
 
 export const GRILLE = 2                    // pas d'accrochage, en metres
-export const ECART_MIN_BASES = 11          // entre deux centres: 8 m de base + circulation
+export const ECART_MIN_BASES = 15          // 11 m de base + 4 m de rue entre deux voisins
 export const MARGE_BORD = 7                // du bord de la scene
 export const ECART_TAPIS = 6               // du tapis, pour ne pas le barrer
 
@@ -479,10 +497,15 @@ export function slotPosition(slot: number): { dx: number; dy: number; dz: number
   // et pour la rampe. Un objet inatteignable est un objet involable.
   const col = k % 3
   const rang = Math.floor(k / 3)
+  // Les emplacements s'ECARTENT avec le batiment, et se DECALENT vers -X.
+  // La tremie de la rampe occupe la bande +X, de dx = 2,5 a dx = 5,5. Une colonne
+  // centree aurait pose des objets DANS la cage d'escalier: verifie par le calcul avant
+  // d'ecrire, parce qu'en jeu ca se serait vu comme un objet qui flotte dans le vide.
+  // Ici la borne haute vaut 1,2 + 0,225 = 1,425, largement sous 2,5.
   return {
-    dx: (col - 1) * 2.2,
+    dx: (col - 1.5) * 2.4,
     dy: 0.45 + etage * ETAGE_HAUTEUR,
-    dz: -2.6 + rang * 1.6
+    dz: -3.4 + rang * 2.4
   }
 }
 
@@ -490,7 +513,7 @@ export function slotPosition(slot: number): { dx: number; dy: number; dz: number
  * La rampe monte DANS la tremie, la bande de plancher laissee libre cote +X.
  * Elle doit etre centree sur cette bande, sinon elle debouche sous une dalle.
  */
-export const TREMIE_LARGEUR = 2.6
+export const TREMIE_LARGEUR = 3.0
 
 export function rampePosition(etage: number): { dx: number; dy: number; dz: number } {
   return {

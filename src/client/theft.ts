@@ -81,7 +81,7 @@ export function setupTheft(): void {
   })
   room.onMessage('sentryBlocked', (d) => {
     applyFreeze(d.gelMs)
-    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 6000)
+    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.verrouSec}s`, '#ff6b6b', 6500)
   })
   room.onMessage('sentryTriggered', (d) => {
     alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.restant} charge${d.restant === 1 ? '' : 's'} left`, '#4dd2ff', 7000)
