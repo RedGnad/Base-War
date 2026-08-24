@@ -146,6 +146,29 @@ export const SENTINELLE_GEL_MS = 7000
  */
 export const SENTINELLE_VERROU_MS = 60_000
 
+/**
+ * PRIME DE PRESENCE.
+ *
+ * Source, transcription 2: *« sur Build Your Gym, on a mis un petit boost d'argent si la
+ * personne se situe sur le meme serveur qu'un pote. Si on clique, on peut carrement
+ * inviter ses potes »*, et le raisonnement qui va avec: *« le monde attire le monde »*.
+ *
+ * Elle vise deux verbes ecrits par le sponsor, *invite friends* et *stay longer*, et elle
+ * est HONNETE par construction: elle se calcule sur la presence REELLE, il n'y a rien a
+ * simuler. Seul, elle vaut zero et ne bloque rien: c'est une prime, pas une porte.
+ *
+ * +15 % par joueur supplementaire, plafonne a +60 %. Le plafond mord a CINQ joueurs,
+ * calibre sur les formats mesures: Steal An Egg tourne sur des serveurs de 7, Grow a
+ * Garden de 4, et le lieu le plus frequente de Decentraland comptait onze joueurs. Un
+ * plafond plus haut ne recompenserait qu'une affluence qui n'existe pas.
+ */
+export const PRIME_PRESENCE_PAR_JOUEUR = 0.15
+export const PRIME_PRESENCE_PLAFOND = 0.60
+
+export function primePresence(nbPresents: number): number {
+  return Math.min(PRIME_PRESENCE_PLAFOND, Math.max(0, nbPresents - 1) * PRIME_PRESENCE_PAR_JOUEUR)
+}
+
 export const TAPIS_LONGUEUR = 26
 export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider
 export const TAPIS_INTERVALLE_S = 5      // un article toutes les 5 s

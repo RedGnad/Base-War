@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
   coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS, HORS_LIGNE_TAUX, HORS_LIGNE_PLAFOND_MS, RESERVE_PLAFOND_S, RECOMPENSES_JOUR,
-  DELAI_DEPLACEMENT_MS, REVENTE_SECONDES, SENTINELLE_CHARGES, SENTINELLE_SECONDES, SENTINELLE_MINIMUM
+  DELAI_DEPLACEMENT_MS, REVENTE_SECONDES, SENTINELLE_CHARGES, SENTINELLE_SECONDES, SENTINELLE_MINIMUM, primePresence
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
 import { revenuObjet, rareteDe } from '../shared/loot-table'
@@ -979,7 +979,9 @@ export function startPlots(): void {
       // boucle. Sans lui, chaque palier ne ferait que reculer le joueur.
       // L'argent va dans la RESERVE, pas directement au solde: c'est le bouton COLLECT
       // qui l'encaisse. La reserve plafonne, donc laisser tourner ne paie pas.
-      const parSeconde = gain * multiplicateurRevenu(profil.rebirths ?? 0)
+      // LA PRIME DE PRESENCE s'applique ici, sur la production, pas sur un solde: elle
+      // recompense le fait de jouer PENDANT que d'autres sont la, pas d'avoir ete la.
+      const parSeconde = gain * multiplicateurRevenu(profil.rebirths ?? 0) * (1 + primePresence(ici.size))
       const plafond = parSeconde * RESERVE_PLAFOND_S
       profil.reserve = Math.min((profil.reserve ?? 0) + parSeconde * secondes, plafond)
       profil.vuA = Date.now()
@@ -1022,7 +1024,9 @@ export function startPlots(): void {
         // Le portefeuille, lui, repart en boucle: l'etat converge forcement.
         tutoEtape: etapeTuto(address),
         sentinelles: p.sentinelles ?? 0,
-        prixSentinelle: prixSentinelle(address)
+        prixSentinelle: prixSentinelle(address),
+        presents: ici.size,
+        prime: primePresence(ici.size)
       }, { to: [address] })
       void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })

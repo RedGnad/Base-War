@@ -13,6 +13,8 @@ import { tutoView } from './tutorial'
  */
 
 export const theftView = {
+  presents: 1,
+  prime: 0,
   sentinelles: 0,
   prixSentinelle: 0,
   coins: 0,
@@ -109,6 +111,8 @@ export function setupTheft(): void {
     tutoView.etape = d.tutoEtape
     theftView.sentinelles = d.sentinelles
     theftView.prixSentinelle = d.prixSentinelle
+    theftView.presents = d.presents
+    theftView.prime = d.prime
     theftView.coins = Math.floor(d.coins)
     theftView.palier = d.palier
     theftView.prochainPalier = d.prochainPalier

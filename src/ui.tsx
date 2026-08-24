@@ -165,6 +165,24 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {/* PRIME DE PRESENCE. Elle ne s'affiche QUE quand elle vaut quelque chose, donc
+        seulement quand quelqu'un d'autre est la. Affichee en permanence a +0 %, elle
+        dirait surtout « tu es seul », ce qui est le contraire du but. */}
+    {theftView.prime > 0 && (
+      <UiEntity
+        uiTransform={{
+          width: 300, height: 40, positionType: 'absolute',
+          position: { top: 112, left: '50%' }, margin: { left: -150 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0.06, 0.20, 0.10, 0.85) }}
+      >
+        <Label
+          value={`CROWD BONUS  +${Math.round(theftView.prime * 100)}%  ·  ${theftView.presents} players here`}
+          fontSize={15} color={Color4.fromHexString('#8fe08fff')} />
+      </UiEntity>
+    )}
+
     {/* VOYAGE. Deux destinations, les deux poles de la boucle.
         Le lieu fait 80 m et un juge a trois minutes: marcher n'est pas du gameplay ici,
         c'est du temps retire au gameplay. Places en colonne a GAUCHE, loin du pouce
