@@ -8,6 +8,7 @@ import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
+import { WelcomePanel } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
@@ -44,18 +45,54 @@ export function setupUi() {
     if (getPlatform() === null) return
     engine.removeSystem(choisir)
     const inset = isMobile() ? 'interactable' : 'device'
-    ReactEcsRenderer.setUiRenderer(uiComponent, { screenInset: inset })
+    // ECRAN VIRTUEL EPINGLE. Sans lui, la taille de reference depend de la plateforme
+    // (1920x1080 desktop, 1600x720 mobile) et nos valeurs en pixels changent de sens
+    // d'un appareil a l'autre. On l'ecrit pour que la mise en page soit intentionnelle.
+    ReactEcsRenderer.setUiRenderer(uiComponent, {
+      virtualWidth: 1920, virtualHeight: 1080, screenInset: inset
+    })
     console.log(`[CLIENT] interface en screenInset '${inset}'`)
   }
-  ReactEcsRenderer.setUiRenderer(uiComponent)
+  ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choisir)
 }
 
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
+/**
+ * UNE SEULE action affichee a la fois, choisie par ORDRE D'URGENCE.
+ * C'est la divulgation progressive: le joueur n'a jamais a choisir entre huit boutons,
+ * on lui montre celui qui compte maintenant. L'ordre encode la boucle du jeu.
+ */
+function prochaineAction(): { libelle: string; pret: boolean; action: () => void } {
+  // reprendre un vol passe avant tout: la fenetre est courte
+  if (theftView.aReprendre) return { libelle: 'RECOVER!', pret: true, action: reprendre }
+  // sans base, rien ne rapporte
+  if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
+  if (slotView.actif) {
+    return slotView.valide
+      ? { libelle: 'PLACE HERE', pret: true, action: poserIci }
+      : { libelle: slotView.raison.toUpperCase(), pret: false, action: basculerPose }
+  }
+  // une boite non ouverte est une recompense qui attend
+  if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: ouvrirMeilleure }
+  // puis les achats, le moins cher d'abord
+  if (theftView.prixEtage > 0 && theftView.coins >= theftView.prixEtage) {
+    return { libelle: '+1 FLOOR', pret: true, action: acheterEtage }
+  }
+  if (theftView.prochainPalier > 0 && theftView.coins >= theftView.prochainPalier) {
+    return { libelle: `PRESTIGE x${theftView.multiplicateur + 1}`, pret: true, action: franchirPalier }
+  }
+  // rien d'urgent: on annonce le prochain palier atteignable
+  if (theftView.prixEtage > 0) return { libelle: `FLOOR ${formatRevenu(theftView.prixEtage)}`, pret: false, action: acheterEtage }
+  if (theftView.prochainPalier > 0) return { libelle: `PRESTIGE ${formatRevenu(theftView.prochainPalier)}`, pret: false, action: franchirPalier }
+  return { libelle: 'MOVE BASE', pret: false, action: basculerPose }
+}
+
 const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
+    <WelcomePanel />
     <IndexPanel />
 
     {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
@@ -220,75 +257,49 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* BAS-CENTRE, DECALE A GAUCHE: le coin bas-droit appartient au client.
-        Voler ne passe plus par un bouton: on tape l'objet convoite. */}
+    {/* BARRE D'ACTION CONTEXTUELLE.
+        « Minimize options. Show only what the player needs right now and progressively
+        disclose the rest. » Nous en avions HUIT en permanence: illisible, et sur un
+        telephone chaque bouton mange un pouce.
+        Trois au maximum: le geste constant, l'action urgente du moment, et la defense.
+        Decalee a gauche: le coin bas-droit appartient aux boutons du client mobile. */}
     <UiEntity
       uiTransform={{
-        width: 890, height: 58, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -535 },
+        width: 470, height: 62, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -320 },
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
-      {/* COLLECT est le geste le plus frequent du jeu: il vient en premier.
-          « il faut simplifier la vie des joueurs, ils ont vraiment pas votre temps ». */}
+      {/* 1. Le geste le plus frequent, toujours la. */}
       <Button
-        uiTransform={{ width: 130, height: 54 }}
+        uiTransform={{ width: 150, height: 58 }}
         value={theftView.reserve > 0 ? `COLLECT ${formatRevenu(theftView.reserve)}` : 'COLLECT'}
         variant={theftView.reserve > 0 ? 'primary' : 'secondary'}
-        fontSize={14}
+        fontSize={15}
         onMouseDown={collecter} />
+
+      {/* 2. UNE seule action selon l'etat, par ordre d'urgence. */}
+      {(() => {
+        const a = prochaineAction()
+        return (
+          <Button
+            uiTransform={{ width: 160, height: 58 }}
+            value={a.libelle} variant={a.pret ? 'primary' : 'secondary'}
+            fontSize={15} onMouseDown={a.action} />
+        )
+      })()}
+
+      {/* 3. La defense, sensible au temps. */}
       <Button
-        uiTransform={{ width: 120, height: 54 }}
-        value={boxView.stock.length > 0 ? `OPEN (${boxView.stock.length})` : 'OPEN'}
-        variant={boxView.stock.length > 0 ? 'primary' : 'secondary'}
-        fontSize={14}
-        onMouseDown={ouvrirMeilleure} />
-      {/* Chaque bouton DIT son etat: un bouton qui a l'air actif et ne fait rien est
-          pire que pas de bouton du tout. */}
-      <Button
-        uiTransform={{ width: 110, height: 54 }}
+        uiTransform={{ width: 140, height: 58 }}
         value={
           theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s`
           : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
-          : 'LOCK 60s'
+          : 'LOCK'
         }
         variant={theftView.verrouSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
-        fontSize={13}
-        onMouseDown={verrouiller} />
-      <Button
-        uiTransform={{ width: 110, height: 54 }}
-        value={theftView.aReprendre ? 'RECOVER!' : 'RECOVER'}
-        variant={theftView.aReprendre ? 'primary' : 'secondary'}
-        fontSize={13}
-        onMouseDown={reprendre} />
-      <Button
-        uiTransform={{ width: 110, height: 54 }}
-        value={slotView.actif ? (slotView.valide ? 'BUILD' : 'X') : 'MA BASE'}
-        variant={slotView.actif && slotView.valide ? 'primary' : 'secondary'}
         fontSize={14}
-        onMouseDown={() => { if (!slotView.actif) basculerPose(); else if (slotView.valide) poserIci(); else basculerPose() }}
-      />
-      {/* L'ETAGE: le vrai puits a pieces. A cote du palier pour que la decision soit
-          visible d'un coup d'oeil: plus de place, ou un multiplicateur qui efface tout. */}
-      {theftView.prixEtage > 0 && (
-        <Button
-          uiTransform={{ width: 140, height: 54 }}
-          value={theftView.coins >= theftView.prixEtage ? '+1 FLOOR' : `FLOOR ${theftView.prixEtage}`}
-          variant={theftView.coins >= theftView.prixEtage ? 'primary' : 'secondary'}
-          fontSize={13}
-          onMouseDown={acheterEtage} />
-      )}
-      {theftView.prochainPalier > 0 && (
-        <Button
-          uiTransform={{ width: 150, height: 54 }}
-          value={theftView.coins >= theftView.prochainPalier
-            ? `PRESTIGE x${theftView.multiplicateur + 1}  (resets loot)`
-            : `PRESTIGE ${theftView.prochainPalier}`}
-          variant={theftView.coins >= theftView.prochainPalier ? 'primary' : 'secondary'}
-          fontSize={14}
-          onMouseDown={franchirPalier}
-        />
-      )}
+        onMouseDown={verrouiller} />
     </UiEntity>
   </UiEntity>
 )
