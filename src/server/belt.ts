@@ -2,12 +2,12 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN
+  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation } from './loot'
-import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests } from './plots'
+import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests, baseDe } from './plots'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
@@ -125,6 +125,17 @@ export function startBelt(): void {
   room.onMessage('openBox', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
+    // Crates are opened at home. The client refuses first, this is the authority.
+    const base = baseDe(a)
+    const ici = positionOf(a)
+    if (base === undefined) {
+      void room.send('actionRejected', { action: 'opening', reason: 'build your base first', antiCheat: false }, { to: [a] })
+      return
+    }
+    if (ici === null || Math.sqrt((ici.x - base.x) ** 2 + (ici.z - base.z) ** 2) > OPEN_RANGE) {
+      void room.send('actionRejected', { action: 'opening', reason: 'go to your base to open it', antiCheat: true }, { to: [a] })
+      return
+    }
     if (etatPrevisible(a) === 'plein' || inFlight.get(a) !== undefined) {
       void room.send('actionRejected', { action: 'opening', reason: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
       return

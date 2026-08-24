@@ -276,6 +276,15 @@ export const RESELL_SECONDS = 30
 export const GRILLE = 2                    // snap step, in metres
 export const MIN_BASE_GAP = 15          // 11 m de base + 4 m de rue between deux voisins
 export const EDGE_MARGIN = 7                // from the scene edge
+/**
+ * How close to your own base you must stand to open a crate.
+ *
+ * A bought crate is walked to the base by a convoy that other players can outbid along the
+ * way, and the whole point of that journey is the destination. Opening it anywhere on the
+ * map made the delivery decorative. Opening it at home also keeps players moving between
+ * the belt and their plot, which is where theft and gunfire find each other.
+ */
+export const OPEN_RANGE = 8
 export const BELT_CLEARANCE = 6               // from the belt, so it stays clear
 
 export function snapToGrid(v: number): number {

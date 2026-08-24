@@ -70,7 +70,7 @@ import { crate, MUTATIONS } from '../shared/loot-table'
 
 /**
  * A themed crate multiplies its own mutation's weight; every other weight is untouched,
- * so the tail stays reachable and a Lava Box can still yield a Phantom.
+ * so the tail stays reachable and a Lava Crate can still yield a Phantom.
  */
 export function rollMutation(crateId = 0): number {
   const c = crate(crateId)

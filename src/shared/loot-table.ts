@@ -44,7 +44,7 @@ export function itemName(rarityId: number, mut: number): string {
  *
  * TIER crates shift the RARITY roll: Basic through Epic.
  * THEMED crates keep their tier's rarity odds but load the MUTATION roll instead. A Lava
- * Box is no likelier to yield a Legendary; it is far likelier to yield a Lava, which
+ * Crate is no likelier to yield a Legendary; it is far likelier to yield a Lava, which
  * multiplies income by 6.
  *
  * `theme` is a mutation id, or -1 for none. `weight` is how hard that mutation's odds are
@@ -57,17 +57,20 @@ export function itemName(rarityId: number, mut: number): string {
  *
  * Gold LOWERS the expectation, because a x1.25 mutation crowds out the rare ones. That is
  * the point: it is the reliable, cheap product, not a weaker version of the others.
- * The themed names also break a collision the tier names carry: "Rare Crate" and
- * "Epic Crate" repeat rarity words and read as promises they do not make.
+ *
+ * Every container is a Crate. The genre does not agree on one word, and games in it ship
+ * cases, crates and boxes alike, but none of them uses two words for the same object. The
+ * tier names reusing rarity words is deliberate and is what the genre does: a Rare Crate
+ * lands on Rare 55% of the time, so the name is a fair description of the odds.
  */
 export const CRATES = [
   { id: 0, name: 'Basic Crate',  tier: 0, theme: -1, weight: 0,   price: CRATE_PRICE[0],                     color: '#9aa3ad', size: 0.55 },
   { id: 1, name: 'Good Crate',   tier: 1, theme: -1, weight: 0,   price: CRATE_PRICE[1],                     color: '#4ec04e', size: 0.62 },
   { id: 2, name: 'Rare Crate',   tier: 2, theme: -1, weight: 0,   price: CRATE_PRICE[2],                     color: '#3d8ef0', size: 0.70 },
   { id: 3, name: 'Epic Crate',   tier: 3, theme: -1, weight: 0,   price: CRATE_PRICE[3],                     color: '#a855f7', size: 0.80 },
-  { id: 4, name: 'Gold Box',     tier: 1, theme: 1,  weight: 12,  price: Math.round(CRATE_PRICE[1] * 0.90),  color: '#ffd700', size: 0.66 },
-  { id: 5, name: 'Lava Box',     tier: 2, theme: 5,  weight: 60,  price: Math.round(CRATE_PRICE[2] * 2.32),  color: '#ff5722', size: 0.74 },
-  { id: 6, name: 'Cursed Box',   tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.09),  color: '#3b0a45', size: 0.86 }
+  { id: 4, name: 'Gold Crate',   tier: 1, theme: 1,  weight: 12,  price: Math.round(CRATE_PRICE[1] * 0.90),  color: '#ffd700', size: 0.66 },
+  { id: 5, name: 'Lava Crate',   tier: 2, theme: 5,  weight: 60,  price: Math.round(CRATE_PRICE[2] * 2.32),  color: '#ff5722', size: 0.74 },
+  { id: 6, name: 'Cursed Crate', tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.09),  color: '#3b0a45', size: 0.86 }
 ] as const
 
 export function itemColor(rarityId: number, mut: number): string {

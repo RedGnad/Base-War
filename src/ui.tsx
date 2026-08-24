@@ -7,7 +7,7 @@ import { InputAction } from '@dcl/sdk/ecs'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
-import { boxView, openBestCrate } from './client/box'
+import { boxView, openBestCrate, peutOuvrirIci } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView } from './client/index-ui'
 import { QuestsPanel, questsToClaim } from './client/quests-ui'
@@ -73,7 +73,11 @@ function nextAction(): { label: string; ready: boolean; action: () => void } {
   }
   if (theftView.canRecover) return { label: 'RECOVER!', ready: true, action: recover }
   if (!theftView.basePosee) return { label: 'BUILD BASE', ready: true, action: basculerPose }
-  if (boxView.stock.length > 0) return { label: `OPEN (${boxView.stock.length})`, ready: true, action: openBestCrate }
+  if (boxView.stock.length > 0) {
+    return peutOuvrirIci()
+      ? { label: `OPEN (${boxView.stock.length})`, ready: true, action: openBestCrate }
+      : { label: 'OPEN AT YOUR BASE', ready: false, action: openBestCrate }
+  }
   if (theftView.basePosee && view.items > 0 && theftView.sentries === 0
       && theftView.sentryPrice > 0 && theftView.coins >= theftView.sentryPrice) {
     return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, ready: true, action: armSentry }
@@ -334,7 +338,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
       >
-        <Label value="place your base first: items earn nothing without one" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
+        <Label value="place your base first: crates are opened at your base" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 

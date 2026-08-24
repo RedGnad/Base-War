@@ -5,7 +5,7 @@ import {
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
-import { Plot, SLOTS_PER_FLOOR } from '../shared/schemas'
+import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE } from '../shared/schemas'
 import { rarity, crate, RARITIES, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
 
@@ -251,18 +251,42 @@ function maBasePleine(): boolean {
   return false
 }
 
+/** Whether a crate can be smashed from where the player stands, for the button to say so. */
+export function peutOuvrirIci(): boolean {
+  const base = myBasePosition()
+  if (base === null || !Transform.has(engine.PlayerEntity)) return false
+  const p = Transform.get(engine.PlayerEntity).position
+  return Math.sqrt((p.x - base.x) ** 2 + (p.z - base.z) ** 2) <= OPEN_RANGE
+}
+
+/**
+ * Smash a crate, at the base and nowhere else.
+ *
+ * It used to appear two metres in front of the player wherever they happened to be, which
+ * made the delivery pointless: the convoy carried the crate home, and the crate then
+ * reappeared somewhere else entirely. It is now put down between the player and their own
+ * base, so the thing they walked home is the thing they break open.
+ */
 export function openCrate(crateTier: number): void {
   if (boxView.opening || boxView.roule) return
   if (!boxView.stock.includes(crateTier)) return
   if (!Transform.has(engine.PlayerEntity)) return
 
+  const base = myBasePosition()
+  if (base === null) {
+    alerter('BUILD YOUR BASE FIRST', '#ff6b6b', 4000)
+    return
+  }
+  if (!peutOuvrirIci()) {
+    alerter('GO TO YOUR BASE TO OPEN IT', '#ffd166', 4000)
+    return
+  }
   if (maBasePleine()) {
     alerter('BASE FULL: SELL AN ITEM OR BUY A FLOOR', '#ff6b6b', 4000)
     return
   }
 
   const p = Transform.get(engine.PlayerEntity)
-  const before = Vector3.rotate(Vector3.create(0, 0, 2), p.rotation)
   const b = crate(crateTier)
 
   boxView.opening = true
@@ -270,9 +294,16 @@ export function openCrate(crateTier: number): void {
   boxView.typeEnCours = crateTier
   boxView.message = ''
 
+  // Two metres out from the base, on the player's side, so it is always in front of them.
+  const dx = p.position.x - base.x
+  const dz = p.position.z - base.z
+  const d = Math.sqrt(dx * dx + dz * dz)
+  const ux = d < 0.01 ? 0 : dx / d
+  const uz = d < 0.01 ? 1 : dz / d
+
   const t = Transform.getMutableOrNull(crateMesh)
   if (t !== null) {
-    t.position = Vector3.create(p.position.x + before.x, 1.1, p.position.z + before.z)
+    t.position = Vector3.create(base.x + ux * 2, 1.1, base.z + uz * 2)
     t.scale = Vector3.create(b.size, b.size, b.size)
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }
