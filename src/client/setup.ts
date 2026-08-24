@@ -14,6 +14,7 @@ import { setupBelt } from './belt'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
+import { setupTravel } from './travel'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -63,6 +64,7 @@ export function startClient(): void {
   setupSlots()
   setupQuests()
   setupTutorial()
+  setupTravel()
 
   // SOURCE DE VERITE: le composant synchronise, publie par le serveur des notre entree.
   let myAddress = ''

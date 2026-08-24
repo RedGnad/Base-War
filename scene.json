@@ -2,8 +2,8 @@
   "ecs7": true,
   "runtimeVersion": "7",
   "display": {
-    "title": "Friendzone WIP",
-    "description": "Work in progress",
+    "title": "Base Tycoon",
+    "description": "Open crates, put your loot on show, and it earns while you're away. Everything on show can be taken by someone else. Arm a sentry, or come take theirs.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -13,7 +13,14 @@
     "email": ""
   },
   "main": "bin/index.js",
-  "tags": [],
+  "tags": [
+    "tycoon",
+    "multiplayer",
+    "social",
+    "competitive",
+    "loot",
+    "mobile"
+  ],
   "scene": {
     "parcels": [
       "0,0",
@@ -81,5 +88,8 @@
   "source": {
     "origin": "creator-hub",
     "projectId": "5b9b0443-928e-4e4e-8db7-2d51ebc19a10"
-  }
+  },
+  "requiredPermissions": [
+    "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE"
+  ]
 }

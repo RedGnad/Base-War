@@ -10,6 +10,7 @@ import { placementView } from './client/plots'
 import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
 import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
+import { travelView, rentrer, allerAuTapis } from './client/travel'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -163,6 +164,25 @@ const uiComponent = () => (
           uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" />
       </UiEntity>
     )}
+
+    {/* VOYAGE. Deux destinations, les deux poles de la boucle.
+        Le lieu fait 80 m et un juge a trois minutes: marcher n'est pas du gameplay ici,
+        c'est du temps retire au gameplay. Places en colonne a GAUCHE, loin du pouce
+        principal: ce sont des raccourcis, pas l'action du moment. */}
+    <UiEntity
+      uiTransform={{
+        width: 150, height: 84, positionType: 'absolute', position: { top: 216, left: 110 },
+        flexDirection: 'column', justifyContent: 'space-between'
+      }}
+    >
+      <Button
+        uiTransform={{ width: 150, height: 38 }}
+        value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
+        fontSize={13} onMouseDown={rentrer} />
+      <Button
+        uiTransform={{ width: 150, height: 38 }}
+        value="GO TO BELT" variant="secondary" fontSize={13} onMouseDown={allerAuTapis} />
+    </UiEntity>
 
     {/* HAUT-CENTRE: etat, non actionnable. */}
     <UiEntity
