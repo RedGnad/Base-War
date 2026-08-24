@@ -4,6 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction } from '@dcl/sdk/ecs'
+import { TYPE, C, HUE, TAP } from './client/theme'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -42,19 +43,9 @@ export function setupUi() {
   engine.addSystem(choose)
 }
 
-const PANNEAU = Color4.create(0, 0, 0, 0.62)
-
-/**
- * Action buttons, sized for a thumb rather than a mouse.
- *
- * Decentraland overrides a 16:9 virtual screen to 1600x720 on a phone, so on a handset in
- * landscape (roughly 844x390 logical) the UI scale factor is min(844/1600, 390/720) = 0.53.
- * The old 58 px buttons therefore measured 31 pt, under the 44 pt floor Apple, Material and
- * WCAG 2.5.5 all converge on, and their 10 px margins measured 5 pt against a recommended 8.
- * 96 and 20 virtual pixels put both back over the line with room to spare.
- */
-const BTN_H = 96
-const BTN_GAP = 20
+const PANNEAU = C.plate
+const BTN_H = TAP.height
+const BTN_GAP = TAP.gap
 
 /**
  * Announcement backdrop, tinted by the crate. A fixed dark brown made every tier look the
@@ -65,36 +56,45 @@ function announceBackdrop(): Color4 {
   return Color4.create(c.r * 0.22, c.g * 0.22, c.b * 0.22, 0.9)
 }
 
-function nextAction(): { label: string; ready: boolean; action: () => void } {
-  if (slotView.active) {
-    return slotView.valid
-      ? { label: 'PLACE HERE', ready: true, action: placeHere }
-      : { label: slotView.reason.toUpperCase(), ready: false, action: basculerPose }
-  }
-  if (theftView.canRecover) return { label: 'RECOVER!', ready: true, action: recover }
-  if (!theftView.basePosee) return { label: 'BUILD BASE', ready: true, action: basculerPose }
-  if (boxView.stock.length > 0) {
-    return peutOuvrirIci()
-      ? { label: `OPEN (${boxView.stock.length})`, ready: true, action: openBestCrate }
-      : { label: 'OPEN AT YOUR BASE', ready: false, action: openBestCrate }
+/**
+ * The one thing worth tapping right now, or nothing at all.
+ *
+ * It used to hand back a label with a `ready` flag, so a state the player cannot act on
+ * still arrived as a button: "OPEN AT YOUR BASE", "WAIT 10s". A control that does nothing
+ * when pressed is worse than an absent one, and the reference games put those states in
+ * the world or in a line of text instead. What cannot be tapped now goes to `hint`.
+ */
+function nextAction(): { label: string; action: () => void } | null {
+  if (slotView.active) return slotView.valid ? { label: 'PLACE HERE', action: placeHere } : null
+  if (theftView.canRecover) return { label: 'RECOVER', action: recover }
+  if (!theftView.basePosee) return { label: 'BUILD BASE', action: basculerPose }
+  if (boxView.stock.length > 0 && peutOuvrirIci()) {
+    return { label: `OPEN ${boxView.stock.length}`, action: openBestCrate }
   }
   if (theftView.basePosee && view.items > 0 && theftView.sentries === 0
       && theftView.sentryPrice > 0 && theftView.coins >= theftView.sentryPrice) {
-    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, ready: true, action: armSentry }
+    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, action: armSentry }
   }
   if (theftView.floorPrice > 0 && theftView.coins >= theftView.floorPrice) {
-    return { label: '+1 FLOOR', ready: true, action: buyFloorFor }
+    return { label: '+1 FLOOR', action: buyFloorFor }
   }
   if (theftView.nextPrestige > 0 && theftView.coins >= theftView.nextPrestige) {
-    return { label: `PRESTIGE x${theftView.multiplier + 1}`, ready: true, action: doPrestige }
+    return { label: `PRESTIGE x${theftView.multiplier + 1}`, action: doPrestige }
   }
-  if (theftView.basePosee && view.items > 0 && theftView.sentries === 0 && theftView.sentryPrice > 0
-      && (theftView.floorPrice === 0 || theftView.sentryPrice <= theftView.floorPrice)) {
-    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, ready: false, action: armSentry }
+  return null
+}
+
+/** What the player is waiting on, in one line, never as a control. */
+function hint(): string {
+  if (slotView.active && !slotView.valid) return slotView.reason
+  if (boxView.stock.length > 0 && !peutOuvrirIci()) {
+    return `${boxView.stock.length} crate${boxView.stock.length > 1 ? 's' : ''} waiting at your base`
   }
-  if (theftView.floorPrice > 0) return { label: `FLOOR ${formatIncome(theftView.floorPrice)}`, ready: false, action: buyFloorFor }
-  if (theftView.nextPrestige > 0) return { label: `PRESTIGE ${formatIncome(theftView.nextPrestige)}`, ready: false, action: doPrestige }
-  return { label: 'ALL MAXED', ready: false, action: () => {} }
+  if (theftView.lockSec > 0) return `base locked for ${theftView.lockSec}s`
+  if (theftView.rechargeSec > 0) return `lock recharges in ${theftView.rechargeSec}s`
+  if (theftView.floorPrice > 0) return `next floor at ${formatIncome(theftView.floorPrice)}`
+  if (theftView.nextPrestige > 0) return `prestige at ${formatIncome(theftView.nextPrestige)}`
+  return ''
 }
 
 /**
@@ -249,27 +249,32 @@ const uiComponent = () => (
 
     <UiEntity
       uiTransform={{
-        width: 380, height: 88, positionType: 'absolute',
-        position: { top: 12, left: '50%' }, margin: { left: -180 },
-        padding: 10, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
+        width: 560, height: 128, positionType: 'absolute',
+        position: { top: 12, left: '50%' }, margin: { left: -280 },
+        padding: 12, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
       uiBackground={{ color: PANNEAU }}
     >
+      {/*
+        The one number that carries the whole game, at hero size and in the money colour.
+        The pending amount is not repeated here: it already rides the COLLECT button, and
+        showing it twice was the clearest redundancy in the old interface.
+      */}
       <Label
-        value={`${formatIncome(theftView.coins)} coins${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-        fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
+        value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
+        fontSize={TYPE.hero} color={C.money} />
       <Label
         value={
           !view.serverAlive ? 'SERVER OFFLINE'
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.income === 0 ? 'open a crate to start earning'
-          : `+${formatIncome(theftView.income)}/s  →  ${formatIncome(theftView.pending)} waiting${theftView.sentries > 0 ? '  ·  sentry ' + theftView.sentries : ''}`
+          : `+${formatIncome(theftView.income)}/s${theftView.sentries > 0 ? '   sentry ' + theftView.sentries : ''}`
         }
-        fontSize={13}
+        fontSize={TYPE.label}
         color={
-          !view.serverAlive ? Color4.Red()
-          : (!theftView.basePosee || theftView.income === 0) ? Color4.fromHexString('#ffd166ff')
-          : Color4.fromHexString('#8fe08fff')
+          !view.serverAlive ? C.danger
+          : (!theftView.basePosee || theftView.income === 0) ? C.bonus
+          : C.money
         } />
     </UiEntity>
 
@@ -413,42 +418,57 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {/*
+      The bottom bar, and only what can be pressed.
+
+      Every control is at TAP.height with TAP.gap between them, and every label at
+      TYPE.body, so a thumb can hit them and an eye can read them on a phone. What the
+      player is merely waiting for sits above as one dim line, never as a dead button.
+    */}
+    {hint() !== '' && !combatView.aiming && (
+      <UiEntity
+        uiTransform={{
+          width: 900, height: 34, positionType: 'absolute',
+          position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -450 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+      >
+        <Label value={hint()} fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" />
+      </UiEntity>
+    )}
+
     <UiEntity
       uiTransform={{
-        width: 840, height: 100, positionType: 'absolute',
-        position: { bottom: 26, left: '50%' }, margin: { left: -420 },
+        width: 1120, height: TAP.height, positionType: 'absolute',
+        position: { bottom: 26, left: '50%' }, margin: { left: -560 },
         flexDirection: 'row', justifyContent: 'center'
       }}
     >
       {theftView.pending > 0 && !slotView.active && !combatView.aiming && (
         <Button
-          uiTransform={{ width: 190, height: BTN_H, margin: { right: BTN_GAP } }}
+          uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
           value={`COLLECT ${formatIncome(theftView.pending)}`}
           variant="primary"
-          fontSize={17}
+          fontSize={TYPE.body}
           onMouseDown={collectPending} />
       )}
 
       {!combatView.aiming && (() => {
         const a = nextAction()
-        return (
+        return a === null ? null : (
           <Button
-            uiTransform={{ width: 200, height: BTN_H, margin: { right: BTN_GAP } }}
-            value={a.label} variant={a.ready ? 'primary' : 'secondary'}
-            fontSize={17} onMouseDown={a.action} />
+            uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
+            value={a.label} variant="primary"
+            fontSize={TYPE.body} onMouseDown={a.action} />
         )
       })()}
 
-      {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming && (
+      {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming
+        && theftView.lockSec === 0 && theftView.rechargeSec === 0 && (
         <Button
-          uiTransform={{ width: 170, height: BTN_H, margin: { right: BTN_GAP } }}
-          value={
-            theftView.lockSec > 0 ? `LOCKED ${theftView.lockSec}s`
-            : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
-            : 'LOCK'
-          }
-          variant={theftView.lockSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
-          fontSize={16}
+          uiTransform={{ width: 180, height: TAP.height, margin: { right: TAP.gap } }}
+          value="LOCK" variant="secondary"
+          fontSize={TYPE.body}
           onMouseDown={lockBase} />
       )}
 
@@ -464,11 +484,11 @@ const uiComponent = () => (
       */}
       {!slotView.active && (
         <Button
-          uiTransform={{ width: 180, height: BTN_H, pointerFilter: 'block' }}
+          uiTransform={{ width: 220, height: TAP.height, pointerFilter: 'block' }}
           uiInputBinding={{ actions: [InputAction.IA_SECONDARY] }}
-          value={combatView.aiming ? 'HOLSTER' : 'DRAW  F'}
+          value={combatView.aiming ? 'HOLSTER' : 'DRAW'}
           variant={combatView.aiming ? 'primary' : 'secondary'}
-          fontSize={17} />
+          fontSize={TYPE.body} />
       )}
     </UiEntity>
   </UiEntity>
