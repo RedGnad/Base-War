@@ -4,6 +4,7 @@ import { room } from '../shared/messages'
 import { rarity } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty } from './locomotion'
+import { tutoView } from './tutorial'
 
 /**
  * Retour joueur du vol. Le client ne DECIDE rien: il reagit a ce que le serveur annonce.
@@ -77,6 +78,8 @@ export function setupTheft(): void {
     ajouterAuFil(`${d.byName} a repris son ${rarity(d.rarity).nom} a ${d.fromName}`)
   })
   room.onMessage('wallet', (d) => {
+    // Le portefeuille porte aussi l'etape du tutoriel: voir le commentaire cote serveur.
+    tutoView.etape = d.tutoEtape
     theftView.coins = Math.floor(d.coins)
     theftView.palier = d.palier
     theftView.prochainPalier = d.prochainPalier

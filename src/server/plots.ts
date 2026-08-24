@@ -745,7 +745,21 @@ export function crediter(address: string, montant: number): void {
 }
 
 export function etapeTuto(address: string): number {
-  return profils.get(address)?.tuto ?? 0
+  const p = profils.get(address)
+  if (!p) return 0
+  if (p.tuto !== undefined) return p.tuto
+  // PROFIL D'AVANT LE TUTORIEL: on DEDUIT l'etape de ce qu'il a deja fait.
+  // Sans ca, un joueur avec cinq objets et deux etages se voit dire « pose ta base »,
+  // ce qui detruit la credibilite du guide au premier coup d'oeil.
+  // On ne deduit que ce qui est OBSERVABLE dans l'etat sauvegarde; les etapes qu'on ne
+  // peut pas prouver restent a faire, ce qui est le sens honnete du doute.
+  let e = 0
+  if (bases.has(address)) e = 1
+  if (p.items.length > 0 || (p.collectes ?? 0) > 0) e = 2
+  if (p.coins > 0) e = 3
+  p.tuto = e
+  profilsSales.add(address)
+  return e
 }
 
 export function avancerTuto(address: string): void {
@@ -889,7 +903,13 @@ export function startPlots(): void {
         prochainPalier: suivant ? suivant.cout : 0,
         palier,
         rareteMin: suivant ? suivant.rareteMin : 0,
-        multiplicateur: multiplicateurRevenu(palier)
+        multiplicateur: multiplicateurRevenu(palier),
+        // L'ETAPE DU TUTORIEL VOYAGE ICI, pas seulement dans son propre message.
+        // Le tout premier `tutorial` peut partir avant que le client n'ait pose son
+        // ecouteur (le serveur detecte l'arrivee par PlayerIdentityData, le client
+        // s'abonne dans startClient): un envoi unique n'a aucune garantie d'etre entendu.
+        // Le portefeuille, lui, repart en boucle: l'etat converge forcement.
+        tutoEtape: etapeTuto(address)
       }, { to: [address] })
       void room.send('inventory', { boites: [...(p.boites ?? [])] }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })

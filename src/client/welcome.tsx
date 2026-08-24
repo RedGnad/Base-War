@@ -15,11 +15,14 @@ export const welcomeView = { ouvert: true }
 export function fermerAccueil(): void { welcomeView.ouvert = false }
 
 const LIGNES = [
-  ['1', 'OPEN your free crate: smash it 3 times'],
-  ['2', 'BUILD your base anywhere on the map'],
+  // MEME ORDRE QUE LE TUTORIEL, et pour la meme raison de fond: un objet ne rapporte
+  // que s'il est POSE sur une base. Annoncer l'ouverture en premier, comme on le faisait,
+  // envoyait le joueur ouvrir sa boite avant d'avoir ou la mettre.
+  ['1', 'BUILD your base anywhere on the map'],
+  ['2', 'OPEN your free crate: smash it 3 times'],
   ['3', 'Loot earns coins into a pool: tap COLLECT to bank it'],
-  ['4', 'Buy better crates from the belt'],
-  ['5', 'Steal from other bases. LOCK yours']
+  ['4', 'Buy better crates from the belt, train while you wait'],
+  ['5', 'Fight the boss. Steal from others. LOCK your base']
 ]
 
 export const WelcomePanel = () => {
