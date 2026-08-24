@@ -96,8 +96,8 @@ export function setupBelt(): void {
         Material.setPbrMaterial(objet, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.45, metallic: 0.6, roughness: 0.35 })
         PointerEvents.create(objet, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: `${r.nom} — ${b.prix} coins` } },
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `${r.nom} — ${b.prix} coins` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: `${r.nom}: ${b.prix} coins` } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `${r.nom}: ${b.prix} coins` } }
           ]
         })
 

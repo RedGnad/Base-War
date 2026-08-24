@@ -88,6 +88,13 @@ export const MESSAGES = {
     cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
     jour: Schemas.Int, jourPris: Schemas.Boolean
   }),
+  /** client -> serveur: une repetition sur la machine n. Le serveur verifie la portee. */
+  trainRep: Schemas.Map({ machine: Schemas.Int }),
+  /** serveur -> le joueur: ou en est sa serie, et sa recharge. */
+  trainState: Schemas.Map({ machine: Schemas.Int, reps: Schemas.Int, cible: Schemas.Int, rechargeSec: Schemas.Int }),
+  /** serveur -> le joueur: serie terminee, voici le gain. */
+  trainDone: Schemas.Map({ machine: Schemas.Int, gain: Schemas.Int }),
+
   /** client -> serveur: j'encaisse la quete n (3 = le bonus des trois). */
   claimQuest: Schemas.Map({ slot: Schemas.Int }),
 

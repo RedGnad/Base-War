@@ -5,6 +5,7 @@ import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne } from './plots'
 import { pousserQuetes } from './theft'
+import { startTraining } from './training'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
@@ -111,6 +112,7 @@ export function startServer(): void {
   startPlots()
   startTheft()
   startBelt()
+  startTraining()
 
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.

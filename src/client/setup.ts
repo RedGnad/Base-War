@@ -13,6 +13,7 @@ import { setupTheft, setAdresseClient } from './theft'
 import { setupBelt } from './belt'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
+import { setupTraining } from './training'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -47,6 +48,7 @@ export function startClient(): void {
   setupBelt()
   setupSlots()
   setupQuests()
+  setupTraining()
 
   // SOURCE DE VERITE: le composant synchronise, publie par le serveur des notre entree.
   let myAddress = ''

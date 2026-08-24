@@ -714,6 +714,34 @@ export function collecter(address: string): number {
   return r
 }
 
+/** Position d'un joueur, pour toute verification de portee cote serveur. */
+export function positionDe(address: string): Vector3 | null {
+  for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+    if (id.address?.toLowerCase() !== address) continue
+    const t = Transform.getOrNull(e)
+    return t ? Vector3.create(t.position.x, t.position.y, t.position.z) : null
+  }
+  return null
+}
+
+/** Revenu par seconde d'un joueur, multiplicateur de palier compris. */
+export function revenuParSeconde(address: string): number {
+  const p = profils.get(address)
+  const b = bases.get(address)
+  if (!p || !b) return 0
+  let gain = 0
+  for (const code of b.items) gain += revenuObjet(code, GAIN_PAR_SECONDE)
+  return gain * multiplicateurRevenu(p.rebirths ?? 0)
+}
+
+/** Verse des pieces directement au solde (entrainement, boss): pas par la reserve. */
+export function crediter(address: string, montant: number): void {
+  const p = profils.get(address)
+  if (!p || montant <= 0) return
+  p.coins += montant
+  profilsSales.add(address)
+}
+
 export function reserveDe(address: string): number {
   return Math.floor(profils.get(address)?.reserve ?? 0)
 }

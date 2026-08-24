@@ -15,9 +15,9 @@ export const welcomeView = { ouvert: true }
 export function fermerAccueil(): void { welcomeView.ouvert = false }
 
 const LIGNES = [
-  ['1', 'OPEN your free crate — smash it 3 times'],
+  ['1', 'OPEN your free crate: smash it 3 times'],
   ['2', 'BUILD your base anywhere on the map'],
-  ['3', 'Loot earns coins into a pool — tap COLLECT to bank it'],
+  ['3', 'Loot earns coins into a pool: tap COLLECT to bank it'],
   ['4', 'Buy better crates from the belt'],
   ['5', 'Steal from other bases. LOCK yours']
 ]
@@ -37,7 +37,7 @@ export const WelcomePanel = () => {
       >
         <Label value="FRIENDZONE" fontSize={38} color={Color4.fromHexString('#ffd166ff')} uiTransform={{ height: 46 }} />
         <Label
-          value="Collect, display, and steal. Your loot earns while it's on show — and while it's on show, anyone can take it."
+          value="Collect, display, and steal. Your loot earns while it's on show: and while it's on show, anyone can take it."
           fontSize={16} color={Color4.fromHexString('#c8d0dcff')} uiTransform={{ height: 46 }} />
 
         {LIGNES.map(([n, t]) => (
