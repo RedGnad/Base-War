@@ -7,6 +7,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot, SLOTS_PAR_ETAGE } from '../shared/schemas'
 import { rarity, boite, RARITIES, mutation, nomObjet, couleurObjet } from '../shared/loot-table'
+import { alerter } from './theft'
 
 let monAdresse = ''
 
@@ -318,7 +319,8 @@ export function ouvrirBoite(typeBoite: number): void {
   // On lit MA base dans le composant synchronise plutot que l'etat de `setup.ts`:
   // `setup.ts` importe ce module, une dependance en retour formerait un cycle.
   if (maBasePleine()) {
-    boxView.message = 'BASE FULL - sell an item or buy a floor'
+    // On passe par le MEME canal que les refus du serveur, le seul qui soit affiche.
+    alerter('BASE FULL: SELL AN ITEM OR BUY A FLOOR', '#ff6b6b', 4000)
     return
   }
 

@@ -414,9 +414,9 @@ export function toutesLesBases(): Base[] { return [...bases.values()] }
  */
 export function tenterRebirth(address: string): { ok: boolean; raison?: string; palier?: number; etages?: number } {
   const p = profils.get(address)
-  if (!p) return { ok: false, raison: 'profil inconnu' }
+  if (!p) return { ok: false, raison: 'unknown profile' }
   const palier = p.rebirths ?? 0
-  if (palier >= REBIRTH_MAX) return { ok: false, raison: 'palier maximum atteint' }
+  if (palier >= REBIRTH_MAX) return { ok: false, raison: 'max prestige reached' }
   const exige = paliers(palier)
   if (p.coins < exige.cout) return { ok: false, raison: `il te faut ${Math.ceil(exige.cout - p.coins)} pieces de plus` }
 
@@ -456,7 +456,7 @@ export function positionsBases(sauf?: string): Array<{ x: number; z: number }> {
  */
 export function poserBase(address: string, xb: number, zb: number): { ok: boolean; raison?: string } {
   const p = profils.get(address)
-  if (!p) return { ok: false, raison: 'profil inconnu' }
+  if (!p) return { ok: false, raison: 'unknown profile' }
 
   // Le serveur RE-VERIFIE tout. Le fantome cote client est une aide a la visee, jamais
   // une autorisation: un client modifie enverrait n'importe quelles coordonnees.
@@ -471,7 +471,7 @@ export function poserBase(address: string, xb: number, zb: number): { ok: boolea
   // Poser sa base ne cree aucun objet: on affiche ce qu'on possede, meme si c'est rien.
   const items = [...p.items]
   const b = creerBase(address, nomDe(address), items, Date.now(), x, z)
-  if (b === null) return { ok: false, raison: 'pose impossible' }
+  if (b === null) return { ok: false, raison: 'cannot build there' }
   p.x = x
   p.z = z
   basesSales.add(address)

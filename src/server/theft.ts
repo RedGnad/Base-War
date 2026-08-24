@@ -84,41 +84,41 @@ export function startTheft(): void {
     const voleur = ctx?.from?.toLowerCase()
     if (!voleur) return
     const vise = (d.ownerId ?? '').toLowerCase()
-    if (vise === voleur) { refus(voleur, 'vol', 'c est ta propre base'); return }
+    if (vise === voleur) { refus(voleur, 'steal', 'that is your own base'); return }
 
     // ANTI-TRICHE: le serveur lit LUI-MEME la position. Il ne croit rien du client.
     const p = positionDe(voleur)
-    if (p === null) { refus(voleur, 'vol', 'position inconnue'); return }
+    if (p === null) { refus(voleur, 'steal', 'position unknown'); return }
 
     // Le voleur DESIGNE sa cible; le serveur ne retient que celles qu'il verifie a portee.
     const aPortee = basesProches(p, PORTEE_VOL, voleur)
-    if (aPortee.length === 0) { refus(voleur, 'vol', 'aucune base a portee'); return }
+    if (aPortee.length === 0) { refus(voleur, 'steal', 'no base in range'); return }
     const cibles = vise === '' ? aPortee : aPortee.filter((b) => b.address === vise)
-    if (cibles.length === 0) { refus(voleur, 'vol', 'cette base n est pas a portee'); return }
+    if (cibles.length === 0) { refus(voleur, 'steal', 'that base is out of range'); return }
 
     const maintenant = Date.now()
     for (const c of cibles) {
       const verrou = verrouDe(c.address)
       if (verrou > maintenant) {
         // 3.2/3.6: le verrou court MEME si le proprietaire est absent.
-        refus(voleur, 'vol', `${c.name} est protege encore ${Math.ceil((verrou - maintenant) / 1000)} s`)
+        refus(voleur, 'steal', `${c.name} is shielded for ${Math.ceil((verrou - maintenant) / 1000)}s`)
         continue
       }
-      if (c.items.length === 0) { refus(voleur, 'vol', `${c.name} n'a rien a prendre`); continue }
+      if (c.items.length === 0) { refus(voleur, 'steal', `${c.name} has nothing to take`); continue }
 
       // L'OBJET DESIGNE. Le serveur verifie que l'emplacement existe; a defaut il
       // refuse plutot que de choisir a la place du joueur.
       const slot = d.slot
       if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
-        refus(voleur, 'vol', 'cet objet n existe plus'); continue
+        refus(voleur, 'steal', 'that item is gone'); continue
       }
       const r = retirerObjet(c.address, slot)
-      if (r === null) { refus(voleur, 'vol', 'objet deja parti'); continue }
+      if (r === null) { refus(voleur, 'steal', 'item already taken'); continue }
 
       if (!ajouterObjet(voleur, r)) {
         // Base pleine: on repose chez la victime plutot que de faire disparaitre l'objet.
         ajouterObjet(c.address, r)
-        refus(voleur, 'vol', 'ta base est pleine')
+        refus(voleur, 'steal', 'your base is full')
         return
       }
 
@@ -149,15 +149,15 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const p = positionDe(a)
-    if (p === null) { refus(a, 'installation', 'position inconnue'); return }
+    if (p === null) { refus(a, 'build', 'position unknown'); return }
     // On pose CHEZ SOI: la position demandee doit etre celle ou l'on se tient.
     const dist = Vector3.distance(p, Vector3.create(d.x, p.y, d.z))
     if (dist > PORTEE_INSTALLATION) {
-      refus(a, 'installation', 'pose la ou tu te tiens', true)
+      refus(a, 'build', 'place it where you stand', true)
       return
     }
     const r = poserBase(a, d.x, d.z)
-    if (!r.ok) { refus(a, 'installation', r.raison ?? 'refuse'); return }
+    if (!r.ok) { refus(a, 'build', r.raison ?? 'refused'); return }
   })
 
   // Les positions des bases existantes servent au fantome cote client.
@@ -200,7 +200,7 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const r = tenterRebirth(a)
-    if (!r.ok) { refus(a, 'palier', r.raison ?? 'refuse'); return }
+    if (!r.ok) { refus(a, 'prestige', r.raison ?? 'refused'); return }
     void room.send('rebirthDone', { palier: r.palier ?? 0, etages: r.etages ?? 1 }, { to: [a] })
   })
 
@@ -227,7 +227,7 @@ export function startTheft(): void {
     const victime = ctx?.from?.toLowerCase()
     if (!victime) return
     const p = positionDe(victime)
-    if (p === null) { refus(victime, 'reprise', 'position inconnue'); return }
+    if (p === null) { refus(victime, 'recover', 'position unknown'); return }
 
     const maintenant = Date.now()
     for (let i = larcins.length - 1; i >= 0; i--) {
@@ -236,17 +236,17 @@ export function startTheft(): void {
       if (maintenant - l.quand > REPRISE_FENETRE_MS) continue
 
       const pv = positionDe(l.voleur)
-      if (pv === null) { refus(victime, 'reprise', 'le voleur n est plus la'); continue }
+      if (pv === null) { refus(victime, 'recover', 'the thief is gone'); continue }
       const d = Vector3.distance(p, pv)
       if (d > PORTEE_REPRISE) {
-        refus(victime, 'reprise', `${nomAffiche(l.voleur)} est a ${d.toFixed(1)} m, approche-toi`)
+        refus(victime, 'recover', `${nomAffiche(l.voleur)} is ${d.toFixed(1)}m away, get closer`)
         continue
       }
 
       const items = basesProches(pv, 0.1, '').find((b) => b.address === l.voleur)
       const idx = items ? items.items.lastIndexOf(l.rarity) : -1
       const r = idx >= 0 ? retirerObjet(l.voleur, idx) : null
-      if (r === null) { refus(victime, 'reprise', 'il ne l a plus'); continue }
+      if (r === null) { refus(victime, 'recover', 'they no longer have it'); continue }
 
       ajouterObjet(victime, r)
       larcins.splice(i, 1)
@@ -254,7 +254,7 @@ export function startTheft(): void {
       jour(`${nomAffiche(victime)} a repris sa rarete ${r} a ${nomAffiche(l.voleur)}`)
       return
     }
-    refus(victime, 'reprise', 'rien a reprendre')
+    refus(victime, 'recover', 'nothing to recover')
   })
 
   // Les larcins expires sortent de la liste: la fenetre de reprise est finie.

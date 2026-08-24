@@ -29,12 +29,11 @@ export const theftView = {
   alerteJusqua: 0,
   fil: [] as string[],
   malusJusqua: 0,
-  refus: ''
 }
 
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
 
-function alerter(texte: string, couleur: string, dureeMs = 6000): void {
+export function alerter(texte: string, couleur: string, dureeMs = 6000): void {
   theftView.alerte = texte
   theftView.alerteCouleur = couleur
   theftView.alerteJusqua = Date.now() + dureeMs
@@ -54,7 +53,7 @@ export function setupTheft(): void {
   /** 3.3 alerte a la victime: texte + son + nom du voleur + couleur de rarete. */
   room.onMessage('youWereRobbed', (d) => {
     const r = rarity(d.rarity)
-    alerter(`${d.byName} t'a pris un ${r.nom} !`, r.couleur, 8000)
+    alerter(`${d.byName} STOLE YOUR ${r.nom.toUpperCase()}!`, r.couleur, 8000)
     const a = AudioSource.getMutableOrNull(sonneur)
     if (a !== null) { a.playing = false; a.playing = true }
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.nom}`)
@@ -93,7 +92,7 @@ export function setupTheft(): void {
   })
 
   room.onMessage('rebirthDone', (d) => {
-    alerter(`PALIER ${d.palier} — ${d.etages} etages`, '#f5a524', 6000)
+    alerter(`PRESTIGE ${d.palier}  ·  ${d.etages} floors`, '#f5a524', 6000)
     console.log(`[CLIENT] palier ${d.palier}, ${d.etages} etages`)
   })
 
@@ -126,8 +125,14 @@ export function setupTheft(): void {
     console.log(`[CLIENT] revendu pour ${d.gain}`)
   })
 
+  // TOUT REFUS DOIT SE VOIR.
+  // Bug corrige le 24 Aug: la raison n'atterrissait que dans `theftView.refus`, un champ
+  // qu'AUCUN composant n'affichait. Les refus du serveur etaient donc tous muets: verrou,
+  // vol, achat, revente, ouverture. Vu du joueur, le bouton ne marchait pas, sans un mot
+  // d'explication. Un refus silencieux est indiscernable d'un bug, et le joueur conclut
+  // toujours au bug.
   room.onMessage('actionRejected', (d) => {
-    theftView.refus = `${d.action}: ${d.raison}`
+    alerter(d.raison.toUpperCase(), '#ff6b6b', 4000)
     console.log(`[CLIENT] refuse (${d.action}): ${d.raison}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 
