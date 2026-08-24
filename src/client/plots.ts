@@ -404,31 +404,20 @@ export function setupPlots(): void {
       // sinon soit l'etiquette ne se rafraichit jamais, soit on repeint 30 fois/s.
       const secondesVerrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
       const monBase = p.ownerId.toLowerCase() === monAdresseClient()
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${p.donnes}|${p.recus}|${p.sentinelles}|${monBase ? placementView.selection : -1}`
-      if (sig === v.signature) continue
-      v.signature = sig
-      v.ownerId = p.ownerId
-
-      // Le libelle du survol dit ce que le geste FERA, et ca depend de qui possede.
-      // Le survol NOMME l'objet et dit ce qu'il rapporte: sans ca, une base de six
-      // cubes colores ne se lit pas, et une mutation ne se distingue pas d'une rarete.
-      const mien = monBase
-      const verbe = mien
-        ? (placementView.selection === -1 ? 'Move' : 'Swap here')
-        : 'Steal'
-      for (let k = 0; k < v.objets.length; k++) {
-        const code = p.items[k]
-        const libelle = code === undefined
-          ? verbe
-          : `${verbe} ${nomObjet(rareteDe(code), mutationDe(code))} · ${formatRevenu(revenuObjet(code, GAINS_UI))}/s`
-        PointerEvents.createOrReplace(v.objets[k], {
-          pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: libelle } },
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: libelle } }
-          ]
-        })
-      }
-
+      // LA SIGNATURE NE PORTE QUE CE QUI EST STRUCTUREL.
+      // Bug trouve le 24 Aug sur signalement: `secondesVerrou` en faisait partie. Or il
+      // change CHAQUE SECONDE. La signature changeait donc chaque seconde, tout le bloc
+      // de reconstruction repassait, et `Tween.createOrReplace` REDEMARRAIT la rotation
+      // des objets depuis l'identite: les cubes tressautaient au lieu de tourner.
+      // Le meme defaut reecrivait aussi, une fois par seconde et pour rien, le materiau
+      // et la position de chaque objet de chaque base.
+      // REGLE: une valeur qui varie en continu (compte a rebours, jauge) ne doit jamais
+      // entrer dans une cle de cache censee detecter un changement de STRUCTURE. Elle se
+      // met a jour a part, sur son propre element.
+      // CE QUI BAT LA SECONDE PASSE AVANT LE TEST DE SIGNATURE.
+      // L'etiquette porte le compte a rebours du verrou et le dome de protection change
+      // d'echelle avec lui: tous deux doivent se mettre a jour meme quand la structure
+      // de la base n'a pas bouge. Ils ne reconstruisent rien, ils ecrivent une valeur.
       const txt = TextShape.getMutableOrNull(v.etiquette)
       if (txt !== null) {
         // Le nom reste affiche meme absent: une base occupee n'est jamais vide a l'ecran,
@@ -500,6 +489,32 @@ export function setupPlots(): void {
         ptr.scale = verrouille
           ? Vector3.create(BASE_COTE + 1.2, h, BASE_COTE + 1.2)
           : Vector3.create(0, 0, 0)
+      }
+
+
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${p.items.join(',')}|${p.donnes}|${p.recus}|${p.sentinelles}|${monBase ? placementView.selection : -1}`
+      if (sig === v.signature) continue
+      v.signature = sig
+      v.ownerId = p.ownerId
+
+      // Le libelle du survol dit ce que le geste FERA, et ca depend de qui possede.
+      // Le survol NOMME l'objet et dit ce qu'il rapporte: sans ca, une base de six
+      // cubes colores ne se lit pas, et une mutation ne se distingue pas d'une rarete.
+      const mien = monBase
+      const verbe = mien
+        ? (placementView.selection === -1 ? 'Move' : 'Swap here')
+        : 'Steal'
+      for (let k = 0; k < v.objets.length; k++) {
+        const code = p.items[k]
+        const libelle = code === undefined
+          ? verbe
+          : `${verbe} ${nomObjet(rareteDe(code), mutationDe(code))} · ${formatRevenu(revenuObjet(code, GAINS_UI))}/s`
+        PointerEvents.createOrReplace(v.objets[k], {
+          pointerEvents: [
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: libelle } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: libelle } }
+          ]
+        })
       }
 
       for (let k = 0; k < v.objets.length; k++) {
