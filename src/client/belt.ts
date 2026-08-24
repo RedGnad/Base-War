@@ -7,7 +7,17 @@ import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate } from '../shared/loot-table'
 
-export const beltView = { annonce: '', annonceJusqua: 0 }
+export const beltView = {
+  annonce: '',
+  annonceJusqua: 0,
+  /**
+   * The announcement carries the crate's OWN colour. A single yellow for every tier makes
+   * a Basic and an Epic read the same, so the alert stops meaning anything: the point of
+   * announcing a rare spawn is that it looks rare.
+   */
+  annonceColor: '#f5a524',
+  annonceTier: 0
+}
 
 type View = { item: Entity; label: Entity }
 const views = new Map<number, View>()
@@ -123,7 +133,11 @@ export function setupBelt(): void {
   room.onMessage('beltAlert', (d) => {
     const r = crate(d.crateTier)
     beltView.annonce = `${r.name} on the belt!`
-    beltView.annonceJusqua = Date.now() + 7000
+    beltView.annonceColor = r.color
+    beltView.annonceTier = d.crateTier
+    // A rarer crate stays on screen longer: it deserves more attention, and it is also
+    // the one worth crossing the venue for.
+    beltView.annonceJusqua = Date.now() + 5000 + d.crateTier * 2000
     console.log(`[CLIENT] annonce: ${r.name}`)
   })
 

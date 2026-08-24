@@ -220,9 +220,12 @@ const uiComponent = () => (
           position: { top: 176, left: '50%' }, margin: { left: -210 },
           justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: Color4.create(0.10, 0.08, 0.02, 0.85) }}
+        uiBackground={{ color: bandeauAnnonce() }}
       >
-        <Label value={beltView.annonce} fontSize={19} color={Color4.fromHexString('#f5a524ff')} />
+        <Label
+          value={beltView.annonce}
+          fontSize={17 + beltView.annonceTier * 2}
+          color={Color4.fromHexString(beltView.annonceColor + 'ff')} />
       </UiEntity>
     )}
 
