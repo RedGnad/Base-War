@@ -5,7 +5,7 @@ import { CENTER, SCENE_SIDE } from '../shared/schemas'
 /**
  * A ground plane. Without one the scene inherits the host terrain.
  * Scale applies BEFORE rotation, so a horizontal NxN plane is (N, N, 1) rotated -90
- * around X — not (N, 1, N), which yields an Nx1 strip.
+ * around X, not (N, 1, N), which yields an Nx1 strip.
  */
 export function setupVenue(): void {
   const sol = engine.addEntity()

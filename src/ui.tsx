@@ -82,15 +82,15 @@ function nextAction(): { label: string; ready: boolean; action: () => void } {
 }
 
 /**
- * The reticle. It is drawn from the same cone the server rules with, so it is allowed to
- * claim a lock: red and named means the shot lands, and the player learns the weapon's
- * reach by watching it rather than by reading a rule.
+ * The reticle, on screen only while the player is aiming. It is drawn from the same cone
+ * the server rules with, so it is allowed to claim a lock: red and named means the shot
+ * lands, and the player learns the weapon's reach by watching it rather than by reading it.
  */
 function Crosshair() {
   const locked = combatView.targetName !== ''
   const cold = combatView.cooldown > 0
-  const gap = combatView.aiming ? 7 : 15
-  const len = combatView.aiming ? 11 : 15
+  const gap = 8
+  const len = 12
   const th = 2
   const col = cold
     ? Color4.create(1, 1, 1, 0.22)
@@ -134,7 +134,7 @@ const uiComponent = () => (
     {!welcomeView.open && <IndexPanel />}
     {!welcomeView.open && <QuestsPanel />}
 
-    {!welcomeView.open && !menuView.open && !slotView.active && <Crosshair />}
+    {combatView.aiming && !welcomeView.open && !menuView.open && !slotView.active && <Crosshair />}
 
     {!welcomeView.open && (
     <UiEntity
@@ -449,10 +449,10 @@ const uiComponent = () => (
           value={
             combatView.cooldown > 0 ? 'RELOADING'
             : combatView.aiming ? 'RELEASE TO FIRE'
-            : combatView.targetName !== '' ? 'SHOOT  F' : 'AIM  F'
+            : 'HOLD TO AIM  F'
           }
-          variant={combatView.targetName !== '' && combatView.cooldown === 0 ? 'primary' : 'secondary'}
-          fontSize={combatView.aiming ? 11 : 14} />
+          variant={combatView.aiming && combatView.targetName !== '' ? 'primary' : 'secondary'}
+          fontSize={11} />
       )}
     </UiEntity>
   </UiEntity>

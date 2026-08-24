@@ -62,7 +62,7 @@ export const Belt = engine.defineComponent('basetycoon::belt', {
  *               from "if they steal your brainrot SUCCESSFULLY" (later).
  *   `Methods_Of_Stealing` names "the base timer" and prices traps against it:
  *               "when the base timer reaches a MINIMUM of (7 multiplied by the number of
- *               traps) seconds" — so freezes STACK, 7 s each.
+ *               traps) seconds", so freezes STACK, 7 s each.
  *
  * An instant transfer leaves no window for any defence to act and nothing to carry, which
  * is why a sentry could only delay. During the timer the thief is slowed, visibly holding
@@ -136,7 +136,7 @@ export function crowdBonus(nbPresents: number): number {
  * what the current holder paid. The trip duration IS the bidding window.
  *
  * duration = max(8s, distance / 2.0 m/s). Players run at 11 m/s, so they always catch
- * up: the contest is about attention and money, never footspeed — the only version that
+ * up: the contest is about attention and money, never footspeed. The only version that
  * works with a thumb on a phone. The 8s floor stops a base built next to the belt from
  * being uncontestable, which would make "build close" strictly dominant.
  */
@@ -147,7 +147,7 @@ export const CONVOY_RANGE = 6
 /**
  * A player who has just been outbid cannot be outbid again for 30 s.
  * Without it a rich player can take every crate a beginner buys, forever. The victim is
- * always refunded in full, so the cost is time, not money — but time is what a newcomer
+ * always refunded in full, so the cost is time, not money, and time is what a newcomer
  * has least of. 30 s echoes the reference's own anti-grief pattern: `Methods_Of_Stealing`
  * notes "Sammy adding the 30 seconds anti-steal cooldown".
  */

@@ -1,8 +1,10 @@
 import {
-  engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity,
+  engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
-  EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode, CameraType
+  EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
+  CameraType, AvatarMask
 } from '@dcl/sdk/ecs'
+import { triggerEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
@@ -29,6 +31,10 @@ import { setAiming } from './locomotion'
  * here and only here: the model is decoration. The shot itself is a direction, taken from
  * the camera and resolved by the server against positions the server reads itself. The
  * reticle uses the server's own cone constant, so a target it locks is a target that falls.
+ *
+ * The avatar's own skeleton is not addressable from scene code: emotes are the only thing
+ * that drives it. So the visible act of firing is a masked emote, upper body only, which
+ * leaves the legs to locomotion and reaches every other client on its own.
  */
 
 export const combatView = {
@@ -41,21 +47,35 @@ export const combatView = {
   firstPerson: false
 }
 
-type Gun = { racine: Entity; poignee: Entity; canon: Entity }
+type Gun = { racine: Entity; poignee: Entity }
 
-const GRIS = Color4.fromHexString('#2f3542ff')
-const ACIER = Color4.fromHexString('#7c8496ff')
 const OR = Color4.fromHexString('#ffd166ff')
 const FLASH = Color4.fromHexString('#ffe9a8ff')
 
-/** Where the grip sits relative to the hand bone. Tuned by eye against the avatar. */
-const MAIN_POS = Vector3.create(0.02, -0.03, 0.04)
+const MODELE = 'assets/Models/gun.glb'
+/**
+ * The model's own pivot is 87 cm away from the weapon: measured, its bounds run
+ * y 0.563..0.778 and z 0.390..0.700, muzzle at +Z, wooden grip at low Y and low Z.
+ * This offset brings the grip onto the holder's origin, so every placement below is
+ * expressed as "where the hand is", not as an arbitrary correction.
+ */
+const PIVOT = Vector3.create(-0.010, -0.640, -0.450)
+/** Muzzle, relative to the grip, from the same measurement. */
+const BOUCHE = Vector3.create(0, 0.138, 0.250)
+
+/**
+ * Where the grip sits on the hand bone. The local axes of the avatar's right hand are not
+ * documented, so these two are the tuning knobs: everything else is measured.
+ */
+const MAIN_POS = Vector3.create(0.02, -0.02, 0.03)
 const MAIN_ROT = Quaternion.fromEulerDegrees(0, 90, 10)
 /** Where the view model sits relative to the camera: right, below, ahead. */
-const VUE_POS = Vector3.create(0.22, -0.19, 0.42)
+const VUE_POS = Vector3.create(0.20, -0.24, 0.34)
 const VUE_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
 /** The same, pulled to centre and closer when aiming down the barrel. */
-const VISEE_POS = Vector3.create(0.04, -0.11, 0.30)
+const VISEE_POS = Vector3.create(0.02, -0.14, 0.26)
+/** Beyond this many other players, distant ones go unarmed: one renderer per mesh adds up. */
+const ARMES_MAX = 10
 
 const armes = new Map<string, Gun>()
 let vue: Gun | null = null
@@ -70,30 +90,22 @@ let adresseCible = ''
 
 const piles = new Map<number, { body: Entity; label: Entity }>()
 
-/** A pistol out of three boxes: slide, barrel, grip. Cheap, and it reads as a weapon. */
+/**
+ * A holder whose origin is the grip, and the model hung off it by its measured pivot.
+ * The weapon carries no collider at all: it rides a moving avatar, and a collider there
+ * would push the third-person camera around and swallow pointer clicks.
+ */
 function construireArme(parent: Entity, pos: Vector3, rot: Quaternion): Gun {
   const poignee = engine.addEntity()
   Transform.create(poignee, { parent, position: pos, rotation: rot })
 
-  const corps = engine.addEntity()
-  Transform.create(corps, { parent: poignee, position: Vector3.create(0, 0, 0.06), scale: Vector3.create(0.045, 0.055, 0.20) })
-  MeshRenderer.setBox(corps)
-  Material.setPbrMaterial(corps, { albedoColor: GRIS, metallic: 0.85, roughness: 0.35 })
-
-  const canon = engine.addEntity()
-  Transform.create(canon, { parent: poignee, position: Vector3.create(0, 0.004, 0.185), scale: Vector3.create(0.026, 0.026, 0.10) })
-  MeshRenderer.setBox(canon)
-  Material.setPbrMaterial(canon, { albedoColor: ACIER, metallic: 0.95, roughness: 0.2 })
-
-  const crosse = engine.addEntity()
-  Transform.create(crosse, {
-    parent: poignee, position: Vector3.create(0, -0.075, -0.025),
-    rotation: Quaternion.fromEulerDegrees(-12, 0, 0), scale: Vector3.create(0.04, 0.11, 0.055)
+  const modele = engine.addEntity()
+  Transform.create(modele, { parent: poignee, position: PIVOT })
+  GltfContainer.create(modele, {
+    src: MODELE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
   })
-  MeshRenderer.setBox(crosse)
-  Material.setPbrMaterial(crosse, { albedoColor: GRIS, metallic: 0.4, roughness: 0.7 })
 
-  return { racine: parent, poignee, canon }
+  return { racine: parent, poignee }
 }
 
 function montrer(g: Gun | null, on: boolean): void {
@@ -113,7 +125,7 @@ export function setupCombat(): void {
   montrer(vue, false)
 
   flash = engine.addEntity()
-  Transform.create(flash, { parent: vue.poignee, position: Vector3.create(0, 0.004, 0.25), scale: Vector3.Zero() })
+  Transform.create(flash, { parent: vue.poignee, position: BOUCHE, scale: Vector3.Zero() })
   MeshRenderer.setSphere(flash)
   Material.setPbrMaterial(flash, { albedoColor: FLASH, emissiveColor: FLASH, emissiveIntensity: 5 })
 
@@ -130,6 +142,8 @@ export function setupCombat(): void {
   })
   room.onMessage('wasShot', (d) => {
     alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} on the ground`, '#ff6b6b', 5000)
+    // Masked so it plays from the waist up and does not stop the target running away.
+    void triggerEmote({ predefinedEmote: 'getHit', mask: AvatarMask.AM_UPPER_BODY })
   })
   room.onMessage('pickedUp', (d) => alerter(`+${formatIncome(d.amount)} picked up`, '#8fe08f', 2500))
 
@@ -137,19 +151,45 @@ export function setupCombat(): void {
   engine.addSystem(pileSystem)
 }
 
-/** Which of the two models is on screen. Called on every camera-mode edge, and once at start. */
+/**
+ * Which of the two models is on screen, and where the muzzle flash hangs.
+ *
+ * One flash entity, moved onto whichever weapon is currently visible: parked on the view
+ * model it would be invisible in third person, which is the view most players are in.
+ */
 function appliquerVue(fp: boolean): void {
   combatView.firstPerson = fp
   montrer(vue, fp)
-  if (moi !== '') montrer(armes.get(moi) ?? null, !fp)
+  const main = armes.get(moi) ?? null
+  if (moi !== '') montrer(main, !fp)
+  const porteur = fp ? vue : main
+  if (porteur !== null) {
+    const t = Transform.getMutableOrNull(flash)
+    if (t !== null && t.parent !== porteur.poignee) t.parent = porteur.poignee
+  }
 }
 
-/** Every player in the scene carries the weapon on their hand, including this one. */
+/**
+ * Every player nearby carries the weapon on their hand, including this one.
+ *
+ * The model renders as seven objects, and the engine instantiates a material per rendered
+ * object, so an unbounded roster spends the scene's material budget on pistols nobody can
+ * make out. The nearest ARMES_MAX are armed; past that the weapon is a dot anyway.
+ */
 function reconcilierArmes(): void {
-  const vus = new Set<string>()
-  for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+  const moiT = Transform.getOrNull(engine.PlayerEntity)
+  const candidats: { a: string; d: number }[] = []
+  for (const [ent, id] of engine.getEntitiesWith(PlayerIdentityData)) {
     const a = id.address?.toLowerCase()
     if (a === undefined || a === '') continue
+    if (a === moi) { candidats.push({ a, d: -1 }); continue }
+    const t = Transform.getOrNull(ent)
+    candidats.push({ a, d: t === null || moiT === null ? 1e9 : Vector3.distance(t.position, moiT.position) })
+  }
+  candidats.sort((x, y) => x.d - y.d)
+
+  const vus = new Set<string>()
+  for (const { a } of candidats.slice(0, ARMES_MAX)) {
     vus.add(a)
     if (armes.has(a)) continue
     const racine = engine.addEntity()
@@ -157,7 +197,8 @@ function reconcilierArmes(): void {
     AvatarAttach.create(racine, { avatarId: a, anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
     const g = construireArme(racine, MAIN_POS, MAIN_ROT)
     armes.set(a, g)
-    if (a === moi && combatView.firstPerson) montrer(g, false)
+    // The local weapon only appears now, so the view split has to be settled again.
+    if (a === moi) appliquerVue(combatView.firstPerson)
   }
   for (const [a, g] of [...armes]) {
     if (vus.has(a)) continue
@@ -221,10 +262,16 @@ function gunSystem(dt: number): void {
   viser()
 }
 
-/** What the shot would reach, computed the way the server computes it. */
+/**
+ * What the shot would reach, computed the way the server computes it.
+ *
+ * Only while aiming: a reticle that is always on screen is decoration in a game whose
+ * usual act is managing a base, and scanning the roster every frame to feed it is waste.
+ */
 function viser(): void {
   combatView.targetName = ''
   combatView.targetDist = 0
+  if (!combatView.aiming) { adresseCible = ''; return }
   const cam = Transform.getOrNull(engine.CameraEntity)
   const moiT = Transform.getOrNull(engine.PlayerEntity)
   if (cam === null || moiT === null) return
@@ -284,6 +331,9 @@ function tirer(now: number): void {
 
   flashScale = 0.5
   Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
+  // The only handle on the avatar's skeleton is an emote. Masked to the upper body so the
+  // player keeps running while firing, and broadcast by the platform, so everyone sees it.
+  void triggerEmote({ predefinedEmote: 'swingWeaponOneHand', mask: AvatarMask.AM_UPPER_BODY })
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)
     if (s !== null) { s.playing = false; s.playing = true }
