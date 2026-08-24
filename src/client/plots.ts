@@ -21,7 +21,30 @@ const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
  * grossit, pour qu'on voie ce qu'on tient.
  */
 export const placementView = { selection: -1 }
+
+/**
+ * Monte d'un etage dans SA base, et redescend au rez apres le dernier etage ouvert.
+ * Un ascenseur qui bloquerait en haut obligerait a redescendre la rampe: le raccourci
+ * ne servirait qu'une fois sur deux.
+ */
+function monterUnEtage(v: Vue): void {
+  const t = Transform.getOrNull(v.socle)
+  if (t === null) return
+  let ouverts = 1
+  for (const [, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() === v.ownerId.toLowerCase()) { ouverts = p.etages; break }
+  }
+  const moi = Transform.getOrNull(engine.PlayerEntity)
+  const actuel = moi === null ? 0 : Math.max(0, Math.round(moi.position.y / ETAGE_HAUTEUR))
+  const cible = actuel + 1 >= ouverts ? 0 : actuel + 1
+  const y = cible * ETAGE_HAUTEUR + 0.2
+  void movePlayerTo({
+    newRelativePosition: Vector3.create(t.position.x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, y, t.position.z + 1.4),
+    cameraTarget: Vector3.create(t.position.x, y + 1, t.position.z - 2)
+  })
+}
 import { voler, revendre, monAdresseClient, deplacer, offrir, alerter } from './theft'
+import { movePlayerTo } from '~system/RestrictedActions'
 
 /**
  * Rendu DYNAMIQUE des bases: une vue apparait quand le serveur cree une base, disparait
@@ -35,7 +58,7 @@ import { voler, revendre, monAdresseClient, deplacer, offrir, alerter } from './
 type Etage = { plancher: Entity; murs: Entity[]; rampe: Entity }
 type Vue = {
   socle: Entity; etiquette: Entity; porte: Entity
-  etages: Etage[]; objets: Entity[]; sentinelle: Entity; signature: string; ownerId: string
+  etages: Etage[]; objets: Entity[]; sentinelle: Entity; ascenseur: Entity; signature: string; ownerId: string
 }
 
 // Materiaux clairs: sous un ciel de 16h, un batiment gris fonce devient une silhouette
@@ -133,6 +156,34 @@ function creerVue(x: number, z: number): Vue {
   for (let e = 0; e < ETAGES_MAX; e++) etages.push(construireEtage(x, z, e))
 
   /**
+   * ASCENSEUR. Source, transcription 1: *« un systeme d'ascenseur pour se deplacer
+   * d'etage en etage »*.
+   *
+   * IL NE SERT QU'AU PROPRIETAIRE, et c'est le point mecanique: la montee est le COUT
+   * que paie le voleur (malus de vitesse et de saut sur une rampe). Un ascenseur ouvert
+   * a tous supprimerait ce cout et rendrait la hauteur inutile, alors que c'est elle qui
+   * fait que l'objet le plus rare, place en haut, est le plus difficile a prendre.
+   */
+  const ascenseur = engine.addEntity()
+  Transform.create(ascenseur, {
+    position: Vector3.create(x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, 0.9, z + 1.4),
+    scale: Vector3.create(0.5, 1.8, 0.5)
+  })
+  MeshRenderer.setBox(ascenseur)
+  MeshCollider.setBox(ascenseur)
+  Material.setPbrMaterial(ascenseur, {
+    albedoColor: Color4.fromHexString('#2f3648ff'),
+    emissiveColor: Color4.fromHexString('#4dd2ffff'), emissiveIntensity: 0.7,
+    metallic: 0.85, roughness: 0.25
+  })
+  PointerEvents.create(ascenseur, {
+    pointerEvents: [
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Elevator' } },
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Elevator' } }
+    ]
+  })
+
+  /**
    * BOUCLIER, et non une porte. Une porte qui n'empeche pas d'entrer par le haut ne
    * veut rien dire: le vrai barrage est la verification serveur, et une decoration qui
    * pretend bloquer ment au joueur.
@@ -202,13 +253,15 @@ function creerVue(x: number, z: number): Vue {
     })
     objets.push(o)
   }
-  return { socle, etiquette, porte, sentinelle, etages, objets, signature: '', ownerId: '' }
+  return { socle, etiquette, porte, sentinelle, ascenseur, etages, objets, signature: '', ownerId: '' }
 }
 
 function detruireVue(v: Vue): void {
   engine.removeEntity(v.socle)
   engine.removeEntity(v.etiquette)
   engine.removeEntity(v.porte)
+  engine.removeEntity(v.sentinelle)
+  engine.removeEntity(v.ascenseur)
   for (const e of v.etages) {
     engine.removeEntity(e.plancher)
     engine.removeEntity(e.rampe)
@@ -243,6 +296,19 @@ export function setupPlots(): void {
           }
           return
         }
+      }
+
+      // L'ASCENSEUR: il monte d'un etage, et revient au rez apres le dernier.
+      if (
+        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.ascenseur) ||
+        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
+      ) {
+        if (v.ownerId.toLowerCase() !== monAdresseClient()) {
+          alerter('THAT ELEVATOR IS NOT YOURS: TAKE THE RAMP', '#ffd166', 3500)
+          return
+        }
+        monterUnEtage(v)
+        return
       }
 
       // LE SOCLE D'UN AUTRE JOUEUR: on y laisse l'objet qu'on tient.
