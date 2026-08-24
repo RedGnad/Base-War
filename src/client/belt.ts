@@ -2,10 +2,11 @@ import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3 } from '@dcl/sdk/math'
+import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { crate } from '../shared/loot-table'
+import { crate, formatIncome } from '../shared/loot-table'
+import { C } from './theme'
 
 export const beltView = {
   annonce: '',
@@ -19,7 +20,10 @@ export const beltView = {
   annonceTier: 0
 }
 
-type View = { item: Entity; label: Entity }
+/** Outline colour for every world label: black reads over sky, ground and avatars alike. */
+const NOIR = Color3.create(0, 0, 0)
+
+type View = { item: Entity; label: Entity; nom: Entity }
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
@@ -98,19 +102,38 @@ export function setupBelt(): void {
           ]
         })
 
+        // The label rides the crate rather than the interface.
+        //
+        // Two lines and two colours, because one TextShape carries one colour: the price
+        // in the money green above the name in white, both outlined in black so they hold
+        // over sky, ground or another player. 3D text is the only place Decentraland
+        // offers an outline at all, which is the second reason the reading lives here.
         const label = engine.addEntity()
-        Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 0.9, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 1.24, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, {})
-        TextShape.create(label, { text: `${r.name}\n${b.price}`, fontSize: 3, textColor: c })
+        TextShape.create(label, {
+          text: formatIncome(b.price), fontSize: 4.2, textColor: C.money,
+          outlineWidth: 0.22, outlineColor: NOIR
+        })
 
-        v = { item, label }
+        const nom = engine.addEntity()
+        Transform.create(nom, { position: Vector3.create(t.position.x, t.position.y + 0.86, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Billboard.create(nom, {})
+        TextShape.create(nom, {
+          text: r.name, fontSize: 3, textColor: c,
+          outlineWidth: 0.22, outlineColor: NOIR
+        })
+
+        v = { item, label, nom }
         views.set(b.articleId, v)
       }
 
       const to = Transform.getMutableOrNull(v.item)
       if (to !== null) to.position = Vector3.create(t.position.x, t.position.y, t.position.z)
       const te = Transform.getMutableOrNull(v.label)
-      if (te !== null) te.position = Vector3.create(t.position.x, t.position.y + 0.9, t.position.z)
+      if (te !== null) te.position = Vector3.create(t.position.x, t.position.y + 1.24, t.position.z)
+      const tn = Transform.getMutableOrNull(v.nom)
+      if (tn !== null) tn.position = Vector3.create(t.position.x, t.position.y + 0.86, t.position.z)
 
       if (
         inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.item) ||
@@ -124,6 +147,7 @@ export function setupBelt(): void {
       if (vivants.has(id)) continue
       engine.removeEntity(v.item)
       engine.removeEntity(v.label)
+      engine.removeEntity(v.nom)
       views.delete(id)
     }
 
