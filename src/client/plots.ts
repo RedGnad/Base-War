@@ -21,7 +21,7 @@ const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
  * grossit, pour qu'on voie ce qu'on tient.
  */
 export const placementView = { selection: -1 }
-import { voler, revendre, monAdresseClient, deplacer } from './theft'
+import { voler, revendre, monAdresseClient, deplacer, offrir, alerter } from './theft'
 
 /**
  * Rendu DYNAMIQUE des bases: une vue apparait quand le serveur cree une base, disparait
@@ -152,12 +152,15 @@ function creerVue(x: number, z: number): Vue {
     metallic: 0,
     roughness: 0.1
   })
-  // On vole en tapant LA BASE, pas un bouton flottant: la cible du geste est la chose
-  // convoitee. Plus lisible pour un juge, et utilisable au doigt sur mobile.
+  // DEUX CIBLES, DEUX SENS, aucun bouton flottant:
+  //   taper un OBJET sur la base d'un autre  = PRENDRE
+  //   taper LE SOCLE d'un autre, un objet en main = LAISSER
+  // Le socle portait deja un PointerEvents « Steal » que plus rien n'ecoutait depuis que
+  // le vol vise l'objet: c'etait une affordance morte. Il porte maintenant le don.
   PointerEvents.create(socle, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Steal' } },
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Leave a gift' } },
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Leave a gift' } }
     ]
   })
 
@@ -227,6 +230,23 @@ export function setupPlots(): void {
           return
         }
       }
+
+      // LE SOCLE D'UN AUTRE JOUEUR: on y laisse l'objet qu'on tient.
+      // Sans objet selectionne, le geste n'a pas de sens et on le dit, plutot que de
+      // laisser un tap sans effet: un refus muet se lit comme un bug.
+      if (
+        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.socle) ||
+        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.socle)
+      ) {
+        if (v.ownerId === '' || v.ownerId.toLowerCase() === monAdresseClient()) return
+        if (placementView.selection === -1) {
+          alerter('PICK ONE OF YOUR ITEMS FIRST, THEN TAP THEIR BASE', '#ffd166', 3500)
+          return
+        }
+        offrir(v.ownerId, placementView.selection)
+        placementView.selection = -1
+        return
+      }
     }
   })
 
@@ -249,7 +269,7 @@ export function setupPlots(): void {
       // sinon soit l'etiquette ne se rafraichit jamais, soit on repeint 30 fois/s.
       const secondesVerrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
       const monBase = p.ownerId.toLowerCase() === monAdresseClient()
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${monBase ? placementView.selection : -1}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.etages}|${secondesVerrou}|${p.items.join(',')}|${p.donnes}|${p.recus}|${monBase ? placementView.selection : -1}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
@@ -280,7 +300,13 @@ export function setupPlots(): void {
         // et c'est elle que les autres viendront piller.
         const verrou = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
         const etat = verrou > 0 ? `\nLOCKED ${verrou}s` : (p.ownerPresent ? '' : '\n(away)')
-        txt.text = `${p.ownerName}${etat}`
+        // LE BILAN SOCIAL, sous le nom. Il ne se montre que s'il a quelque chose a dire:
+        // « 0 given, 0 received » sur chaque base transformerait le lieu en tableur.
+        // Quand il parle, il dit qu'une personne vit ici et que d'autres sont passees.
+        const bilan = (p.donnes > 0 || p.recus > 0)
+          ? `\n${p.recus} received  ·  ${p.donnes} given`
+          : ''
+        txt.text = `${p.ownerName}${etat}${bilan}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
       }
       Material.setPbrMaterial(v.socle, {

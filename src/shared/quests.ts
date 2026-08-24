@@ -7,10 +7,10 @@
  *
  * DEUX REGLES DE CONCEPTION, tenues:
  *
- * 1. TOUTES SONT REALISABLES SEUL. Aucune quete ne depend d'un autre joueur. Une quete
- *    « vole 2 objets » serait morte pour un juge qui visite seul pendant sa fenetre de
- *    notation, et morte pour le tout premier joueur du monde. Le vol reste recompense
- *    par son butin, il n'a pas besoin d'une quete par-dessus.
+ * 1. TOUTES SONT REALISABLES AVEC LES AUTRES JOUEURS ABSENTS. Une quete « vole 2 objets »
+ *    exigerait une victime CONNECTEE et serait morte pour un juge qui visite seul. Le don,
+ *    lui, se fait sur la base d'un absent: il est donc realisable a tout moment, et c'est
+ *    le seul acte social qui le soit sans dependre de personne.
  *
  * 2. LA RECOMPENSE EST SUR LA MEME ECHELLE QUE LE CALENDRIER 7 JOURS. Une quete du jour
  *    paie une boite de type 1, exactement ce que paient les jours 3 et 4 du calendrier;
@@ -27,8 +27,7 @@ export type TypeQuete =
   | 'vendre'      // revendre un objet
   | 'poser'       // poser un objet sur sa base
   | 'banquer'     // total de pieces encaissees dans la journee
-  | 'entrainer'   // series terminees sur une machine
-  | 'boss'        // boss abattus auxquels on a participe
+  | 'offrir'      // objets laisses sur la base d'un autre joueur
 
 export type Quete = { type: TypeQuete; cible: number; texte: string }
 
@@ -41,8 +40,7 @@ export const QUETES: readonly Quete[] = [
   { type: 'poser',      cible: 6,    texte: 'Place 6 items on your base' },
   { type: 'banquer',    cible: 2000, texte: 'Bank 2,000 coins' },
   { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon crates or better' },
-  { type: 'entrainer',  cible: 4,    texte: 'Finish 4 training sets' },
-  { type: 'boss',       cible: 1,    texte: 'Help take down the boss' }
+  { type: 'offrir',     cible: 1,    texte: 'Leave an item on someone else\'s base' }
 ]
 
 /** Boite payee par une quete, et bonus si les trois sont finies. */

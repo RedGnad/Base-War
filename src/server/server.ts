@@ -4,8 +4,6 @@ import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne, pousserQuetes } from './plots'
-import { startTraining } from './training'
-import { startBoss } from './boss'
 import { arrivee, depart, verifierCadeau } from './onboarding'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
@@ -113,8 +111,6 @@ export function startServer(): void {
   startPlots()
   startTheft()
   startBelt()
-  startTraining()
-  startBoss()
 
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.

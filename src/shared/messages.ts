@@ -93,21 +93,18 @@ export const MESSAGES = {
   /** serveur -> le joueur: cadeau des 15 minutes de presence continue. */
   timeGift: Schemas.Map({ boite: Schemas.Int, minutes: Schemas.Int }),
 
-  /** client -> serveur: je frappe le boss. Le serveur verifie la portee et decide. */
-  hitBoss: Schemas.Map({}),
-  /** serveur -> tous: le boss est tombe. */
-  bossDown: Schemas.Map({ parNom: Schemas.String, participants: Schemas.Int }),
-  /** serveur -> tous: le boss est revenu. */
-  bossUp: Schemas.Map({}),
-  /** serveur -> un participant: sa part. */
-  bossReward: Schemas.Map({ boite: Schemas.Int, coups: Schemas.Int, meilleur: Schemas.Boolean }),
-
-  /** client -> serveur: une repetition sur la machine n. Le serveur verifie la portee. */
-  trainRep: Schemas.Map({ machine: Schemas.Int }),
-  /** serveur -> le joueur: ou en est sa serie, et sa recharge. */
-  trainState: Schemas.Map({ machine: Schemas.Int, reps: Schemas.Int, cible: Schemas.Int, rechargeSec: Schemas.Int }),
-  /** serveur -> le joueur: serie terminee, voici le gain. */
-  trainDone: Schemas.Map({ machine: Schemas.Int, gain: Schemas.Int }),
+  /**
+   * client -> serveur: je LAISSE mon objet `slot` sur la base de `ownerId`.
+   * Miroir exact de `stealItem`. Le client exprime une intention, le serveur verifie la
+   * portee, la place disponible chez le destinataire, et decide seul.
+   */
+  giveItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
+  /** serveur -> le donneur: c'est parti. */
+  gaveItem: Schemas.Map({ toName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
+  /** serveur -> LE DESTINATAIRE: quelqu'un lui a laisse quelque chose (differe s'il etait absent). */
+  wasGifted: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
+  /** serveur -> tous: un don a eu lieu, pour le fil d'activite. */
+  gifted: Schemas.Map({ byName: Schemas.String, toName: Schemas.String, rarity: Schemas.Int }),
 
   /** client -> serveur: j'encaisse la quete n (3 = le bonus des trois). */
   claimQuest: Schemas.Map({ slot: Schemas.Int }),

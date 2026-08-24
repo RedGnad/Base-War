@@ -10,7 +10,6 @@ import { placementView } from './client/plots'
 import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
 import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
-import { bossView } from './client/boss'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -158,23 +157,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* BANNIERE DU BOSS. Sans elle, un joueur a l'autre bout des 80 m ne sait pas qu'une
-        cible commune est ouverte, et le seul moment collectif du jeu passe inapercu.
-        Elle ne s'affiche QUE s'il est vivant: annoncer un boss mort n'appelle a rien. */}
-    {bossView.vivant && (
-      <UiEntity
-        uiTransform={{
-          width: 300, height: 44, positionType: 'absolute',
-          position: { top: 112, left: '50%' }, margin: { left: -150 },
-          flexDirection: 'row', justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={{ color: Color4.create(0.24, 0.06, 0.06, 0.85) }}
-      >
-        <Label value={`BOSS UP  ${bossView.pv}/${bossView.pvMax}`} fontSize={16}
-          color={Color4.fromHexString('#ff9b9bff')} />
-      </UiEntity>
-    )}
-
     {/* HAUT-CENTRE: etat, non actionnable. */}
     <UiEntity
       uiTransform={{
@@ -283,14 +265,14 @@ const uiComponent = () => (
     {placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 460, height: 46, positionType: 'absolute',
-          position: { bottom: 150, left: '50%' }, margin: { left: -230 },
+          width: 560, height: 46, positionType: 'absolute',
+          position: { bottom: 150, left: '50%' }, margin: { left: -280 },
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
           padding: 6
         }}
         uiBackground={{ color: Color4.create(0.05, 0.12, 0.05, 0.85) }}
       >
-        <Label value="tap another slot to move it" fontSize={14} color={Color4.fromHexString('#8fe08fff')} />
+        <Label value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={14} color={Color4.fromHexString('#8fe08fff')} />
         <Button
           uiTransform={{ width: 110, height: 34 }}
           value="SELL IT" variant="secondary" fontSize={13}

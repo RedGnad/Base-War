@@ -77,6 +77,20 @@ export function setupTheft(): void {
   room.onMessage('reclaimed', (d) => {
     ajouterAuFil(`${d.byName} a repris son ${rarity(d.rarity).nom} a ${d.fromName}`)
   })
+  room.onMessage('gaveItem', (d) => {
+    const r = rarity(d.rarity)
+    alerter(`GIFTED TO ${d.toName.toUpperCase()}: ${r.nom.toUpperCase()}`, '#8fe08f', 5000)
+  })
+  room.onMessage('wasGifted', (d) => {
+    const r = rarity(d.rarity)
+    // Meme canal que l'alerte de vol, et c'est voulu: recevoir et se faire prendre sont
+    // les deux faces du meme evenement social, et ils doivent se lire au meme endroit.
+    alerter(`${d.byName} LEFT YOU A ${r.nom.toUpperCase()}!`, r.couleur, 8000)
+  })
+  room.onMessage('gifted', (d) => {
+    ajouterAuFil(`${d.byName} gifted ${rarity(d.rarity).nom} to ${d.toName}`)
+  })
+
   room.onMessage('wallet', (d) => {
     // Le portefeuille porte aussi l'etape du tutoriel: voir le commentaire cote serveur.
     tutoView.etape = d.tutoEtape
@@ -153,6 +167,8 @@ export function verrouiller(): void { void room.send('activateLock', {}) }
 export function reprendre(): void { void room.send('reclaim', {}) }
 export function franchirPalier(): void { void room.send('rebirth', {}) }
 export function revendre(slot: number): void { void room.send('sellItem', { slot }) }
+/** Le don: mon objet `slot` part sur la base de `ownerId`. Miroir de `voler`. */
+export function offrir(ownerId: string, slot: number): void { void room.send('giveItem', { ownerId, slot }) }
 export function acheterEtage(): void { void room.send('buyFloor', {}) }
 export function collecter(): void { void room.send('collect', {}) }
 export function deplacer(de: number, vers: number): void { void room.send('moveItem', { de, vers }) }

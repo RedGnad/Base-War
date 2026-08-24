@@ -8,7 +8,7 @@ import {
 /** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
-import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes } from './plots'
+import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes, offrirObjet, baseDe } from './plots'
 import { tutoFait } from './onboarding'
 import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
@@ -70,8 +70,15 @@ export function delivrerAlertes(address: string): void {
   const a = retirerAlertes(address)
   if (a.length === 0) return
   for (const alerte of a) {
-    const x = alerte as { byName: string; rarity: number; mutation?: number }
-    void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity, mutation: x.mutation ?? 0 }, { to: [address] })
+    // Les alertes de VOL et de DON passent par le meme depot. Ce sont les deux faces du
+    // meme evenement social: quelqu'un est venu chez toi pendant ton absence.
+    const x = alerte as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
+    if (x.type === 'gift') {
+      const code = x.code ?? 0
+      void room.send('wasGifted', { byName: x.byName, rarity: rareteDe(code), mutation: mutationDe(code) }, { to: [address] })
+      continue
+    }
+    void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity ?? 0, mutation: x.mutation ?? 0 }, { to: [address] })
   }
   jour(`${a.length} alerte(s) differee(s) delivree(s) a ${nomAffiche(address)}`)
 }
@@ -174,6 +181,34 @@ export function startTheft(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (!deplacerObjet(a, d.de, d.vers)) refus(a, 'move', 'cannot move there')
+  })
+
+  room.onMessage('giveItem', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const cible = d.ownerId.toLowerCase()
+
+    // PORTEE VERIFIEE PAR LE SERVEUR, exactement comme pour le vol: on doit etre DEVANT
+    // la base qu'on gratifie. Un don a distance serait un transfert par menu, et le
+    // deplacement dans le lieu perdrait son sens.
+    const p = positionDe(a)
+    const bc = baseDe(cible)
+    if (p === null || bc === undefined) { refus(a, 'gift', 'position unknown'); return }
+    const dist = Vector3.distance(p, Vector3.create(bc.x, p.y, bc.z))
+    if (dist > PORTEE_VOL) { refus(a, 'gift', `too far (${dist.toFixed(1)}m)`, true); return }
+
+    const r = offrirObjet(a, cible, d.slot)
+    if (!r.ok) { refus(a, 'gift', r.raison ?? 'refused'); return }
+
+    const code = r.code ?? 0
+    const rar = rareteDe(code)
+    const mut = mutationDe(code)
+    void room.send('gaveItem', { toName: nomAffiche(cible), rarity: rar, mutation: mut }, { to: [a] })
+    void room.send('wasGifted', { byName: nomAffiche(a), rarity: rar, mutation: mut }, { to: [cible] })
+    void room.send('gifted', { byName: nomAffiche(a), toName: nomAffiche(cible), rarity: rar })
+    tutoFait(a, 4)
+    avancerQuete(a, 'offrir')
+    pousserQuetes(a)
   })
 
   room.onMessage('claimQuest', (d, ctx) => {

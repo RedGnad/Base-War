@@ -12,7 +12,7 @@ export const ETAPES_TEXTE = [
   { titre: 'Open your crate', aide: 'walk to your crate and smash it 3 times' },
   { titre: 'Collect your coins', aide: 'your items earn into a pool: tap COLLECT' },
   { titre: 'Buy a crate', aide: 'tap a crate on the belt before it falls' },
-  { titre: 'Finish a training set', aide: 'tap a machine 12 times while you wait' }
+  { titre: 'Leave a gift', aide: 'pick one of your items, then tap another base' }
 ] as const
 
 export const tutoView = { etape: 0, total: ETAPES_TEXTE.length as number }

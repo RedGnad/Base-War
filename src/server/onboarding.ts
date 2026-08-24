@@ -19,7 +19,7 @@ export const ETAPES = [
   'Open your crate',
   'Collect your coins',
   'Buy a crate from the belt',
-  'Finish a training set'
+  'Leave a gift on another base'
 ] as const
 
 /** 15 minutes de presence CONTINUE, comptees par le serveur. */

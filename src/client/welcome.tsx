@@ -21,8 +21,8 @@ const LIGNES = [
   ['1', 'BUILD your base anywhere on the map'],
   ['2', 'OPEN your free crate: smash it 3 times'],
   ['3', 'Loot earns coins into a pool: tap COLLECT to bank it'],
-  ['4', 'Buy better crates from the belt, train while you wait'],
-  ['5', 'Fight the boss. Steal from others. LOCK your base']
+  ['4', 'Buy better crates from the belt'],
+  ['5', 'Take from other bases, or leave a gift. LOCK yours']
 ]
 
 export const WelcomePanel = () => {
