@@ -28,6 +28,7 @@ export type TypeQuete =
   | 'poser'       // poser un objet sur sa base
   | 'banquer'     // total de pieces encaissees dans la journee
   | 'entrainer'   // series terminees sur une machine
+  | 'boss'        // boss abattus auxquels on a participe
 
 export type Quete = { type: TypeQuete; cible: number; texte: string }
 
@@ -40,7 +41,8 @@ export const QUETES: readonly Quete[] = [
   { type: 'poser',      cible: 6,    texte: 'Place 6 items on your base' },
   { type: 'banquer',    cible: 2000, texte: 'Bank 2,000 coins' },
   { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon crates or better' },
-  { type: 'entrainer',  cible: 4,    texte: 'Finish 4 training sets' }
+  { type: 'entrainer',  cible: 4,    texte: 'Finish 4 training sets' },
+  { type: 'boss',       cible: 1,    texte: 'Help take down the boss' }
 ]
 
 /** Boite payee par une quete, et bonus si les trois sont finies. */

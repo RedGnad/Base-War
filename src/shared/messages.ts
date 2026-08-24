@@ -88,6 +88,15 @@ export const MESSAGES = {
     cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
     jour: Schemas.Int, jourPris: Schemas.Boolean
   }),
+  /** client -> serveur: je frappe le boss. Le serveur verifie la portee et decide. */
+  hitBoss: Schemas.Map({}),
+  /** serveur -> tous: le boss est tombe. */
+  bossDown: Schemas.Map({ parNom: Schemas.String, participants: Schemas.Int }),
+  /** serveur -> tous: le boss est revenu. */
+  bossUp: Schemas.Map({}),
+  /** serveur -> un participant: sa part. */
+  bossReward: Schemas.Map({ boite: Schemas.Int, coups: Schemas.Int, meilleur: Schemas.Boolean }),
+
   /** client -> serveur: une repetition sur la machine n. Le serveur verifie la portee. */
   trainRep: Schemas.Map({ machine: Schemas.Int }),
   /** serveur -> le joueur: ou en est sa serie, et sa recharge. */

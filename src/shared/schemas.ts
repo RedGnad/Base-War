@@ -97,6 +97,42 @@ export const Belt = engine.defineComponent('friendzone::belt', {
   acheteurNom: Schemas.String
 })
 
+/**
+ * LE BOSS PARTAGE.
+ *
+ * Source: *« des boss et des mini-jeux resettables qui donnent une boite gratuite »*.
+ * C'est le seul contenu du jeu ou les joueurs font la MEME chose en meme temps: le vol
+ * les oppose, le tapis les met en concurrence, la base les isole. Il faut un moment ou
+ * ils tapent la meme cible.
+ *
+ * CALIBRAGE: 80 points de vie, 1 par coup, aucun bonus de palier.
+ * - Seul, a environ deux coups par seconde, il tombe en ~40 s: un juge qui visite seul
+ *   pendant sa fenetre de notation doit pouvoir le finir, sinon la feature n'existe pas
+ *   pour lui.
+ * - A cinq, il tombe en ~8 s, ce qui cree la ruee.
+ * - Les degats NE SUIVENT PAS le palier: sinon un joueur avance le tue avant que les
+ *   autres n'arrivent, et le moment collectif disparait exactement chez ceux qui ont le
+ *   plus joue.
+ */
+export const BOSS_PV = 80
+export const BOSS_RESPAWN_MS = 180_000
+export const BOSS_PORTEE = 6
+export const BOSS_POSITION = { x: 40, z: 62 }
+/** Boite pour tout participant, et boite pour celui qui a le plus frappe. */
+export const BOSS_BOITE = 1
+export const BOSS_BOITE_MEILLEUR = 2
+
+export const Boss = engine.defineComponent('friendzone::boss', {
+  pv: Schemas.Int,
+  pvMax: Schemas.Int,
+  /** false pendant la reapparition */
+  vivant: Schemas.Boolean,
+  /** secondes restantes avant reapparition, 0 s'il est vivant */
+  respawnSec: Schemas.Int,
+  /** nom du dernier vainqueur, vide au demarrage */
+  dernierVainqueur: Schemas.String
+})
+
 export const TAPIS_LONGUEUR = 26
 export const TAPIS_DUREE_S = 34          // temps pour traverser: laisse le temps de decider
 export const TAPIS_INTERVALLE_S = 5      // un article toutes les 5 s
@@ -137,7 +173,8 @@ export const PRIX_RARETE = [40, 150, 600, 2600, 11000]
 /** Identifiants de synchronisation explicites: reserves aux singletons. */
 export const SYNC_ID = {
   serverBeat: 1,
-  crate: 2
+  crate: 2,
+  boss: 3
 } as const
 
 /** Distance maximale a la caisse pour qu'un coup soit accepte par le serveur. */
@@ -414,14 +451,20 @@ export function raisonInvalide(
   autres: Array<{ x: number; z: number }>
 ): string | null {
   if (x < MARGE_BORD || z < MARGE_BORD || x > cote - MARGE_BORD || z > cote - MARGE_BORD) {
-    return 'trop pres du bord'
+    return 'too close to the edge'
   }
   if (Math.abs(z - CENTRE.z) < ECART_TAPIS && Math.abs(x - CENTRE.x) < TAPIS_LONGUEUR / 2 + 4) {
-    return 'sur le passage du tapis'
+    return 'on the belt lane'
+  }
+  // L'ARENE DU BOSS RESTE LIBRE. Une base posee dessus enfermerait la cible commune
+  // dans un batiment prive: le seul moment collectif du jeu deviendrait inaccessible.
+  {
+    const dx = BOSS_POSITION.x - x, dz = BOSS_POSITION.z - z
+    if (Math.sqrt(dx * dx + dz * dz) < BOSS_PORTEE + 5) return 'inside the boss arena'
   }
   for (const a of autres) {
     const dx = a.x - x, dz = a.z - z
-    if (Math.sqrt(dx * dx + dz * dz) < ECART_MIN_BASES) return 'trop pres d une autre base'
+    if (Math.sqrt(dx * dx + dz * dz) < ECART_MIN_BASES) return 'too close to another base'
   }
   return null
 }
@@ -486,4 +529,5 @@ export function registerValidators(): void {
   Crate.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
+  Boss.validateBeforeChange(serverOnly)
 }

@@ -9,7 +9,7 @@ import { alerter } from './theft'
 
 export const trainView = { machine: -1, reps: 0, cible: REPS_PAR_SERIE, rechargeSec: 0 }
 
-type Vue = { socle: Entity; barre: Entity; etiquette: Entity; couleur: Color4 }
+type Vue = { socle: Entity; barre: Entity; etiquette: Entity; couleur: Color4; texte: string; part: number }
 const vues = new Map<number, Vue>()
 
 /**
@@ -60,7 +60,7 @@ export function setupTraining(): void {
 
     AudioSource.create(socle, { audioClipUrl: 'assets/sounds/hit.wav', playing: false, loop: false, volume: 0.5 })
 
-    vues.set(m.id, { socle, barre, etiquette, couleur })
+    vues.set(m.id, { socle, barre, etiquette, couleur, texte: '', part: -1 })
   }
 
   room.onMessage('trainState', (d) => {
@@ -108,23 +108,29 @@ function peindre(): void {
   for (const [id, v] of vues) {
     const actif = id === trainView.machine
     const part = actif && trainView.rechargeSec === 0 ? trainView.reps / trainView.cible : 0
-    const t = Transform.getMutableOrNull(v.barre)
-    if (t !== null) {
-      // Une barre qui grandit depuis la GAUCHE: on met a l'echelle et on recentre, sinon
-      // elle grandirait des deux cotes a partir du milieu.
-      const m = MACHINES.find((x) => x.id === id)
-      const largeur = Math.max(0.001, part * 1.6)
-      t.scale = Vector3.create(largeur, 0.16, 0.16)
-      if (m !== undefined) t.position = Vector3.create(m.x - 0.8 + largeur / 2, 1.55, m.z)
+    if (part !== v.part) {
+      v.part = part
+      const t = Transform.getMutableOrNull(v.barre)
+      if (t !== null) {
+        // Une barre qui grandit depuis la GAUCHE: on met a l'echelle et on RECENTRE,
+        // sinon elle grandirait des deux cotes a partir de son milieu.
+        const m = MACHINES.find((x) => x.id === id)
+        const largeur = Math.max(0.001, part * 1.6)
+        t.scale = Vector3.create(largeur, 0.16, 0.16)
+        if (m !== undefined) t.position = Vector3.create(m.x - 0.8 + largeur / 2, 1.55, m.z)
+      }
     }
-    const txt = TextShape.getMutableOrNull(v.etiquette)
-    const m = MACHINES.find((x) => x.id === id)
-    if (txt !== null && m !== undefined) {
-      txt.text = trainView.rechargeSec > 0
-        ? `${m.nom}\nresting ${trainView.rechargeSec}s`
-        : actif && trainView.reps > 0
-          ? `${m.nom}\n${trainView.reps}/${trainView.cible}`
-          : `${m.nom}\ntap to train`
+    const m2 = MACHINES.find((x) => x.id === id)
+    if (m2 === undefined) continue
+    const voulu = trainView.rechargeSec > 0
+      ? `${m2.nom}\nresting ${trainView.rechargeSec}s`
+      : actif && trainView.reps > 0
+        ? `${m2.nom}\n${trainView.reps}/${trainView.cible}`
+        : `${m2.nom}\ntap to train`
+    if (voulu !== v.texte) {
+      v.texte = voulu
+      const txt = TextShape.getMutableOrNull(v.etiquette)
+      if (txt !== null) txt.text = voulu
     }
   }
 }

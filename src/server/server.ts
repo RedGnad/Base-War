@@ -6,6 +6,7 @@ import { room } from '../shared/messages'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne } from './plots'
 import { pousserQuetes } from './theft'
 import { startTraining } from './training'
+import { startBoss } from './boss'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
@@ -113,6 +114,7 @@ export function startServer(): void {
   startTheft()
   startBelt()
   startTraining()
+  startBoss()
 
 
   // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.
