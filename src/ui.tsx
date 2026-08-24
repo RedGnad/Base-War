@@ -7,10 +7,11 @@ import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collec
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
-import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
-import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
+import { IndexPanel, indexView } from './client/index-ui'
+import { QuestsPanel, quetesAPrendre } from './client/quests-ui'
+import { menuView, ongletActif, basculerMenu, choisirOnglet } from './client/menu'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
-import { travelView, rentrer, allerAuTapis } from './client/travel'
+import { travelView, rentrer, allerAuTapis, basculerVoyage } from './client/travel'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -127,25 +128,30 @@ const uiComponent = () => (
     {!welcomeView.ouvert && (
     <UiEntity
       uiTransform={{
-        width: 240, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
+        width: 260, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
         flexDirection: 'row', justifyContent: 'flex-end'
       }}
     >
-      {/* Le compteur du bouton porte le NOMBRE DE QUETES A ENCAISSER, pas le nombre de
-          quetes. Un badge qui affiche « 3 » en permanence n'appelle a rien; un badge qui
-          passe a 1 quand quelque chose attend est la seule raison d'ouvrir le panneau. */}
+      {/* LES ONGLETS n'apparaissent QUE menu ouvert: fermes, ils seraient deux boutons
+          permanents de plus, c'est-a-dire le probleme qu'on vient de resoudre. */}
+      {menuView.ouvert && (
+        <Button
+          uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
+          value="GOALS" variant={ongletActif() === 'goals' ? 'primary' : 'secondary'}
+          fontSize={12} onMouseDown={() => choisirOnglet('goals')} />
+      )}
+      {menuView.ouvert && (
+        <Button
+          uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
+          value={`INDEX ${indexView.vus.length}`}
+          variant={ongletActif() === 'index' ? 'primary' : 'secondary'}
+          fontSize={12} onMouseDown={() => choisirOnglet('index')} />
+      )}
       <Button
-        uiTransform={{ width: 118, height: 36, margin: { right: 6 } }}
-        value={questsView.ouvert ? 'CLOSE' : (quetesAPrendre() > 0 ? `GOALS  ${quetesAPrendre()} !` : 'GOALS')}
-        variant={questsView.ouvert || quetesAPrendre() > 0 ? 'primary' : 'secondary'}
-        fontSize={12}
-        onMouseDown={basculerQuests} />
-      <Button
-        uiTransform={{ width: 108, height: 36 }}
-        value={indexView.ouvert ? 'CLOSE' : `INDEX ${indexView.vus.length}`}
-        variant={indexView.ouvert ? 'primary' : 'secondary'}
-        fontSize={12}
-        onMouseDown={basculerIndex} />
+        uiTransform={{ width: 62, height: 36 }}
+        value={menuView.ouvert ? 'X' : (quetesAPrendre() > 0 ? `☰ ${quetesAPrendre()}` : '☰')}
+        variant={menuView.ouvert || quetesAPrendre() > 0 ? 'primary' : 'secondary'}
+        fontSize={14} onMouseDown={basculerMenu} />
     </UiEntity>
     )}
 
@@ -195,31 +201,40 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* VOYAGE. Deux destinations, les deux poles de la boucle.
-        Le lieu fait 80 m et un juge a trois minutes: marcher n'est pas du gameplay ici,
-        c'est du temps retire au gameplay. Places en colonne a GAUCHE, loin du pouce
-        principal: ce sont des raccourcis, pas l'action du moment. */}
+    {/* VOYAGE, REPLIE. Un bouton, et les destinations n'apparaissent qu'a la demande.
+        Le lieu fait 80 m et un juge a trois minutes: marcher n'est pas du gameplay ici.
+        Mais trois boutons permanents pour des gestes rares, c'est trois choses a lire en
+        permanence, et la lisibilite est notee (Mobile UX, un tiers des 43 %). */}
     <UiEntity
       uiTransform={{
-        width: 150, height: 130, positionType: 'absolute', position: { top: 216, left: 110 },
-        flexDirection: 'column', justifyContent: 'space-between'
+        width: 150, height: travelView.ouvert ? 172 : 38,
+        positionType: 'absolute', position: { top: 216, left: 110 },
+        flexDirection: 'column', justifyContent: 'flex-start'
       }}
     >
       <Button
-        uiTransform={{ width: 150, height: 38 }}
-        value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
-        fontSize={13} onMouseDown={rentrer} />
-      <Button
-        uiTransform={{ width: 150, height: 38 }}
-        value="GO TO BELT" variant="secondary" fontSize={13} onMouseDown={allerAuTapis} />
-      {/* La pose a SON bouton, et il n'apparait qu'une fois la base posee: avant, c'est
-          l'action principale qui la porte, parce que c'est alors la seule chose a faire. */}
-      {theftView.basePosee && (
+        uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
+        value={travelView.ouvert ? 'CLOSE' : 'TRAVEL'}
+        variant={travelView.ouvert ? 'primary' : 'secondary'}
+        fontSize={13} onMouseDown={basculerVoyage} />
+      {travelView.ouvert && (
+        <Button
+          uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
+          value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
+          fontSize={13} onMouseDown={() => { rentrer(); basculerVoyage() }} />
+      )}
+      {travelView.ouvert && (
+        <Button
+          uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
+          value="GO TO BELT" variant="secondary" fontSize={13}
+          onMouseDown={() => { allerAuTapis(); basculerVoyage() }} />
+      )}
+      {travelView.ouvert && theftView.basePosee && (
         <Button
           uiTransform={{ width: 150, height: 38 }}
           value={slotView.actif ? 'CANCEL MOVE' : 'MOVE BASE'}
           variant={slotView.actif ? 'primary' : 'secondary'}
-          fontSize={13} onMouseDown={basculerPose} />
+          fontSize={13} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
       )}
     </UiEntity>
 
@@ -242,7 +257,10 @@ const uiComponent = () => (
           : theftView.revenu === 0 ? 'open a crate to start earning'
           // On MONTRE la reserve qui se remplit: sans ca, le bouton COLLECT sort de
           // nulle part et personne ne comprend d'ou vient l'argent.
-          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting  ·  ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.sentinelles > 0 ? '  ·  sentry ' + theftView.sentinelles : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
+          // TROIS FAITS AU PLUS. Le nombre d'objets et d'etages se LIT SUR LA BASE, en
+          // trois dimensions: le repeter en texte prend de la place et n'apprend rien.
+          // Restent le debit, ce qui attend d'etre encaisse, et la defense.
+          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting${theftView.sentinelles > 0 ? '  ·  sentry ' + theftView.sentinelles : ''}`
         }
         fontSize={13}
         color={

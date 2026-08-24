@@ -34,7 +34,20 @@ function maBase(): Vector3 | null {
   return null
 }
 
-export const travelView = { peutRentrer: false }
+export const travelView = {
+  peutRentrer: false,
+  /**
+   * Le panneau de voyage est REPLIE par defaut.
+   * Trois boutons permanents pour des gestes rares (rentrer, aller au tapis, deplacer sa
+   * base) occupaient un quart de la colonne gauche en continu. Replies derriere un seul
+   * bouton, ils coutent un tap quand on en a besoin et zero attention le reste du temps.
+   * Le point d'apparition ayant ete ramene sur la place, « aller au tapis » n'est meme
+   * plus le premier besoin d'un nouveau joueur.
+   */
+  ouvert: false
+}
+
+export function basculerVoyage(): void { travelView.ouvert = !travelView.ouvert }
 
 export function setupTravel(): void {
   engine.addSystem(() => { travelView.peutRentrer = maBase() !== null })

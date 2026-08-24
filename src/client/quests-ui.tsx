@@ -4,6 +4,7 @@ import { room } from '../shared/messages'
 import { QUETES } from '../shared/quests'
 import { RECOMPENSES_JOUR } from '../shared/schemas'
 import { boite } from '../shared/loot-table'
+import { fermerMenu } from './menu'
 
 export const questsView = {
   ouvert: false,
@@ -26,7 +27,7 @@ export function setupQuests(): void {
   })
 }
 
-export function basculerQuests(): void { questsView.ouvert = !questsView.ouvert }
+
 function reclamer(slot: number): void { void room.send('claimQuest', { slot }) }
 
 /** Combien de quetes sont FINIES mais pas encore encaissees: c'est le chiffre du badge. */
@@ -167,7 +168,7 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
       </UiEntity>
 
       <Button uiTransform={{ width: 130, height: 40, margin: { top: 10 } }}
-        value="CLOSE" variant="secondary" fontSize={14} onMouseDown={basculerQuests} />
+        value="CLOSE" variant="secondary" fontSize={14} onMouseDown={fermerMenu} />
     </UiEntity>
   )
 }
