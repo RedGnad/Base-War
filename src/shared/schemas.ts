@@ -105,7 +105,7 @@ export function crowdBonus(nbPresents: number): number {
  * works with a thumb on a phone. The 8s floor stops a base built next to the belt from
  * being uncontestable, which would make "build close" strictly dominant.
  */
-export const CONVOY_SPEED = 2.0
+export const CONVOY_SPEED = 2.3
 export const CONVOY_MIN_S = 8
 export const CONVOY_OUTBID = 1.5
 export const CONVOY_RANGE = 6
@@ -270,7 +270,10 @@ export function rampPosition(floor: number): { dx: number; dy: number; dz: numbe
     dz: 0
   }
 }
-export const CENTER = { x: 40, z: 40 }
+/** Scene side in metres. 8x8 parcels of 16 m. Real deployed Worlds run up to 2475
+ * parcels, so the platform is not the constraint here: population is. */
+export const SCENE_SIDE = 128
+export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
 
 export const BEAT_MS = 2000
 export const BEAT_DEAD_AFTER_MS = BEAT_MS * 3

@@ -3,12 +3,12 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { BASE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
+import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { monAdresseClient } from './theft'
 
-const SCENE_COTE = 80
+
 
 export const slotView = { active: false, valid: false, reason: '' }
 
@@ -62,7 +62,7 @@ export function setupSlots(): void {
     const obstacles = moi === null
       ? autres
       : autres.filter((a) => Math.abs(a.x - moi.x) > 0.01 || Math.abs(a.z - moi.z) > 0.01)
-    const reason = invalidReason(x, z, SCENE_COTE, obstacles)
+    const reason = invalidReason(x, z, SCENE_SIDE, obstacles)
     slotView.valid = reason === null
     slotView.reason = reason ?? ''
 
