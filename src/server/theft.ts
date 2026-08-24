@@ -13,7 +13,7 @@ import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
   basesProches, lockOf, setLock, removeItem, addItem,
-  displayName, storeAlert, takeAlerts, coinsDe, tenterRebirth, prestigeOf,
+  displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
   placeBase, basePoints, sellItemFromBase, buyFloorFor, lockCooldown, collectPending, moveItemTo
 } from './plots'
 

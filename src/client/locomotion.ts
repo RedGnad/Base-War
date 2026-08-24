@@ -25,6 +25,8 @@ export function applyThiefPenalty(active: boolean): void {
 
 export function setupTouchHud(): void {
   TouchScreenControls.setMainAction(InputAction.IA_PRIMARY)
+  // IA_SECONDARY fires the pistol; it must keep its on-screen button on a phone.
+  TouchScreenControls.showAll()
 
   TouchScreenControls.hide([
     InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,

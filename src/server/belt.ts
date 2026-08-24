@@ -7,7 +7,7 @@ import {
 import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation } from './loot'
-import { displayName, depenser, coinsDe, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests } from './plots'
+import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests } from './plots'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
@@ -99,8 +99,8 @@ export function startBelt(): void {
       return
     }
 
-    if (!depenser(a, art.price)) {
-      void room.send('actionRejected', { action: 'purchase', reason: `you need ${art.price - coinsDe(a)} more coins`, antiCheat: false }, { to: [a] })
+    if (!spend(a, art.price)) {
+      void room.send('actionRejected', { action: 'purchase', reason: `you need ${art.price - coinsOf(a)} more coins`, antiCheat: false }, { to: [a] })
       return
     }
 

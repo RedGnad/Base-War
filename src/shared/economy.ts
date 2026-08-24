@@ -16,7 +16,15 @@ export const CRATE_PAYBACK_S = [60, 120, 240, 480] as const
 
 export const FLOOR_PRICES = [0, 38000, 475000] as const
 
-export const PRESTIGE_THRESHOLD = 75000
+/**
+ * Prestige 1 lands after roughly 25 minutes of real play, not 9.
+ *
+ * The old 75 000 was calibrated against 42/s, an assumption. Measured against the actual
+ * loot table, a starting player runs ~288/s with six items, so the first prestige fell in
+ * 9 minutes and in half a minute once Rare crates were affordable. Threshold recomputed
+ * from the measured average output of a Basic/Good mix.
+ */
+export const PRESTIGE_THRESHOLD = 430000
 
 export function prestigeFor(cumul: number): number {
   return cumul <= 0 ? 0 : Math.floor(Math.cbrt(cumul / PRESTIGE_THRESHOLD))

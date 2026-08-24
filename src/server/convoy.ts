@@ -7,7 +7,7 @@ import {
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
-  positionOf, displayName, addCrate, cratesOf, depenser, crediter, baseDe, advanceQuest, pushQuests
+  positionOf, displayName, addCrate, cratesOf, spend, crediter, baseDe, advanceQuest, pushQuests
 } from './plots'
 import { crate } from '../shared/loot-table'
 
@@ -105,7 +105,7 @@ export function runConvoys(): void {
       return
     }
     const price = Math.ceil(e.pricePaid * CONVOY_OUTBID)
-    if (!depenser(a, price)) { refus(a, `you need ${price} coins`); return }
+    if (!spend(a, price)) { refus(a, `you need ${price} coins`); return }
 
     // The outbid holder is refunded in full. Without it, buying early would be strictly
     // losing and nobody would ever buy before the belt's end.

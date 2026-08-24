@@ -3,9 +3,10 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, placeItem, coinsDe, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
+import { startPlots, accueillir, auRevoir, placeItem, coinsOf, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
 import { runConvoys } from './convoy'
+import { startCombat } from './combat'
 import { log, flushLog, replayLog } from './log'
 import { startTheft, lockOnArrival, delivrerAlertes, recordPrestige } from './theft'
 import { startBelt } from './belt'
@@ -96,6 +97,7 @@ export function startServer(): void {
   startTheft()
   startBelt()
   runConvoys()
+  startCombat()
 
   const presents = new Set<string>()
   let sinceCheck = 0

@@ -17,6 +17,7 @@ import { setupTutorial } from './tutorial'
 import { setupTravel } from './travel'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
+import { setupCombat } from './combat'
 
 export const view = {
   items: 0,
@@ -43,6 +44,7 @@ export function startClient(): void {
   setupBelt()
   setupSlots()
   setupConvoy()
+  setupCombat()
   setupQuests()
   setupTutorial()
   setupTravel()

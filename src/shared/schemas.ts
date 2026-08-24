@@ -83,6 +83,33 @@ export const STEAL_HOLD_RANGE = 7
  */
 export const GIFT_RANGE = 9
 
+/**
+ * THE PISTOL.
+ *
+ * The reference arms everyone: Bat by default, then Slap, Taser, Medusa's Head, Bee
+ * Launcher, Heatseeker, Paintball Gun. Hitting a carrier is how an owner gets their loot
+ * back, so combat is the defensive half of the game, not an addition to it.
+ *
+ * Here a hit does not kill: it makes the target DROP coins on the spot, and anyone can
+ * pick them up. A carrier is therefore worth shooting, and a rich player crossing the
+ * venue is taking a risk. Nothing is destroyed, so a bad player cannot grief a good one
+ * into ruin: the coins change hands, they do not vanish.
+ */
+export const SHOT_RANGE = 28
+export const SHOT_COOLDOWN_MS = 900
+/** Fraction of banked coins dropped per hit, and its absolute cap. */
+export const SHOT_DROP_SHARE = 0.10
+export const SHOT_DROP_CAP_S = 60
+/** A dropped pile is picked up by walking within this radius, and fades if nobody comes. */
+export const LOOT_PICKUP_RANGE = 3
+export const LOOT_LIFETIME_MS = 45_000
+
+export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
+  amount: Schemas.Int,
+  droppedBy: Schemas.String,
+  untilMs: Schemas.Int64
+})
+
 export const SENTRY_CHARGES = 3
 export const SENTRY_SECONDS = 120
 export const SENTRY_MIN_PRICE = 240
@@ -105,7 +132,7 @@ export function crowdBonus(nbPresents: number): number {
  * works with a thumb on a phone. The 8s floor stops a base built next to the belt from
  * being uncontestable, which would make "build close" strictly dominant.
  */
-export const CONVOY_SPEED = 2.3
+export const CONVOY_SPEED = 3.4
 export const CONVOY_MIN_S = 8
 export const CONVOY_OUTBID = 1.5
 export const CONVOY_RANGE = 6
@@ -272,7 +299,7 @@ export function rampPosition(floor: number): { dx: number; dy: number; dz: numbe
 }
 /** Scene side in metres. 8x8 parcels of 16 m. Real deployed Worlds run up to 2475
  * parcels, so the platform is not the constraint here: population is. */
-export const SCENE_SIDE = 128
+export const SCENE_SIDE = 192
 export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
 
 export const BEAT_MS = 2000
@@ -295,4 +322,5 @@ export function registerValidators(): void {
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
   Convoy.validateBeforeChange(serverOnly)
+  DroppedCoins.validateBeforeChange(serverOnly)
 }

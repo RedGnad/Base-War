@@ -220,7 +220,7 @@ export async function placeItem(address: string, rarity: number): Promise<boolea
   return true
 }
 
-export function coinsDe(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
+export function coinsOf(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
 
 export type BaseView = { address: string; name: string; items: number[]; entity: ReturnType<typeof engine.addEntity> }
 
@@ -562,7 +562,7 @@ export function cratesOf(address: string): number[] {
   return [...(profiles.get(address)?.crates ?? [])]
 }
 
-export function depenser(address: string, montant: number): boolean {
+export function spend(address: string, montant: number): boolean {
   const p = profiles.get(address)
   if (!p) return false
   if (montant > 0 && p.coins < montant) return false
