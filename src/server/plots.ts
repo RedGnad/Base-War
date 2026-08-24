@@ -60,6 +60,8 @@ type Profil = {
   dernierJour?: number
   /** jours consecutifs de connexion, 1 a 7 puis retour a 1 */
   serie?: number
+  /** etape du tutoriel atteinte; egale au nombre d'etapes = termine */
+  tuto?: number
   /** jour (AAAAMMJJ) du jeu de quetes en cours; un autre jour remet a zero */
   quetesJour?: number
   /** avancement des TROIS quetes du jour, dans l'ordre de `quetesDuJour()` */
@@ -739,6 +741,17 @@ export function crediter(address: string, montant: number): void {
   const p = profils.get(address)
   if (!p || montant <= 0) return
   p.coins += montant
+  profilsSales.add(address)
+}
+
+export function etapeTuto(address: string): number {
+  return profils.get(address)?.tuto ?? 0
+}
+
+export function avancerTuto(address: string): void {
+  const p = profils.get(address)
+  if (!p) return
+  p.tuto = (p.tuto ?? 0) + 1
   profilsSales.add(address)
 }
 

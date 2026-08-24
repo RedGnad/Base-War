@@ -9,6 +9,8 @@ import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
 import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
+import { tutoView, ETAPES_TEXTE } from './client/tutorial'
+import { bossView } from './client/boss'
 import { WelcomePanel } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -125,6 +127,47 @@ const uiComponent = () => (
         fontSize={12}
         onMouseDown={basculerIndex} />
     </UiEntity>
+
+    {/* GAUCHE: LE TUTORIEL, tant qu'il reste une etape.
+        Il ne se lit pas, il se SUIT: le serveur n'avance l'etape que quand l'action a
+        reellement eu lieu, donc la carte dit toujours le geste suivant et rien d'autre.
+        Elle disparait a la derniere etape: un tutoriel qui reste apres avoir servi
+        devient du decor, et le decor ne se lit plus. */}
+    {tutoView.etape < tutoView.total && (
+      <UiEntity
+        uiTransform={{
+          width: 320, height: 92, positionType: 'absolute', position: { top: 112, left: 24 },
+          flexDirection: 'column', padding: 12
+        }}
+        uiBackground={{ color: Color4.create(0.04, 0.07, 0.12, 0.88) }}
+      >
+        <Label
+          value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ·  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
+          fontSize={15} color={Color4.fromHexString('#4dd2ffff')}
+          uiTransform={{ width: '100%', height: 24 }} textAlign="middle-left" />
+        <Label
+          value={ETAPES_TEXTE[tutoView.etape]?.aide ?? ''}
+          fontSize={13} color={Color4.fromHexString('#a8b2c0ff')}
+          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" />
+      </UiEntity>
+    )}
+
+    {/* BANNIERE DU BOSS. Sans elle, un joueur a l'autre bout des 80 m ne sait pas qu'une
+        cible commune est ouverte, et le seul moment collectif du jeu passe inapercu.
+        Elle ne s'affiche QUE s'il est vivant: annoncer un boss mort n'appelle a rien. */}
+    {bossView.vivant && (
+      <UiEntity
+        uiTransform={{
+          width: 300, height: 44, positionType: 'absolute',
+          position: { top: 112, left: '50%' }, margin: { left: -150 },
+          flexDirection: 'row', justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={{ color: Color4.create(0.24, 0.06, 0.06, 0.85) }}
+      >
+        <Label value={`BOSS UP  ${bossView.pv}/${bossView.pvMax}`} fontSize={16}
+          color={Color4.fromHexString('#ff9b9bff')} />
+      </UiEntity>
+    )}
 
     {/* HAUT-CENTRE: etat, non actionnable. */}
     <UiEntity

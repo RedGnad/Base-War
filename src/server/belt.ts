@@ -9,6 +9,7 @@ import { jour } from './journal'
 import { rollTypeBoite, rollBoite, rollMutation } from './loot'
 import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete } from './plots'
 import { pousserQuetes } from './theft'
+import { tutoFait } from './onboarding'
 import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 
 /**
@@ -123,6 +124,7 @@ export function startBelt(): void {
     // La boite part FERMEE dans le stock: le hasard se revele a l'ouverture, pas a l'achat.
     ajouterBoite(a, art.typeBoite)
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    tutoFait(a, 3)
     avancerQuete(a, 'acheter')
     pousserQuetes(a)
     art.vendu = true
@@ -167,6 +169,7 @@ export function startBelt(): void {
     // DEUX TIRAGES SEPARES: la rarete, puis la mutation. C'est ce qui cree la surprise
     // composee (« un Rare... DORE ! ») et multiplie la table par 14 sans un maillage
     // de plus.
+    tutoFait(a, 1)
     avancerQuete(a, 'ouvrir')
     if (d.typeBoite >= 1) avancerQuete(a, 'ouvrirRare')
     const rarity = rollBoite(d.typeBoite)

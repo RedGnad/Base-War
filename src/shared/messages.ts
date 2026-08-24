@@ -88,6 +88,11 @@ export const MESSAGES = {
     cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
     jour: Schemas.Int, jourPris: Schemas.Boolean
   }),
+  /** serveur -> le joueur: l'etape du tutoriel qu'il lui reste a faire. */
+  tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int }),
+  /** serveur -> le joueur: cadeau des 15 minutes de presence continue. */
+  timeGift: Schemas.Map({ boite: Schemas.Int, minutes: Schemas.Int }),
+
   /** client -> serveur: je frappe le boss. Le serveur verifie la portee et decide. */
   hitBoss: Schemas.Map({}),
   /** serveur -> tous: le boss est tombe. */

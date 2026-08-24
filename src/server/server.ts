@@ -7,6 +7,7 @@ import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLig
 import { pousserQuetes } from './theft'
 import { startTraining } from './training'
 import { startBoss } from './boss'
+import { arrivee, depart, verifierCadeau } from './onboarding'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
@@ -156,6 +157,7 @@ export function startServer(): void {
         // Les quetes du jour partent a l'entree: elles doivent etre lisibles AVANT
         // que le joueur ne cherche quoi faire, pas apres sa premiere action.
         pousserQuetes(address)
+        arrivee(address)
         verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied
         delivrerAlertes(address)  // ce qui s'est passe pendant l'absence
         rejouerJournal(address)
@@ -163,11 +165,14 @@ export function startServer(): void {
       })()
     }
 
+    verifierCadeau(presents)
+
     for (const address of [...presents]) {
       if (ici.has(address)) continue
       presents.delete(address)
       dirty.add(address)
       auRevoir(address)
+      depart(address)
       void flush()
     }
   })

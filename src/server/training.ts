@@ -7,6 +7,7 @@ import {
 } from '../shared/training'
 import { positionDe, revenuParSeconde, crediter, nomAffiche, avancerQuete } from './plots'
 import { pousserQuetes } from './theft'
+import { tutoFait } from './onboarding'
 
 type Serie = { machine: number; reps: number; finRecharge: number }
 const series = new Map<string, Serie>()
@@ -56,6 +57,7 @@ export function startTraining(): void {
       s.reps = 0
       s.finRecharge = maintenant + ENTRAINEMENT_RECHARGE_MS
       void room.send('trainDone', { machine: m.id, gain }, { to: [a] })
+      tutoFait(a, 4)
       avancerQuete(a, 'entrainer')
       avancerQuete(a, 'banquer', gain)
       pousserQuetes(a)

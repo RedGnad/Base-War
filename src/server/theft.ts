@@ -9,6 +9,7 @@ import {
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
 import { avancerQuete, etatQuetes, reclamerQuete, boitesDe } from './plots'
+import { tutoFait } from './onboarding'
 import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
 import {
@@ -173,6 +174,7 @@ export function startTheft(): void {
     }
     const r = poserBase(a, d.x, d.z)
     if (!r.ok) { refus(a, 'build', r.raison ?? 'refused'); return }
+    tutoFait(a, 0)
   })
 
   // Les positions des bases existantes servent au fantome cote client.
@@ -203,6 +205,7 @@ export function startTheft(): void {
     const gain = collecter(a)
     if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
     void room.send('collected', { gain }, { to: [a] })
+    tutoFait(a, 2)
     avancerQuete(a, 'collecter')
     avancerQuete(a, 'banquer', gain)
     pousserQuetes(a)
