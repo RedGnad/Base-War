@@ -136,7 +136,7 @@ function Crosshair() {
           }}
         >
           <Label value={`${combatView.targetName.toUpperCase()}  ·  ${Math.round(combatView.targetDist)} m`}
-            fontSize={14} color={Color4.fromHexString('#ff8b8bff')} textAlign="middle-center" />
+            fontSize={TYPE.label} color={Color4.fromHexString('#ff8b8bff')} textAlign="middle-center" />
         </UiEntity>
       )}
     </UiEntity>
@@ -155,28 +155,28 @@ const uiComponent = () => (
     {!welcomeView.open && (
     <UiEntity
       uiTransform={{
-        width: 260, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
+        width: 460, height: TAP.height, positionType: 'absolute', position: { top: 158, right: 24 },
         flexDirection: 'row', justifyContent: 'flex-end'
       }}
     >
       {menuView.open && (
         <Button
-          uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
+          uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
           value="GOALS" variant={activeTab() === 'goals' ? 'primary' : 'secondary'}
-          fontSize={12} onMouseDown={() => chooseTab('goals')} />
+          fontSize={TYPE.caption} onMouseDown={() => chooseTab('goals')} />
       )}
       {menuView.open && (
         <Button
-          uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
+          uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
           value={`INDEX ${indexView.vus.length}`}
           variant={activeTab() === 'index' ? 'primary' : 'secondary'}
-          fontSize={12} onMouseDown={() => chooseTab('index')} />
+          fontSize={TYPE.caption} onMouseDown={() => chooseTab('index')} />
       )}
       <Button
-        uiTransform={{ width: 62, height: 36 }}
+        uiTransform={{ width: 110, height: TAP.height }}
         value={menuView.open ? 'X' : (questsToClaim() > 0 ? `☰ ${questsToClaim()}` : '☰')}
         variant={menuView.open || questsToClaim() > 0 ? 'primary' : 'secondary'}
-        fontSize={14} onMouseDown={basculerMenu} />
+        fontSize={TYPE.label} onMouseDown={basculerMenu} />
     </UiEntity>
     )}
 
@@ -216,7 +216,7 @@ const uiComponent = () => (
       >
         <Label
           value={`CROWD BONUS  +${Math.round(theftView.prime * 100)}%  ·  ${theftView.presents} players here`}
-          fontSize={15} color={Color4.fromHexString('#8fe08fff')} />
+          fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
       </UiEntity>
     )}
 
@@ -233,7 +233,7 @@ const uiComponent = () => (
       <UiEntity
         uiTransform={{
           width: 300, height: travelView.open ? TAP.height * 4 + TAP.gap * 3 : TAP.height,
-          positionType: 'absolute', position: { top: 170, right: 24 },
+          positionType: 'absolute', position: { top: 158 + TAP.height + TAP.gap, right: 24 },
           flexDirection: 'column', justifyContent: 'flex-start'
         }}
       >
@@ -305,7 +305,7 @@ const uiComponent = () => (
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
       >
         {theftView.fil.slice(0, 3).map((l, i) => (
-          <Label key={i} value={l} fontSize={12} color={Color4.fromHexString('#b8c2d0ff')} />
+          <Label key={i} value={l} fontSize={TYPE.caption} color={Color4.fromHexString('#b8c2d0ff')} />
         ))}
       </UiEntity>
     )}
@@ -350,7 +350,7 @@ const uiComponent = () => (
               : itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
         <Label
           value={boxView.roule ? '...' : ETATS[boxView.state]?.(boxView.resultat) ?? ''}
-          fontSize={15}
+          fontSize={TYPE.label}
           color={Color4.fromHexString(boxView.state === 'expose' ? '#8fe08fff' : '#ffd166ff')} />
       </UiEntity>
     )}
@@ -364,7 +364,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
       >
-        <Label value="place your base first: crates are opened at your base" fontSize={14} color={Color4.fromHexString('#ffd166ff')} />
+        <Label value="place your base first: crates are opened at your base" fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 
@@ -378,10 +378,10 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0.05, 0.12, 0.05, 0.85) }}
       >
-        <Label value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={14} color={Color4.fromHexString('#8fe08fff')} />
+        <Label value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
         <Button
           uiTransform={{ width: 110, height: 34 }}
-          value="SELL IT" variant="secondary" fontSize={13}
+          value="SELL IT" variant="secondary" fontSize={TYPE.caption}
           onMouseDown={() => { sell(placementView.selection); placementView.selection = -1 }} />
       </UiEntity>
     )}
@@ -410,7 +410,7 @@ const uiComponent = () => (
       >
         <Label
           value={`TAKING FROM ${theftView.stealTarget.toUpperCase()}  ·  ${(theftView.stealLeftMs / 1000).toFixed(1)}s`}
-          fontSize={16} color={Color4.fromHexString('#ff9b9bff')}
+          fontSize={TYPE.label} color={Color4.fromHexString('#ff9b9bff')}
           uiTransform={{ width: '100%', height: 24 }} textAlign="middle-center" />
         <UiEntity
           uiTransform={{ width: '100%', height: 12, margin: { top: 4, bottom: 4 } }}
@@ -420,7 +420,7 @@ const uiComponent = () => (
             uiTransform={{ width: `${Math.max(0, Math.min(100, 100 - (theftView.stealLeftMs / theftView.stealTotalMs) * 100))}%`, height: 12 }}
             uiBackground={{ color: Color4.fromHexString('#ff6b6bff') }} />
         </UiEntity>
-        <Label value="stay close - walking away cancels it" fontSize={12}
+        <Label value="stay close - walking away cancels it" fontSize={TYPE.caption}
           color={Color4.fromHexString('#c9a0a0ff')}
           uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />
       </UiEntity>

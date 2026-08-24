@@ -1,5 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
+import { TYPE, TAP } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
 
 export const indexView = { open: false, vus: [] as number[] }
@@ -29,17 +30,17 @@ export const IndexPanel = () => {
     >
       <Label
         value={`COLLECTION  ${vus.size} / ${total}`}
-        fontSize={18}
+        fontSize={TYPE.body}
         color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ height: 26 }} />
+        uiTransform={{ height: 44 }} />
 
       {RARITIES.map((r) => (
         <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
           <Label
             value={r.name}
-            fontSize={11}
+            fontSize={TYPE.caption}
             color={Color4.fromHexString(r.color + 'ff')}
-            uiTransform={{ width: 108, height: CASE }} />
+            uiTransform={{ width: 184, height: CASE }} />
           {MUTATIONS.map((m) => {
             const trouve = vus.has(encoder(r.id, m.id))
             return (
@@ -58,9 +59,9 @@ export const IndexPanel = () => {
 
       <Label
         value="rows: rarity   ·   columns: mutation"
-        fontSize={11}
+        fontSize={TYPE.caption}
         color={Color4.fromHexString('#7d8798ff')}
-        uiTransform={{ height: 20 }} />
+        uiTransform={{ height: 34 }} />
     </UiEntity>
   )
 }
