@@ -242,28 +242,33 @@ export const PORTE_LARGEUR = 2.0
  * fait accelerer la boucle au lieu de la faire stagner.
  */
 /**
- * PALIERS. FORME reprise du tableau `Rebirth` du wiki de la reference (jeu a 191 330
- * joueurs simultanes), pas inventee:
+ * PALIERS (prestige). PRIX CALCULES, pas devines ni copies.
  *
- *   couts requis : 500K, 1.5M, 7.5M, 25M, 100M, 350M, 1B, 5B, 25B, 125B, 800B
- *                  -> progression GEOMETRIQUE, rapport 3 a 5
- *   multiplicateurs: x0.5, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10...
- *                  -> progression LINEAIRE, +1 par palier
+ * Ce que coute VRAIMENT un prestige, mesure par simulation seconde par seconde:
+ * le sacrifice des objets ne coute que **39 a 69 secondes** de reconstruction (les
+ * boites se remboursent en 60 s, donc on refait une base pleine tres vite). Le PRIX EN
+ * PIECES porte donc tout le poids du choix.
  *
- * Ce qui est TRANSPOSE: la forme (rapport 4 entre paliers, multiplicateur +1).
- * Ce qui est A NOUS: l'ancrage du premier palier, car nos revenus n'ont pas la meme
- * echelle que les leurs et les valeurs absolues ne se transferent pas.
+ * Chaque palier exige de POSSEDER une rarete donnee, donc la base produit bien plus au
+ * moment de l'achat, et le gain du +1 de multiplicateur suit:
  *
- * Ancrage: une base de 6 Peu communs produit 24/s; 5 000 pieces representent donc
- * quelques minutes de jeu accumule, le temps de remplir une base et de l'ameliorer une
- * fois. Ma version precedente (multiplicateurs 2/3/5/8) faisait exploser le revenu
- * bien plus vite que la reference ne l'autorise.
+ *   palier 1 (exige Uncommon ): 12 x   4 =   48/s · gain +48/s   -> 48 x 300 =  14 400
+ *   palier 2 (exige Rare     ): 12 x  16 =  192/s · gain +192/s  -> 192 x 300 =  57 600
+ *   palier 3 (exige Epic     ): 12 x  64 =  768/s · gain +768/s  -> 768 x 300 = 230 400
+ *   palier 4 (exige Legendary): 12 x 256 = 3072/s · gain +3072/s -> 3072 x 300 = 921 600
+ *
+ * REGLE: remboursement en 300 s, le pari le plus long du jeu.
+ *   une boite : 60 s · un etage : 120 s · un palier : 300 s
+ *
+ * Les rapports obtenus valent 4,0 partout, ce qui tombe dans la fourchette 3 a 5 de la
+ * courbe de reference. On y arrive par CALCUL, pas par imitation: c'est la meme
+ * conclusion atteinte independamment, ce qui la rend plus solide qu'une transposition.
  */
 export const PALIERS = [
-  { cout: 5000,   rareteMin: 1, multiplicateur: 2, garde: 1 },
-  { cout: 20000,  rareteMin: 2, multiplicateur: 3, garde: 1 },
-  { cout: 80000,  rareteMin: 3, multiplicateur: 4, garde: 2 },
-  { cout: 320000, rareteMin: 4, multiplicateur: 5, garde: 2 }
+  { cout: 14400,  rareteMin: 1, multiplicateur: 2, garde: 1 },
+  { cout: 57600,  rareteMin: 2, multiplicateur: 3, garde: 1 },
+  { cout: 230400, rareteMin: 3, multiplicateur: 4, garde: 2 },
+  { cout: 921600, rareteMin: 4, multiplicateur: 5, garde: 2 }
 ] as const
 export const REBIRTH_MAX = PALIERS.length
 

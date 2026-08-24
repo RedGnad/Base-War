@@ -228,7 +228,7 @@ const uiComponent = () => (
         <Button
           uiTransform={{ width: 150, height: 54 }}
           value={theftView.coins >= theftView.prochainPalier
-            ? `PRESTIGE x${theftView.multiplicateur * 2}`
+            ? `PRESTIGE x${theftView.multiplicateur + 1}  (resets loot)`
             : `PRESTIGE ${theftView.prochainPalier}`}
           variant={theftView.coins >= theftView.prochainPalier ? 'primary' : 'secondary'}
           fontSize={14}
