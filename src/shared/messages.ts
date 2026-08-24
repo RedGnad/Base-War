@@ -9,8 +9,6 @@ export const MESSAGES = {
   tap: Schemas.Map({}),
   tapAck: Schemas.Map({ count: Schemas.Int, persisted: Schemas.Boolean }),
 
-  hitCrate: Schemas.Map({}),
-  hitRejected: Schemas.Map({ reason: Schemas.String, antiCheat: Schemas.Boolean }),
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),

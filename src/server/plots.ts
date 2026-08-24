@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
-  coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
+  coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
   MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_CHARGES, SENTRY_SECONDS, SENTRY_MIN_PRICE, crowdBonus
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
@@ -58,7 +58,6 @@ const profiles = new Map<string, Profil>()
 const dirtyBases = new Set<string>()
 const dirtyProfiles = new Set<string>()
 
-const SCENE_COTE = 80
 
 function nameOf(address: string): string {
   for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
@@ -522,7 +521,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
 
   const x = snapToGrid(xb)
   const z = snapToGrid(zb)
-  const mauvais = invalidReason(x, z, SCENE_COTE, basePoints(address))
+  const mauvais = invalidReason(x, z, SCENE_SIDE, basePoints(address))
   if (mauvais !== null) return { ok: false, reason: mauvais }
 
   const previous = bases.get(address)
