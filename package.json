@@ -15,8 +15,7 @@
     "@dcl/sdk": "^7.26.1-32239895147.commit-3c77d90"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=6.0.0"
+    "node": ">=22"
   },
   "prettier": {
     "semi": false,
