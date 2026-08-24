@@ -49,9 +49,14 @@ prestige follows a cube root of lifetime earnings.
 - The server is authoritative. Clients never send a price, a roll or a position that
   matters: the server measures distances itself from `PlayerIdentityData`.
 - State persists in Decentraland `Storage`, no private backend.
-- Geometry is built from SDK primitives. The two external assets are the sound effects in
-  `assets/sounds/` and the pistol model `assets/Models/gun.glb`, taken from the open
-  Decentraland model catalog (`models.dclregenesislabs.xyz`).
+- Geometry is built from SDK primitives, apart from the pistol `assets/Models/gun.glb`,
+  taken from the open Decentraland model catalog (`models.dclregenesislabs.xyz`), and the
+  sound effects in `assets/sounds/`.
+- The two avatar clips in `assets/animations/` are generated, not hand-animated. A scene
+  cannot pose the avatar skeleton except through emotes, and the platform's fixed emote
+  list has neither an aim nor a shot, so the scene ships its own. Rebuild them with
+  `node tools/emotes/build-emotes.js`: it solves each arm by inverse kinematics against
+  the reference rig and prints the residual, so a pose is a number, not a guess.
 
 ## License
 

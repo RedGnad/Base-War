@@ -209,6 +209,7 @@
     "projectId": "5b9b0443-928e-4e4e-8db7-2d51ebc19a10"
   },
   "requiredPermissions": [
-    "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE"
+    "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE",
+    "ALLOW_TO_TRIGGER_AVATAR_EMOTE"
   ]
 }

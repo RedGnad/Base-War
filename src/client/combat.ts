@@ -2,8 +2,9 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType
+  CameraType, AvatarMask
 } from '@dcl/sdk/ecs'
+import { triggerSceneEmote, stopEmote, movePlayerTo } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
@@ -31,11 +32,11 @@ import { setAiming } from './locomotion'
  * the camera and resolved by the server against positions the server reads itself. The
  * reticle uses the server's own cone constant, so a target it locks is a target that falls.
  *
- * The avatar's own skeleton is NOT addressable from scene code. The only handle on it is
- * triggerEmote, whose fixed list holds no aiming and no firing animation, and no custom
- * animation ships with this scene. So the arm never moves: what moves is the weapon.
- * It is holstered until the player aims, appears in the hand while they do, and kicks on
- * the shot. That is an honest visual state, not a pose the avatar is pretending to hold.
+ * The avatar's skeleton is only reachable through emotes, and the platform's fixed list
+ * holds neither an aim nor a shot. So the scene ships its own two clips, solved against
+ * the Decentraland reference rig: the arm raises into a two-handed aim and kicks on the
+ * shot. The weapon is holstered until the player aims, which keeps a pistol out of every
+ * screenshot of what is, most of the time, a game about running a base.
  */
 
 export const combatView = {
@@ -55,6 +56,16 @@ const FLASH = Color4.fromHexString('#ffe9a8ff')
 
 const MODELE = 'assets/Models/gun.glb'
 /**
+ * The two avatar clips, built against the Decentraland reference rig.
+ *
+ * AIM is a single held pose, looped, so the arms stay up for as long as the player holds
+ * the control. FIRE is a one-shot muzzle rise off that same pose, so the two read as one
+ * motion. Both are masked to the upper body: the legs stay on locomotion and the player
+ * keeps running while aiming and while firing.
+ */
+const CLIP_VISEE = 'assets/animations/aim_emote.glb'
+const CLIP_TIR = 'assets/animations/fire_emote.glb'
+/**
  * The model's own pivot is 87 cm away from the weapon: measured, its bounds run
  * y 0.563..0.778 and z 0.390..0.700, muzzle at +Z, wooden grip at low Y and low Z.
  * This offset brings the grip onto the holder's origin, so every placement below is
@@ -65,11 +76,16 @@ const PIVOT = Vector3.create(-0.010, -0.640, -0.450)
 const BOUCHE = Vector3.create(0, 0.138, 0.250)
 
 /**
- * Where the grip sits on the hand bone. The local axes of the avatar's right hand are not
- * documented, so these two are the tuning knobs: everything else is measured.
+ * Where the grip sits on the hand bone.
+ *
+ * Not guessed: the aim pose was solved first, then the right hand's world orientation was
+ * read out of it, and this rotation is its inverse. That makes the barrel point along the
+ * character's forward axis exactly when the arm is extended, which is the only pose the
+ * weapon is ever visible in. The hand bone runs along its own +Y, toward the fingers, so
+ * the grip sits a few centimetres up that axis.
  */
-const MAIN_POS = Vector3.create(0.02, -0.02, 0.03)
-const MAIN_ROT = Quaternion.fromEulerDegrees(0, 90, 10)
+const MAIN_POS = Vector3.create(0.045, 0.015, 0)
+const MAIN_ROT = Quaternion.fromEulerDegrees(-90, 0, 180)
 /** Where the view model sits relative to the camera: right, below, ahead. */
 const VUE_POS = Vector3.create(0.20, -0.24, 0.34)
 const VUE_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
@@ -251,6 +267,8 @@ function gunSystem(dt: number): void {
     setAiming(true)
     enJoue.add(moi)
     void room.send('aim', { on: true })
+    void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    orienterVersLaVisee()
   }
   // Release fires. PET_UP is the normal path; polling isPressed is the backstop, because
   // a release landing while the button is unmounted would otherwise never arrive and
@@ -260,9 +278,12 @@ function gunSystem(dt: number): void {
     arme = false
     combatView.aiming = false
     setAiming(false)
-    tirer(now)
     enJoue.delete(moi)
     void room.send('aim', { on: false })
+    // The shot clip replaces the held pose, then the avatar falls back to its idle. A
+    // release the cooldown swallowed fires nothing, so it just lowers the arms.
+    if (tirer(now)) void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
+    else void stopEmote({})
   }
 
   // The view model pulls to centre while aiming, and stops being written once it is
@@ -294,6 +315,29 @@ function gunSystem(dt: number): void {
 
   rafraichirVisibilite()
   viser()
+}
+
+/**
+ * Turn the body to face the shot.
+ *
+ * In third person the avatar keeps whatever heading it last walked on, while the shot and
+ * the reticle both follow the camera. Measured on a live client the two sat ninety degrees
+ * apart, which would have the character aiming at nothing while the bullet went elsewhere.
+ * Called once when the weapon comes up, never per frame.
+ */
+function orienterVersLaVisee(): void {
+  const cam = Transform.getOrNull(engine.CameraEntity)
+  const moiT = Transform.getOrNull(engine.PlayerEntity)
+  if (cam === null || moiT === null) return
+  const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
+  const plat = Math.sqrt(f.x * f.x + f.z * f.z)
+  if (plat < 0.0001) return
+  void movePlayerTo({
+    newRelativePosition: moiT.position,
+    avatarTarget: Vector3.create(
+      moiT.position.x + (f.x / plat) * 4, moiT.position.y, moiT.position.z + (f.z / plat) * 4
+    )
+  })
 }
 
 /**
@@ -347,16 +391,16 @@ function viser(): void {
  * Reading it from the camera position instead would tilt the shot by the third-person
  * offset, and the reticle would stop telling the truth as soon as the player switched view.
  */
-function tirer(now: number): void {
-  if (dernierTir + SHOT_COOLDOWN_MS > now) return
+function tirer(now: number): boolean {
+  if (dernierTir + SHOT_COOLDOWN_MS > now) return false
   const cam = Transform.getOrNull(engine.CameraEntity)
   const moiT = Transform.getOrNull(engine.PlayerEntity)
-  if (cam === null || moiT === null) return
+  if (cam === null || moiT === null) return false
   dernierTir = now
 
   const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
   const plat = Math.sqrt(f.x * f.x + f.z * f.z)
-  if (plat < 0.0001) return
+  if (plat < 0.0001) return false
   void room.send('shoot', {
     x: moiT.position.x + (f.x / plat) * SHOT_RANGE,
     y: moiT.position.y,
@@ -370,6 +414,7 @@ function tirer(now: number): void {
     const s = AudioSource.getMutableOrNull(vue.racine)
     if (s !== null) { s.playing = false; s.playing = true }
   }
+  return true
 }
 
 /** Dropped piles: the server owns them, the client only draws what it publishes. */

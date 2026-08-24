@@ -24,3 +24,8 @@ CLAUDE.md
 # Local research material, not ours to redistribute
 local/
 ytenv/
+
+# The repo ignores *.js, but the emote builder is source, not build output.
+!tools/emotes/build-emotes.js
+# Third-party reference rig, fetched on demand by that builder.
+tools/emotes/reference-rig.glb
