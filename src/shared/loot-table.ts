@@ -118,3 +118,16 @@ export function mutationDe(code: number): number { return code % 100 }
 export function revenuObjet(code: number, gains: readonly number[]): number {
   return (gains[rareteDe(code)] ?? 1) * mutation(mutationDe(code)).mult
 }
+
+/**
+ * Affiche un revenu de facon lisible A TOUTES LES ECHELLES.
+ * Arrondir a l'entier rendait les mutations INVISIBLES en bas de table: un Gold Common
+ * vaut 1,25/s et s'affichait « 1 », donc identique a un Common nu. Le joueur ne pouvait
+ * pas comprendre ce qu'il venait d'obtenir.
+ */
+export function formatRevenu(v: number): string {
+  if (v < 10) return v.toFixed(2).replace(/\.?0+$/, '')
+  if (v < 1000) return Math.round(v).toString()
+  if (v < 1e6) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'
+  return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+}

@@ -6,7 +6,7 @@ import { view } from './client/setup'
 import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
-import { RARITIES, nomObjet, couleurObjet, mutation } from './shared/loot-table'
+import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
 /** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
 const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256, 1024, 4096]
@@ -63,14 +63,14 @@ const uiComponent = () => (
       uiBackground={{ color: PANNEAU }}
     >
       <Label
-        value={`${theftView.coins} coins${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
+        value={`${formatRevenu(theftView.coins)} coins${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
         fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
       <Label
         value={
           !view.serverAlive ? 'SERVER OFFLINE'
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.revenu === 0 ? 'open a crate to start earning'
-          : `+${theftView.revenu}/s · ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
+          : `+${formatRevenu(theftView.revenu)}/s · ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
         }
         fontSize={13}
         color={

@@ -582,7 +582,7 @@ export function startPlots(): void {
       const b = bases.get(address)
       let revenu = 0
       if (b) for (const code of b.items) revenu += revenuObjet(code, GAIN_PAR_SECONDE)
-      revenu = Math.round(revenu * multiplicateurRevenu(palier))
+      revenu = revenu * multiplicateurRevenu(palier)
       const lock = b ? (Plot.getOrNull(b.entity)?.lockedUntil ?? 0) : 0
       void room.send('wallet', {
         revenu,
@@ -591,7 +591,7 @@ export function startPlots(): void {
         prixEtage: prixProchainEtage(address),
         rechargeSec: Math.ceil(rechargeVerrou(address) / 1000),
         aReprendre: aQuelqueChoseAReprendre(address),
-        coins: Math.floor(p.coins),
+        coins: p.coins,
         prochainPalier: suivant ? suivant.cout : 0,
         palier,
         rareteMin: suivant ? suivant.rareteMin : 0,

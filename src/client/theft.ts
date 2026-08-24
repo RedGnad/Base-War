@@ -76,7 +76,7 @@ export function setupTheft(): void {
     ajouterAuFil(`${d.byName} a repris son ${rarity(d.rarity).nom} a ${d.fromName}`)
   })
   room.onMessage('wallet', (d) => {
-    theftView.coins = d.coins
+    theftView.coins = Math.floor(d.coins)
     theftView.palier = d.palier
     theftView.prochainPalier = d.prochainPalier
     theftView.rareteMin = d.rareteMin

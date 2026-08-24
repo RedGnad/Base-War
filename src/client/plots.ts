@@ -8,7 +8,12 @@ import {
   Plot, PLOT_MAX_OBJETS, SLOTS_PAR_ETAGE, ETAGES_MAX, ETAGE_HAUTEUR, slotPosition,
   rampePosition, BASE_COTE, MUR_EPAISSEUR, MUR_HAUTEUR, PORTE_LARGEUR, RAMPE_ANGLE, RAMPE_LONGUEUR, TREMIE_LARGEUR
 } from '../shared/schemas'
-import { rarity, rareteDe, mutationDe, couleurObjet, mutation } from '../shared/loot-table'
+import {
+  rarity, rareteDe, mutationDe, couleurObjet, mutation, nomObjet, formatRevenu, revenuObjet
+} from '../shared/loot-table'
+
+/** Miroir du bareme serveur, pour afficher ce qu'un objet rapporte. */
+const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
 import { voler, revendre, monAdresseClient } from './theft'
 
 /**
@@ -234,10 +239,16 @@ export function setupPlots(): void {
       v.ownerId = p.ownerId
 
       // Le libelle du survol dit ce que le geste FERA, et ca depend de qui possede.
+      // Le survol NOMME l'objet et dit ce qu'il rapporte: sans ca, une base de six
+      // cubes colores ne se lit pas, et une mutation ne se distingue pas d'une rarete.
       const mien = p.ownerId.toLowerCase() === monAdresseClient()
-      const libelle = mien ? 'Sell' : 'Steal'
-      for (const o of v.objets) {
-        PointerEvents.createOrReplace(o, {
+      const verbe = mien ? 'Sell' : 'Steal'
+      for (let k = 0; k < v.objets.length; k++) {
+        const code = p.items[k]
+        const libelle = code === undefined
+          ? verbe
+          : `${verbe} ${nomObjet(rareteDe(code), mutationDe(code))} · ${formatRevenu(revenuObjet(code, GAINS_UI))}/s`
+        PointerEvents.createOrReplace(v.objets[k], {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: libelle } },
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: libelle } }
