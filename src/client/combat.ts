@@ -2,7 +2,7 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, CameraModeArea, AvatarMask, timers
+  CameraType, CameraModeArea, AvatarMask, timers, PointerLock
 } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
@@ -114,6 +114,8 @@ let dernierTir = 0
 let flashScale = 0
 let zoneVisee: Entity | null = null
 let vueVisibleApres = 0
+/** Whether first person was the player's own setting when the weapon came out. */
+let prefereVuePremiere = false
 let dernierRecensement = 0
 let nomCible = ''
 let adresseCible = ''
@@ -177,6 +179,7 @@ function rafraichirVisibilite(): void {
 }
 
 export function setupCombat(): void {
+
 
 
   // View model: one entity parented to the camera, shown only in first person.
@@ -359,6 +362,8 @@ function degainer(on: boolean): void {
   else enJoue.delete(moi)
   void room.send('aim', { on })
   if (on) {
+    const c = CameraMode.getOrNull(engine.CameraEntity)
+    prefereVuePremiere = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
     zoneVisee = engine.addEntity()
     Transform.create(zoneVisee, { position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
@@ -366,6 +371,14 @@ function degainer(on: boolean): void {
   } else {
     void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
+    // Give the cursor back.
+    //
+    // First person captures the pointer, so the camera follows the mouse with no button
+    // held. Coming back out of it the capture survives, and the player is left in a third
+    // person view that still mouselooks until they press Escape, which is not a state they
+    // asked for. Only when the scene is what put them in first person: a player who chose
+    // it themselves keeps their cursor as it was.
+    if (!prefereVuePremiere) PointerLock.createOrReplace(engine.CameraEntity, { isPointerLocked: false })
   }
 }
 
