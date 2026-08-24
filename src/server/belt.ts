@@ -96,26 +96,26 @@ export function startBelt(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const art = articles.find((x) => x.id === d.articleId)
-    if (!art) { void room.send('actionRejected', { action: 'achat', raison: 'article deja parti', antiCheat: false }, { to: [a] }); return }
-    if (art.vendu) { void room.send('actionRejected', { action: 'achat', raison: 'quelqu un a paye avant toi', antiCheat: false }, { to: [a] }); return }
+    if (!art) { void room.send('actionRejected', { action: 'purchase', raison: 'that crate is already gone', antiCheat: false }, { to: [a] }); return }
+    if (art.vendu) { void room.send('actionRejected', { action: 'purchase', raison: 'someone paid before you', antiCheat: false }, { to: [a] }); return }
 
     // ANTI-TRICHE: le serveur mesure la distance lui-meme, comme pour la caisse.
     const p = positionDe(a)
-    if (p === null) { void room.send('actionRejected', { action: 'achat', raison: 'position inconnue', antiCheat: false }, { to: [a] }); return }
+    if (p === null) { void room.send('actionRejected', { action: 'purchase', raison: 'position unknown', antiCheat: false }, { to: [a] }); return }
     // Une boite deja tombee n'est plus achetable, meme si le client la voit encore.
     if (art.progres >= 1) {
-      void room.send('actionRejected', { action: 'achat', raison: 'elle est tombee', antiCheat: false }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', raison: 'it fell into the pit', antiCheat: false }, { to: [a] })
       return
     }
     const pos = beltPosition(art.progres)
     const dist = Vector3.distance(p, Vector3.create(pos.x, pos.y, pos.z))
     if (dist > PORTEE_ACHAT) {
-      void room.send('actionRejected', { action: 'achat', raison: `trop loin (${dist.toFixed(1)} m)`, antiCheat: true }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', raison: `trop loin (${dist.toFixed(1)} m)`, antiCheat: true }, { to: [a] })
       return
     }
 
     if (!depenser(a, art.prix)) {
-      void room.send('actionRejected', { action: 'achat', raison: `il te faut ${art.prix - coinsDe(a)} pieces de plus`, antiCheat: false }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', raison: `il te faut ${art.prix - coinsDe(a)} pieces de plus`, antiCheat: false }, { to: [a] })
       return
     }
 
@@ -137,11 +137,24 @@ export function startBelt(): void {
    * ainsi que fonctionne toute loterie honnete, et ca interdit au client de rejouer
    * jusqu'a obtenir ce qui l'arrange.
    */
+  /** objets TIRES mais pas encore POSES (pose differee de 2,7 s), par joueur. */
+  const enVol = new Map<string, number>()
+
   room.onMessage('openBox', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
+    // BASE PLEINE: ON REFUSE L'OUVERTURE, on ne consomme PAS la boite.
+    // Bug corrige le 24 Aug: la boite etait retiree, le tirage avait lieu, puis
+    // `ajouterObjet` rendait 'plein' et l'objet etait jete. Le joueur perdait la boite
+    // ET l'objet, et vendre ensuite ne rendait rien: il n'y avait plus rien a rendre.
+    // Le genre bloque l'acquisition quand la base est pleine, il ne la detruit pas.
+    // La boite reste en stock, elle attend qu'on fasse de la place.
+    if (etatPrevisible(a) === 'plein' || enVol.get(a) !== undefined) {
+      void room.send('actionRejected', { action: 'opening', raison: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
+      return
+    }
     if (!retirerBoite(a, d.typeBoite)) {
-      void room.send('actionRejected', { action: 'ouverture', raison: 'tu n as pas cette boite', antiCheat: true }, { to: [a] })
+      void room.send('actionRejected', { action: 'opening', raison: 'you do not have that crate', antiCheat: true }, { to: [a] })
       return
     }
     // LE TIRAGE EST IMMEDIAT ET AUTORITAIRE, la POSE est differee.
@@ -159,7 +172,12 @@ export function startBelt(): void {
     void room.send('boxResult', { typeBoite: d.typeBoite, rarity, mutation: mut, etat: prevu }, { to: [a] })
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
 
+    // L'objet est TIRE mais pas encore POSE pendant 2,7 s. Sans ce marqueur, deux
+    // ouvertures rapides passeraient toutes les deux le test de place et la seconde
+    // se perdrait exactement comme avant.
+    enVol.set(a, code)
     timers.setTimeout(() => {
+      enVol.delete(a)
       const reel = ajouterObjet(a, code)
       if (reel !== prevu) jour(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${nomAffiche(a)}`)
     }, POSE_DIFFEREE_MS)

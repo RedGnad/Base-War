@@ -5,7 +5,7 @@ import {
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
-import { Plot } from '../shared/schemas'
+import { Plot, SLOTS_PAR_ETAGE } from '../shared/schemas'
 import { rarity, boite, RARITIES, mutation, nomObjet, couleurObjet } from '../shared/loot-table'
 
 let monAdresse = ''
@@ -294,10 +294,33 @@ function positionDeMaBase(): Vector3 | null {
 }
 
 /** Fait apparaitre la boite devant le joueur et arme les trois coups. */
+/** Ma base est-elle pleine ? Lu dans le composant autoritaire, sans passer par setup.ts. */
+function maBasePleine(): boolean {
+  const me = getPlayer()
+  if (me === null) return false
+  const a = me.userId.toLowerCase()
+  for (const [, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== a) continue
+    return p.items.length >= SLOTS_PAR_ETAGE * p.etages
+  }
+  return false
+}
+
 export function ouvrirBoite(typeBoite: number): void {
   if (boxView.ouverture || boxView.roule) return
   if (!boxView.stock.includes(typeBoite)) return
   if (!Transform.has(engine.PlayerEntity)) return
+
+  // BASE PLEINE: on le dit AVANT les trois coups, pas apres.
+  // Le serveur refuse deja (c'est lui qui decide), mais laisser le joueur casser la
+  // caisse pour lui annoncer ensuite que c'etait pour rien serait la pire version du
+  // meme refus. Le client anticipe le verdict, le serveur le fait respecter.
+  // On lit MA base dans le composant synchronise plutot que l'etat de `setup.ts`:
+  // `setup.ts` importe ce module, une dependance en retour formerait un cycle.
+  if (maBasePleine()) {
+    boxView.message = 'BASE FULL - sell an item or buy a floor'
+    return
+  }
 
   const p = Transform.get(engine.PlayerEntity)
   // Deux metres DEVANT le joueur: il ne doit pas avoir a marcher pour ouvrir.
