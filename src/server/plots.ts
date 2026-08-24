@@ -204,7 +204,22 @@ export async function accueillir(address: string): Promise<void> {
   // BOITE OFFERTE A L'ARRIVEE (starter pack). Sans elle, un nouveau joueur a un revenu
   // nul, aucune piece, donc rien a faire: la boucle ne peut pas demarrer.
   const premiere = stocke === null
+  // ON REPART DU PROFIL STOCKE EN ENTIER, puis on surcharge.
+  // Bug corrige le 24 Aug: cette construction etait une LISTE BLANCHE de sept champs,
+  // alors que le profil en compte quinze et que la sauvegarde les ecrit tous. Tout ce
+  // qui n'etait pas nomme ici disparaissait a chaque redemarrage du serveur, en silence:
+  //   - `dernierJour` -> la recompense quotidienne se croyait jamais prise et se
+  //      redonnait a CHAQUE relance. C'est l'origine des boites accumulees.
+  //   - `vuA`         -> les gains hors ligne ne se sont JAMAIS declenches, faute de
+  //      date de derniere presence.
+  //   - `reserve`     -> l'argent produit et non encaisse etait perdu.
+  //   - `vus`         -> l'index de decouverte se vidait.
+  //   - `serie`       -> la serie de connexion restait bloquee a 1.
+  //   - `finVerrou`   -> un redemarrage annulait la recharge du verrou.
+  // Une liste blanche sur un type qui grandit se desynchronise a chaque champ ajoute,
+  // et l'echec est muet. On part donc du stocke et on ne nomme que les exceptions.
   const profil: Profil = {
+    ...(stocke ?? {}),
     coins: stocke?.coins ?? 0,
     items: [...items],
     boites: premiere ? [0] : (stocke?.boites ?? []),
