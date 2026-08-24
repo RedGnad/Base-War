@@ -27,10 +27,8 @@ export function setupQuests(): void {
   })
 }
 
-
 function reclamer(slot: number): void { void room.send('claimQuest', { slot }) }
 
-/** Combien de quetes sont FINIES mais pas encore encaissees: c'est le chiffre du badge. */
 export function quetesAPrendre(): number {
   let n = 0
   for (let i = 0; i < questsView.ids.length; i++) {
@@ -48,7 +46,6 @@ function toutesFinies(): boolean {
   return true
 }
 
-/** Une ligne de quete: texte, barre de progression, et le bouton quand c'est fini. */
 function Ligne(props: { i: number }): ReactEcs.JSX.Element {
   const i = props.i
   const q = QUETES[questsView.ids[i]]
@@ -56,7 +53,6 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
   const cible = questsView.cibles[i] ?? 1
   const fini = fait >= cible
   const pris = questsView.pris[i] === 1
-  // La barre est un enfant en pourcentage: c'est le motif de barre de progression du SDK.
   const pct = Math.min(100, Math.round((fait / cible) * 100))
   return (
     <UiEntity
@@ -95,12 +91,6 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
   )
 }
 
-/**
- * PANNEAU DES OBJECTIFS.
- * Il porte les DEUX systemes de retention au meme endroit: les trois quetes du jour et
- * le calendrier des sept jours. Les separer donnerait deux panneaux a ouvrir pour la
- * meme question, « qu'est-ce que je gagne si je reviens ».
- */
 export function QuestsPanel(): ReactEcs.JSX.Element | null {
   if (!questsView.ouvert) return null
   const tout = toutesFinies()

@@ -1,23 +1,10 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 
-/**
- * MESSAGE D'ACCUEIL. Le guide UX officiel le prescrit explicitement, avec sa liste:
- * *« The scene title · Welcome the player · End goal & motivation · Instructions »*,
- * et l'avertissement: *« make sure the popup isn't too intrusive and that it's easy
- * to close »*.
- *
- * C'est aussi notre plus gros trou d'onboarding: un juge dispose de trois minutes, et
- * jusqu'ici rien ne lui disait ce qu'il fait la.
- */
-
 export const welcomeView = { ouvert: true }
 export function fermerAccueil(): void { welcomeView.ouvert = false }
 
 const LIGNES = [
-  // MEME ORDRE QUE LE TUTORIEL, et pour la meme raison de fond: un objet ne rapporte
-  // que s'il est POSE sur une base. Annoncer l'ouverture en premier, comme on le faisait,
-  // envoyait le joueur ouvrir sa boite avant d'avoir ou la mettre.
   ['1', 'BUILD your base anywhere on the map'],
   ['2', 'OPEN your free crate: smash it 3 times'],
   ['3', 'Loot earns coins into a pool: tap COLLECT to bank it'],
@@ -28,7 +15,6 @@ const LIGNES = [
 export const WelcomePanel = () => {
   if (!welcomeView.ouvert) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   return (
-    // Plein ecran cliquable: « easy to close by clicking anywhere ».
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
       uiBackground={{ color: Color4.create(0, 0, 0, 0.55) }}

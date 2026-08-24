@@ -12,12 +12,6 @@ import { tutoFait } from './onboarding'
 import { lancerConvoi } from './convoi'
 import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 
-/**
- * LE TAPIS, cote serveur. Les articles defilent, n'importe qui peut en acheter un,
- * et le premier qui paie l'emporte. Toute la validation est ici: le client ne fait
- * qu'envoyer « je veux l'article n », il n'affirme ni prix ni disponibilite.
- */
-
 type Article = {
   id: number
   typeBoite: number
@@ -27,11 +21,6 @@ type Article = {
   entity: ReturnType<typeof engine.addEntity>
 }
 
-/**
- * Duree de la mise en scene cote client (roulette + explosion). La pose sur la base
- * attend ce delai pour que l'objet n'apparaisse pas avant d'avoir ete revele.
- * Doit rester synchronise avec la roulette de `src/client/box.ts`.
- */
 const POSE_DIFFEREE_MS = 2700
 
 const articles: Article[] = []
@@ -58,8 +47,6 @@ function creerArticle(): void {
   articles.push({ id: prochainId, typeBoite, prix, progres: 0, vendu: false, entity: e })
   prochainId += 1
 
-  // Une boite chere est ANNONCEE a tout le monde: c'est ce qui fait converger les joueurs
-  // au meme endroit, et ca cree un evenement social sans rien coder de plus.
   if (typeBoite >= 2) {
     void room.send('beltAlert', { typeBoite })
     jour(`ANNONCE: ${BOITES[typeBoite].nom} sur le tapis`)
@@ -81,8 +68,6 @@ export function startBelt(): void {
     }
     for (const a of [...articles]) {
       a.progres += dt / TAPIS_DUREE_S
-      // On ne retire qu'APRES la chute: la boite non prise tombe dans la fosse,
-      // et on voit ce qu'on vient de laisser passer.
       if (a.progres >= 1 + CHUTE_FIN) { retirer(a); continue }
       const c = Belt.getMutableOrNull(a.entity)
       if (c !== null) c.progres = a.progres
@@ -101,10 +86,8 @@ export function startBelt(): void {
     if (!art) { void room.send('actionRejected', { action: 'purchase', raison: 'that crate is already gone', antiCheat: false }, { to: [a] }); return }
     if (art.vendu) { void room.send('actionRejected', { action: 'purchase', raison: 'someone paid before you', antiCheat: false }, { to: [a] }); return }
 
-    // ANTI-TRICHE: le serveur mesure la distance lui-meme, comme pour la caisse.
     const p = positionDe(a)
     if (p === null) { void room.send('actionRejected', { action: 'purchase', raison: 'position unknown', antiCheat: false }, { to: [a] }); return }
-    // Une boite deja tombee n'est plus achetable, meme si le client la voit encore.
     if (art.progres >= 1) {
       void room.send('actionRejected', { action: 'purchase', raison: 'it fell into the pit', antiCheat: false }, { to: [a] })
       return
@@ -121,11 +104,6 @@ export function startBelt(): void {
       return
     }
 
-    // La boite part FERMEE dans le stock: le hasard se revele a l'ouverture, pas a l'achat.
-    // LA BOITE NE REJOINT PLUS L'INVENTAIRE D'UN COUP: elle part en convoi vers la base
-    // de l'acheteur, et reste rachetable pendant tout le trajet. `lancerConvoi` rend
-    // false si l'acheteur n'a pas encore de base: dans ce cas on livre directement,
-    // comme avant, plutot que d'interdire l'achat et de casser l'ordre du tutoriel.
     if (!lancerConvoi(a, art.typeBoite, art.prix, { x: pos.x, z: pos.z })) {
       ajouterBoite(a, art.typeBoite)
       void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
@@ -142,24 +120,11 @@ export function startBelt(): void {
     retirer(art)
   })
 
-  /**
-   * OUVERTURE D'UNE BOITE. Le SERVEUR tire, immediatement et une seule fois.
-   * La roulette du client n'est que du theatre qui atterrit sur ce resultat: c'est
-   * ainsi que fonctionne toute loterie honnete, et ca interdit au client de rejouer
-   * jusqu'a obtenir ce qui l'arrange.
-   */
-  /** objets TIRES mais pas encore POSES (pose differee de 2,7 s), par joueur. */
   const enVol = new Map<string, number>()
 
   room.onMessage('openBox', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    // BASE PLEINE: ON REFUSE L'OUVERTURE, on ne consomme PAS la boite.
-    // Bug corrige le 24 Aug: la boite etait retiree, le tirage avait lieu, puis
-    // `ajouterObjet` rendait 'plein' et l'objet etait jete. Le joueur perdait la boite
-    // ET l'objet, et vendre ensuite ne rendait rien: il n'y avait plus rien a rendre.
-    // Le genre bloque l'acquisition quand la base est pleine, il ne la detruit pas.
-    // La boite reste en stock, elle attend qu'on fasse de la place.
     if (etatPrevisible(a) === 'plein' || enVol.get(a) !== undefined) {
       void room.send('actionRejected', { action: 'opening', raison: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
       return
@@ -168,13 +133,6 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'opening', raison: 'you do not have that crate', antiCheat: true }, { to: [a] })
       return
     }
-    // LE TIRAGE EST IMMEDIAT ET AUTORITAIRE, la POSE est differee.
-    // Sinon l'objet apparait sur la base avant que la roulette ne l'ait revele: le
-    // joueur voit le resultat par la fenetre avant l'annonce, et le decalage se voit.
-    // Le hasard est fige des maintenant, seule sa mise en scene attend.
-    // DEUX TIRAGES SEPARES: la rarete, puis la mutation. C'est ce qui cree la surprise
-    // composee (« un Rare... DORE ! ») et multiplie la table par 14 sans un maillage
-    // de plus.
     tutoFait(a, 1)
     avancerQuete(a, 'ouvrir')
     if (d.typeBoite >= 1) avancerQuete(a, 'ouvrirRare')
@@ -186,9 +144,6 @@ export function startBelt(): void {
     void room.send('boxResult', { typeBoite: d.typeBoite, rarity, mutation: mut, etat: prevu }, { to: [a] })
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
 
-    // L'objet est TIRE mais pas encore POSE pendant 2,7 s. Sans ce marqueur, deux
-    // ouvertures rapides passeraient toutes les deux le test de place et la seconde
-    // se perdrait exactement comme avant.
     enVol.set(a, code)
     pousserQuetes(a)
 

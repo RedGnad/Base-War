@@ -6,12 +6,6 @@ import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
 
-/**
- * Retour joueur du vol. Le client ne DECIDE rien: il reagit a ce que le serveur annonce.
- * Le malus de locomotion est le seul element qu'il applique lui-meme, faute d'API serveur
- * pour la locomotion d'un joueur distant. Le TRANSFERT de l'objet, lui, est autoritaire.
- */
-
 export const theftView = {
   presents: 1,
   prime: 0,
@@ -50,12 +44,10 @@ function ajouterAuFil(ligne: string): void {
 }
 
 export function setupTheft(): void {
-  // Un emetteur attache au joueur: l'alerte s'entend ou qu'il soit.
   sonneur = engine.addEntity()
   Transform.create(sonneur, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
   AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alerte-vol.wav', playing: false, loop: false, volume: 1 })
 
-  /** 3.3 alerte a la victime: texte + son + nom du voleur + couleur de rarete. */
   room.onMessage('youWereRobbed', (d) => {
     const r = rarity(d.rarity)
     alerter(`${d.byName} STOLE YOUR ${r.nom.toUpperCase()}!`, r.couleur, 8000)
@@ -64,7 +56,6 @@ export function setupTheft(): void {
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.nom}`)
   })
 
-  /** 3.4 malus du voleur, applique a la demande du serveur. */
   room.onMessage('thiefPenalty', (d) => {
     applyThiefPenalty(true)
     theftView.malusJusqua = Date.now() + d.ms
@@ -98,8 +89,6 @@ export function setupTheft(): void {
   })
   room.onMessage('wasGifted', (d) => {
     const r = rarity(d.rarity)
-    // Meme canal que l'alerte de vol, et c'est voulu: recevoir et se faire prendre sont
-    // les deux faces du meme evenement social, et ils doivent se lire au meme endroit.
     alerter(`${d.byName} LEFT YOU A ${r.nom.toUpperCase()}!`, r.couleur, 8000)
   })
   room.onMessage('outbidFeed', (d) => {
@@ -110,7 +99,6 @@ export function setupTheft(): void {
   })
 
   room.onMessage('wallet', (d) => {
-    // Le portefeuille porte aussi l'etape du tutoriel: voir le commentaire cote serveur.
     tutoView.etape = d.tutoEtape
     theftView.sentinelles = d.sentinelles
     theftView.prixSentinelle = d.prixSentinelle
@@ -142,8 +130,6 @@ export function setupTheft(): void {
   })
 
   room.onMessage('offlineEarnings', (d) => {
-    // La fenetre de retour: c'est ELLE qui fait revenir le joueur, elle doit rester
-    // longtemps et dire combien de temps a couru.
     const min = Math.round(d.secondes / 60)
     alerter(`WELCOME BACK  ·  +${d.gain} coins earned in ${min} min away`, '#ffd166', 9000)
     console.log(`[CLIENT] hors ligne: +${d.gain} en ${min} min`)
@@ -164,24 +150,16 @@ export function setupTheft(): void {
     console.log(`[CLIENT] revendu pour ${d.gain}`)
   })
 
-  // TOUT REFUS DOIT SE VOIR.
-  // Bug corrige le 24 Aug: la raison n'atterrissait que dans `theftView.refus`, un champ
-  // qu'AUCUN composant n'affichait. Les refus du serveur etaient donc tous muets: verrou,
-  // vol, achat, revente, ouverture. Vu du joueur, le bouton ne marchait pas, sans un mot
-  // d'explication. Un refus silencieux est indiscernable d'un bug, et le joueur conclut
-  // toujours au bug.
   room.onMessage('actionRejected', (d) => {
     alerter(d.raison.toUpperCase(), '#ff6b6b', 4000)
     console.log(`[CLIENT] refuse (${d.action}): ${d.raison}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 
-  // L'alerte s'efface d'elle-meme.
   engine.addSystem(() => {
     if (theftView.alerte !== '' && Date.now() > theftView.alerteJusqua) theftView.alerte = ''
   })
 }
 
-/** Le voleur designe SA cible: quel joueur, quel emplacement. */
 export function voler(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })
 }
@@ -189,14 +167,12 @@ export function verrouiller(): void { void room.send('activateLock', {}) }
 export function reprendre(): void { void room.send('reclaim', {}) }
 export function franchirPalier(): void { void room.send('rebirth', {}) }
 export function revendre(slot: number): void { void room.send('sellItem', { slot }) }
-/** Le don: mon objet `slot` part sur la base de `ownerId`. Miroir de `voler`. */
 export function offrir(ownerId: string, slot: number): void { void room.send('giveItem', { ownerId, slot }) }
 export function acheterEtage(): void { void room.send('buyFloor', {}) }
 export function armerSentinelle(): void { void room.send('buySentry', {}) }
 export function collecter(): void { void room.send('collect', {}) }
 export function deplacer(de: number, vers: number): void { void room.send('moveItem', { de, vers }) }
 
-/** Adresse du joueur local, resolue une fois. */
 let _adresse = ''
 export function monAdresseClient(): string { return _adresse }
 export function setAdresseClient(a: string): void { _adresse = a }

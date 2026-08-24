@@ -2,16 +2,6 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { RARITIES, MUTATIONS, encoder, couleurObjet } from '../shared/loot-table'
 
-/**
- * L'INDEX. *« ce menu index qui permet de voir quelle machine on a trouve et lesquelles
- * il nous reste a trouver »*.
- *
- * Avec 98 combinaisons (7 raretes x 14 mutations), c'est ce qui leur donne un sens:
- * sans lui, un Gold Epic n'est qu'un cube violet de plus. Une grille de cases remplies
- * ou vides transforme une table de chiffres en COLLECTION, et une collection incomplete
- * est une raison de revenir.
- */
-
 export const indexView = { ouvert: false, vus: [] as number[] }
 
 export function basculerIndex(): void { indexView.ouvert = !indexView.ouvert }
@@ -56,8 +46,6 @@ export const IndexPanel = () => {
               <UiEntity
                 key={m.id}
                 uiTransform={{ width: CASE, height: CASE, margin: { right: ECART } }}
-                // Trouve: la couleur reelle de l'objet. Pas trouve: une case sourde.
-                // La grille se lit d'un coup d'oeil, sans lire un seul mot.
                 uiBackground={{
                   color: trouve
                     ? Color4.fromHexString(couleurObjet(r.id, m.id) + 'ff')

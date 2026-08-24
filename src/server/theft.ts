@@ -5,7 +5,6 @@ import {
   VERROU_BONUS_MS, MALUS_DUREE_MS, REPRISE_FENETRE_MS
 } from '../shared/schemas'
 
-/** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
 import { avancerQuete, reclamerQuete, boitesDe, pousserQuetes, offrirObjet, baseDe, consommerSentinelle, sentinellesDe, acheterSentinelle, presents } from './plots'
@@ -18,26 +17,9 @@ import {
   poserBase, positionsBases, revendreObjet, acheterEtage, rechargeVerrou, collecter, deplacerObjet
 } from './plots'
 
-/**
- * LES SIX MECANIQUES ANTI-FRUSTRATION, valeurs mesurees chez le #1 (memo §3, phase 3).
- * Le vol doit etre lent, bruyant, defendable et reversible: sinon il chasse les joueurs.
- *
- * CONTRAINTE STRUCTURANTE: la victime peut etre ABSENTE au moment du vol. Toutes les
- * mecaniques doivent donc fonctionner en differe:
- *  - le verrou court pendant l'absence
- *  - l'alerte est deposee et delivree au retour
- *  - la fenetre de reprise part du RETOUR de la victime, pas du vol
- */
-
-/** vol -> qui a pris quoi a qui, pour la reprise. */
 type Larcin = { voleur: string; victime: string; rarity: number; quand: number }
 const larcins: Larcin[] = []
 
-/**
- * 3.6 progression = protection. Source: wiki du #1, page `Base`:
- * *« +10 seconds base lock per rebirth »*. On branche donc le bonus sur les PALIERS,
- * pas sur un compteur d'objets: c'est la meme grandeur que chez la reference.
- */
 export function noterPalier(_address: string, _objetsCollectes: number): void { /* remplace par les paliers */ }
 function bonusVerrou(address: string): number {
   return paliersDe(address) * VERROU_BONUS_MS
@@ -56,8 +38,6 @@ function refus(address: string, action: string, raison: string, antiCheat = fals
   void room.send('actionRejected', { action, raison, antiCheat }, { to: [address] })
 }
 
-
-/** 3.1 verrou automatique a l'arrivee: on ne se fait pas piller en posant le pied. */
 export function verrouArrivee(address: string): void {
   const jusqua = Date.now() + VERROU_ARRIVEE_MS + bonusVerrou(address)
   if (poserVerrou(address, jusqua)) {
@@ -65,13 +45,10 @@ export function verrouArrivee(address: string): void {
   }
 }
 
-/** Alertes deposees pendant l'absence: delivrees au retour. */
 export function delivrerAlertes(address: string): void {
   const a = retirerAlertes(address)
   if (a.length === 0) return
   for (const alerte of a) {
-    // Les alertes de VOL et de DON passent par le meme depot. Ce sont les deux faces du
-    // meme evenement social: quelqu'un est venu chez toi pendant ton absence.
     const x = alerte as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
     if (x.type === 'sentry') {
       void room.send('sentryTriggered', { byName: x.byName, restant: (x as { restant?: number }).restant ?? 0 }, { to: [address] })
@@ -87,7 +64,6 @@ export function delivrerAlertes(address: string): void {
   jour(`${a.length} alerte(s) differee(s) delivree(s) a ${nomAffiche(address)}`)
 }
 
-/** Y a-t-il un larcin recent que cette victime peut encore reprendre ? */
 export function aQuelqueChoseAReprendre(address: string): boolean {
   const t = Date.now()
   return larcins.some((l) => l.victime === address && t - l.quand <= REPRISE_FENETRE_MS)
@@ -100,11 +76,9 @@ export function startTheft(): void {
     const vise = (d.ownerId ?? '').toLowerCase()
     if (vise === voleur) { refus(voleur, 'steal', 'that is your own base'); return }
 
-    // ANTI-TRICHE: le serveur lit LUI-MEME la position. Il ne croit rien du client.
     const p = positionDe(voleur)
     if (p === null) { refus(voleur, 'steal', 'position unknown'); return }
 
-    // Le voleur DESIGNE sa cible; le serveur ne retient que celles qu'il verifie a portee.
     const aPortee = basesProches(p, PORTEE_VOL, voleur)
     if (aPortee.length === 0) { refus(voleur, 'steal', 'no base in range'); return }
     const cibles = vise === '' ? aPortee : aPortee.filter((b) => b.address === vise)
@@ -114,27 +88,18 @@ export function startTheft(): void {
     for (const c of cibles) {
       const verrou = verrouDe(c.address)
       if (verrou > maintenant) {
-        // 3.2/3.6: le verrou court MEME si le proprietaire est absent.
         refus(voleur, 'steal', `${c.name} is shielded for ${Math.ceil((verrou - maintenant) / 1000)}s`)
         continue
       }
       if (c.items.length === 0) { refus(voleur, 'steal', `${c.name} has nothing to take`); continue }
 
-      // LA SENTINELLE INTERCEPTE, et elle agit meme si le proprietaire est deconnecte.
-      // Elle est testee AVANT que l'objet ne bouge: intercepter puis rendre laisserait une
-      // fenetre ou l'objet n'appartient a personne.
       if (consommerSentinelle(c.address)) {
         const restant = sentinellesDe(c.address)
-        // LE REVERROUILLAGE est ce qui empeche la boucle « je me fais geler, j'attends
-        // 7 s, je recommence jusqu'a vider les charges ». Sans lui la sentinelle retarde
-        // au lieu de dissuader.
         poserVerrou(c.address, maintenant + SENTINELLE_VERROU_MS)
         void room.send('sentryBlocked', {
           ownerName: c.name, gelMs: SENTINELLE_GEL_MS, restant,
           verrouSec: Math.round(SENTINELLE_VERROU_MS / 1000)
         }, { to: [voleur] })
-        // Le proprietaire l'apprend, present ou non: une defense qui agit sans le dire
-        // ne se paie qu'une fois.
         const info = { type: 'sentry', byName: nomAffiche(voleur), restant }
         if (presents().has(c.address)) void room.send('sentryTriggered', info, { to: [c.address] })
         else deposerAlerte(c.address, info)
@@ -142,8 +107,6 @@ export function startTheft(): void {
         continue
       }
 
-      // L'OBJET DESIGNE. Le serveur verifie que l'emplacement existe; a defaut il
-      // refuse plutot que de choisir a la place du joueur.
       const slot = d.slot
       if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
         refus(voleur, 'steal', 'that item is gone'); continue
@@ -152,7 +115,6 @@ export function startTheft(): void {
       if (r === null) { refus(voleur, 'steal', 'item already taken'); continue }
 
       if (!ajouterObjet(voleur, r)) {
-        // Base pleine: on repose chez la victime plutot que de faire disparaitre l'objet.
         ajouterObjet(c.address, r)
         refus(voleur, 'steal', 'your base is full')
         return
@@ -160,17 +122,11 @@ export function startTheft(): void {
 
       larcins.push({ voleur, victime: c.address, rarity: r, quand: maintenant })
 
-      // 3.3 alerte nominative a la victime. Deposee si elle est absente.
       const nomVoleur = nomAffiche(voleur)
-      // L'alerte porte le NOM COMPLET de ce qu'on vient de perdre: se faire prendre un
-      // « Gold Epic » ne se vit pas comme perdre un « Epic » nu.
       const rar = rareteDe(r), mut = mutationDe(r)
       deposerAlerte(c.address, { byName: nomVoleur, rarity: rar, mutation: mut })
       void room.send('youWereRobbed', { byName: nomVoleur, rarity: rar, mutation: mut }, { to: [c.address] })
 
-      // 3.4 malus du voleur. La locomotion est cote client: le serveur la DEMANDE.
-      // Limite assumee: un client modifie peut l'ignorer. Le TRANSFERT, lui, est
-      // autoritaire, et c'est ce qui compte.
       void room.send('thiefPenalty', { ms: MALUS_DUREE_MS }, { to: [voleur] })
 
       void room.send('stolen', { byName: nomVoleur, fromName: c.name, rarity: rar, mutation: mut })
@@ -179,14 +135,11 @@ export function startTheft(): void {
     }
   })
 
-  // Le joueur pose sa base ou il veut. Le serveur verifie la proximite: on ne
-  // revendique pas une place depuis l'autre bout du lieu.
   room.onMessage('claimSlot', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const p = positionDe(a)
     if (p === null) { refus(a, 'build', 'position unknown'); return }
-    // On pose CHEZ SOI: la position demandee doit etre celle ou l'on se tient.
     const dist = Vector3.distance(p, Vector3.create(d.x, p.y, d.z))
     if (dist > PORTEE_INSTALLATION) {
       refus(a, 'build', 'place it where you stand', true)
@@ -197,7 +150,6 @@ export function startTheft(): void {
     tutoFait(a, 0)
   })
 
-  // Les positions des bases existantes servent au fantome cote client.
   timers.setInterval(() => {
     const ps = positionsBases()
     void room.send('basePositions', { xs: ps.map((q) => q.x), zs: ps.map((q) => q.z) })
@@ -222,9 +174,6 @@ export function startTheft(): void {
     if (!a) return
     const cible = d.ownerId.toLowerCase()
 
-    // PORTEE VERIFIEE PAR LE SERVEUR, exactement comme pour le vol: on doit etre DEVANT
-    // la base qu'on gratifie. Un don a distance serait un transfert par menu, et le
-    // deplacement dans le lieu perdrait son sens.
     const p = positionDe(a)
     const bc = baseDe(cible)
     if (p === null || bc === undefined) { refus(a, 'gift', 'position unknown'); return }
@@ -293,12 +242,9 @@ export function startTheft(): void {
     void room.send('rebirthDone', { palier: r.palier ?? 0, etages: r.etages ?? 1 }, { to: [a] })
   })
 
-  /** 3.2 verrou gratuit, activable par le proprietaire. */
   room.onMessage('activateLock', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    // Le verrou a un TEMPS DE RECHARGE: sans lui il serait reactivable a volonte et
-    // le vol deviendrait impossible.
     const reste = rechargeVerrou(a)
     if (reste > 0) { refus(a, 'lock', `recharging, ${Math.ceil(reste / 1000)}s`); return }
     const duree = VERROU_GRATUIT_MS + bonusVerrou(a)
@@ -307,11 +253,6 @@ export function startTheft(): void {
     jour(`${nomAffiche(a)} verrouille sa base ${Math.round(duree / 1000)} s`)
   })
 
-  /**
-   * 3.5 reprise. La victime recupere son bien si elle approche le voleur.
-   * La fenetre part du vol, mais une victime ABSENTE au moment du vol la voit repartir
-   * a son retour: sans ca, se faire piller hors ligne serait sans recours.
-   */
   room.onMessage('reclaim', (_d, ctx) => {
     const victime = ctx?.from?.toLowerCase()
     if (!victime) return
@@ -346,7 +287,6 @@ export function startTheft(): void {
     refus(victime, 'recover', 'nothing to recover')
   })
 
-  // Les larcins expires sortent de la liste: la fenetre de reprise est finie.
   timers.setInterval(() => {
     const t = Date.now() - REPRISE_FENETRE_MS * 3
     while (larcins.length > 0 && larcins[0].quand < t) larcins.shift()

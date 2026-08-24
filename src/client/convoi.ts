@@ -8,18 +8,6 @@ import { room } from '../shared/messages'
 import { boite, formatRevenu } from '../shared/loot-table'
 import { alerter, monAdresseClient } from './theft'
 
-/**
- * LE CONVOI, cote client.
- *
- * On rend ce que le SERVEUR publie: sa position vient de `progres`, interpolee entre le
- * depart et la cible. On ne simule rien localement. Deux joueurs qui regardent le meme
- * convoi doivent le voir au meme endroit, sinon celui qui tape « au bon moment » selon
- * son ecran se fait refuser par un serveur qui, lui, le voit ailleurs.
- *
- * L'etiquette porte le NOM du detenteur et le PRIX DU RACHAT. Sans le prix affiche, le
- * geste est un pari; avec lui, c'est une decision.
- */
-
 type Vue = { corps: Entity; etiquette: Entity; texte: string }
 const vues = new Map<number, Vue>()
 
@@ -57,7 +45,8 @@ export function setupConvoi(): void {
         vues.set(c.convoiId, v)
       }
 
-      // POSITION: interpolee a partir de `progres`, publie par le serveur.
+      // Position comes from the server's `progres`. Two players must see the convoy in
+      // the same place, or a tap that looks well-timed gets rejected.
       const k = Math.max(0, Math.min(1, c.progres))
       const x = c.departX + (c.cibleX - c.departX) * k
       const z = c.departZ + (c.cibleZ - c.departZ) * k
@@ -95,7 +84,6 @@ export function setupConvoi(): void {
       }
     }
 
-    // Convois disparus: le serveur les a livres. On nettoie.
     for (const [id, v] of [...vues]) {
       if (vivants.has(id)) continue
       engine.removeEntity(v.corps)

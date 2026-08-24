@@ -17,14 +17,8 @@ import { WelcomePanel, welcomeView } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
-/** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
-// UNE SEULE DEFINITION DANS LE DEPOT. Cette table etait recopiee ici et dans deux
-// autres fichiers; a la refonte du 24 Aug elle a diverge du serveur en trois endroits,
-// et l'interface annoncait des revenus faux. Une table dupliquee finit toujours par
-// mentir.
 const GAIN_PAR_SECONDE_UI = PRODUCTION_RARETE
 
-/** Ce qu'on dit au joueur selon ce qui est REELLEMENT arrive a son objet. */
 const ETATS: Record<string, (r: number) => string> = {
   expose: (r) => `+${GAIN_PAR_SECONDE_UI[r] ?? 1} coins/s  ·  placed on your base`,
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
@@ -32,31 +26,11 @@ const ETATS: Record<string, (r: number) => string> = {
 }
 import { slotView, basculerPose, poserIci } from './client/slots'
 
-/**
- * DISPOSITION DICTEE PAR LA DOC MOBILE (`build-for-mobile/develop/safe-area`), pas par
- * l'esthetique. La zone sure est le **motif de rejet numero un** cite par Decentraland.
- *
- * Ce que le client mobile s'approprie, et qu'on doit fuir:
- *  - COLONNE DE GAUCHE: chat, profil, joystick, emotes -> exclue de la zone interactable
- *  - COIN BAS-DROIT: boutons d'action, dessines PAR-DESSUS meme la zone interactable
- *  - COIN HAUT-DROIT: profil et controles camera, une UI collee la se lit comme du HUD client
- *
- * Emplacements prescrits, et ce qu'on y met:
- *  - centre: dialogues actionnables         -> l'alerte de vol
- *  - haut-centre: messages non actionnables -> etat et fil d'activite
- *  - bas-centre: indices contextuels        -> les deux boutons, decales a GAUCHE du centre
- */
 export function setupUi() {
-  // `interactable` n'est PAS neutre sur desktop (le client y reserve ~25 % a gauche),
-  // donc on ne l'applique QUE sur telephone. La plateforme n'est pas connue au premier
-  // tick: on attend qu'elle le soit avant de choisir.
   function choisir(): void {
     if (getPlatform() === null) return
     engine.removeSystem(choisir)
     const inset = isMobile() ? 'interactable' : 'device'
-    // ECRAN VIRTUEL EPINGLE. Sans lui, la taille de reference depend de la plateforme
-    // (1920x1080 desktop, 1600x720 mobile) et nos valeurs en pixels changent de sens
-    // d'un appareil a l'autre. On l'ecrit pour que la mise en page soit intentionnelle.
     ReactEcsRenderer.setUiRenderer(uiComponent, {
       virtualWidth: 1920, virtualHeight: 1080, screenInset: inset
     })
@@ -68,31 +42,15 @@ export function setupUi() {
 
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
-/**
- * UNE SEULE action affichee a la fois, choisie par ORDRE D'URGENCE.
- * C'est la divulgation progressive: le joueur n'a jamais a choisir entre huit boutons,
- * on lui montre celui qui compte maintenant. L'ordre encode la boucle du jeu.
- */
 function prochaineAction(): { libelle: string; pret: boolean; action: () => void } {
-  // LE MODE DE POSE PASSE EN PREMIER. Bug corrige le 24 Aug: le test « sans base »
-  // venait avant, donc le bouton affichait encore BUILD BASE une fois le mode actif et
-  // rappelait la bascule, qui l'eteignait. On ne pouvait JAMAIS atteindre PLACE HERE.
-  // Un etat MODAL doit toujours etre teste avant les etats de fond.
   if (slotView.actif) {
     return slotView.valide
       ? { libelle: 'PLACE HERE', pret: true, action: poserIci }
       : { libelle: slotView.raison.toUpperCase(), pret: false, action: basculerPose }
   }
-  // reprendre un vol passe avant tout: la fenetre est courte
   if (theftView.aReprendre) return { libelle: 'RECOVER!', pret: true, action: reprendre }
-  // sans base, rien ne rapporte
   if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
-  // une boite non ouverte est une recompense qui attend
   if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: ouvrirMeilleure }
-  // puis les achats, le moins cher d'abord
-  // LA SENTINELLE PASSE AVANT L'ETAGE quand elle est a sec ET qu'il y a quelque chose a
-  // proteger. Un etage de plus sur une base sans defense, c'est offrir six emplacements
-  // de plus a piller.
   if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0
       && theftView.prixSentinelle > 0 && theftView.coins >= theftView.prixSentinelle) {
     return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: true, action: armerSentinelle }
@@ -103,21 +61,12 @@ function prochaineAction(): { libelle: string; pret: boolean; action: () => void
   if (theftView.prochainPalier > 0 && theftView.coins >= theftView.prochainPalier) {
     return { libelle: `PRESTIGE x${theftView.multiplicateur + 1}`, pret: true, action: franchirPalier }
   }
-  // rien d'urgent: on annonce le prochain palier atteignable
-  // QUAND RIEN N'EST ENCORE PAYABLE, on montre le prochain achat LE MOINS CHER, pas le
-  // premier de la liste. La sentinelle coute 120 s de production, l'etage 300: annoncer
-  // l'etage a un joueur qui n'a ni l'un ni l'autre lui donne le mauvais objectif.
   if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0 && theftView.prixSentinelle > 0
       && (theftView.prixEtage === 0 || theftView.prixSentinelle <= theftView.prixEtage)) {
     return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: false, action: armerSentinelle }
   }
   if (theftView.prixEtage > 0) return { libelle: `FLOOR ${formatRevenu(theftView.prixEtage)}`, pret: false, action: acheterEtage }
   if (theftView.prochainPalier > 0) return { libelle: `PRESTIGE ${formatRevenu(theftView.prochainPalier)}`, pret: false, action: franchirPalier }
-  // PLUS DE « MOVE BASE » ICI. Il y etait en dernier recours, donc atteignable seulement
-  // au maximum d'etages ET de paliers: en pratique jamais. Chaque branche ajoutee devant
-  // (dont deux pour la sentinelle) l'enfoncait un peu plus.
-  // LECON: un MODE ne se classe pas dans une file de priorites avec des actions. Il lui
-  // faut sa propre affordance, sinon il finit derriere tout le reste.
   return { libelle: 'ALL MAXED', pret: false, action: () => {} }
 }
 
@@ -169,10 +118,6 @@ const uiComponent = () => (
       <UiEntity
         uiTransform={{
           width: 320, height: 92, positionType: 'absolute', position: { top: 112, left: 110 },
-          // 110 px virtuels, pas 24: la barre laterale d'icones du client DESKTOP occupe
-          // le bord gauche et mangeait le premier caractere de chaque ligne. On garde
-          // `screenInset: 'device'` pour toute l'interface et on ecarte cette seule carte,
-          // plutot que de passer en 'interactable' qui repousserait TOUT le HUD de 25 %.
           flexDirection: 'column', padding: 12
         }}
         uiBackground={{ color: Color4.create(0.04, 0.07, 0.12, 0.88) }}
@@ -260,11 +205,6 @@ const uiComponent = () => (
           !view.serverAlive ? 'SERVER OFFLINE'
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.revenu === 0 ? 'open a crate to start earning'
-          // On MONTRE la reserve qui se remplit: sans ca, le bouton COLLECT sort de
-          // nulle part et personne ne comprend d'ou vient l'argent.
-          // TROIS FAITS AU PLUS. Le nombre d'objets et d'etages se LIT SUR LA BASE, en
-          // trois dimensions: le repeter en texte prend de la place et n'apprend rien.
-          // Restent le debit, ce qui attend d'etre encaisse, et la defense.
           : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting${theftView.sentinelles > 0 ? '  ·  sentry ' + theftView.sentinelles : ''}`
         }
         fontSize={13}

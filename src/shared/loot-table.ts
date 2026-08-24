@@ -1,15 +1,4 @@
 import { PRIX_BOITE } from './economie'
-/**
- * Raretes: definitions PARTAGEES (le client doit savoir afficher une couleur et un nom).
- * Les POIDS DE TIRAGE ne sont PAS ici: ils vivent dans src/server/, hors du paquet client.
- * Un joueur qui lit le bundle ne doit pas pouvoir deduire ses chances.
- */
-/**
- * La rarete doit se lire A DISTANCE et SANS TEXTE, comme chez le #1 ou la couleur suffit.
- * Quatre canaux qui ne coutent aucune ressource et survivent a n'importe quel theme:
- * la TAILLE, la couleur, l'INTENSITE emissive, et la ROTATION. Un legendaire se repere
- * de l'autre bout du lieu, c'est ce qui donne envie de traverser pour aller le prendre.
- */
 export const RARITIES = [
   { id: 0, nom: 'Common',    couleur: '#9aa3ad', taille: 0.38, glow: 0.00, tours: 0 },
   { id: 1, nom: 'Uncommon',  couleur: '#4ec04e', taille: 0.45, glow: 0.25, tours: 0 },
@@ -24,23 +13,6 @@ export function rarity(id: number) {
   return RARITIES[id] ?? RARITIES[0]
 }
 
-/**
- * LES MUTATIONS. C'est ce qui donne au jeu sa profondeur, et ca ne coute presque rien:
- * un objet mute est **le meme maillage avec un autre materiau**.
- *
- * Notre budget mesure est de 47 textures pour 250 000 triangles: la geometrie est
- * abondante, la texture est rare. Les mutations tombent exactement du bon cote.
- *
- * Les multiplicateurs suivent la progression relevee sur la page `Mutations` du wiki de
- * la reference. Les NOMS, eux, sont du vocabulaire de butin universel (Gold, Diamond,
- * Lava, Galaxy, Cursed, Divine, Rainbow...), employe par des centaines de jeux.
- * UNE exception a ete retiree le 24 Aug: « Bloodrot » etait un compose direct de
- * « Brainrot », le mot invente par la reference. Reprendre un neologisme proprietaire,
- * c'est signer sa copie, et le reglement de l'evenement exige *« Be original and not
- * used in past Decentraland competitions »*. Renomme « Blood ».
- * Sept raretes x quatorze mutations = **98 valeurs d'objets distinctes**, contre 5 avant.
- * C'est ce qui fait passer la duree de vie du contenu de 19 minutes a plusieurs heures.
- */
 export const MUTATIONS = [
   { id: 0,  nom: '',            mult: 1,    couleur: '',        poids: 1000 },
   { id: 1,  nom: 'Gold',        mult: 1.25, couleur: '#ffd700', poids: 220 },
@@ -62,22 +34,11 @@ export function mutation(id: number) {
   return MUTATIONS[Math.max(0, Math.min(id, MUTATIONS.length - 1))]
 }
 
-/** Nom complet: « Gold Epic », ou « Epic » si l'objet n'est pas mute. */
 export function nomObjet(rarete: number, mut: number): string {
   const m = mutation(mut)
   return m.nom === '' ? rarity(rarete).nom : `${m.nom} ${rarity(rarete).nom}`
 }
 
-/**
- * PRIX DES BOITES: derives de `shared/economie.ts`, plus choisis a la main.
- *
- * Ce commentaire portait, jusqu'au 24 Aug, la these inverse: « chaque boite se
- * rembourse en 60 s, quel que soit son palier ». C'etait l'erreur de fond, et la mesure
- * l'a tranchee: dans la reference du genre, le rapport cout/production **DOUBLE** a
- * chaque palier. Un remboursement constant rend tous les paliers equivalents, donc la
- * progression sans objet, et rend triviaux tous les prix absolus du jeu.
- * Retour vise: 60 s, 120 s, 240 s, 480 s.
- */
 export const BOITES = [
   { id: 0, nom: 'Basic Crate', prix: PRIX_BOITE[0], couleur: '#9aa3ad', taille: 0.55 },
   { id: 1, nom: 'Good Crate',  prix: PRIX_BOITE[1], couleur: '#4ec04e', taille: 0.62 },
@@ -85,7 +46,6 @@ export const BOITES = [
   { id: 3, nom: 'Epic Crate',  prix: PRIX_BOITE[3], couleur: '#a855f7', taille: 0.80 }
 ] as const
 
-/** Couleur d'affichage d'un objet: la mutation prime sur la rarete quand elle en a une. */
 export function couleurObjet(rarete: number, mut: number): string {
   const m = mutation(mut)
   return m.couleur === '' ? rarity(rarete).couleur : m.couleur
@@ -95,28 +55,16 @@ export function boite(id: number) {
   return BOITES[Math.max(0, Math.min(id, BOITES.length - 1))]
 }
 
-/**
- * ENCODAGE D'UN OBJET dans un seul entier: `rarete * 100 + mutation`.
- * Permet de garder `Schemas.Array(Schemas.Int)` pour les objets d'une base, donc aucune
- * migration de schema synchronise, et un seul champ a transporter au lieu de deux.
- */
 export function encoder(rarete: number, mut: number): number {
   return rarete * 100 + mut
 }
 export function rareteDe(code: number): number { return Math.floor(code / 100) }
 export function mutationDe(code: number): number { return code % 100 }
 
-/** Revenu par seconde d'un objet encode: rarete x mutation. */
 export function revenuObjet(code: number, gains: readonly number[]): number {
   return (gains[rareteDe(code)] ?? 1) * mutation(mutationDe(code)).mult
 }
 
-/**
- * Affiche un revenu de facon lisible A TOUTES LES ECHELLES.
- * Arrondir a l'entier rendait les mutations INVISIBLES en bas de table: un Gold Common
- * vaut 1,25/s et s'affichait « 1 », donc identique a un Common nu. Le joueur ne pouvait
- * pas comprendre ce qu'il venait d'obtenir.
- */
 export function formatRevenu(v: number): string {
   if (v < 10) return v.toFixed(2).replace(/\.?0+$/, '')
   if (v < 1000) return Math.round(v).toString()

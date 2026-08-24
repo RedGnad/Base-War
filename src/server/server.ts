@@ -10,27 +10,20 @@ import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
 
-// Ce module importe @dcl/sdk/server: il ne doit etre charge que dans la branche serveur,
-// via import() dynamique, et il ne definit AUCUN composant au niveau module.
-
 const STORAGE_KEY = 'taps'
 const SAVE_EVERY_MS = 5000
 
-/** Etat vivant en memoire. Storage n'est PAS un magasin temps reel. */
 const counts = new Map<string, number>()
 const dirty = new Set<string>()
-/** address -> entite synchronisee. A revalider: un serveur long recycle les creneaux. */
 const entities = new Map<string, ReturnType<typeof engine.addEntity>>()
 
 function entityFor(address: string) {
   const cached = entities.get(address)
-  // Le composant peut avoir disparu si le creneau a ete recycle: on revalide avant de reutiliser.
   if (cached !== undefined && PlayerTaps.getOrNull(cached) !== null) return cached
 
   const e = engine.addEntity()
   Transform.create(e, { position: { x: 0, y: -100, z: 0 } }) // hors de vue: porteur de donnees
   PlayerTaps.create(e, { playerId: address, count: counts.get(address) ?? 0 })
-  // Pas d'identifiant explicite: l'allocation automatique est unique par construction.
   syncEntity(e, [PlayerTaps.componentId])
   entities.set(address, e)
   return e
@@ -43,7 +36,6 @@ function publish(address: string) {
   c.count = counts.get(address) ?? 0
 }
 
-/** Charge une seule fois par session, depuis Storage, puis reste en memoire. */
 async function load(address: string): Promise<number> {
   if (counts.has(address)) return counts.get(address)!
   const raw = await Storage.player.get<string>(address, STORAGE_KEY)
@@ -53,7 +45,6 @@ async function load(address: string): Promise<number> {
   return n
 }
 
-/** Point de controle: on n'ecrit jamais par tap ni par image. */
 async function flush(): Promise<void> {
   if (dirty.size === 0) return
   const batch = [...dirty]
@@ -61,7 +52,6 @@ async function flush(): Promise<void> {
   for (const address of batch) {
     const value = JSON.stringify({ count: counts.get(address) ?? 0, at: Date.now() })
     const ok = await Storage.player.set(address, STORAGE_KEY, value)
-    // set() ne jette JAMAIS: un false ignore est une sauvegarde silencieusement perdue.
     if (!ok) {
       console.error(`[SERVER] ECHEC d'ecriture pour ${address}, remis en attente`)
       dirty.add(address)
@@ -74,11 +64,6 @@ async function flush(): Promise<void> {
 export function startServer(): void {
   console.log('[SERVER] demarrage')
 
-  // LE BATTEMENT DE COEUR D'ABORD, avant toute autre logique.
-  // Regle apprise a la dure: la premiere version creait le battement APRES l'hydratation.
-  // L'hydratation a jete, et le serveur est mort sans jamais signaler qu'il vivait, donc
-  // le client affichait "silencieux" sans distinguer "serveur mort" de "serveur absent".
-  // Le signal de vie ne doit dependre de rien.
   const beat = engine.addEntity()
   ServerBeat.create(beat, { at: Date.now() })
   syncEntity(beat, [ServerBeat.componentId], SYNC_ID.serverBeat)
@@ -87,8 +72,6 @@ export function startServer(): void {
     if (b !== null) b.at = Date.now()
   }, BEAT_MS)
 
-  // Vidage du tampon de journal des le depart: c'est notre seule fenetre de diagnostic,
-  // elle doit vivre avant tout code susceptible de jeter.
   timers.setInterval(() => { viderJournal() }, 1000)
 
   timers.setInterval(() => {
@@ -114,16 +97,6 @@ export function startServer(): void {
   startBelt()
   startConvoi()
 
-
-  // HYDRATATION A L'ARRIVEE, via PlayerIdentityData.
-  // On n'utilise PAS le helper @dcl/sdk/players: il est oriente client et le faire tourner
-  // sur le runtime headless tue le serveur au demarrage. PlayerIdentityData est la voie
-  // documentee cote serveur pour savoir qui est present.
-  // Sans hydratation, un joueur qui revient voit zero jusqu'a ce qu'il agisse: c'est le
-  // defaut "lieu vide" en miniature, exactement ce que la regle d'eligibilite punit.
-  // ARRIVEES ET DEPARTS, tous deux par PlayerIdentityData.
-  // Le depart compte autant que l'arrivee: c'est lui qui laisse la base visible et
-  // pillable, ce qui fait vivre le lieu quand personne n'est connecte.
   const presents = new Set<string>()
   let sinceCheck = 0
   engine.addSystem((dt: number) => {
@@ -144,15 +117,10 @@ export function startServer(): void {
         const n = await load(address)
         publish(address)
         await accueillir(address)
-        // Les gains hors ligne sont verses AVANT tout le reste: c'est la premiere
-        // chose que le joueur doit voir en revenant, c'est ce qui l'a fait revenir.
         const hl = encaisserHorsLigne(address)
         if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
-        // La recompense du jour arrive juste apres: deux bonnes nouvelles a l'arrivee.
         const dq = reclamerQuotidienne(address)
         if (dq !== null) void room.send('dailyReward', dq, { to: [address] })
-        // Les quetes du jour partent a l'entree: elles doivent etre lisibles AVANT
-        // que le joueur ne cherche quoi faire, pas apres sa premiere action.
         pousserQuetes(address)
         arrivee(address)
         verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied

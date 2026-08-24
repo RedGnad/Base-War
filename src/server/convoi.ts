@@ -11,19 +11,6 @@ import {
 } from './plots'
 import { boite } from '../shared/loot-table'
 
-/**
- * LE CONVOI, cote serveur.
- *
- * Une boite achetee sur le tapis ne rejoint plus l'inventaire d'un coup: elle traverse
- * le lieu a pied jusqu'a la base de son acheteur, et pendant tout le trajet elle peut
- * lui etre RACHETEE a 150 %. La duree du trajet EST la fenetre d'enchere; le detail du
- * calibrage est dans `shared/schemas.ts`.
- *
- * TOUT est decide ici. Le client ne fait qu'envoyer « je rachete celui-la »: il n'ecrit
- * ni le prix, ni le proprietaire, ni la position. Un convoi est de l'argent en mouvement,
- * donc exactement le genre d'etat qu'un client ne doit jamais toucher.
- */
-
 type Etat = {
   id: number
   entity: ReturnType<typeof engine.addEntity>
@@ -39,7 +26,6 @@ type Etat = {
 const convois = new Map<number, Etat>()
 let prochainId = 1
 
-/** Duree du trajet: plancher, puis distance / vitesse. C'est la fenetre d'enchere. */
 function dureeMs(depart: { x: number; z: number }, cible: { x: number; z: number }): number {
   const d = Math.sqrt((cible.x - depart.x) ** 2 + (cible.z - depart.z) ** 2)
   return Math.max(CONVOI_DUREE_MIN_S, d / CONVOI_VITESSE) * 1000
@@ -63,9 +49,8 @@ function position(e: Etat, t: number): { x: number; z: number } {
 }
 
 /**
- * Lance un convoi. Renvoie false si l'acheteur n'a pas de base: dans ce cas l'appelant
- * livre directement en inventaire (comportement d'avant). Un joueur sans base n'a pas de
- * destination, et le forcer a en poser avant tout achat casserait l'ordre du tutoriel.
+ * Starts a convoy. Returns false when the buyer has no base yet: the caller then delivers
+ * straight to inventory, rather than blocking a purchase and breaking the tutorial order.
  */
 export function lancerConvoi(acheteur: string, typeBoite: number, prix: number, depuis: { x: number; z: number }): boolean {
   const b = baseDe(acheteur)
@@ -106,8 +91,6 @@ export function startConvoi(): void {
     if (e.proprietaire === a) { refus(a, 'it is already yours'); return }
     if (baseDe(a) === undefined) { refus(a, 'place your base first'); return }
 
-    // PORTEE: on doit etre DEVANT le convoi. Un rachat par menu, a l'autre bout de la
-    // carte, retirerait au lieu tout ce que cette mecanique lui apporte.
     const p = positionDe(a)
     if (p === null) { refus(a, 'position unknown'); return }
     const ici = position(e, (Date.now() - e.debutMs) / e.dureeMs)
@@ -117,15 +100,12 @@ export function startConvoi(): void {
     const prix = Math.ceil(e.prixPaye * CONVOI_SURENCHERE)
     if (!depenser(a, prix)) { refus(a, `you need ${prix} coins`); return }
 
-    // REMBOURSEMENT INTEGRAL de l'evince: voir la deduction dans `shared/schemas.ts`.
-    // Sans lui, acheter tot serait strictement perdant et le tapis redeviendrait une
-    // file d'attente jusqu'a la derniere seconde.
+    // The outbid holder is refunded in full. Without it, buying early would be strictly
+    // losing and nobody would ever buy before the belt's end.
     crediter(e.proprietaire, e.prixPaye)
     const evince = e.proprietaire
     void room.send('outbidLost', { byName: nomAffiche(a), rembourse: e.prixPaye, typeBoite: e.typeBoite }, { to: [evince] })
 
-    // LE CONVOI REPART DE LA OU IL EST, vers la nouvelle base. Le faire repartir du
-    // tapis rendrait le rachat gratuit en temps pour le nouvel acheteur.
     const nb = baseDe(a)
     if (nb === undefined) return
     e.depart = { x: ici.x, z: ici.z }
@@ -143,7 +123,6 @@ export function startConvoi(): void {
     jour(`convoi ${e.id}: ${nomAffiche(a)} rachete a ${nomAffiche(evince)} pour ${prix}`)
   })
 
-  // Avancee et livraison. Un seul systeme pour tous les convois.
   engine.addSystem(() => {
     const maintenant = Date.now()
     for (const [id, e] of [...convois]) {
@@ -155,7 +134,6 @@ export function startConvoi(): void {
       if (tr !== null) tr.position = Vector3.create(pos.x, 1.0, pos.z)
       if (t < 1) continue
 
-      // ARRIVEE: la boite entre au stock de son detenteur du moment.
       ajouterBoite(e.proprietaire, e.typeBoite)
       void room.send('inventory', { boites: boitesDe(e.proprietaire) }, { to: [e.proprietaire] })
       void room.send('convoiArrived', { typeBoite: e.typeBoite }, { to: [e.proprietaire] })

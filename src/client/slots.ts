@@ -8,14 +8,6 @@ import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { monAdresseClient } from './theft'
 
-/**
- * FANTOME DE POSE. Un carre au sol suit le joueur: VERT si l'endroit convient, ROUGE
- * sinon, avec la raison affichee. Le joueur valide et sa base se construit la.
- *
- * Le fantome est une AIDE A LA VISEE, jamais une autorisation: le serveur revalide
- * tout, un client modifie enverrait n'importe quelles coordonnees.
- */
-
 const SCENE_COTE = 80
 
 export const slotView = { actif: false, valide: false, raison: '' }
@@ -34,7 +26,6 @@ export function basculerPose(): void {
   }
 }
 
-/** Position de MA base, pour l'exclure des obstacles. Null si je n'en ai pas. */
 function maPosition(): { x: number; z: number } | null {
   const moi = monAdresseClient()
   if (moi === '') return null
@@ -50,7 +41,6 @@ export function setupSlots(): void {
   fantome = engine.addEntity()
   Transform.create(fantome, { position: Vector3.create(0, 0.08, 0), scale: Vector3.create(0, 0, 0) })
   MeshRenderer.setBox(fantome)
-  // Pas de collider: le fantome ne doit ni bloquer le joueur ni intercepter les clics.
 
   etiquette = engine.addEntity()
   Transform.create(etiquette, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
@@ -60,12 +50,6 @@ export function setupSlots(): void {
   room.onMessage('basePositions', (d) => {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
   })
-
-  // MA PROPRE BASE N'EST PAS UN OBSTACLE. Le commentaire ci-dessous l'affirmait depuis
-  // le debut, le code ne le faisait pas: `basePositions` porte TOUTES les bases, la
-  // mienne comprise. Tant que l'ecart minimal valait 11 m ca passait de justesse; a 15 m
-  // se tenir chez soi rendait tout le voisinage rouge et deplacer sa base devenait
-  // impossible. Un commentaire n'est pas une garantie: c'est le code qui exclut.
 
   engine.addSystem(() => {
     if (!slotView.actif) return
@@ -103,7 +87,6 @@ export function setupSlots(): void {
   })
 }
 
-/** Valide la pose a l'endroit ou se tient le joueur. */
 export function poserIci(): void {
   if (!Transform.has(engine.PlayerEntity)) return
   const p = Transform.get(engine.PlayerEntity).position

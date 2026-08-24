@@ -2,11 +2,6 @@ import { room } from '../shared/messages'
 import { boite } from '../shared/loot-table'
 import { alerter } from './theft'
 
-/**
- * ETAPES cote client: le SERVEUR dit a quelle etape on en est, le client dit quoi faire.
- * Les libelles vivent ici parce que ce sont des mots, pas des regles: le serveur n'a pas
- * a transporter du texte a chaque message.
- */
 export const ETAPES_TEXTE = [
   { titre: 'Place your base', aide: 'tap BUILD BASE, then pick a spot' },
   { titre: 'Open your crate', aide: 'walk to your crate and smash it 3 times' },

@@ -7,20 +7,12 @@ import { Belt, TAPIS_LONGUEUR, CENTRE, TAPIS_HAUTEUR } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { boite } from '../shared/loot-table'
 
-/**
- * Rendu du tapis. Chaque article est cliquable: on achete CE qu'on voit passer.
- * Le client n'affirme rien, il envoie l'identifiant de l'article et le serveur decide.
- */
-
 export const beltView = { annonce: '', annonceJusqua: 0 }
 
 type Vue = { objet: Entity; etiquette: Entity }
 const vues = new Map<number, Vue>()
 
 export function setupBelt(): void {
-  // LE TAPIS, SURELEVE sur des pieds. Deux raisons: il se lit comme un convoyeur et
-  // non comme un tapis peint au sol, et surtout il laisse la place a une VRAIE fosse
-  // en dessous (on ne peut pas creuser sous y=0 dans Decentraland).
   const bande = engine.addEntity()
   Transform.create(bande, {
     position: Vector3.create(CENTRE.x, TAPIS_HAUTEUR, CENTRE.z),
@@ -30,7 +22,6 @@ export function setupBelt(): void {
   MeshCollider.setBox(bande)
   Material.setPbrMaterial(bande, { albedoColor: Color4.fromHexString('#8e2b2bff'), roughness: 0.8 })
 
-  // Pieds et rambardes: sans eux la bande flotte et le regard ne comprend pas la hauteur.
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()
     Transform.create(pied, {
@@ -51,8 +42,6 @@ export function setupBelt(): void {
     Material.setPbrMaterial(r, { albedoColor: Color4.fromHexString('#5a6270ff'), roughness: 0.85 })
   }
 
-  // LA FOSSE, sous le bout du tapis. Maintenant que le tapis est a 2,2 m, la boite
-  // tombe de deux metres dans un renfoncement ouvert: ca se lit enfin comme un trou.
   const bx = CENTRE.x + TAPIS_LONGUEUR / 2 + 1.3
   const R = 2.2
 
@@ -62,8 +51,6 @@ export function setupBelt(): void {
   MeshCollider.setBox(fond)
   Material.setPbrMaterial(fond, { albedoColor: Color4.fromHexString('#0d0c0aff'), roughness: 1 })
 
-  // Parois basses (0,9 m): assez pour cacher le fond de loin et lire un renfoncement,
-  // assez basses pour qu'on voie la boite s'y ecraser.
   const H = 0.9
   for (const [dx, dz, sx, sz] of [
     [0, R, R * 2, 0.2], [0, -R, R * 2, 0.2],
@@ -110,8 +97,6 @@ export function setupBelt(): void {
         vues.set(b.articleId, v)
       }
 
-      // On suit la position que le SERVEUR publie: aucune interpolation locale, sinon
-      // deux clients viseraient des positions differentes du meme article.
       const to = Transform.getMutableOrNull(v.objet)
       if (to !== null) to.position = Vector3.create(t.position.x, t.position.y, t.position.z)
       const te = Transform.getMutableOrNull(v.etiquette)
