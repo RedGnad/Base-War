@@ -23,15 +23,12 @@ export function rollRarity(): number {
 }
 
 /**
- * Revenu par objet et par seconde. Progression x4 par palier de rarete.
- *
- * Les PRIX des boites progressent x8, donc PLUS VITE que le revenu: le temps pour
- * s'offrir la boite du palier suivant AUGMENTE (10 s, puis 21, puis 42). Sans cet ecart,
- * la progression se trivialise. Mesure du 24 Aug qui a impose la refonte: avec des
- * valeurs lineaires, une base pleine produisait 2 400 pieces/s contre une boite a 2 600,
- * soit une boite epique par seconde sans rien faire.
+ * Le bareme de production vit desormais dans `shared/economie.ts`, derive de la courbe
+ * mesuree du genre. Il est reexporte ici pour ne pas casser les appelants, mais il n'y
+ * a plus qu'UNE definition dans le depot: une table dupliquee finit toujours par
+ * diverger, et on en avait TROIS (serveur, ui.tsx, client/plots.ts).
  */
-export const GAIN_PAR_SECONDE = [1, 4, 16, 64, 256, 1024, 4096]
+export { PRODUCTION_RARETE as GAIN_PAR_SECONDE } from '../shared/economie'
 
 /**
  * Repartition PAR BOITE, cote serveur uniquement.
@@ -39,11 +36,19 @@ export const GAIN_PAR_SECONDE = [1, 4, 16, 64, 256, 1024, 4096]
  * DEPLACE la distribution. C'est ce qui garde la revelation interessante a tous les prix.
  */
 /** Sept raretes desormais. Les deux dernieres sont volontairement tres rares. */
+/**
+ * BORNEE: une boite de palier t ne sort que les raretes t-1 a t+2, centree sur t.
+ * Sans borne, la queue de distribution domine tout: avec une production en x6,6, un
+ * tirage a 0,002 % sur la derniere rarete vaut 82 654/s et rend, a lui seul, tout le
+ * reste du jeu sans objet pour toujours. Le palier de la boite redevient ainsi une
+ * DECISION d'achat et non un billet de loterie.
+ * Poids par distance au centre: 55 / 22 / 6 / 1,2.
+ */
 const POIDS_BOITE = [
-  [78, 18,   3,   0.9,  0.1,  0.02, 0.002],  // Basic
-  [40, 42,  15,   2.7,  0.3,  0.06, 0.006],  // Good
-  [10, 34,  43,  12,    1.0,  0.20, 0.020],  // Rare
-  [ 2, 12,  36,  42,    8.0,  0.90, 0.090],  // Epic
+  [55, 22,   6,   0,    0,    0,    0   ],  // Basic : raretes 0-2
+  [22, 55,  22,   6,    0,    0,    0   ],  // Good  : raretes 0-3
+  [ 0,  6,  55,  22,    6,    0,    0   ],  // Rare  : raretes 1-4  (centre 2)
+  [ 0,  0,   6,  55,   22,    6,    0   ],  // Epic  : raretes 2-5  (centre 3)
 ]
 
 export function rollBoite(idBoite: number): number {

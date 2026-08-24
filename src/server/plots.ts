@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
-  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS, HORS_LIGNE_TAUX, HORS_LIGNE_PLAFOND_MS, RESERVE_PLAFOND_S, RECOMPENSES_JOUR,
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS, HORS_LIGNE_TAUX, HORS_LIGNE_PLAFOND_MS, HORS_LIGNE_PLAFOND_PRODUCTION_S, RESERVE_PLAFOND_S, RECOMPENSES_JOUR,
   DELAI_DEPLACEMENT_MS, REVENTE_SECONDES, SENTINELLE_CHARGES, SENTINELLE_SECONDES, SENTINELLE_MINIMUM, primePresence
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
@@ -806,7 +806,14 @@ export function encaisserHorsLigne(address: string): { gain: number; secondes: n
   parSeconde *= multiplicateurRevenu(p.rebirths ?? 0) * HORS_LIGNE_TAUX
   if (parSeconde <= 0) return null
 
-  const gain = Math.floor(parSeconde * (ecoule / 1000))
+  // LE PLAFOND EST EN SECONDES DE PRODUCTION, pas en heures.
+  // Un plafond en heures verse un montant qui croit avec la production, donc qui saute
+  // du contenu de plus en plus vite a mesure qu'on progresse: mesure le 24 Aug, une nuit
+  // payait 21 etages alors qu'il n'en existe que 3. Un plafond en secondes de production
+  // verse toujours la meme AVANCE, quel que soit le stade.
+  const brut = parSeconde * (ecoule / 1000)
+  const plafond = (parSeconde / HORS_LIGNE_TAUX) * HORS_LIGNE_PLAFOND_PRODUCTION_S
+  const gain = Math.floor(Math.min(brut, plafond))
   if (gain <= 0) return null
   p.coins += gain
   p.vuA = Date.now()

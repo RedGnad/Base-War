@@ -1,3 +1,4 @@
+import { PRODUCTION_RARETE } from '../shared/economie'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem,
@@ -13,7 +14,11 @@ import {
 } from '../shared/loot-table'
 
 /** Miroir du bareme serveur, pour afficher ce qu'un objet rapporte. */
-const GAINS_UI = [1, 4, 16, 64, 256, 1024, 4096]
+// UNE SEULE DEFINITION DANS LE DEPOT. Cette table etait recopiee ici et dans deux
+// autres fichiers; a la refonte du 24 Aug elle a diverge du serveur en trois endroits,
+// et l'interface annoncait des revenus faux. Une table dupliquee finit toujours par
+// mentir.
+const GAINS_UI = PRODUCTION_RARETE
 
 /**
  * SELECTION POUR DEPLACER. Sur mobile il n'y a ni glisser ni clic droit: le motif qui
@@ -164,10 +169,15 @@ function creerVue(x: number, z: number): Vue {
    * a tous supprimerait ce cout et rendrait la hauteur inutile, alors que c'est elle qui
    * fait que l'objet le plus rare, place en haut, est le plus difficile a prendre.
    */
+  // UNE COLONNE QUI TRAVERSE TOUS LES ETAGES, pas une borne au rez-de-chaussee.
+  // Defaut signale le 24 Aug: j'avais pose UNE entite a hauteur d'homme au sol, donc
+  // acheter un etage donnait un etage sans ascenseur. Une colonne montante est
+  // atteignable depuis CHAQUE niveau, et sa hauteur suit les etages ouverts (mise a jour
+  // dans la boucle d'affichage, comme les planchers et les murs).
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
-    position: Vector3.create(x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, 0.9, z + 1.4),
-    scale: Vector3.create(0.5, 1.8, 0.5)
+    position: Vector3.create(x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, ETAGE_HAUTEUR / 2, z + 1.4),
+    scale: Vector3.create(0.5, ETAGE_HAUTEUR, 0.5)
   })
   MeshRenderer.setBox(ascenseur)
   MeshCollider.setBox(ascenseur)
@@ -388,6 +398,15 @@ export function setupPlots(): void {
           : ''
         // LA DEFENSE SE LIT AVANT D'ENTRER. C'est ce qui fait du raid une decision au lieu
         // d'un ramassage: on voit ce qu'on risque, et on choisit une autre base ou on tente.
+        // L'ascenseur monte AVEC le batiment.
+        const ta = Transform.getMutableOrNull(v.ascenseur)
+        if (ta !== null) {
+          const h = p.etages * ETAGE_HAUTEUR
+          ta.scale = Vector3.create(0.5, h, 0.5)
+          ta.position = Vector3.create(
+            t.position.x + BASE_COTE / 2 - TREMIE_LARGEUR / 2, h / 2, t.position.z + 1.4
+          )
+        }
         const garde = p.sentinelles > 0 ? `\nSENTRY x${p.sentinelles}` : ''
         const ts = Transform.getMutableOrNull(v.sentinelle)
         if (ts !== null) {

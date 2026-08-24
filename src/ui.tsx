@@ -1,3 +1,4 @@
+import { PRODUCTION_RARETE } from './shared/economie'
 import { Color4 } from '@dcl/sdk/math'
 import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
@@ -17,7 +18,11 @@ import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
 
 /** Miroir du bareme serveur, pour dire au joueur ce que son objet lui rapporte. */
-const GAIN_PAR_SECONDE_UI = [1, 4, 16, 64, 256, 1024, 4096]
+// UNE SEULE DEFINITION DANS LE DEPOT. Cette table etait recopiee ici et dans deux
+// autres fichiers; a la refonte du 24 Aug elle a diverge du serveur en trois endroits,
+// et l'interface annoncait des revenus faux. Une table dupliquee finit toujours par
+// mentir.
+const GAIN_PAR_SECONDE_UI = PRODUCTION_RARETE
 
 /** Ce qu'on dit au joueur selon ce qui est REELLEMENT arrive a son objet. */
 const ETATS: Record<string, (r: number) => string> = {

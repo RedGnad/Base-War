@@ -1,3 +1,7 @@
+import {
+  PRODUCTION_RARETE, PRIX_ETAGE_ABS, PALIER_MAX, cumulPourPalier, multiplicateurPalier,
+  HORS_LIGNE_TAUX_V2, HORS_LIGNE_PLAFOND_PRODUCTION_S
+} from './economie'
 import { Schemas, engine } from '@dcl/sdk/ecs'
 import { isServer } from '@dcl/sdk/network'
 // AUTH_SERVER_PEER_ID n'est PAS reexporte par @dcl/sdk/network: chemin profond obligatoire.
@@ -355,17 +359,25 @@ export const PORTE_LARGEUR = 2.0
  * s'epuisait en 19 minutes de jeu actif. La reference en a 19, et c'est le NOMBRE de
  * marches qui fait tenir un jeu des semaines, pas la lenteur de chacune.
  */
-const REVENU_RARETE = [1, 4, 16, 64, 256, 1024, 4096]
-const SLOTS_PLEINS = 12
-const RETOUR_PALIER_S = 300
-
-export const PALIERS = Array.from({ length: 12 }, (_, i) => {
-  const rareteMin = Math.min(1 + Math.floor(i / 2), REVENU_RARETE.length - 1)
-  const cout = SLOTS_PLEINS * REVENU_RARETE[rareteMin] * RETOUR_PALIER_S
+/**
+ * PALIERS: RACINE CUBIQUE DU GAIN CUMULE, la formule exacte de la reference.
+ *
+ * Ce bloc portait une table calculee a la main (« 12 emplacements x revenu de la rarete
+ * exigee x 300 s »), et le commentaire au-dessus se felicitait d'arriver « par CALCUL,
+ * pas par imitation » a des rapports de 4,0. La mesure du 24 Aug a montre que la
+ * reference ne fait PAS 4,0: elle fait un rapport cout/production qui DOUBLE a chaque
+ * palier, et un reset en racine cubique. Notre calcul independant etait faux, et la
+ * fierte de ne pas avoir imite nous a coute une economie plate.
+ *
+ * La rarete exigee monte d'un cran tous les deux paliers, ce qui reste: c'est la porte
+ * qui empeche de franchir un palier en accumulant du commun.
+ */
+export const PALIERS = Array.from({ length: PALIER_MAX }, (_, i) => {
+  const n = i + 1
   return {
-    cout,
-    rareteMin,
-    multiplicateur: 2 + i,
+    cout: cumulPourPalier(n),
+    rareteMin: Math.min(1 + Math.floor(i / 2), PRODUCTION_RARETE.length - 1),
+    multiplicateur: multiplicateurPalier(n),
     garde: i < 2 ? 1 : 2
   }
 }) as ReadonlyArray<{ cout: number; rareteMin: number; multiplicateur: number; garde: number }>
@@ -380,26 +392,16 @@ export function multiplicateurRevenu(n: number): number {
 }
 
 /**
- * L'ETAGE S'ACHETE, ET SON PRIX SUIT LA MEME REGLE QUE LE PALIER.
+ * PRIX DES ETAGES: derives de `shared/economie.ts`.
  *
- * ERREUR CORRIGEE le 24 Aug: j'avais price l'etage sur 120 s de remboursement et le
- * palier sur 300 s, alors que les deux produisent LE MEME EFFET a leur premier cran:
- *   etage 2  : 6 -> 12 emplacements = revenu DOUBLE
- *   palier 1 : x1 -> x2             = revenu DOUBLE
- * L'etage ressortait 5 fois moins cher pour le meme gain, et il ecrasait le palier.
- * Le choix que je pretendais creer n'existait pas.
- *
- * Regle unique: remboursement en 300 s, remplissage compris.
- *   etage 2, rempli de Good (240 la boite, 4/s): remplir 1 440 · gain 24/s
- *            cible 24 x 300 = 7 200 · PRIX = 7 200 - 1 440 = 5 760
- *   etage 3, rempli de Rare (960 la boite, 16/s): remplir 5 760 · gain 96/s
- *            cible 96 x 300 = 28 800 · PRIX = 28 800 - 5 760 = 23 040
- *
- * L'etage reste MOINS cher que le palier (5 760 contre 14 400), et c'est justifie:
- * le multiplicateur d'un palier s'applique a TOUT et se cumule sur 12 crans, la ou les
- * etages plafonnent a 3. On paie plus cher ce qui n'a pas de plafond.
+ * Le bloc precedent les calculait sur « 300 s de remboursement, remplissage compris »,
+ * ce qui donnait 5 760 et 23 040. Avec une production qui croit en x6,6 par rarete, un
+ * prix ABSOLU calcule sur le stade de depart devient trivial deux crans plus loin:
+ * mesure, une nuit hors ligne payait 21 etages alors qu'il n'en existe que 3.
+ * Les nouveaux prix suivent la meme geometrie que la production (x12,5) et valent
+ * environ quinze minutes de jeu au moment ou l'etage devient utile.
  */
-export const PRIX_ETAGE = [0, 5760, 23040] as const
+export const PRIX_ETAGE = PRIX_ETAGE_ABS
 
 export function prixEtage(etageVise: number): number {
   return PRIX_ETAGE[Math.max(0, Math.min(etageVise - 1, PRIX_ETAGE.length - 1))]
@@ -448,8 +450,10 @@ export const DELAI_DEPLACEMENT_MS = 180_000
  *  - un PLAFOND de duree: au-dela, l'accumulation s'arrete. C'est ce qui donne envie
  *    de revenir SOUVENT plutot que de laisser mijoter une semaine
  */
-export const HORS_LIGNE_TAUX = 0.35        // 35 % du revenu normal
-export const HORS_LIGNE_PLAFOND_MS = 4 * 3600_000   // 4 heures d'accumulation maximum
+export const HORS_LIGNE_TAUX = HORS_LIGNE_TAUX_V2        // 35 % du revenu normal
+/** Conserve pour borner l'ecart de temps; le VRAI plafond est en secondes de production. */
+export const HORS_LIGNE_PLAFOND_MS = 4 * 3600_000
+export { HORS_LIGNE_PLAFOND_PRODUCTION_S }
 
 /**
  * COLLECTE MANUELLE. Le praticien insiste: *« on a fait un bouton parce que sur Roblox,
