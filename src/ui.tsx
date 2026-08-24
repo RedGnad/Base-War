@@ -8,6 +8,7 @@ import { beltView } from './client/belt'
 import { boxView, ouvrirMeilleure } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView, basculerIndex } from './client/index-ui'
+import { QuestsPanel, questsView, basculerQuests, quetesAPrendre } from './client/quests-ui'
 import { WelcomePanel } from './client/welcome'
 import { revendre } from './client/theft'
 import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
@@ -98,12 +99,25 @@ const uiComponent = () => (
 
     <WelcomePanel />
     <IndexPanel />
+    <QuestsPanel />
 
     {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
         appartient au profil et aux controles camera du client mobile. */}
     <UiEntity
-      uiTransform={{ width: 108, height: 36, positionType: 'absolute', position: { top: 12, right: 24 } }}
+      uiTransform={{
+        width: 240, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
+        flexDirection: 'row', justifyContent: 'flex-end'
+      }}
     >
+      {/* Le compteur du bouton porte le NOMBRE DE QUETES A ENCAISSER, pas le nombre de
+          quetes. Un badge qui affiche « 3 » en permanence n'appelle a rien; un badge qui
+          passe a 1 quand quelque chose attend est la seule raison d'ouvrir le panneau. */}
+      <Button
+        uiTransform={{ width: 118, height: 36, margin: { right: 6 } }}
+        value={questsView.ouvert ? 'CLOSE' : (quetesAPrendre() > 0 ? `GOALS  ${quetesAPrendre()} !` : 'GOALS')}
+        variant={questsView.ouvert || quetesAPrendre() > 0 ? 'primary' : 'secondary'}
+        fontSize={12}
+        onMouseDown={basculerQuests} />
       <Button
         uiTransform={{ width: 108, height: 36 }}
         value={indexView.ouvert ? 'CLOSE' : `INDEX ${indexView.vus.length}`}

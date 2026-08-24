@@ -78,6 +78,19 @@ export const MESSAGES = {
   collect: Schemas.Map({}),
   /** serveur -> le collecteur: combien a ete verse. */
   collected: Schemas.Map({ gain: Schemas.Int }),
+  /**
+   * serveur -> le joueur: ses trois quetes du jour et l'etat du calendrier 7 jours.
+   * Envoye a l'entree puis a chaque avancement, pour que la barre bouge au moment de
+   * l'action: une quete dont le compteur n'avance qu'au rechargement ne se lit pas.
+   */
+  quests: Schemas.Map({
+    ids: Schemas.Array(Schemas.Int), progres: Schemas.Array(Schemas.Int),
+    cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
+    jour: Schemas.Int, jourPris: Schemas.Boolean
+  }),
+  /** client -> serveur: j'encaisse la quete n (3 = le bonus des trois). */
+  claimQuest: Schemas.Map({ slot: Schemas.Int }),
+
   /** serveur -> le joueur: sa recompense quotidienne. */
   dailyReward: Schemas.Map({ jour: Schemas.Int, boite: Schemas.Int }),
 

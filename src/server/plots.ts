@@ -10,6 +10,7 @@ import {
 import { GAIN_PAR_SECONDE } from './loot'
 import { revenuObjet, rareteDe } from '../shared/loot-table'
 import { jour, viderJournal } from './journal'
+import { QUETES, QUETE_BOITE, QUETE_BONUS_BOITE, quetesDuJour, TypeQuete } from '../shared/quests'
 import { aQuelqueChoseAReprendre } from './theft'
 import { room } from '../shared/messages'
 
@@ -59,6 +60,12 @@ type Profil = {
   dernierJour?: number
   /** jours consecutifs de connexion, 1 a 7 puis retour a 1 */
   serie?: number
+  /** jour (AAAAMMJJ) du jeu de quetes en cours; un autre jour remet a zero */
+  quetesJour?: number
+  /** avancement des TROIS quetes du jour, dans l'ordre de `quetesDuJour()` */
+  quetesProgres?: number[]
+  /** quetes deja encaissees (1 = prise), plus un 4e drapeau pour le bonus des trois */
+  quetesPrises?: number[]
   /**
    * INDEX DE DECOUVERTE: codes d'objets deja obtenus au moins une fois.
    * *« ce menu index qui permet de voir quelle machine on a trouve et lesquelles il
@@ -374,6 +381,108 @@ export function ajouterObjet(address: string, rarity: number): RangementResultat
   basesSales.add(address)
   publier(b)
   return 'expose'
+}
+
+
+// ---------------------------------------------------------------------------
+// QUETES QUOTIDIENNES
+// Elles vivent ici parce que l'avancement EST une donnee de profil: le stocker
+// ailleurs demanderait un second magasin a garder synchronise avec celui-ci.
+// ---------------------------------------------------------------------------
+
+function cleDuJour(): number {
+  const d = new Date()
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate()
+}
+
+/** Remet le jeu de quetes a zero si la journee a change. Rend le profil, ou null. */
+function quetesDuProfil(address: string): Profil | null {
+  const p = profils.get(address)
+  if (!p) return null
+  const k = cleDuJour()
+  if (p.quetesJour !== k) {
+    p.quetesJour = k
+    p.quetesProgres = [0, 0, 0]
+    p.quetesPrises = [0, 0, 0, 0]   // le 4e drapeau est le bonus des trois
+    profilsSales.add(address)
+  }
+  return p
+}
+
+/**
+ * Fait avancer les quetes du jour d'un joueur.
+ * On passe le TYPE d'action, pas un index: l'appelant (ouverture, achat, revente...)
+ * n'a pas a savoir quelles quetes sont tirees aujourd'hui.
+ */
+export function avancerQuete(address: string, type: TypeQuete, n = 1): void {
+  const p = quetesDuProfil(address)
+  if (!p || n <= 0) return
+  const ids = quetesDuJour(p.quetesJour ?? 0)
+  const prog = [...(p.quetesProgres ?? [0, 0, 0])]
+  let touche = false
+  for (let i = 0; i < ids.length; i++) {
+    const q = QUETES[ids[i]]
+    if (q.type !== type) continue
+    if (prog[i] >= q.cible) continue
+    prog[i] = Math.min(prog[i] + n, q.cible)
+    touche = true
+  }
+  if (!touche) return
+  p.quetesProgres = prog
+  profilsSales.add(address)
+}
+
+export type EtatQuetes = {
+  ids: number[]; progres: number[]; cibles: number[]; pris: number[]
+  jour: number; serie: number; jourPris: boolean
+}
+
+/** Ce que le client doit afficher: les trois quetes, et l'etat du calendrier 7 jours. */
+export function etatQuetes(address: string): EtatQuetes | null {
+  const p = quetesDuProfil(address)
+  if (!p) return null
+  const ids = quetesDuJour(p.quetesJour ?? 0)
+  return {
+    ids,
+    progres: [...(p.quetesProgres ?? [0, 0, 0])],
+    cibles: ids.map((i) => QUETES[i].cible),
+    pris: [...(p.quetesPrises ?? [0, 0, 0, 0])],
+    jour: p.serie ?? 1,
+    serie: p.serie ?? 1,
+    jourPris: p.dernierJour === cleDuJour()
+  }
+}
+
+/**
+ * Encaisse une quete finie. Le SERVEUR verifie l'avancement: le client ne fait
+ * qu'exprimer l'intention, comme partout ailleurs.
+ * `slot` 0-2 = une quete; `slot` 3 = le bonus des trois.
+ */
+export function reclamerQuete(address: string, slot: number): { boite: number } | { erreur: string } {
+  const p = quetesDuProfil(address)
+  if (!p) return { erreur: 'unknown profile' }
+  const pris = [...(p.quetesPrises ?? [0, 0, 0, 0])]
+  if (slot < 0 || slot > 3) return { erreur: 'no such quest' }
+  if (pris[slot] === 1) return { erreur: 'already claimed' }
+
+  const ids = quetesDuJour(p.quetesJour ?? 0)
+  const prog = p.quetesProgres ?? [0, 0, 0]
+
+  if (slot === 3) {
+    // Le bonus exige les TROIS quetes FINIES, pas les trois encaissees: sinon
+    // l'ordre des taps deciderait si le bonus est atteignable.
+    for (let i = 0; i < ids.length; i++) if (prog[i] < QUETES[ids[i]].cible) return { erreur: 'finish all three first' }
+  } else if (prog[slot] < QUETES[ids[slot]].cible) {
+    return { erreur: 'not finished yet' }
+  }
+
+  const boite = slot === 3 ? QUETE_BONUS_BOITE : QUETE_BOITE
+  pris[slot] = 1
+  p.quetesPrises = pris
+  p.boites = [...(p.boites ?? []), boite]
+  profilsSales.add(address)
+  jour(`${nomDe(address)} encaisse la quete ${slot}: boite ${boite}`)
+  return { boite }
 }
 
 export function nomAffiche(address: string): string {

@@ -8,6 +8,7 @@ import {
 /** On doit etre PRES d'une place pour la revendiquer. */
 const PORTEE_INSTALLATION = 7
 import { room } from '../shared/messages'
+import { avancerQuete, etatQuetes, reclamerQuete, boitesDe } from './plots'
 import { rareteDe, mutationDe, nomObjet } from '../shared/loot-table'
 import { jour } from './journal'
 import {
@@ -52,6 +53,20 @@ function positionDe(address: string): Vector3 | null {
 
 function refus(address: string, action: string, raison: string, antiCheat = false): void {
   void room.send('actionRejected', { action, raison, antiCheat }, { to: [address] })
+}
+
+/**
+ * Renvoie au joueur l'etat de ses quetes.
+ * Appele APRES chaque action comptee, pas seulement a l'entree: une barre de progression
+ * qui n'avance qu'au rechargement de la scene ne se lit pas comme une progression.
+ */
+export function pousserQuetes(address: string): void {
+  const q = etatQuetes(address)
+  if (q === null) return
+  void room.send('quests', {
+    ids: q.ids, progres: q.progres, cibles: q.cibles, pris: q.pris,
+    jour: q.jour, jourPris: q.jourPris
+  }, { to: [address] })
 }
 
 /** 3.1 verrou automatique a l'arrivee: on ne se fait pas piller en posant le pied. */
@@ -172,12 +187,25 @@ export function startTheft(): void {
     if (!deplacerObjet(a, d.de, d.vers)) refus(a, 'move', 'cannot move there')
   })
 
+  room.onMessage('claimQuest', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = reclamerQuete(a, d.slot)
+    if ('erreur' in r) { refus(a, 'quest', r.erreur); return }
+    void room.send('dailyReward', { jour: 0, boite: r.boite }, { to: [a] })
+    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    pousserQuetes(a)
+  })
+
   room.onMessage('collect', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const gain = collecter(a)
     if (gain <= 0) { refus(a, 'collect', 'nothing to collect'); return }
     void room.send('collected', { gain }, { to: [a] })
+    avancerQuete(a, 'collecter')
+    avancerQuete(a, 'banquer', gain)
+    pousserQuetes(a)
   })
 
   room.onMessage('buyFloor', (_d, ctx) => {
@@ -194,6 +222,8 @@ export function startTheft(): void {
     const r = revendreObjet(a, d.slot)
     if (!r.ok) { refus(a, 'sell', r.raison ?? 'refused'); return }
     void room.send('sold', { gain: r.gain ?? 0, rarity: 0 }, { to: [a] })
+    avancerQuete(a, 'vendre')
+    pousserQuetes(a)
   })
 
   room.onMessage('rebirth', (_d, ctx) => {

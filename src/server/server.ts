@@ -4,6 +4,7 @@ import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne } from './plots'
+import { pousserQuetes } from './theft'
 import { jour, viderJournal, rejouerJournal } from './journal'
 import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
 import { startBelt } from './belt'
@@ -148,6 +149,9 @@ export function startServer(): void {
         // La recompense du jour arrive juste apres: deux bonnes nouvelles a l'arrivee.
         const dq = reclamerQuotidienne(address)
         if (dq !== null) void room.send('dailyReward', dq, { to: [address] })
+        // Les quetes du jour partent a l'entree: elles doivent etre lisibles AVANT
+        // que le joueur ne cherche quoi faire, pas apres sa premiere action.
+        pousserQuetes(address)
         verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied
         delivrerAlertes(address)  // ce qui s'est passe pendant l'absence
         rejouerJournal(address)

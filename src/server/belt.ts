@@ -7,7 +7,8 @@ import {
 import { room } from '../shared/messages'
 import { jour } from './journal'
 import { rollTypeBoite, rollBoite, rollMutation } from './loot'
-import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible } from './plots'
+import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete } from './plots'
+import { pousserQuetes } from './theft'
 import { BOITES, encoder, nomObjet } from '../shared/loot-table'
 
 /**
@@ -110,18 +111,20 @@ export function startBelt(): void {
     const pos = beltPosition(art.progres)
     const dist = Vector3.distance(p, Vector3.create(pos.x, pos.y, pos.z))
     if (dist > PORTEE_ACHAT) {
-      void room.send('actionRejected', { action: 'purchase', raison: `trop loin (${dist.toFixed(1)} m)`, antiCheat: true }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', raison: `too far (${dist.toFixed(1)}m)`, antiCheat: true }, { to: [a] })
       return
     }
 
     if (!depenser(a, art.prix)) {
-      void room.send('actionRejected', { action: 'purchase', raison: `il te faut ${art.prix - coinsDe(a)} pieces de plus`, antiCheat: false }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', raison: `you need ${art.prix - coinsDe(a)} more coins`, antiCheat: false }, { to: [a] })
       return
     }
 
     // La boite part FERMEE dans le stock: le hasard se revele a l'ouverture, pas a l'achat.
     ajouterBoite(a, art.typeBoite)
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    avancerQuete(a, 'acheter')
+    pousserQuetes(a)
     art.vendu = true
     const nom = nomAffiche(a)
     const c = Belt.getMutableOrNull(art.entity)
@@ -164,6 +167,8 @@ export function startBelt(): void {
     // DEUX TIRAGES SEPARES: la rarete, puis la mutation. C'est ce qui cree la surprise
     // composee (« un Rare... DORE ! ») et multiplie la table par 14 sans un maillage
     // de plus.
+    avancerQuete(a, 'ouvrir')
+    if (d.typeBoite >= 1) avancerQuete(a, 'ouvrirRare')
     const rarity = rollBoite(d.typeBoite)
     const mut = rollMutation()
     const code = encoder(rarity, mut)
@@ -176,9 +181,12 @@ export function startBelt(): void {
     // ouvertures rapides passeraient toutes les deux le test de place et la seconde
     // se perdrait exactement comme avant.
     enVol.set(a, code)
+    pousserQuetes(a)
+
     timers.setTimeout(() => {
       enVol.delete(a)
       const reel = ajouterObjet(a, code)
+      if (reel === 'expose') { avancerQuete(a, 'poser'); pousserQuetes(a) }
       if (reel !== prevu) jour(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${nomAffiche(a)}`)
     }, POSE_DIFFEREE_MS)
   })
