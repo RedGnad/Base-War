@@ -97,6 +97,8 @@ const ARMES_MAX = 10
 const RECUL_DEG = 20
 /** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
 const TIR_MS = 300
+/** Shortest gap between two arm animations, whatever the weapon's own rate. */
+const CLIP_MIN_MS = 340
 /**
  * The first-person volume that rides the player while the weapon is out. A camera area is
  * a region and not a per-player flag, so it stays barely wider than one body: anyone
@@ -114,6 +116,7 @@ let dernierTir = 0
 let flashScale = 0
 let zoneVisee: Entity | null = null
 let vueVisibleApres = 0
+let dernierClipTir = 0
 /** Whether first person was the player's own setting when the weapon came out. */
 let prefereVuePremiere = false
 let dernierRecensement = 0
@@ -293,21 +296,33 @@ function gunSystem(dt: number): void {
     degainer(!combatView.aiming)
   }
 
-  // Two ways to fire, and neither needs its own button.
+  // A tap anywhere fires, and nothing fires on its own.
   //
-  // The shot leaves on its own when the reticle locks a target, which is the mode Fortnite
-  // recommends to players new to mobile. A tap anywhere fires as well, which is another of
-  // the three modes that game ships, so a player who wants the trigger has it without a
-  // control taking up room. The cooldown gates both, so they cannot stack.
-  const tapote = combatView.aiming && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
-  const seul = combatView.aiming && combatView.targetName !== '' && combatView.cooldown === 0
-  if ((tapote || seul) && tirer(now)) {
-    // The shot clip is one-shot and displaces the held pose, so the aim is put back when
-    // it ends, otherwise the arm would drop between two rounds.
-    void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
-    timers.setTimeout(() => {
-      if (combatView.aiming) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
-    }, TIR_MS + 20)
+  // Of the three fire modes Fortnite ships on mobile, the automatic one is the one it
+  // recommends to newcomers, and it is the wrong one here. That advice assumes everything
+  // on screen is an enemy. This venue is a gathering place built around one belt, so a
+  // drawn weapon on automatic would shoot every neutral who crossed the cone, and a shot
+  // costs the target real coins. Drawing already carries the intent; the tap carries the
+  // shot. The reticle naming its target is the assist, rather than firing for the player.
+  if (combatView.aiming && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN) && tirer(now)) {
+    // The arm keeps its own, slower beat.
+    //
+    // The weapon can leave five and a half rounds a second and the clip lasts three
+    // hundred milliseconds, so animating every one of them would restart the emote before
+    // it played and turn a burst into a twitch, at one restricted call per round. The
+    // muzzle flash and the weapon's own kick carry the cadence; the arm plays about three
+    // times a second and that is enough to read as recoil.
+    if (now - dernierClipTir >= CLIP_MIN_MS) {
+      dernierClipTir = now
+      void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
+      // The shot clip displaces the held pose, so the aim goes back when it ends, unless a
+      // later round has already claimed the arm.
+      timers.setTimeout(() => {
+        if (combatView.aiming && dernierClipTir === now) {
+          void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+        }
+      }, TIR_MS + 20)
+    }
   }
 
   // The view model pulls to centre while aiming, and stops being written once it is
@@ -328,7 +343,7 @@ function gunSystem(dt: number): void {
   // Recoil. The avatar's arm cannot move, so the weapon does: it rises on the shot and
   // settles back. Applied to whichever of the two models is the one on screen.
   if (recul > 0) {
-    recul = Math.max(0, recul - dt * 4)
+    recul = Math.max(0, recul - dt * 9)
     const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
     if (porteur !== null) {
       const base = combatView.firstPerson ? Quaternion.Identity() : MAIN_ROT

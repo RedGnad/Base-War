@@ -416,7 +416,7 @@ const uiComponent = () => (
         flexDirection: 'row', justifyContent: 'center'
       }}
     >
-      {theftView.pending > 0 && !slotView.active && (
+      {theftView.pending > 0 && !slotView.active && !combatView.aiming && (
         <Button
           uiTransform={{ width: 190, height: BTN_H, margin: { right: BTN_GAP } }}
           value={`COLLECT ${formatIncome(theftView.pending)}`}
@@ -425,7 +425,7 @@ const uiComponent = () => (
           onMouseDown={collectPending} />
       )}
 
-      {(() => {
+      {!combatView.aiming && (() => {
         const a = nextAction()
         return (
           <Button
@@ -435,7 +435,7 @@ const uiComponent = () => (
         )
       })()}
 
-      {theftView.basePosee && view.items > 0 && !slotView.active && (
+      {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming && (
         <Button
           uiTransform={{ width: 170, height: BTN_H, margin: { right: BTN_GAP } }}
           value={
@@ -449,11 +449,14 @@ const uiComponent = () => (
       )}
 
       {/*
-        The weapon control, and there is only one: it draws and holsters. While the weapon
-        is out the shot leaves on its own, so no trigger button competes for a thumb.
-        uiInputBinding carries IA_SECONDARY, so the same element serves the phone, where
-        there is no key, and the desktop, where F alone told the player nothing.
-        pointerFilter blocks the tap so hitting the button does not also click the world.
+        The weapon control, and while the weapon is out it is the only control left.
+
+        A tap anywhere fires, so every other button in this bar would fire as well as do
+        its own job: the global input reports the tap whether or not the interface
+        swallowed it. Drawing therefore empties the bar down to this one button, which
+        also says what combat mode is without a word of explanation. uiInputBinding carries
+        IA_SECONDARY, so the same element serves the phone, where there is no key, and the
+        desktop, where F alone told the player nothing.
       */}
       {!slotView.active && (
         <Button

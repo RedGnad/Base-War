@@ -96,7 +96,15 @@ export const GIFT_RANGE = 9
  * into ruin: the coins change hands, they do not vanish.
  */
 export const SHOT_RANGE = 28
-export const SHOT_COOLDOWN_MS = 900
+/**
+ * The floor between two shots, not the pace of them.
+ *
+ * At 900 ms the weapon fired like a revolver and the player was waiting on it instead of
+ * on their own hand. 180 ms puts the ceiling at five and a half rounds a second, which no
+ * thumb reaches, so what limits the burst is how fast the player taps. The rate still has
+ * a floor, because it also caps what a client can ask the server to resolve.
+ */
+export const SHOT_COOLDOWN_MS = 180
 /**
  * Half-angle of the aim cone, as the cosine the server compares against. 0.97 is about 14
  * degrees. The client draws its reticle from this same number, so the crosshair states what
@@ -105,9 +113,18 @@ export const SHOT_COOLDOWN_MS = 900
 export const SHOT_CONE_DOT = 0.97
 /** Jog speed while aiming, as a fraction of the normal one. Aiming costs mobility. */
 export const AIM_SPEED_SHARE = 0.5
-/** Fraction of banked coins dropped per hit, and its absolute cap. */
-export const SHOT_DROP_SHARE = 0.10
-export const SHOT_DROP_CAP_S = 60
+/**
+ * Fraction of banked coins dropped per hit, and its absolute cap.
+ *
+ * Rebalanced against the faster weapon rather than left alone: many small hits read far
+ * better than one large one, and a burst has to stay survivable. Sustained at the tap
+ * ceiling this strips about 15 percent of a bank per second, against 11 before, so the
+ * weapon got more dangerous but not by an order. The cap is per shot, so it had to come
+ * down the most: at eight seconds of income a full burst tops out near forty-four seconds
+ * of the target's production, under the sixty-six the slow weapon allowed.
+ */
+export const SHOT_DROP_SHARE = 0.03
+export const SHOT_DROP_CAP_S = 8
 /** A dropped pile is picked up by walking within this radius, and fades if nobody comes. */
 export const LOOT_PICKUP_RANGE = 3
 export const LOOT_LIFETIME_MS = 45_000
