@@ -107,7 +107,12 @@ function prochaineAction(): { libelle: string; pret: boolean; action: () => void
   }
   if (theftView.prixEtage > 0) return { libelle: `FLOOR ${formatRevenu(theftView.prixEtage)}`, pret: false, action: acheterEtage }
   if (theftView.prochainPalier > 0) return { libelle: `PRESTIGE ${formatRevenu(theftView.prochainPalier)}`, pret: false, action: franchirPalier }
-  return { libelle: 'MOVE BASE', pret: false, action: basculerPose }
+  // PLUS DE « MOVE BASE » ICI. Il y etait en dernier recours, donc atteignable seulement
+  // au maximum d'etages ET de paliers: en pratique jamais. Chaque branche ajoutee devant
+  // (dont deux pour la sentinelle) l'enfoncait un peu plus.
+  // LECON: un MODE ne se classe pas dans une file de priorites avec des actions. Il lui
+  // faut sa propre affordance, sinon il finit derriere tout le reste.
+  return { libelle: 'ALL MAXED', pret: false, action: () => {} }
 }
 
 const uiComponent = () => (
@@ -196,7 +201,7 @@ const uiComponent = () => (
         principal: ce sont des raccourcis, pas l'action du moment. */}
     <UiEntity
       uiTransform={{
-        width: 150, height: 84, positionType: 'absolute', position: { top: 216, left: 110 },
+        width: 150, height: 130, positionType: 'absolute', position: { top: 216, left: 110 },
         flexDirection: 'column', justifyContent: 'space-between'
       }}
     >
@@ -207,6 +212,15 @@ const uiComponent = () => (
       <Button
         uiTransform={{ width: 150, height: 38 }}
         value="GO TO BELT" variant="secondary" fontSize={13} onMouseDown={allerAuTapis} />
+      {/* La pose a SON bouton, et il n'apparait qu'une fois la base posee: avant, c'est
+          l'action principale qui la porte, parce que c'est alors la seule chose a faire. */}
+      {theftView.basePosee && (
+        <Button
+          uiTransform={{ width: 150, height: 38 }}
+          value={slotView.actif ? 'CANCEL MOVE' : 'MOVE BASE'}
+          variant={slotView.actif ? 'primary' : 'secondary'}
+          fontSize={13} onMouseDown={basculerPose} />
+      )}
     </UiEntity>
 
     {/* HAUT-CENTRE: etat, non actionnable. */}

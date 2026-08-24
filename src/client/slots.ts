@@ -6,6 +6,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { BASE_COTE, accrocher, raisonInvalide } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
+import { monAdresseClient } from './theft'
 
 /**
  * FANTOME DE POSE. Un carre au sol suit le joueur: VERT si l'endroit convient, ROUGE
@@ -33,6 +34,18 @@ export function basculerPose(): void {
   }
 }
 
+/** Position de MA base, pour l'exclure des obstacles. Null si je n'en ai pas. */
+function maPosition(): { x: number; z: number } | null {
+  const moi = monAdresseClient()
+  if (moi === '') return null
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== moi) continue
+    const t = Transform.getOrNull(e)
+    return t === null ? null : { x: t.position.x, z: t.position.z }
+  }
+  return null
+}
+
 export function setupSlots(): void {
   fantome = engine.addEntity()
   Transform.create(fantome, { position: Vector3.create(0, 0.08, 0), scale: Vector3.create(0, 0, 0) })
@@ -48,6 +61,12 @@ export function setupSlots(): void {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
   })
 
+  // MA PROPRE BASE N'EST PAS UN OBSTACLE. Le commentaire ci-dessous l'affirmait depuis
+  // le debut, le code ne le faisait pas: `basePositions` porte TOUTES les bases, la
+  // mienne comprise. Tant que l'ecart minimal valait 11 m ca passait de justesse; a 15 m
+  // se tenir chez soi rendait tout le voisinage rouge et deplacer sa base devenait
+  // impossible. Un commentaire n'est pas une garantie: c'est le code qui exclut.
+
   engine.addSystem(() => {
     if (!slotView.actif) return
     if (!Transform.has(engine.PlayerEntity)) return
@@ -55,9 +74,11 @@ export function setupSlots(): void {
     const x = accrocher(p.x)
     const z = accrocher(p.z)
 
-    // On s'exclut soi-meme des obstacles: deplacer sa base ne doit pas etre bloque
-    // par sa propre base.
-    const raison = raisonInvalide(x, z, SCENE_COTE, autres)
+    const moi = maPosition()
+    const obstacles = moi === null
+      ? autres
+      : autres.filter((a) => Math.abs(a.x - moi.x) > 0.01 || Math.abs(a.z - moi.z) > 0.01)
+    const raison = raisonInvalide(x, z, SCENE_COTE, obstacles)
     slotView.valide = raison === null
     slotView.raison = raison ?? ''
 
