@@ -20,6 +20,15 @@ export const boxView = {
   typeEnCours: 0,
   roule: false,
   index: 0,
+  /**
+   * The reel, and where it has travelled to.
+   *
+   * `reel` is a strip of candidate rarities with the real result planted at REEL_WIN, and
+   * `progres` is how many cards have passed the centre line so far, as a float. One number
+   * drives the whole animation, so the interface only has to read it and draw.
+   */
+  reel: [] as number[],
+  progres: 0,
   resultat: -1,
   resultatMutation: 0,
   resultatJusqua: 0,
@@ -36,7 +45,32 @@ let prochainPas = 0
 let pasCourant = 0
 let left = 0
 
+/** Length of the strip, and where the winning card sits in it. */
+const REEL_LEN = 34
+export const REEL_WIN = 28
+/** How long the reel runs, in seconds. Matches the deceleration below. */
+const REEL_S = 2.6
+
+/**
+ * A plausible strip to scroll past.
+ *
+ * The cards the player does not win still have to look like things they could have won,
+ * so the filler is drawn against falling weights rather than uniformly: mostly commons,
+ * the occasional legendary, which is what makes the strip read as a gamble.
+ */
+const POIDS_REEL = [50, 24, 10, 6, 5, 3, 2]
+function rareteDecor(): number {
+  const total = POIDS_REEL.reduce((a, b) => a + b, 0)
+  let n = Math.random() * total
+  for (let i = 0; i < POIDS_REEL.length; i++) {
+    n -= POIDS_REEL[i]
+    if (n <= 0) return i
+  }
+  return 0
+}
+
 export function setupBox(): void {
+
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
   MeshRenderer.setBox(crateMesh)
@@ -78,7 +112,10 @@ export function setupBox(): void {
     boxView.resultat = d.rarity
     boxView.resultatMutation = d.mutation
     boxView.state = d.state
-    left = 2.6
+    boxView.reel = Array.from({ length: REEL_LEN }, () => rareteDecor())
+    boxView.reel[REEL_WIN] = d.rarity
+    boxView.progres = 0
+    left = REEL_S
     prochainPas = 0.045
     pasCourant = 0
 
@@ -128,6 +165,10 @@ export function setupBox(): void {
 
     if (boxView.roule) {
       left -= dt
+      // Cubic ease-out: the strip leaves fast and crawls onto the winning card, which is
+      // the whole tension of the thing. One float, read straight by the interface.
+      const t = Math.min(1, Math.max(0, 1 - left / REEL_S))
+      boxView.progres = (1 - Math.pow(1 - t, 3)) * REEL_WIN
       pasCourant += dt
       if (pasCourant >= prochainPas) {
         pasCourant = 0
@@ -136,6 +177,7 @@ export function setupBox(): void {
       }
       if (left <= 0) {
         boxView.roule = false
+        boxView.progres = REEL_WIN
         boxView.index = boxView.resultat
         jouer(sonReveal)
         boxView.resultatJusqua = Date.now() + 3200

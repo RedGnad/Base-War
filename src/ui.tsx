@@ -8,7 +8,7 @@ import { TYPE, C, HUE, TAP } from './client/theme'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
-import { boxView, openBestCrate, peutOuvrirIci } from './client/box'
+import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView } from './client/index-ui'
 import { QuestsPanel, questsToClaim } from './client/quests-ui'
@@ -20,6 +20,11 @@ import { sell } from './client/theft'
 import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
+
+/** Card geometry for the reel, in virtual pixels. */
+const REEL_W = 210
+const REEL_H = 172
+const REEL_GAP = 12
 
 const ETATS: Record<string, (r: number) => string> = {
   expose: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  placed on your base`,
@@ -330,28 +335,76 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {/*
+      The reel.
+
+      A strip of candidate cards runs along the bottom and decelerates onto one, with a
+      white line marking the centre. It replaces a spinning list of rarity names, which
+      told the player the result without ever showing them what they nearly had: the whole
+      point of the form is the cards that go past. Only the cards actually on screen are
+      drawn, out of the thirty-four in the strip.
+    */}
     {(boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
-          width: 460, height: 130, positionType: 'absolute',
-          position: { top: '34%', left: '50%' }, margin: { left: -230 },
+          width: '100%', height: REEL_H + 8, positionType: 'absolute',
+          position: { bottom: 250, left: 0 }
+        }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.78) }}
+      >
+        {boxView.reel.map((r, i) => {
+          const x = 960 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+          if (x < -REEL_W || x > 1920) return null
+          const gagnant = !boxView.roule && i === REEL_WIN
+          const col = Color4.fromHexString((RARITIES[r]?.color ?? '#ffffff') + 'ff')
+          return (
+            <UiEntity key={i}
+              uiTransform={{
+                width: REEL_W, height: REEL_H, positionType: 'absolute',
+                position: { left: x, top: 4 },
+                flexDirection: 'column', justifyContent: 'space-between', padding: 10
+              }}
+              uiBackground={{ color: gagnant ? col : Color4.create(0.09, 0.10, 0.13, 0.96) }}
+            >
+              <Label value={RARITIES[r]?.name ?? ''} fontSize={TYPE.caption}
+                color={gagnant ? C.name : col}
+                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+              <UiEntity
+                uiTransform={{ width: '100%', height: 84 }}
+                uiBackground={{ color: gagnant ? Color4.create(0, 0, 0, 0.35) : col }} />
+              <Label value={`+${formatIncome(INCOME_UI[r] ?? 1)}/s`} fontSize={TYPE.caption}
+                color={C.money}
+                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+            </UiEntity>
+          )
+        })}
+
+        {/* The selector. Whatever sits under it when the strip stops is what was won. */}
+        <UiEntity
+          uiTransform={{
+            width: 5, height: REEL_H + 8, positionType: 'absolute',
+            position: { left: 958, top: 0 }
+          }}
+          uiBackground={{ color: C.name }} />
+      </UiEntity>
+    )}
+
+    {!boxView.roule && boxView.resultat >= 0 && (
+      <UiEntity
+        uiTransform={{
+          width: 900, height: 96, positionType: 'absolute',
+          position: { bottom: 250 + REEL_H + 26, left: '50%' }, margin: { left: -450 },
           flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.88) }}
       >
         <Label
-          value={boxView.roule
-            ? (RARITIES[boxView.index]?.name ?? '')
-            : itemName(boxView.resultat, boxView.resultatMutation)}
-          fontSize={boxView.roule ? 32 : (mutation(boxView.resultatMutation).mult > 1 ? 38 : 44)}
-          color={Color4.fromHexString(
-            (boxView.roule
-              ? (RARITIES[boxView.index]?.color ?? '#ffffff')
-              : itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
+          value={itemName(boxView.resultat, boxView.resultatMutation)}
+          fontSize={TYPE.title}
+          color={Color4.fromHexString(itemColor(boxView.resultat, boxView.resultatMutation) + 'ff')} />
         <Label
-          value={boxView.roule ? '...' : ETATS[boxView.state]?.(boxView.resultat) ?? ''}
+          value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}
           fontSize={TYPE.label}
-          color={Color4.fromHexString(boxView.state === 'expose' ? '#8fe08fff' : '#ffd166ff')} />
+          color={boxView.state === 'expose' ? C.money : C.bonus} />
       </UiEntity>
     )}
 
