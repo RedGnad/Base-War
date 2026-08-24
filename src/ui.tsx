@@ -138,7 +138,11 @@ const uiComponent = () => (
     {tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: 320, height: 92, positionType: 'absolute', position: { top: 112, left: 24 },
+          width: 320, height: 92, positionType: 'absolute', position: { top: 112, left: 110 },
+          // 110 px virtuels, pas 24: la barre laterale d'icones du client DESKTOP occupe
+          // le bord gauche et mangeait le premier caractere de chaque ligne. On garde
+          // `screenInset: 'device'` pour toute l'interface et on ecarte cette seule carte,
+          // plutot que de passer en 'interactable' qui repousserait TOUT le HUD de 25 %.
           flexDirection: 'column', padding: 12
         }}
         uiBackground={{ color: Color4.create(0.04, 0.07, 0.12, 0.88) }}
