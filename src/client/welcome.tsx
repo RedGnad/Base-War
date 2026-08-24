@@ -1,8 +1,8 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 
-export const welcomeView = { ouvert: true }
-export function fermerAccueil(): void { welcomeView.ouvert = false }
+export const welcomeView = { open: true }
+export function closeWelcome(): void { welcomeView.open = false }
 
 const LIGNES = [
   ['1', 'BUILD your base anywhere on the map'],
@@ -13,12 +13,12 @@ const LIGNES = [
 ]
 
 export const WelcomePanel = () => {
-  if (!welcomeView.ouvert) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+  if (!welcomeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   return (
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
       uiBackground={{ color: Color4.create(0, 0, 0, 0.55) }}
-      onMouseDown={fermerAccueil}
+      onMouseDown={closeWelcome}
     >
       <UiEntity
         uiTransform={{ width: 620, height: 380, flexDirection: 'column', padding: 26, justifyContent: 'space-between' }}
@@ -38,7 +38,7 @@ export const WelcomePanel = () => {
 
         <Button
           uiTransform={{ width: 200, height: 48, alignSelf: 'center' }}
-          value="START" variant="primary" fontSize={18} onMouseDown={fermerAccueil} />
+          value="START" variant="primary" fontSize={18} onMouseDown={closeWelcome} />
       </UiEntity>
     </UiEntity>
   )

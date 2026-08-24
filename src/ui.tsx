@@ -1,35 +1,35 @@
-import { PRODUCTION_RARETE } from './shared/economie'
+import { PRODUCTION_PER_RARITY } from './shared/economy'
 import { Color4 } from '@dcl/sdk/math'
 import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { view } from './client/setup'
-import { theftView, verrouiller, reprendre, franchirPalier, acheterEtage, collecter, armerSentinelle } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry } from './client/theft'
 import { beltView } from './client/belt'
-import { boxView, ouvrirMeilleure } from './client/box'
+import { boxView, openBestCrate } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView } from './client/index-ui'
-import { QuestsPanel, quetesAPrendre } from './client/quests-ui'
-import { menuView, ongletActif, basculerMenu, choisirOnglet } from './client/menu'
+import { QuestsPanel, questsToClaim } from './client/quests-ui'
+import { menuView, activeTab, basculerMenu, chooseTab } from './client/menu'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
-import { travelView, rentrer, allerAuTapis, basculerVoyage } from './client/travel'
+import { travelView, rentrer, goToBelt, basculerVoyage } from './client/travel'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { revendre } from './client/theft'
-import { RARITIES, nomObjet, couleurObjet, mutation, formatRevenu } from './shared/loot-table'
+import { sell } from './client/theft'
+import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
 
-const GAIN_PAR_SECONDE_UI = PRODUCTION_RARETE
+const INCOME_UI = PRODUCTION_PER_RARITY
 
 const ETATS: Record<string, (r: number) => string> = {
-  expose: (r) => `+${GAIN_PAR_SECONDE_UI[r] ?? 1} coins/s  ·  placed on your base`,
+  expose: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  placed on your base`,
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
 }
-import { slotView, basculerPose, poserIci } from './client/slots'
+import { slotView, basculerPose, placeHere } from './client/slots'
 
 export function setupUi() {
-  function choisir(): void {
+  function choose(): void {
     if (getPlatform() === null) return
-    engine.removeSystem(choisir)
+    engine.removeSystem(choose)
     const inset = isMobile() ? 'interactable' : 'device'
     ReactEcsRenderer.setUiRenderer(uiComponent, {
       virtualWidth: 1920, virtualHeight: 1080, screenInset: inset
@@ -37,36 +37,36 @@ export function setupUi() {
     console.log(`[CLIENT] interface en screenInset '${inset}'`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
-  engine.addSystem(choisir)
+  engine.addSystem(choose)
 }
 
 const PANNEAU = Color4.create(0, 0, 0, 0.62)
 
 function prochaineAction(): { libelle: string; pret: boolean; action: () => void } {
-  if (slotView.actif) {
-    return slotView.valide
-      ? { libelle: 'PLACE HERE', pret: true, action: poserIci }
-      : { libelle: slotView.raison.toUpperCase(), pret: false, action: basculerPose }
+  if (slotView.active) {
+    return slotView.valid
+      ? { libelle: 'PLACE HERE', pret: true, action: placeHere }
+      : { libelle: slotView.reason.toUpperCase(), pret: false, action: basculerPose }
   }
-  if (theftView.aReprendre) return { libelle: 'RECOVER!', pret: true, action: reprendre }
+  if (theftView.canRecover) return { libelle: 'RECOVER!', pret: true, action: recover }
   if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
-  if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: ouvrirMeilleure }
-  if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0
-      && theftView.prixSentinelle > 0 && theftView.coins >= theftView.prixSentinelle) {
-    return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: true, action: armerSentinelle }
+  if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: openBestCrate }
+  if (theftView.basePosee && view.items > 0 && theftView.sentries === 0
+      && theftView.sentryPrice > 0 && theftView.coins >= theftView.sentryPrice) {
+    return { libelle: `SENTRY ${formatIncome(theftView.sentryPrice)}`, pret: true, action: armSentry }
   }
-  if (theftView.prixEtage > 0 && theftView.coins >= theftView.prixEtage) {
-    return { libelle: '+1 FLOOR', pret: true, action: acheterEtage }
+  if (theftView.floorPrice > 0 && theftView.coins >= theftView.floorPrice) {
+    return { libelle: '+1 FLOOR', pret: true, action: buyFloorFor }
   }
-  if (theftView.prochainPalier > 0 && theftView.coins >= theftView.prochainPalier) {
-    return { libelle: `PRESTIGE x${theftView.multiplicateur + 1}`, pret: true, action: franchirPalier }
+  if (theftView.nextPrestige > 0 && theftView.coins >= theftView.nextPrestige) {
+    return { libelle: `PRESTIGE x${theftView.multiplier + 1}`, pret: true, action: doPrestige }
   }
-  if (theftView.basePosee && view.objets > 0 && theftView.sentinelles === 0 && theftView.prixSentinelle > 0
-      && (theftView.prixEtage === 0 || theftView.prixSentinelle <= theftView.prixEtage)) {
-    return { libelle: `SENTRY ${formatRevenu(theftView.prixSentinelle)}`, pret: false, action: armerSentinelle }
+  if (theftView.basePosee && view.items > 0 && theftView.sentries === 0 && theftView.sentryPrice > 0
+      && (theftView.floorPrice === 0 || theftView.sentryPrice <= theftView.floorPrice)) {
+    return { libelle: `SENTRY ${formatIncome(theftView.sentryPrice)}`, pret: false, action: armSentry }
   }
-  if (theftView.prixEtage > 0) return { libelle: `FLOOR ${formatRevenu(theftView.prixEtage)}`, pret: false, action: acheterEtage }
-  if (theftView.prochainPalier > 0) return { libelle: `PRESTIGE ${formatRevenu(theftView.prochainPalier)}`, pret: false, action: franchirPalier }
+  if (theftView.floorPrice > 0) return { libelle: `FLOOR ${formatIncome(theftView.floorPrice)}`, pret: false, action: buyFloorFor }
+  if (theftView.nextPrestige > 0) return { libelle: `PRESTIGE ${formatIncome(theftView.nextPrestige)}`, pret: false, action: doPrestige }
   return { libelle: 'ALL MAXED', pret: false, action: () => {} }
 }
 
@@ -74,37 +74,37 @@ const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <WelcomePanel />
-    {!welcomeView.ouvert && <IndexPanel />}
-    {!welcomeView.ouvert && <QuestsPanel />}
+    {!welcomeView.open && <IndexPanel />}
+    {!welcomeView.open && <QuestsPanel />}
 
     {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
         appartient au profil et aux controles camera du client mobile. */}
-    {!welcomeView.ouvert && (
+    {!welcomeView.open && (
     <UiEntity
       uiTransform={{
         width: 260, height: 36, positionType: 'absolute', position: { top: 12, right: 24 },
         flexDirection: 'row', justifyContent: 'flex-end'
       }}
     >
-      {/* LES ONGLETS n'apparaissent QUE menu ouvert: fermes, ils seraient deux boutons
+      {/* LES ONGLETS n'apparaissent QUE menu open: fermes, ils seraient deux boutons
           permanents de plus, c'est-a-dire le probleme qu'on vient de resoudre. */}
-      {menuView.ouvert && (
+      {menuView.open && (
         <Button
           uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
-          value="GOALS" variant={ongletActif() === 'goals' ? 'primary' : 'secondary'}
-          fontSize={12} onMouseDown={() => choisirOnglet('goals')} />
+          value="GOALS" variant={activeTab() === 'goals' ? 'primary' : 'secondary'}
+          fontSize={12} onMouseDown={() => chooseTab('goals')} />
       )}
-      {menuView.ouvert && (
+      {menuView.open && (
         <Button
           uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
           value={`INDEX ${indexView.vus.length}`}
-          variant={ongletActif() === 'index' ? 'primary' : 'secondary'}
-          fontSize={12} onMouseDown={() => choisirOnglet('index')} />
+          variant={activeTab() === 'index' ? 'primary' : 'secondary'}
+          fontSize={12} onMouseDown={() => chooseTab('index')} />
       )}
       <Button
         uiTransform={{ width: 62, height: 36 }}
-        value={menuView.ouvert ? 'X' : (quetesAPrendre() > 0 ? `☰ ${quetesAPrendre()}` : '☰')}
-        variant={menuView.ouvert || quetesAPrendre() > 0 ? 'primary' : 'secondary'}
+        value={menuView.open ? 'X' : (questsToClaim() > 0 ? `☰ ${questsToClaim()}` : '☰')}
+        variant={menuView.open || questsToClaim() > 0 ? 'primary' : 'secondary'}
         fontSize={14} onMouseDown={basculerMenu} />
     </UiEntity>
     )}
@@ -157,38 +157,38 @@ const uiComponent = () => (
         permanence, et la lisibilite est notee (Mobile UX, un tiers des 43 %). */}
     <UiEntity
       uiTransform={{
-        width: 150, height: travelView.ouvert ? 172 : 38,
+        width: 150, height: travelView.open ? 172 : 38,
         positionType: 'absolute', position: { top: 216, left: 110 },
         flexDirection: 'column', justifyContent: 'flex-start'
       }}
     >
       <Button
         uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
-        value={travelView.ouvert ? 'CLOSE' : 'TRAVEL'}
-        variant={travelView.ouvert ? 'primary' : 'secondary'}
+        value={travelView.open ? 'CLOSE' : 'TRAVEL'}
+        variant={travelView.open ? 'primary' : 'secondary'}
         fontSize={13} onMouseDown={basculerVoyage} />
-      {travelView.ouvert && (
+      {travelView.open && (
         <Button
           uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
           value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
           fontSize={13} onMouseDown={() => { rentrer(); basculerVoyage() }} />
       )}
-      {travelView.ouvert && (
+      {travelView.open && (
         <Button
           uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
           value="GO TO BELT" variant="secondary" fontSize={13}
-          onMouseDown={() => { allerAuTapis(); basculerVoyage() }} />
+          onMouseDown={() => { goToBelt(); basculerVoyage() }} />
       )}
-      {travelView.ouvert && theftView.basePosee && (
+      {travelView.open && theftView.basePosee && (
         <Button
           uiTransform={{ width: 150, height: 38 }}
-          value={slotView.actif ? 'CANCEL MOVE' : 'MOVE BASE'}
-          variant={slotView.actif ? 'primary' : 'secondary'}
+          value={slotView.active ? 'CANCEL MOVE' : 'MOVE BASE'}
+          variant={slotView.active ? 'primary' : 'secondary'}
           fontSize={13} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
       )}
     </UiEntity>
 
-    {/* HAUT-CENTRE: etat, non actionnable. */}
+    {/* HAUT-CENTER: etat, non actionnable. */}
     <UiEntity
       uiTransform={{
         width: 380, height: 88, positionType: 'absolute',
@@ -198,24 +198,24 @@ const uiComponent = () => (
       uiBackground={{ color: PANNEAU }}
     >
       <Label
-        value={`${formatRevenu(theftView.coins)} coins${theftView.multiplicateur > 1 ? '  x' + theftView.multiplicateur : ''}`}
+        value={`${formatIncome(theftView.coins)} coins${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
         fontSize={30} color={Color4.fromHexString('#ffd166ff')} />
       <Label
         value={
           !view.serverAlive ? 'SERVER OFFLINE'
           : !theftView.basePosee ? 'place your base so your loot earns'
-          : theftView.revenu === 0 ? 'open a crate to start earning'
-          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting${theftView.sentinelles > 0 ? '  ·  sentry ' + theftView.sentinelles : ''}`
+          : theftView.income === 0 ? 'open a crate to start earning'
+          : `+${formatIncome(theftView.income)}/s  →  ${formatIncome(theftView.pending)} waiting${theftView.sentries > 0 ? '  ·  sentry ' + theftView.sentries : ''}`
         }
         fontSize={13}
         color={
           !view.serverAlive ? Color4.Red()
-          : (!theftView.basePosee || theftView.revenu === 0) ? Color4.fromHexString('#ffd166ff')
+          : (!theftView.basePosee || theftView.income === 0) ? Color4.fromHexString('#ffd166ff')
           : Color4.fromHexString('#8fe08fff')
         } />
     </UiEntity>
 
-    {/* HAUT-CENTRE, sous l'etat: fil d'activite, non actionnable. */}
+    {/* HAUT-CENTER, sous l'etat: fil d'activite, non actionnable. */}
     {theftView.fil.length > 0 && (
       <UiEntity
         uiTransform={{
@@ -231,7 +231,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* HAUT-CENTRE: l'annonce du tapis. Non actionnable, mais elle doit faire lever la tete. */}
+    {/* HAUT-CENTER: l'annonce du tapis. Non actionnable, mais elle doit faire lever la head. */}
     {beltView.annonce !== '' && (
       <UiEntity
         uiTransform={{
@@ -245,7 +245,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* CENTRE: LA ROULETTE. Le moment du jeu: elle defile, ralentit, s'arrete. */}
+    {/* CENTER: LA ROULETTE. Le moment du jeu: elle defile, ralentit, s'arrete. */}
     {(boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
@@ -255,18 +255,18 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.88) }}
       >
-        {/* Pendant la roulette on ne montre que la rarete qui defile; a l'arret on
+        {/* Pendant la roulette on ne montre que la rarity qui defile; a l'arret on
             revele le NOM COMPLET, mutation comprise: « Gold Epic » se lit autrement
             qu'« Epic », et c'est la toute la surprise composee. */}
         <Label
           value={boxView.roule
-            ? (RARITIES[boxView.index]?.nom ?? '')
-            : nomObjet(boxView.resultat, boxView.resultatMutation)}
+            ? (RARITIES[boxView.index]?.name ?? '')
+            : itemName(boxView.resultat, boxView.resultatMutation)}
           fontSize={boxView.roule ? 32 : (mutation(boxView.resultatMutation).mult > 1 ? 38 : 44)}
           color={Color4.fromHexString(
             (boxView.roule
-              ? (RARITIES[boxView.index]?.couleur ?? '#ffffff')
-              : couleurObjet(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
+              ? (RARITIES[boxView.index]?.color ?? '#ffffff')
+              : itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
         <Label
           value={boxView.roule ? '...' : ETATS[boxView.etat]?.(boxView.resultat) ?? ''}
           fontSize={15}
@@ -274,9 +274,9 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* Rappel AVANT d'ouvrir: sans base, l'objet ne rapportera rien. On previent
-        plutot que d'interdire: bloquer un joueur qui veut juste voir sa boite serait pire. */}
-    {!theftView.basePosee && boxView.stock.length > 0 && !boxView.ouverture && !boxView.roule && (
+    {/* Rappel AVANT d'ouvrir: sans base, l'item ne rapportera rien. On previent
+        plutot que d'interdire: bloquer un joueur qui veut juste voir sa crate serait pire. */}
+    {!theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
       <UiEntity
         uiTransform={{
           width: 400, height: 40, positionType: 'absolute',
@@ -289,8 +289,8 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* Un objet selectionne: on dit quoi faire, et on offre la revente ici. Sans ce
-        rappel, taper son propre objet parait sans effet. */}
+    {/* Un item selectionne: on dit quoi faire, et on offre la revente ici. Sans ce
+        rappel, taper son propre item parait sans effet. */}
     {placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
@@ -305,12 +305,12 @@ const uiComponent = () => (
         <Button
           uiTransform={{ width: 110, height: 34 }}
           value="SELL IT" variant="secondary" fontSize={13}
-          onMouseDown={() => { revendre(placementView.selection); placementView.selection = -1 }} />
+          onMouseDown={() => { sell(placementView.selection); placementView.selection = -1 }} />
       </UiEntity>
     )}
 
-    {/* CENTRE-BAS: les trois coups. */}
-    {boxView.ouverture && (
+    {/* CENTER-BAS: les trois coups. */}
+    {boxView.opening && (
       <UiEntity
         uiTransform={{
           width: 320, height: 54, positionType: 'absolute',
@@ -323,7 +323,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* CENTRE: l'alerte, seule chose qui exige une reaction. */}
+    {/* CENTER: l'alerte, seule chose qui exige une reaction. */}
     {theftView.alerte !== '' && (
       <UiEntity
         uiTransform={{
@@ -333,7 +333,7 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.85) }}
       >
-        <Label value={theftView.alerte} fontSize={23} color={Color4.fromHexString(theftView.alerteCouleur + 'ff')} />
+        <Label value={theftView.alerte} fontSize={23} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}
 
@@ -345,7 +345,7 @@ const uiComponent = () => (
         peut rien faire. Un bouton mort n'est pas neutre, il occupe un pouce, il attire
         le regard, et il oblige a deviner ce qu'il veut dire.
         Les boutons sont ranges A GAUCHE avec un ecart fixe: en `space-between`, retirer
-        un bouton ecarterait les deux autres aux extremites et la barre bougerait sous
+        un bouton ecarterait les deux autres aux extremites et la bar bougerait sous
         les doigts d'un tap a l'autre.
         Decalee a gauche: le coin bas-droit appartient aux boutons du client mobile. */}
     <UiEntity
@@ -356,17 +356,17 @@ const uiComponent = () => (
       }}
     >
       {/* 1. COLLECT: seulement s'il y a quelque chose a encaisser. */}
-      {theftView.reserve > 0 && !slotView.actif && (
+      {theftView.pending > 0 && !slotView.active && (
         <Button
           uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
-          value={`COLLECT ${formatRevenu(theftView.reserve)}`}
+          value={`COLLECT ${formatIncome(theftView.pending)}`}
           variant="primary"
           fontSize={15}
-          onMouseDown={collecter} />
+          onMouseDown={collectPending} />
       )}
 
       {/* 2. UNE seule action selon l'etat, par ordre d'urgence. Toujours presente:
-             c'est elle qui porte le pas suivant, jusqu'a BUILD BASE au tout debut. */}
+             c'est elle qui door le pas suivant, jusqu'a BUILD BASE au tout debut. */}
       {(() => {
         const a = prochaineAction()
         return (
@@ -379,20 +379,20 @@ const uiComponent = () => (
 
       {/* 3. LOCK: seulement quand il y a une base ET quelque chose dedans.
              Sans base il ne protege rien; base vide, il gaspillerait sa recharge de
-             150 s pour proteger zero objet. Il apparait donc au moment exact ou le
+             150 s pour proteger zero item. Il apparait donc au moment exact ou le
              joueur a quelque chose a perdre, ce qui l'explique tout seul.
-             Cache aussi pendant la pose: un etat modal ne garde que son propre geste. */}
-      {theftView.basePosee && view.objets > 0 && !slotView.actif && (
+             Cache aussi pendant la pose: un etat modal ne keeps que son propre geste. */}
+      {theftView.basePosee && view.items > 0 && !slotView.active && (
         <Button
           uiTransform={{ width: 140, height: 58 }}
           value={
-            theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s`
+            theftView.lockSec > 0 ? `LOCKED ${theftView.lockSec}s`
             : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
             : 'LOCK'
           }
-          variant={theftView.verrouSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
+          variant={theftView.lockSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
           fontSize={14}
-          onMouseDown={verrouiller} />
+          onMouseDown={lockBase} />
       )}
     </UiEntity>
   </UiEntity>

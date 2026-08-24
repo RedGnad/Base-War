@@ -1,6 +1,6 @@
 import { room } from '../shared/messages'
-import { jour } from './journal'
-import { ajouterBoite, boitesDe, etapeTuto, avancerTuto } from './plots'
+import { log } from './log'
+import { addCrate, cratesOf, etapeTuto, avancerTuto } from './plots'
 
 export const ETAPES = [
   'Place your base',
@@ -11,10 +11,10 @@ export const ETAPES = [
 ] as const
 
 export const CADEAU_MS = 15 * 60_000
-export const CADEAU_BOITE = 2
+export const GIFT_CRATE = 2
 
 const entreA = new Map<string, number>()
-const cadeauDonne = new Set<string>()
+const giftGiven = new Set<string>()
 
 export function pousserTuto(address: string): void {
   const e = etapeTuto(address)
@@ -39,13 +39,13 @@ export function depart(address: string): void {
 export function verifierCadeau(presents: Iterable<string>): void {
   const maintenant = Date.now()
   for (const a of presents) {
-    if (cadeauDonne.has(a)) continue
+    if (giftGiven.has(a)) continue
     const t = entreA.get(a)
     if (t === undefined || maintenant - t < CADEAU_MS) continue
-    cadeauDonne.add(a)
-    ajouterBoite(a, CADEAU_BOITE)
-    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
-    void room.send('timeGift', { boite: CADEAU_BOITE, minutes: Math.round(CADEAU_MS / 60000) }, { to: [a] })
-    jour(`cadeau des 15 minutes pour ${a.slice(0, 8)}`)
+    giftGiven.add(a)
+    addCrate(a, GIFT_CRATE)
+    void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
+    void room.send('timeGift', { crate: GIFT_CRATE, minutes: Math.round(CADEAU_MS / 60000) }, { to: [a] })
+    log(`15-minute gift for ${a.slice(0, 8)}`)
   }
 }

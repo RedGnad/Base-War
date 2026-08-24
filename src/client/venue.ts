@@ -1,6 +1,6 @@
 import { engine, Transform, MeshRenderer, MeshCollider, Material } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { CENTRE } from '../shared/schemas'
+import { CENTER } from '../shared/schemas'
 
 /**
  * A ground plane. Without one the scene inherits the host terrain.
@@ -10,7 +10,7 @@ import { CENTRE } from '../shared/schemas'
 export function setupVenue(): void {
   const sol = engine.addEntity()
   Transform.create(sol, {
-    position: Vector3.create(CENTRE.x, 0.01, CENTRE.z),
+    position: Vector3.create(CENTER.x, 0.01, CENTER.z),
     scale: Vector3.create(80, 80, 1),
     rotation: Quaternion.fromEulerDegrees(-90, 0, 0)
   })

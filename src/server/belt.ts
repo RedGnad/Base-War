@@ -2,20 +2,20 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, TAPIS_DUREE_S, TAPIS_INTERVALLE_S, PORTEE_ACHAT, CHUTE_FIN
+  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN
 } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { jour } from './journal'
-import { rollTypeBoite, rollBoite, rollMutation } from './loot'
-import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible, avancerQuete, pousserQuetes } from './plots'
+import { log } from './log'
+import { rollCrateTier, rollCrate, rollMutation } from './loot'
+import { displayName, depenser, coinsDe, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests } from './plots'
 import { tutoFait } from './onboarding'
-import { lancerConvoi } from './convoi'
-import { BOITES, encoder, nomObjet } from '../shared/loot-table'
+import { startConvoy } from './convoy'
+import { CRATES, encoder, itemName } from '../shared/loot-table'
 
 type Article = {
   id: number
-  typeBoite: number
-  prix: number
+  crateTier: number
+  price: number
   progres: number
   vendu: boolean
   entity: ReturnType<typeof engine.addEntity>
@@ -27,7 +27,7 @@ const articles: Article[] = []
 let prochainId = 1
 let depuisSpawn = 0
 
-function positionDe(address: string): Vector3 | null {
+function positionOf(address: string): Vector3 | null {
   for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
     if (id.address?.toLowerCase() !== address) continue
     const t = Transform.getOrNull(e)
@@ -36,20 +36,20 @@ function positionDe(address: string): Vector3 | null {
   return null
 }
 
-function creerArticle(): void {
-  const typeBoite = rollTypeBoite()
-  const prix = BOITES[typeBoite].prix
+function spawnBeltItem(): void {
+  const crateTier = rollCrateTier()
+  const price = CRATES[crateTier].price
   const e = engine.addEntity()
   const p = beltPosition(0)
   Transform.create(e, { position: Vector3.create(p.x, p.y, p.z) })
-  Belt.create(e, { articleId: prochainId, typeBoite, prix, progres: 0, acheteurNom: '' })
+  Belt.create(e, { articleId: prochainId, crateTier, price, progres: 0, buyerName: '' })
   syncEntity(e, [Belt.componentId, Transform.componentId])
-  articles.push({ id: prochainId, typeBoite, prix, progres: 0, vendu: false, entity: e })
+  articles.push({ id: prochainId, crateTier, price, progres: 0, vendu: false, entity: e })
   prochainId += 1
 
-  if (typeBoite >= 2) {
-    void room.send('beltAlert', { typeBoite })
-    jour(`ANNONCE: ${BOITES[typeBoite].nom} sur le tapis`)
+  if (crateTier >= 2) {
+    void room.send('beltAlert', { crateTier })
+    log(`announce: ${CRATES[crateTier].name} on the belt`)
   }
 }
 
@@ -62,12 +62,12 @@ function retirer(a: Article): void {
 export function startBelt(): void {
   engine.addSystem((dt: number) => {
     depuisSpawn += dt
-    if (depuisSpawn >= TAPIS_INTERVALLE_S) {
+    if (depuisSpawn >= BELT_INTERVAL_S) {
       depuisSpawn = 0
-      creerArticle()
+      spawnBeltItem()
     }
     for (const a of [...articles]) {
-      a.progres += dt / TAPIS_DUREE_S
+      a.progres += dt / BELT_DURATION_S
       if (a.progres >= 1 + CHUTE_FIN) { retirer(a); continue }
       const c = Belt.getMutableOrNull(a.entity)
       if (c !== null) c.progres = a.progres
@@ -83,77 +83,77 @@ export function startBelt(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     const art = articles.find((x) => x.id === d.articleId)
-    if (!art) { void room.send('actionRejected', { action: 'purchase', raison: 'that crate is already gone', antiCheat: false }, { to: [a] }); return }
-    if (art.vendu) { void room.send('actionRejected', { action: 'purchase', raison: 'someone paid before you', antiCheat: false }, { to: [a] }); return }
+    if (!art) { void room.send('actionRejected', { action: 'purchase', reason: 'that crate is already gone', antiCheat: false }, { to: [a] }); return }
+    if (art.vendu) { void room.send('actionRejected', { action: 'purchase', reason: 'someone paid before you', antiCheat: false }, { to: [a] }); return }
 
-    const p = positionDe(a)
-    if (p === null) { void room.send('actionRejected', { action: 'purchase', raison: 'position unknown', antiCheat: false }, { to: [a] }); return }
+    const p = positionOf(a)
+    if (p === null) { void room.send('actionRejected', { action: 'purchase', reason: 'position unknown', antiCheat: false }, { to: [a] }); return }
     if (art.progres >= 1) {
-      void room.send('actionRejected', { action: 'purchase', raison: 'it fell into the pit', antiCheat: false }, { to: [a] })
+      void room.send('actionRejected', { action: 'purchase', reason: 'it fell into the pit', antiCheat: false }, { to: [a] })
       return
     }
     const pos = beltPosition(art.progres)
     const dist = Vector3.distance(p, Vector3.create(pos.x, pos.y, pos.z))
-    if (dist > PORTEE_ACHAT) {
-      void room.send('actionRejected', { action: 'purchase', raison: `too far (${dist.toFixed(1)}m)`, antiCheat: true }, { to: [a] })
+    if (dist > BUY_RANGE) {
+      void room.send('actionRejected', { action: 'purchase', reason: `too far (${dist.toFixed(1)}m)`, antiCheat: true }, { to: [a] })
       return
     }
 
-    if (!depenser(a, art.prix)) {
-      void room.send('actionRejected', { action: 'purchase', raison: `you need ${art.prix - coinsDe(a)} more coins`, antiCheat: false }, { to: [a] })
+    if (!depenser(a, art.price)) {
+      void room.send('actionRejected', { action: 'purchase', reason: `you need ${art.price - coinsDe(a)} more coins`, antiCheat: false }, { to: [a] })
       return
     }
 
-    if (!lancerConvoi(a, art.typeBoite, art.prix, { x: pos.x, z: pos.z })) {
-      ajouterBoite(a, art.typeBoite)
-      void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    if (!startConvoy(a, art.crateTier, art.price, { x: pos.x, z: pos.z })) {
+      addCrate(a, art.crateTier)
+      void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     }
     tutoFait(a, 3)
-    avancerQuete(a, 'acheter')
-    pousserQuetes(a)
+    advanceQuest(a, 'acheter')
+    pushQuests(a)
     art.vendu = true
-    const nom = nomAffiche(a)
+    const name = displayName(a)
     const c = Belt.getMutableOrNull(art.entity)
-    if (c !== null) c.acheteurNom = nom
-    void room.send('bought', { byName: nom, typeBoite: art.typeBoite, prix: art.prix })
-    jour(`${nom} achete une ${BOITES[art.typeBoite].nom} pour ${art.prix} pieces`)
+    if (c !== null) c.buyerName = name
+    void room.send('bought', { byName: name, crateTier: art.crateTier, price: art.price })
+    log(`${name} bought a ${CRATES[art.crateTier].name} for ${art.price}`)
     retirer(art)
   })
 
-  const enVol = new Map<string, number>()
+  const inFlight = new Map<string, number>()
 
   room.onMessage('openBox', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    if (etatPrevisible(a) === 'plein' || enVol.get(a) !== undefined) {
-      void room.send('actionRejected', { action: 'opening', raison: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
+    if (etatPrevisible(a) === 'plein' || inFlight.get(a) !== undefined) {
+      void room.send('actionRejected', { action: 'opening', reason: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
       return
     }
-    if (!retirerBoite(a, d.typeBoite)) {
-      void room.send('actionRejected', { action: 'opening', raison: 'you do not have that crate', antiCheat: true }, { to: [a] })
+    if (!removeCrate(a, d.crateTier)) {
+      void room.send('actionRejected', { action: 'opening', reason: 'you do not have that crate', antiCheat: true }, { to: [a] })
       return
     }
     tutoFait(a, 1)
-    avancerQuete(a, 'ouvrir')
-    if (d.typeBoite >= 1) avancerQuete(a, 'ouvrirRare')
-    const rarity = rollBoite(d.typeBoite)
+    advanceQuest(a, 'ouvrir')
+    if (d.crateTier >= 1) advanceQuest(a, 'ouvrirRare')
+    const rarity = rollCrate(d.crateTier)
     const mut = rollMutation()
     const code = encoder(rarity, mut)
     const prevu = etatPrevisible(a)
-    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> ${nomObjet(rarity, mut)} (${prevu}, pose differee)`)
-    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, mutation: mut, etat: prevu }, { to: [a] })
-    void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+    log(`${displayName(a)} ouvre une crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, pose differee)`)
+    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, etat: prevu }, { to: [a] })
+    void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 
-    enVol.set(a, code)
-    pousserQuetes(a)
+    inFlight.set(a, code)
+    pushQuests(a)
 
     timers.setTimeout(() => {
-      enVol.delete(a)
-      const reel = ajouterObjet(a, code)
-      if (reel === 'expose') { avancerQuete(a, 'poser'); pousserQuetes(a) }
-      if (reel !== prevu) jour(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${nomAffiche(a)}`)
+      inFlight.delete(a)
+      const reel = addItem(a, code)
+      if (reel === 'expose') { advanceQuest(a, 'poser'); pushQuests(a) }
+      if (reel !== prevu) log(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${displayName(a)}`)
     }, POSE_DIFFEREE_MS)
   })
 
-  jour('tapis pret')
+  log('tapis pret')
 }

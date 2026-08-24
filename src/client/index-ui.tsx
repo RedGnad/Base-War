@@ -1,27 +1,27 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { RARITIES, MUTATIONS, encoder, couleurObjet } from '../shared/loot-table'
+import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
 
-export const indexView = { ouvert: false, vus: [] as number[] }
+export const indexView = { open: false, vus: [] as number[] }
 
-export function basculerIndex(): void { indexView.ouvert = !indexView.ouvert }
+export function basculerIndex(): void { indexView.open = !indexView.open }
 
 const CASE = 30
-const ECART = 3
+const GAP = 3
 
 export const IndexPanel = () => {
-  if (!indexView.ouvert) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+  if (!indexView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   const vus = new Set(indexView.vus)
   const total = RARITIES.length * MUTATIONS.length
 
   return (
     <UiEntity
       uiTransform={{
-        width: MUTATIONS.length * (CASE + ECART) + 130,
-        height: RARITIES.length * (CASE + ECART) + 76,
+        width: MUTATIONS.length * (CASE + GAP) + 130,
+        height: RARITIES.length * (CASE + GAP) + 76,
         positionType: 'absolute',
         position: { top: '14%', left: '50%' },
-        margin: { left: -(MUTATIONS.length * (CASE + ECART) + 130) / 2 },
+        margin: { left: -(MUTATIONS.length * (CASE + GAP) + 130) / 2 },
         flexDirection: 'column',
         padding: 12
       }}
@@ -34,21 +34,21 @@ export const IndexPanel = () => {
         uiTransform={{ height: 26 }} />
 
       {RARITIES.map((r) => (
-        <UiEntity key={r.id} uiTransform={{ height: CASE + ECART, flexDirection: 'row', alignItems: 'center' }}>
+        <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
           <Label
-            value={r.nom}
+            value={r.name}
             fontSize={11}
-            color={Color4.fromHexString(r.couleur + 'ff')}
+            color={Color4.fromHexString(r.color + 'ff')}
             uiTransform={{ width: 108, height: CASE }} />
           {MUTATIONS.map((m) => {
             const trouve = vus.has(encoder(r.id, m.id))
             return (
               <UiEntity
                 key={m.id}
-                uiTransform={{ width: CASE, height: CASE, margin: { right: ECART } }}
+                uiTransform={{ width: CASE, height: CASE, margin: { right: GAP } }}
                 uiBackground={{
                   color: trouve
-                    ? Color4.fromHexString(couleurObjet(r.id, m.id) + 'ff')
+                    ? Color4.fromHexString(itemColor(r.id, m.id) + 'ff')
                     : Color4.create(1, 1, 1, 0.06)
                 }} />
             )

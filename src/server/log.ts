@@ -9,20 +9,20 @@ let enAttente: string[] = []
  * runtime. Lines are relayed to clients as `serverLog`, and buffered because messages
  * sent before any client listens are lost.
  */
-export function jour(line: string): void {
+export function log(line: string): void {
   console.log(`[SERVER] ${line}`)
   historique.push(line)
   if (historique.length > HISTORIQUE_MAX) historique.shift()
   enAttente.push(line)
 }
 
-export function viderJournal(): void {
+export function flushLog(): void {
   if (enAttente.length === 0) return
   const lot = enAttente
   enAttente = []
   for (const line of lot) void room.send('serverLog', { line })
 }
 
-export function rejouerJournal(address: string): void {
+export function replayLog(address: string): void {
   for (const line of historique) void room.send('serverLog', { line }, { to: [address] })
 }

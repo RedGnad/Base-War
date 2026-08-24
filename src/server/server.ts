@@ -3,11 +3,11 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, poserObjet, coinsDe, encaisserHorsLigne, reclamerQuotidienne, pousserQuetes } from './plots'
+import { startPlots, accueillir, auRevoir, placeItem, coinsDe, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
-import { startConvoi } from './convoi'
-import { jour, viderJournal, rejouerJournal } from './journal'
-import { startTheft, verrouArrivee, delivrerAlertes, noterPalier } from './theft'
+import { runConvoys } from './convoy'
+import { log, flushLog, replayLog } from './log'
+import { startTheft, lockOnArrival, delivrerAlertes, recordPrestige } from './theft'
 import { startBelt } from './belt'
 
 const STORAGE_KEY = 'taps'
@@ -72,7 +72,7 @@ export function startServer(): void {
     if (b !== null) b.at = Date.now()
   }, BEAT_MS)
 
-  timers.setInterval(() => { viderJournal() }, 1000)
+  timers.setInterval(() => { flushLog() }, 1000)
 
   timers.setInterval(() => {
     void flush()
@@ -95,7 +95,7 @@ export function startServer(): void {
   startPlots()
   startTheft()
   startBelt()
-  startConvoi()
+  runConvoys()
 
   const presents = new Set<string>()
   let sinceCheck = 0
@@ -117,15 +117,15 @@ export function startServer(): void {
         const n = await load(address)
         publish(address)
         await accueillir(address)
-        const hl = encaisserHorsLigne(address)
+        const hl = cashOfflineEarnings(address)
         if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
         const dq = reclamerQuotidienne(address)
         if (dq !== null) void room.send('dailyReward', dq, { to: [address] })
-        pousserQuetes(address)
+        pushQuests(address)
         arrivee(address)
-        verrouArrivee(address)    // 3.1 on ne se fait pas piller en posant le pied
-        delivrerAlertes(address)  // ce qui s'est passe pendant l'absence
-        rejouerJournal(address)
+        lockOnArrival(address)    // grace period on arrival
+        delivrerAlertes(address)  // what happened while away
+        replayLog(address)
         console.log(`[SERVER] ${address} entre, etat restitue: ${n}`)
       })()
     }

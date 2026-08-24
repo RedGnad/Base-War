@@ -1,12 +1,12 @@
-import { PRIX_BOITE } from './economie'
+import { CRATE_PRICE } from './economy'
 export const RARITIES = [
-  { id: 0, nom: 'Common',    couleur: '#9aa3ad', taille: 0.38, glow: 0.00, tours: 0 },
-  { id: 1, nom: 'Uncommon',  couleur: '#4ec04e', taille: 0.45, glow: 0.25, tours: 0 },
-  { id: 2, nom: 'Rare',      couleur: '#3d8ef0', taille: 0.52, glow: 0.55, tours: 20 },
-  { id: 3, nom: 'Epic',      couleur: '#a855f7', taille: 0.60, glow: 0.95, tours: 35 },
-  { id: 4, nom: 'Legendary', couleur: '#f5a524', taille: 0.68, glow: 1.50, tours: 55 },
-  { id: 5, nom: 'Mythic',    couleur: '#ff4d6d', taille: 0.78, glow: 2.20, tours: 80 },
-  { id: 6, nom: 'Secret',    couleur: '#e8e8f0', taille: 0.90, glow: 3.20, tours: 120 }
+  { id: 0, name: 'Common',    color: '#9aa3ad', size: 0.38, glow: 0.00, tours: 0 },
+  { id: 1, name: 'Uncommon',  color: '#4ec04e', size: 0.45, glow: 0.25, tours: 0 },
+  { id: 2, name: 'Rare',      color: '#3d8ef0', size: 0.52, glow: 0.55, tours: 20 },
+  { id: 3, name: 'Epic',      color: '#a855f7', size: 0.60, glow: 0.95, tours: 35 },
+  { id: 4, name: 'Legendary', color: '#f5a524', size: 0.68, glow: 1.50, tours: 55 },
+  { id: 5, name: 'Mythic',    color: '#ff4d6d', size: 0.78, glow: 2.20, tours: 80 },
+  { id: 6, name: 'Secret',    color: '#e8e8f0', size: 0.90, glow: 3.20, tours: 120 }
 ] as const
 
 export function rarity(id: number) {
@@ -14,58 +14,58 @@ export function rarity(id: number) {
 }
 
 export const MUTATIONS = [
-  { id: 0,  nom: '',            mult: 1,    couleur: '',        poids: 1000 },
-  { id: 1,  nom: 'Gold',        mult: 1.25, couleur: '#ffd700', poids: 220 },
-  { id: 2,  nom: 'Diamond',     mult: 1.5,  couleur: '#b9f2ff', poids: 120 },
-  { id: 3,  nom: 'Blood',       mult: 2,    couleur: '#8b0000', poids: 70 },
-  { id: 4,  nom: 'Candy',       mult: 4,    couleur: '#ff9ecd', poids: 34 },
-  { id: 5,  nom: 'Lava',        mult: 6,    couleur: '#ff5722', poids: 20 },
-  { id: 6,  nom: 'Galaxy',      mult: 7,    couleur: '#5b2c8d', poids: 14 },
-  { id: 7,  nom: 'Yin Yang',    mult: 7.5,  couleur: '#dcdcdc', poids: 11 },
-  { id: 8,  nom: 'Radioactive', mult: 8.5,  couleur: '#7fff00', poids: 8 },
-  { id: 9,  nom: 'Cursed',      mult: 9,    couleur: '#3b0a45', poids: 6 },
-  { id: 10, nom: 'Divine',      mult: 10,   couleur: '#fff8dc', poids: 4 },
-  { id: 11, nom: 'Rainbow',     mult: 10,   couleur: '#ff00ff', poids: 3 },
-  { id: 12, nom: 'Cyber',       mult: 11,   couleur: '#00e5ff', poids: 2 },
-  { id: 13, nom: 'Phantom',     mult: 12,   couleur: '#9e9e9e', poids: 1 }
+  { id: 0,  name: '',            mult: 1,    color: '',        poids: 1000 },
+  { id: 1,  name: 'Gold',        mult: 1.25, color: '#ffd700', poids: 220 },
+  { id: 2,  name: 'Diamond',     mult: 1.5,  color: '#b9f2ff', poids: 120 },
+  { id: 3,  name: 'Blood',       mult: 2,    color: '#8b0000', poids: 70 },
+  { id: 4,  name: 'Candy',       mult: 4,    color: '#ff9ecd', poids: 34 },
+  { id: 5,  name: 'Lava',        mult: 6,    color: '#ff5722', poids: 20 },
+  { id: 6,  name: 'Galaxy',      mult: 7,    color: '#5b2c8d', poids: 14 },
+  { id: 7,  name: 'Yin Yang',    mult: 7.5,  color: '#dcdcdc', poids: 11 },
+  { id: 8,  name: 'Radioactive', mult: 8.5,  color: '#7fff00', poids: 8 },
+  { id: 9,  name: 'Cursed',      mult: 9,    color: '#3b0a45', poids: 6 },
+  { id: 10, name: 'Divine',      mult: 10,   color: '#fff8dc', poids: 4 },
+  { id: 11, name: 'Rainbow',     mult: 10,   color: '#ff00ff', poids: 3 },
+  { id: 12, name: 'Cyber',       mult: 11,   color: '#00e5ff', poids: 2 },
+  { id: 13, name: 'Phantom',     mult: 12,   color: '#9e9e9e', poids: 1 }
 ] as const
 
 export function mutation(id: number) {
   return MUTATIONS[Math.max(0, Math.min(id, MUTATIONS.length - 1))]
 }
 
-export function nomObjet(rarete: number, mut: number): string {
+export function itemName(rarityId: number, mut: number): string {
   const m = mutation(mut)
-  return m.nom === '' ? rarity(rarete).nom : `${m.nom} ${rarity(rarete).nom}`
+  return m.name === '' ? rarity(rarityId).name : `${m.name} ${rarity(rarityId).name}`
 }
 
-export const BOITES = [
-  { id: 0, nom: 'Basic Crate', prix: PRIX_BOITE[0], couleur: '#9aa3ad', taille: 0.55 },
-  { id: 1, nom: 'Good Crate',  prix: PRIX_BOITE[1], couleur: '#4ec04e', taille: 0.62 },
-  { id: 2, nom: 'Rare Crate',  prix: PRIX_BOITE[2], couleur: '#3d8ef0', taille: 0.70 },
-  { id: 3, nom: 'Epic Crate',  prix: PRIX_BOITE[3], couleur: '#a855f7', taille: 0.80 }
+export const CRATES = [
+  { id: 0, name: 'Basic Crate', price: CRATE_PRICE[0], color: '#9aa3ad', size: 0.55 },
+  { id: 1, name: 'Good Crate',  price: CRATE_PRICE[1], color: '#4ec04e', size: 0.62 },
+  { id: 2, name: 'Rare Crate',  price: CRATE_PRICE[2], color: '#3d8ef0', size: 0.70 },
+  { id: 3, name: 'Epic Crate',  price: CRATE_PRICE[3], color: '#a855f7', size: 0.80 }
 ] as const
 
-export function couleurObjet(rarete: number, mut: number): string {
+export function itemColor(rarityId: number, mut: number): string {
   const m = mutation(mut)
-  return m.couleur === '' ? rarity(rarete).couleur : m.couleur
+  return m.color === '' ? rarity(rarityId).color : m.color
 }
 
-export function boite(id: number) {
-  return BOITES[Math.max(0, Math.min(id, BOITES.length - 1))]
+export function crate(id: number) {
+  return CRATES[Math.max(0, Math.min(id, CRATES.length - 1))]
 }
 
-export function encoder(rarete: number, mut: number): number {
-  return rarete * 100 + mut
+export function encoder(rarity: number, mut: number): number {
+  return rarity * 100 + mut
 }
-export function rareteDe(code: number): number { return Math.floor(code / 100) }
+export function rarityOf(code: number): number { return Math.floor(code / 100) }
 export function mutationDe(code: number): number { return code % 100 }
 
-export function revenuObjet(code: number, gains: readonly number[]): number {
-  return (gains[rareteDe(code)] ?? 1) * mutation(mutationDe(code)).mult
+export function itemIncome(code: number, incomeTable: readonly number[]): number {
+  return (incomeTable[rarityOf(code)] ?? 1) * mutation(mutationDe(code)).mult
 }
 
-export function formatRevenu(v: number): string {
+export function formatIncome(v: number): string {
   if (v < 10) return v.toFixed(2).replace(/\.?0+$/, '')
   if (v < 1000) return Math.round(v).toString()
   if (v < 1e6) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'

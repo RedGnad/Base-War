@@ -4,7 +4,7 @@ import {
 } from '@dcl/sdk/ecs'
 
 import { getPlayer } from '@dcl/sdk/players'
-import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
+import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTER } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
@@ -16,15 +16,15 @@ import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
 import { setupTravel } from './travel'
 import { setupVenue } from './venue'
-import { setupConvoi } from './convoi'
+import { setupConvoy } from './convoy'
 
 export const view = {
-  objets: 0,
+  items: 0,
   serverAlive: false,
   lastBeatValue: 0,
   lastBeatSeenAt: 0,
-  malusActif: false,
-  etages: 1
+  penaltyActive: false,
+  floors: 1
 }
 
 export function startClient(): void {
@@ -42,7 +42,7 @@ export function startClient(): void {
   setupTheft()
   setupBelt()
   setupSlots()
-  setupConvoi()
+  setupConvoy()
   setupQuests()
   setupTutorial()
   setupTravel()
@@ -58,10 +58,10 @@ export function startClient(): void {
     }
     for (const [, p] of engine.getEntitiesWith(Plot)) {
       if (p.ownerId.toLowerCase() !== myAddress) continue
-      if (p.items.length !== view.objets || p.etages !== view.etages) {
-        view.objets = p.items.length
-        view.etages = p.etages
-        console.log(`[CLIENT] ma base: ${view.objets} objets, ${view.etages} etage(s)`)
+      if (p.items.length !== view.items || p.floors !== view.floors) {
+        view.items = p.items.length
+        view.floors = p.floors
+        console.log(`[CLIENT] ma base: ${view.items} items, ${view.floors} floor(s)`)
       }
       return
     }

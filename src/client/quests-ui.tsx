@@ -1,19 +1,19 @@
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
-import { QUETES } from '../shared/quests'
-import { RECOMPENSES_JOUR } from '../shared/schemas'
-import { boite } from '../shared/loot-table'
-import { fermerMenu } from './menu'
+import { QUESTS } from '../shared/quests'
+import { DAILY_REWARDS } from '../shared/schemas'
+import { crate } from '../shared/loot-table'
+import { closeMenu } from './menu'
 
 export const questsView = {
-  ouvert: false,
+  open: false,
   ids: [] as number[],
   progres: [] as number[],
   cibles: [] as number[],
   pris: [] as number[],
-  jour: 1,
-  jourPris: false
+  log: 1,
+  dayClaimed: false
 }
 
 export function setupQuests(): void {
@@ -22,14 +22,14 @@ export function setupQuests(): void {
     questsView.progres = [...d.progres]
     questsView.cibles = [...d.cibles]
     questsView.pris = [...d.pris]
-    questsView.jour = d.jour
-    questsView.jourPris = d.jourPris
+    questsView.log = d.log
+    questsView.dayClaimed = d.dayClaimed
   })
 }
 
 function reclamer(slot: number): void { void room.send('claimQuest', { slot }) }
 
-export function quetesAPrendre(): number {
+export function questsToClaim(): number {
   let n = 0
   for (let i = 0; i < questsView.ids.length; i++) {
     if (questsView.progres[i] >= questsView.cibles[i] && questsView.pris[i] !== 1) n++
@@ -48,7 +48,7 @@ function toutesFinies(): boolean {
 
 function Ligne(props: { i: number }): ReactEcs.JSX.Element {
   const i = props.i
-  const q = QUETES[questsView.ids[i]]
+  const q = QUESTS[questsView.ids[i]]
   const fait = questsView.progres[i] ?? 0
   const cible = questsView.cibles[i] ?? 1
   const fini = fait >= cible
@@ -92,7 +92,7 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
 }
 
 export function QuestsPanel(): ReactEcs.JSX.Element | null {
-  if (!questsView.ouvert) return null
+  if (!questsView.open) return null
   const tout = toutesFinies()
   return (
     <UiEntity
@@ -128,15 +128,15 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
         )}
       </UiEntity>
 
-      {/* CALENDRIER 7 JOURS. Le memo l'exigeait des le jour 1: c'est lui qui ANNONCE la
+      {/* CALENDRIER 7 JOURS. Le memo l'exigeait des le log 1: c'est lui qui ANNONCE la
           boucle. Une recompense qui tombe sans calendrier ne promet rien pour demain. */}
       <Label value="LOGIN STREAK" fontSize={16} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 26, margin: { top: 12 } }} textAlign="middle-left" />
       <UiEntity uiTransform={{ width: '100%', height: 62, flexDirection: 'row' }}>
-        {RECOMPENSES_JOUR.map((t, j) => {
-          const jourN = j + 1
-          const passe = jourN < questsView.jour || (jourN === questsView.jour && questsView.jourPris)
-          const actuel = jourN === questsView.jour
+        {DAILY_REWARDS.map((t, j) => {
+          const dayN = j + 1
+          const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)
+          const actuel = dayN === questsView.log
           return (
             <UiEntity
               uiTransform={{
@@ -146,11 +146,11 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
               }}
               uiBackground={{ color: passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
             >
-              <Label value={`DAY ${jourN}`} fontSize={12}
+              <Label value={`DAY ${dayN}`} fontSize={12}
                 color={passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />
-              <Label value={boite(t).nom} fontSize={11}
-                color={Color4.fromHexString(boite(t).couleur + 'ff')}
+              <Label value={crate(t).name} fontSize={11}
+                color={Color4.fromHexString(crate(t).color + 'ff')}
                 uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />
             </UiEntity>
           )
@@ -158,7 +158,7 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
       </UiEntity>
 
       <Button uiTransform={{ width: 130, height: 40, margin: { top: 10 } }}
-        value="CLOSE" variant="secondary" fontSize={14} onMouseDown={fermerMenu} />
+        value="CLOSE" variant="secondary" fontSize={14} onMouseDown={closeMenu} />
     </UiEntity>
   )
 }

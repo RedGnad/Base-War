@@ -1,5 +1,5 @@
 import { room } from '../shared/messages'
-import { boite } from '../shared/loot-table'
+import { crate } from '../shared/loot-table'
 import { alerter } from './theft'
 
 export const ETAPES_TEXTE = [
@@ -15,6 +15,6 @@ export const tutoView = { etape: 0, total: ETAPES_TEXTE.length as number }
 export function setupTutorial(): void {
   room.onMessage('tutorial', (d) => { tutoView.etape = d.etape; tutoView.total = d.total })
   room.onMessage('timeGift', (d) => {
-    alerter(`${d.minutes} MINUTES PLAYED  ·  free ${boite(d.boite).nom} crate`, '#ffd166', 8000)
+    alerter(`${d.minutes} MINUTES PLAYED  ·  free ${crate(d.crate).name} crate`, '#ffd166', 8000)
   })
 }

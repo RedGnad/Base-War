@@ -11,17 +11,17 @@ export function rollRarity(): number {
   return 0
 }
 
-export { PRODUCTION_RARETE as GAIN_PAR_SECONDE } from '../shared/economie'
+export { PRODUCTION_PER_RARITY as INCOME_PER_RARITY } from '../shared/economy'
 
-const POIDS_BOITE = [
+const CRATE_WEIGHTS = [
   [55, 22,   6,   0,    0,    0,    0   ],  // Basic : raretes 0-2
   [22, 55,  22,   6,    0,    0,    0   ],  // Good  : raretes 0-3
-  [ 0,  6,  55,  22,    6,    0,    0   ],  // Rare  : raretes 1-4  (centre 2)
-  [ 0,  0,   6,  55,   22,    6,    0   ],  // Epic  : raretes 2-5  (centre 3)
+  [ 0,  6,  55,  22,    6,    0,    0   ],  // Rare  : raretes 1-4  (center 2)
+  [ 0,  0,   6,  55,   22,    6,    0   ],  // Epic  : raretes 2-5  (center 3)
 ]
 
-export function rollBoite(idBoite: number): number {
-  const poids = POIDS_BOITE[Math.max(0, Math.min(idBoite, POIDS_BOITE.length - 1))]
+export function rollCrate(crateId: number): number {
+  const poids = CRATE_WEIGHTS[Math.max(0, Math.min(crateId, CRATE_WEIGHTS.length - 1))]
   const total = poids.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
   for (let i = 0; i < poids.length; i++) {
@@ -33,7 +33,7 @@ export function rollBoite(idBoite: number): number {
 
 const POIDS_APPARITION = [55, 28, 13, 4]
 
-export function rollTypeBoite(): number {
+export function rollCrateTier(): number {
   const total = POIDS_APPARITION.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
   for (let i = 0; i < POIDS_APPARITION.length; i++) {

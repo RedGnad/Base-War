@@ -3,30 +3,30 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { BASE_COTE, accrocher, raisonInvalide } from '../shared/schemas'
+import { BASE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { monAdresseClient } from './theft'
 
 const SCENE_COTE = 80
 
-export const slotView = { actif: false, valide: false, raison: '' }
+export const slotView = { active: false, valid: false, reason: '' }
 
 let fantome: Entity
-let etiquette: Entity
+let label: Entity
 let autres: Array<{ x: number; z: number }> = []
 
 export function basculerPose(): void {
-  slotView.actif = !slotView.actif
-  if (!slotView.actif) {
+  slotView.active = !slotView.active
+  if (!slotView.active) {
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) t.scale = Vector3.create(0, 0, 0)
-    const e = Transform.getMutableOrNull(etiquette)
+    const e = Transform.getMutableOrNull(label)
     if (e !== null) e.scale = Vector3.create(0, 0, 0)
   }
 }
 
-function maPosition(): { x: number; z: number } | null {
+function myBasePoint(): { x: number; z: number } | null {
   const moi = monAdresseClient()
   if (moi === '') return null
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
@@ -42,54 +42,54 @@ export function setupSlots(): void {
   Transform.create(fantome, { position: Vector3.create(0, 0.08, 0), scale: Vector3.create(0, 0, 0) })
   MeshRenderer.setBox(fantome)
 
-  etiquette = engine.addEntity()
-  Transform.create(etiquette, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
-  Billboard.create(etiquette, {})
-  TextShape.create(etiquette, { text: '', fontSize: 3, textColor: Color4.White() })
+  label = engine.addEntity()
+  Transform.create(label, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
+  Billboard.create(label, {})
+  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
 
   room.onMessage('basePositions', (d) => {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
   })
 
   engine.addSystem(() => {
-    if (!slotView.actif) return
+    if (!slotView.active) return
     if (!Transform.has(engine.PlayerEntity)) return
     const p = Transform.get(engine.PlayerEntity).position
-    const x = accrocher(p.x)
-    const z = accrocher(p.z)
+    const x = snapToGrid(p.x)
+    const z = snapToGrid(p.z)
 
-    const moi = maPosition()
+    const moi = myBasePoint()
     const obstacles = moi === null
       ? autres
       : autres.filter((a) => Math.abs(a.x - moi.x) > 0.01 || Math.abs(a.z - moi.z) > 0.01)
-    const raison = raisonInvalide(x, z, SCENE_COTE, obstacles)
-    slotView.valide = raison === null
-    slotView.raison = raison ?? ''
+    const reason = invalidReason(x, z, SCENE_COTE, obstacles)
+    slotView.valid = reason === null
+    slotView.reason = reason ?? ''
 
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) {
       t.position = Vector3.create(x, 0.08, z)
-      t.scale = Vector3.create(BASE_COTE, 0.16, BASE_COTE)
+      t.scale = Vector3.create(BASE_SIDE, 0.16, BASE_SIDE)
     }
-    const c = slotView.valide ? Color4.fromHexString('#3ddc84ff') : Color4.fromHexString('#e04a3aff')
+    const c = slotView.valid ? Color4.fromHexString('#3ddc84ff') : Color4.fromHexString('#e04a3aff')
     Material.setPbrMaterial(fantome, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.7 })
 
-    const te = Transform.getMutableOrNull(etiquette)
+    const te = Transform.getMutableOrNull(label)
     if (te !== null) {
       te.position = Vector3.create(x, 2.4, z)
       te.scale = Vector3.create(0.7, 0.7, 0.7)
     }
-    const ts = TextShape.getMutableOrNull(etiquette)
+    const ts = TextShape.getMutableOrNull(label)
     if (ts !== null) {
-      ts.text = slotView.valide ? 'BUILD HERE' : slotView.raison
+      ts.text = slotView.valid ? 'BUILD HERE' : slotView.reason
       ts.textColor = c
     }
   })
 }
 
-export function poserIci(): void {
+export function placeHere(): void {
   if (!Transform.has(engine.PlayerEntity)) return
   const p = Transform.get(engine.PlayerEntity).position
-  void room.send('claimSlot', { x: accrocher(p.x), z: accrocher(p.z) })
+  void room.send('claimSlot', { x: snapToGrid(p.x), z: snapToGrid(p.z) })
   basculerPose()
 }

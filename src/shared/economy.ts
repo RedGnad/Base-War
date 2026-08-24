@@ -7,35 +7,35 @@
  * two tiers later. Prestige uses a cube root of lifetime earnings, so returns diminish
  * by construction.
  */
-export const PRODUCTION_RARETE = [1, 7, 44, 287, 1897, 12523, 82654] as const
+export const PRODUCTION_PER_RARITY = [1, 7, 44, 287, 1897, 12523, 82654] as const
 
 /** Derived: expected output x target payback, where payback doubles per tier. */
-export const PRIX_BOITE = [342, 3539, 46331, 610857] as const
+export const CRATE_PRICE = [342, 3539, 46331, 610857] as const
 
-export const RETOUR_BOITE_S = [60, 120, 240, 480] as const
+export const CRATE_PAYBACK_S = [60, 120, 240, 480] as const
 
-export const PRIX_ETAGE_ABS = [0, 38000, 475000] as const
+export const FLOOR_PRICES = [0, 38000, 475000] as const
 
-export const PALIER_SEUIL = 75000
+export const PRESTIGE_THRESHOLD = 75000
 
-export function palierPour(cumul: number): number {
-  return cumul <= 0 ? 0 : Math.floor(Math.cbrt(cumul / PALIER_SEUIL))
+export function prestigeFor(cumul: number): number {
+  return cumul <= 0 ? 0 : Math.floor(Math.cbrt(cumul / PRESTIGE_THRESHOLD))
 }
 
-export function cumulPourPalier(n: number): number {
-  return n <= 0 ? 0 : Math.round(n * n * n * PALIER_SEUIL)
+export function lifetimeForPrestige(n: number): number {
+  return n <= 0 ? 0 : Math.round(n * n * n * PRESTIGE_THRESHOLD)
 }
 
-export function multiplicateurPalier(n: number): number {
+export function prestigeMultiplier(n: number): number {
   return 1 + Math.max(0, n)
 }
 
-export const PALIER_MAX = 12
+export const MAX_PRESTIGE = 12
 
 /**
  * Offline earnings are capped in SECONDS OF PRODUCTION, not in hours. An hour-based cap
  * pays an amount that grows with production, so it skips more and more content as the
  * player advances; a production-based cap always grants the same head start.
  */
-export const HORS_LIGNE_TAUX_V2 = 0.35
-export const HORS_LIGNE_PLAFOND_PRODUCTION_S = 900
+export const OFFLINE_RATE_V2 = 0.35
+export const OFFLINE_CAP_PRODUCTION_S = 900
