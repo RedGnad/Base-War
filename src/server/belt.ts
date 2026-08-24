@@ -1,4 +1,4 @@
-import { engine, Transform, PlayerIdentityData } from '@dcl/sdk/ecs'
+import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
@@ -7,7 +7,7 @@ import {
 import { room } from '../shared/messages'
 import { jour } from './journal'
 import { rollTypeBoite, rollBoite } from './loot'
-import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet } from './plots'
+import { nomAffiche, depenser, coinsDe, ajouterBoite, retirerBoite, boitesDe, ajouterObjet, etatPrevisible } from './plots'
 import { BOITES } from '../shared/loot-table'
 
 /**
@@ -24,6 +24,13 @@ type Article = {
   vendu: boolean
   entity: ReturnType<typeof engine.addEntity>
 }
+
+/**
+ * Duree de la mise en scene cote client (roulette + explosion). La pose sur la base
+ * attend ce delai pour que l'objet n'apparaisse pas avant d'avoir ete revele.
+ * Doit rester synchronise avec la roulette de `src/client/box.ts`.
+ */
+const POSE_DIFFEREE_MS = 2700
 
 const articles: Article[] = []
 let prochainId = 1
@@ -137,11 +144,20 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'ouverture', raison: 'tu n as pas cette boite', antiCheat: true }, { to: [a] })
       return
     }
+    // LE TIRAGE EST IMMEDIAT ET AUTORITAIRE, la POSE est differee.
+    // Sinon l'objet apparait sur la base avant que la roulette ne l'ait revele: le
+    // joueur voit le resultat par la fenetre avant l'annonce, et le decalage se voit.
+    // Le hasard est fige des maintenant, seule sa mise en scene attend.
     const rarity = rollBoite(d.typeBoite)
-    const etat = ajouterObjet(a, rarity)
-    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity} (${etat})`)
-    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, etat }, { to: [a] })
+    const prevu = etatPrevisible(a)
+    jour(`${nomAffiche(a)} ouvre une boite ${d.typeBoite} -> rarete ${rarity} (${prevu}, pose differee)`)
+    void room.send('boxResult', { typeBoite: d.typeBoite, rarity, etat: prevu }, { to: [a] })
     void room.send('inventory', { boites: boitesDe(a) }, { to: [a] })
+
+    timers.setTimeout(() => {
+      const reel = ajouterObjet(a, rarity)
+      if (reel !== prevu) jour(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${nomAffiche(a)}`)
+    }, POSE_DIFFEREE_MS)
   })
 
   jour('tapis pret')

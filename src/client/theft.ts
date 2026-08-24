@@ -21,6 +21,7 @@ export const theftView = {
   verrouSec: 0,
   aReprendre: false,
   prixEtage: 0,
+  rechargeSec: 0,
   alerte: '',
   alerteCouleur: '#ffffff',
   alerteJusqua: 0,
@@ -85,6 +86,7 @@ export function setupTheft(): void {
     theftView.verrouSec = d.verrouSec
     theftView.aReprendre = d.aReprendre
     theftView.prixEtage = d.prixEtage
+    theftView.rechargeSec = d.rechargeSec
   })
 
   room.onMessage('rebirthDone', (d) => {

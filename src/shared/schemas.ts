@@ -149,7 +149,18 @@ export const PORTEE_COUP = 4
  * au lieu de les faire revenir.
  */
 export const VERROU_ARRIVEE_MS = 30_000   // 3.1 verrou automatique a l'arrivee
-export const VERROU_GRATUIT_MS = 60_000   // 3.2 verrou activable
+export const VERROU_GRATUIT_MS = 60_000   // 3.2 verrou activable, duree SOURCEE au wiki
+/**
+ * TEMPS DE RECHARGE DU VERROU. `[DERIVE, PAS SOURCE]`
+ * Le wiki donne la duree (60 s, +10 s par palier) mais AUCUN temps de recharge.
+ * Or un verrou reactivable a volonte rendrait le vol impossible, et le jeu de reference
+ * repose entierement sur le vol: une limite existe forcement, elle n'est simplement pas
+ * documentee dans ce qu'on atteint.
+ * Retenu: 150 s a compter de la FIN du verrou. Cycle 60 s protege / 150 s expose, soit
+ * ~29 % du temps sous protection. A REEQUILIBRER si le vol devient trop facile ou trop
+ * rare une fois teste a deux joueurs.
+ */
+export const VERROU_RECHARGE_MS = 150_000
 export const VERROU_BONUS_MS = 10_000     // 3.6 +10 s par palier de progression
 export const MALUS_DUREE_MS = 12_000      // 3.4 duree du malus du voleur
 export const REPRISE_FENETRE_MS = 20_000  // 3.5 fenetre pour reprendre son bien

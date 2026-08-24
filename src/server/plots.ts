@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_OBJETS, etagesOuverts, placesOuvertes,
-  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX,
+  coutRebirth, REBIRTH_MAX, paliers, multiplicateurRevenu, accrocher, raisonInvalide, prixEtage, ETAGES_MAX, VERROU_RECHARGE_MS,
   DELAI_DEPLACEMENT_MS, REVENTE_SECONDES
 } from '../shared/schemas'
 import { GAIN_PAR_SECONDE } from './loot'
@@ -48,6 +48,8 @@ type Profil = {
   rebirths?: number
   /** etages ACHETES, au-dela du rez-de-chaussee */
   etagesAchetes?: number
+  /** fin du dernier verrou, pour le temps de recharge */
+  finVerrou?: number
   x?: number
   z?: number
   /** horodatage du dernier DEPLACEMENT (pas du premier placement) */
@@ -271,8 +273,18 @@ export function poserVerrou(address: string, jusqua: number): boolean {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return false
   c.lockedUntil = jusqua
+  const p = profils.get(address)
+  if (p) { p.finVerrou = jusqua; profilsSales.add(address) }
   basesSales.add(address)
   return true
+}
+
+/** Millisecondes restantes avant de pouvoir REVERROUILLER. 0 si c'est possible. */
+export function rechargeVerrou(address: string): number {
+  const p = profils.get(address)
+  if (!p || p.finVerrou === undefined) return 0
+  const pret = p.finVerrou + VERROU_RECHARGE_MS
+  return Math.max(0, pret - Date.now())
 }
 
 /** Retire un objet d'une base et le rend. Le profil du proprietaire suit. */
@@ -293,6 +305,17 @@ export function retirerObjet(address: string, index: number): number | null {
  * dire au joueur au lieu d'annoncer « pose sur ta base » quand il n'y a pas de base.
  */
 export type RangementResultat = 'expose' | 'en-stock' | 'plein'
+
+/**
+ * Ce qui ARRIVERA a un objet, sans le poser. Sert a annoncer honnetement le resultat
+ * pendant que la roulette tourne, avant que la pose reelle n'ait lieu.
+ */
+export function etatPrevisible(address: string): RangementResultat {
+  const prof = profils.get(address)
+  if (!prof) return 'plein'
+  if (prof.items.length >= placesOuvertes(prof.etagesAchetes ?? 0)) return 'plein'
+  return bases.has(address) ? 'expose' : 'en-stock'
+}
 
 export function ajouterObjet(address: string, rarity: number): RangementResultat {
   const prof = profils.get(address)
@@ -563,6 +586,7 @@ export function startPlots(): void {
         basePosee: b !== undefined,
         verrouSec: Math.max(0, Math.ceil((lock - Date.now()) / 1000)),
         prixEtage: prixProchainEtage(address),
+        rechargeSec: Math.ceil(rechargeVerrou(address) / 1000),
         aReprendre: aQuelqueChoseAReprendre(address),
         coins: Math.floor(p.coins),
         prochainPalier: suivant ? suivant.cout : 0,

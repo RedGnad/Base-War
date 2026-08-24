@@ -12,7 +12,7 @@ import { jour } from './journal'
 import {
   basesProches, verrouDe, poserVerrou, retirerObjet, ajouterObjet,
   nomAffiche, deposerAlerte, retirerAlertes, coinsDe, tenterRebirth, paliersDe,
-  poserBase, positionsBases, revendreObjet, acheterEtage
+  poserBase, positionsBases, revendreObjet, acheterEtage, rechargeVerrou
 } from './plots'
 
 /**
@@ -190,9 +190,13 @@ export function startTheft(): void {
   room.onMessage('activateLock', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
+    // Le verrou a un TEMPS DE RECHARGE: sans lui il serait reactivable a volonte et
+    // le vol deviendrait impossible.
+    const reste = rechargeVerrou(a)
+    if (reste > 0) { refus(a, 'lock', `recharging, ${Math.ceil(reste / 1000)}s`); return }
     const duree = VERROU_GRATUIT_MS + bonusVerrou(a)
     const jusqua = Date.now() + duree
-    if (!poserVerrou(a, jusqua)) { refus(a, 'verrou', 'pas de base affichee'); return }
+    if (!poserVerrou(a, jusqua)) { refus(a, 'lock', 'no base placed'); return }
     jour(`${nomAffiche(a)} verrouille sa base ${Math.round(duree / 1000)} s`)
   })
 

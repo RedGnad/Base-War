@@ -193,8 +193,12 @@ const uiComponent = () => (
           pire que pas de bouton du tout. */}
       <Button
         uiTransform={{ width: 110, height: 54 }}
-        value={theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s` : 'LOCK 60s'}
-        variant={theftView.verrouSec > 0 ? 'secondary' : 'primary'}
+        value={
+          theftView.verrouSec > 0 ? `LOCKED ${theftView.verrouSec}s`
+          : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
+          : 'LOCK 60s'
+        }
+        variant={theftView.verrouSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
         fontSize={13}
         onMouseDown={verrouiller} />
       <Button
