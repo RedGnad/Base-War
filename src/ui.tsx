@@ -65,15 +65,19 @@ const PANNEAU = Color4.create(0, 0, 0, 0.62)
  * on lui montre celui qui compte maintenant. L'ordre encode la boucle du jeu.
  */
 function prochaineAction(): { libelle: string; pret: boolean; action: () => void } {
-  // reprendre un vol passe avant tout: la fenetre est courte
-  if (theftView.aReprendre) return { libelle: 'RECOVER!', pret: true, action: reprendre }
-  // sans base, rien ne rapporte
-  if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
+  // LE MODE DE POSE PASSE EN PREMIER. Bug corrige le 24 Aug: le test « sans base »
+  // venait avant, donc le bouton affichait encore BUILD BASE une fois le mode actif et
+  // rappelait la bascule, qui l'eteignait. On ne pouvait JAMAIS atteindre PLACE HERE.
+  // Un etat MODAL doit toujours etre teste avant les etats de fond.
   if (slotView.actif) {
     return slotView.valide
       ? { libelle: 'PLACE HERE', pret: true, action: poserIci }
       : { libelle: slotView.raison.toUpperCase(), pret: false, action: basculerPose }
   }
+  // reprendre un vol passe avant tout: la fenetre est courte
+  if (theftView.aReprendre) return { libelle: 'RECOVER!', pret: true, action: reprendre }
+  // sans base, rien ne rapporte
+  if (!theftView.basePosee) return { libelle: 'BUILD BASE', pret: true, action: basculerPose }
   // une boite non ouverte est une recompense qui attend
   if (boxView.stock.length > 0) return { libelle: `OPEN (${boxView.stock.length})`, pret: true, action: ouvrirMeilleure }
   // puis les achats, le moins cher d'abord
@@ -125,7 +129,9 @@ const uiComponent = () => (
           !view.serverAlive ? 'SERVER OFFLINE'
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.revenu === 0 ? 'open a crate to start earning'
-          : `+${formatRevenu(theftView.revenu)}/s · ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
+          // On MONTRE la reserve qui se remplit: sans ca, le bouton COLLECT sort de
+          // nulle part et personne ne comprend d'ou vient l'argent.
+          : `+${formatRevenu(theftView.revenu)}/s  →  ${formatRevenu(theftView.reserve)} waiting  ·  ${view.objets} items · ${view.etages} floor${view.etages > 1 ? 's' : ''}${theftView.palier > 0 ? ' · prestige ' + theftView.palier : ''}`
         }
         fontSize={13}
         color={
@@ -270,13 +276,17 @@ const uiComponent = () => (
         flexDirection: 'row', justifyContent: 'space-between'
       }}
     >
-      {/* 1. Le geste le plus frequent, toujours la. */}
-      <Button
-        uiTransform={{ width: 150, height: 58 }}
-        value={theftView.reserve > 0 ? `COLLECT ${formatRevenu(theftView.reserve)}` : 'COLLECT'}
-        variant={theftView.reserve > 0 ? 'primary' : 'secondary'}
-        fontSize={15}
-        onMouseDown={collecter} />
+      {/* 1. COLLECT n'apparait QUE s'il y a quelque chose a encaisser.
+          Un bouton toujours visible qui ne fait rien au demarrage est pire qu'absent:
+          il occupe la place principale et n'apprend rien. */}
+      {theftView.reserve > 0 && (
+        <Button
+          uiTransform={{ width: 160, height: 58 }}
+          value={`COLLECT ${formatRevenu(theftView.reserve)}`}
+          variant="primary"
+          fontSize={15}
+          onMouseDown={collecter} />
+      )}
 
       {/* 2. UNE seule action selon l'etat, par ordre d'urgence. */}
       {(() => {

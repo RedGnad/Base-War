@@ -17,7 +17,7 @@ export function fermerAccueil(): void { welcomeView.ouvert = false }
 const LIGNES = [
   ['1', 'OPEN your free crate — smash it 3 times'],
   ['2', 'BUILD your base anywhere on the map'],
-  ['3', 'Your loot earns coins. COLLECT them'],
+  ['3', 'Loot earns coins into a pool — tap COLLECT to bank it'],
   ['4', 'Buy better crates from the belt'],
   ['5', 'Steal from other bases. LOCK yours']
 ]
