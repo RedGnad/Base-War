@@ -1,8 +1,8 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, SkyboxTime,
+  engine, Transform, SkyboxTime,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+
 import { getPlayer } from '@dcl/sdk/players'
 import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTRE } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -15,6 +15,7 @@ import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
 import { setupTravel } from './travel'
+import { setupVenue } from './venue'
 
 /** Etat d'affichage, lu par l'UI. */
 export const view = {
@@ -43,20 +44,7 @@ export function startClient(): void {
   // pour lire un batiment et ses etages.
   SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 43200 })
 
-  // UN SOL A NOUS.
-  // La scene n'en posait aucun: on heritait du terrain de l'hote, rouge dans l'apercu.
-  // Une premiere impression qu'on ne controle pas est une premiere impression subie, et
-  // c'est elle que voit un juge. Un seul plan, un seul materiau: le budget de materiaux
-  // d'une scene est LOGARITHMIQUE (log2(n+1) x 20), donc chaque materiau compte.
-  const sol = engine.addEntity()
-  // Le plan du SDK est dans le plan LOCAL XY, face vers +Z. L'echelle s'applique AVANT
-  // la rotation: mettre (80, 1, 80) donnait une bande de 80 x 1 m, pas un sol.
-  // Il faut (80, 80, 1), puis -90 deg autour de X pour que la face regarde le ciel.
-  Transform.create(sol, { position: Vector3.create(40, 0.01, 40), scale: Vector3.create(80, 80, 1), rotation: Quaternion.fromEulerDegrees(-90, 0, 0) })
-  MeshRenderer.setPlane(sol)
-  MeshCollider.setPlane(sol)
-  Material.setPbrMaterial(sol, { albedoColor: Color4.fromHexString('#3a4152ff'), metallic: 0, roughness: 0.95 })
-
+  setupVenue()
   setupBox()
   setupPlots()
   setupTheft()
