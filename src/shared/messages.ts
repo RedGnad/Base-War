@@ -53,6 +53,11 @@ export const MESSAGES = {
   /** server -> the victim, live: someone is taking something right now. */
   beingRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, restantMs: Schemas.Int }),
 
+  /** client -> server: I raised or lowered my weapon. */
+  aim: Schemas.Map({ on: Schemas.Boolean }),
+  /** server -> everyone: who is holding their weapon up, so every client draws the same thing. */
+  aiming: Schemas.Map({ addr: Schemas.String, on: Schemas.Boolean }),
+
   /** client -> server: I fired at this point. The server decides who, if anyone, was hit. */
   shoot: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> shooter: what the shot did. */

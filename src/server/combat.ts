@@ -27,6 +27,13 @@ function dropAt(from: string, amount: number, at: { x: number; y: number; z: num
 }
 
 export function startCombat(): void {
+  // Drawing a weapon is public: relayed so every client shows the same armed players.
+  room.onMessage('aim', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    void room.send('aiming', { addr: a, on: d.on })
+  })
+
   room.onMessage('shoot', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return

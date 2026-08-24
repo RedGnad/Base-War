@@ -2,9 +2,8 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, AvatarMask
+  CameraType
 } from '@dcl/sdk/ecs'
-import { triggerEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
@@ -32,9 +31,11 @@ import { setAiming } from './locomotion'
  * the camera and resolved by the server against positions the server reads itself. The
  * reticle uses the server's own cone constant, so a target it locks is a target that falls.
  *
- * The avatar's own skeleton is not addressable from scene code: emotes are the only thing
- * that drives it. So the visible act of firing is a masked emote, upper body only, which
- * leaves the legs to locomotion and reaches every other client on its own.
+ * The avatar's own skeleton is NOT addressable from scene code. The only handle on it is
+ * triggerEmote, whose fixed list holds no aiming and no firing animation, and no custom
+ * animation ships with this scene. So the arm never moves: what moves is the weapon.
+ * It is holstered until the player aims, appears in the hand while they do, and kicks on
+ * the shot. That is an honest visual state, not a pose the avatar is pretending to hold.
  */
 
 export const combatView = {
@@ -76,6 +77,8 @@ const VUE_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
 const VISEE_POS = Vector3.create(0.02, -0.14, 0.26)
 /** Beyond this many other players, distant ones go unarmed: one renderer per mesh adds up. */
 const ARMES_MAX = 10
+/** Muzzle rise on the shot, in degrees, decayed back to rest. */
+const RECUL_DEG = 20
 
 const armes = new Map<string, Gun>()
 let vue: Gun | null = null
@@ -87,6 +90,9 @@ let flashScale = 0
 let dernierRecensement = 0
 let nomCible = ''
 let adresseCible = ''
+let recul = 0
+/** Addresses whose weapon is drawn right now, as relayed by the server. */
+const enJoue = new Set<string>()
 
 const piles = new Map<number, { body: Entity; label: Entity }>()
 
@@ -108,13 +114,36 @@ function construireArme(parent: Entity, pos: Vector3, rot: Quaternion): Gun {
   return { racine: parent, poignee }
 }
 
+/** Reads before it writes, so calling it every frame costs nothing when nothing changed. */
 function montrer(g: Gun | null, on: boolean): void {
   if (g === null) return
-  const t = Transform.getMutableOrNull(g.poignee)
+  const t = Transform.getOrNull(g.poignee)
   if (t === null) return
   const v = on ? 1 : 0
   if (t.scale.x === v) return
-  t.scale = Vector3.create(v, v, v)
+  Transform.getMutable(g.poignee).scale = Vector3.create(v, v, v)
+}
+
+/**
+ * Who has a weapon out, and which of the two local models carries it.
+ *
+ * One rule for everyone: the weapon is drawn only while its owner is aiming. Their aim
+ * state comes from the server relay, so a bystander sees exactly what the shooter sees.
+ * The local player is the one special case, because first person and third person need
+ * two different models and only one of them may be on screen at a time.
+ */
+function rafraichirVisibilite(): void {
+  for (const [a, g] of armes) {
+    const arme = enJoue.has(a)
+    montrer(g, a === moi ? arme && !combatView.firstPerson : arme)
+  }
+  montrer(vue, combatView.aiming && combatView.firstPerson)
+
+  const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
+  if (porteur !== null) {
+    const t = Transform.getOrNull(flash)
+    if (t !== null && t.parent !== porteur.poignee) Transform.getMutable(flash).parent = porteur.poignee
+  }
 }
 
 export function setupCombat(): void {
@@ -142,31 +171,20 @@ export function setupCombat(): void {
   })
   room.onMessage('wasShot', (d) => {
     alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} on the ground`, '#ff6b6b', 5000)
-    // Masked so it plays from the waist up and does not stop the target running away.
-    void triggerEmote({ predefinedEmote: 'getHit', mask: AvatarMask.AM_UPPER_BODY })
   })
   room.onMessage('pickedUp', (d) => alerter(`+${formatIncome(d.amount)} picked up`, '#8fe08f', 2500))
+  room.onMessage('aiming', (d) => {
+    const a = d.addr.toLowerCase()
+    if (d.on) enJoue.add(a); else enJoue.delete(a)
+  })
 
   engine.addSystem(gunSystem)
   engine.addSystem(pileSystem)
 }
 
-/**
- * Which of the two models is on screen, and where the muzzle flash hangs.
- *
- * One flash entity, moved onto whichever weapon is currently visible: parked on the view
- * model it would be invisible in third person, which is the view most players are in.
- */
 function appliquerVue(fp: boolean): void {
   combatView.firstPerson = fp
-  montrer(vue, fp)
-  const main = armes.get(moi) ?? null
-  if (moi !== '') montrer(main, !fp)
-  const porteur = fp ? vue : main
-  if (porteur !== null) {
-    const t = Transform.getMutableOrNull(flash)
-    if (t !== null && t.parent !== porteur.poignee) t.parent = porteur.poignee
-  }
+  rafraichirVisibilite()
 }
 
 /**
@@ -197,8 +215,7 @@ function reconcilierArmes(): void {
     AvatarAttach.create(racine, { avatarId: a, anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
     const g = construireArme(racine, MAIN_POS, MAIN_ROT)
     armes.set(a, g)
-    // The local weapon only appears now, so the view split has to be settled again.
-    if (a === moi) appliquerVue(combatView.firstPerson)
+    montrer(g, false)
   }
   for (const [a, g] of [...armes]) {
     if (vus.has(a)) continue
@@ -232,6 +249,8 @@ function gunSystem(dt: number): void {
     arme = true
     combatView.aiming = true
     setAiming(true)
+    enJoue.add(moi)
+    void room.send('aim', { on: true })
   }
   // Release fires. PET_UP is the normal path; polling isPressed is the backstop, because
   // a release landing while the button is unmounted would otherwise never arrive and
@@ -242,6 +261,8 @@ function gunSystem(dt: number): void {
     combatView.aiming = false
     setAiming(false)
     tirer(now)
+    enJoue.delete(moi)
+    void room.send('aim', { on: false })
   }
 
   // The view model pulls to centre while aiming, and stops being written once it is
@@ -259,6 +280,19 @@ function gunSystem(dt: number): void {
     Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
   }
 
+  // Recoil. The avatar's arm cannot move, so the weapon does: it rises on the shot and
+  // settles back. Applied to whichever of the two models is the one on screen.
+  if (recul > 0) {
+    recul = Math.max(0, recul - dt * 4)
+    const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
+    if (porteur !== null) {
+      const base = combatView.firstPerson ? Quaternion.Identity() : MAIN_ROT
+      Transform.getMutable(porteur.poignee).rotation =
+        Quaternion.multiply(base, Quaternion.fromEulerDegrees(-recul * RECUL_DEG, 0, 0))
+    }
+  }
+
+  rafraichirVisibilite()
   viser()
 }
 
@@ -331,9 +365,7 @@ function tirer(now: number): void {
 
   flashScale = 0.5
   Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
-  // The only handle on the avatar's skeleton is an emote. Masked to the upper body so the
-  // player keeps running while firing, and broadcast by the platform, so everyone sees it.
-  void triggerEmote({ predefinedEmote: 'swingWeaponOneHand', mask: AvatarMask.AM_UPPER_BODY })
+  recul = 1
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)
     if (s !== null) { s.playing = false; s.playing = true }
