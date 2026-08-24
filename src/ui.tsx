@@ -183,19 +183,25 @@ const uiComponent = () => (
     {tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: 320, height: 92, positionType: 'absolute', position: { top: 112, left: 110 },
-          flexDirection: 'column', padding: 12
+          width: 480, height: 130, positionType: 'absolute', position: { top: 16, right: 24 },
+          flexDirection: 'column', padding: 16
         }}
         uiBackground={{ color: Color4.create(0.04, 0.07, 0.12, 0.88) }}
       >
+        {/*
+          Anchored right, not left. The left edge belongs to the Decentraland client: its
+          own icon rail, its place card and the chat all live there, and on a phone the
+          interactable inset reserves it. Sitting there put this panel under the client's
+          own furniture, which a capture of the running game showed plainly.
+        */}
         <Label
-          value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ·  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
-          fontSize={15} color={Color4.fromHexString('#4dd2ffff')}
-          uiTransform={{ width: '100%', height: 24 }} textAlign="middle-left" />
+          value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
+          fontSize={TYPE.label} color={C.bonus}
+          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" />
         <Label
           value={ETAPES_TEXTE[tutoView.etape]?.aide ?? ''}
-          fontSize={13} color={Color4.fromHexString('#a8b2c0ff')}
-          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" />
+          fontSize={TYPE.caption} color={C.dim}
+          uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
       </UiEntity>
     )}
 
@@ -214,38 +220,49 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    <UiEntity
-      uiTransform={{
-        width: 150, height: travelView.open ? 172 : 38,
-        positionType: 'absolute', position: { top: 216, left: 110 },
-        flexDirection: 'column', justifyContent: 'flex-start'
-      }}
-    >
-      <Button
-        uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
-        value={travelView.open ? 'CLOSE' : 'TRAVEL'}
-        variant={travelView.open ? 'primary' : 'secondary'}
-        fontSize={13} onMouseDown={basculerVoyage} />
-      {travelView.open && (
+    {/*
+      The travel rail, down the right edge under the step panel.
+
+      The reference games keep their menus in a vertical rail of large entries at the edge
+      of the screen rather than in the action bar, and they keep it collapsed until asked.
+      Theirs runs down the left; ours cannot, because that edge is the Decentraland
+      client's own. Collapsed it is one control, which is the whole point: the three
+      destinations only exist once the player has said they want to go somewhere.
+    */}
+    {!combatView.aiming && (
+      <UiEntity
+        uiTransform={{
+          width: 300, height: travelView.open ? TAP.height * 4 + TAP.gap * 3 : TAP.height,
+          positionType: 'absolute', position: { top: 170, right: 24 },
+          flexDirection: 'column', justifyContent: 'flex-start'
+        }}
+      >
         <Button
-          uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
-          value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
-          fontSize={13} onMouseDown={() => { rentrer(); basculerVoyage() }} />
-      )}
-      {travelView.open && (
-        <Button
-          uiTransform={{ width: 150, height: 38, margin: { bottom: 6 } }}
-          value="GO TO BELT" variant="secondary" fontSize={13}
-          onMouseDown={() => { goToBelt(); basculerVoyage() }} />
-      )}
-      {travelView.open && theftView.basePosee && (
-        <Button
-          uiTransform={{ width: 150, height: 38 }}
-          value={slotView.active ? 'CANCEL MOVE' : 'MOVE BASE'}
-          variant={slotView.active ? 'primary' : 'secondary'}
-          fontSize={13} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
-      )}
-    </UiEntity>
+          uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
+          value={travelView.open ? 'CLOSE' : 'TRAVEL'}
+          variant={travelView.open ? 'primary' : 'secondary'}
+          fontSize={TYPE.body} onMouseDown={basculerVoyage} />
+        {travelView.open && (
+          <Button
+            uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
+            value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
+            fontSize={TYPE.body} onMouseDown={() => { rentrer(); basculerVoyage() }} />
+        )}
+        {travelView.open && (
+          <Button
+            uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
+            value="GO TO BELT" variant="secondary" fontSize={TYPE.body}
+            onMouseDown={() => { goToBelt(); basculerVoyage() }} />
+        )}
+        {travelView.open && theftView.basePosee && (
+          <Button
+            uiTransform={{ width: 300, height: TAP.height }}
+            value={slotView.active ? 'CANCEL' : 'MOVE BASE'}
+            variant={slotView.active ? 'primary' : 'secondary'}
+            fontSize={TYPE.body} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
+        )}
+      </UiEntity>
+    )}
 
     <UiEntity
       uiTransform={{
@@ -296,15 +313,19 @@ const uiComponent = () => (
     {beltView.annonce !== '' && (
       <UiEntity
         uiTransform={{
-          width: 420, height: 44, positionType: 'absolute',
-          position: { top: 176, left: '50%' }, margin: { left: -210 },
+          width: 700, height: 62, positionType: 'absolute',
+          position: { top: 160, left: '50%' }, margin: { left: -350 },
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: announceBackdrop() }}
       >
+        {/*
+          Kept high and out of the middle third: that band is where the reticle sits and
+          where the player is looking when the weapon is out.
+        */}
         <Label
           value={beltView.annonce}
-          fontSize={17 + beltView.annonceTier * 2}
+          fontSize={TYPE.body + beltView.annonceTier * 4}
           color={Color4.fromHexString(beltView.annonceColor + 'ff')} />
       </UiEntity>
     )}
