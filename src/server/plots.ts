@@ -201,9 +201,11 @@ export async function accueillir(address: string): Promise<void> {
   // aussi un objet, c'est un revenu qui coule avant que le joueur ait rien fait, et
   // ca vide de son sens le premier geste du jeu (ouvrir).
   const items = stocke?.items ?? []
-  // BOITE OFFERTE A L'ARRIVEE (starter pack). Sans elle, un nouveau joueur a un revenu
-  // nul, aucune piece, donc rien a faire: la boucle ne peut pas demarrer.
-  const premiere = stocke === null
+  // UNE SEULE BOITE A L'ARRIVEE, et c'est la RECOMPENSE DU JOUR 1 qui la donne.
+  // Change le 24 Aug: on cumulait un « starter pack » et la recompense du jour 1, deux
+  // boites de type 0, pour le meme role. Le jour 1 se debloque de toute facon des la
+  // premiere seconde: le starter separe faisait double emploi et brouillait le
+  // demarrage de la serie des sept jours.
   // ON REPART DU PROFIL STOCKE EN ENTIER, puis on surcharge.
   // Bug corrige le 24 Aug: cette construction etait une LISTE BLANCHE de sept champs,
   // alors que le profil en compte quinze et que la sauvegarde les ecrit tous. Tout ce
@@ -222,7 +224,7 @@ export async function accueillir(address: string): Promise<void> {
     ...(stocke ?? {}),
     coins: stocke?.coins ?? 0,
     items: [...items],
-    boites: premiere ? [0] : (stocke?.boites ?? []),
+    boites: stocke?.boites ?? [],
     collectes: stocke?.collectes ?? items.length,
     etagesAchetes: stocke?.etagesAchetes ?? 0,
     rebirths: stocke?.rebirths ?? 0,
