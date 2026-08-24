@@ -2,8 +2,8 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_DROP_SHARE, SHOT_DROP_CAP_S,
-  LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE,
+  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -48,9 +48,9 @@ export function startCombat(): void {
       const to = Vector3.create(t.position.x - from.x, 0, t.position.z - from.z)
       const dist = Vector3.length(to)
       if (dist > SHOT_RANGE || dist < 0.5) continue
-      // within a ~14 degree cone of the aim
+      // Same cone the client draws its reticle from, so both agree on what is a target.
       const dot = (to.x * aim.x + to.z * aim.z) / dist
-      if (dot < 0.97) continue
+      if (dot < SHOT_CONE_DOT) continue
       if (best === null || dist < best.d) {
         best = { addr: other, pos: Vector3.create(t.position.x, t.position.y, t.position.z), d: dist }
       }

@@ -3,6 +3,7 @@ import { Color4 } from '@dcl/sdk/math'
 import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
+import { InputAction } from '@dcl/sdk/ecs'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -25,6 +26,7 @@ const ETATS: Record<string, (r: number) => string> = {
   plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
+import { combatView } from './client/combat'
 
 export function setupUi() {
   function choose(): void {
@@ -79,12 +81,60 @@ function nextAction(): { label: string; ready: boolean; action: () => void } {
   return { label: 'ALL MAXED', ready: false, action: () => {} }
 }
 
+/**
+ * The reticle. It is drawn from the same cone the server rules with, so it is allowed to
+ * claim a lock: red and named means the shot lands, and the player learns the weapon's
+ * reach by watching it rather than by reading a rule.
+ */
+function Crosshair() {
+  const locked = combatView.targetName !== ''
+  const cold = combatView.cooldown > 0
+  const gap = combatView.aiming ? 7 : 15
+  const len = combatView.aiming ? 11 : 15
+  const th = 2
+  const col = cold
+    ? Color4.create(1, 1, 1, 0.22)
+    : locked ? Color4.fromHexString('#ff5c5cff') : Color4.create(1, 1, 1, 0.7)
+
+  const bar = (left: number, top: number, w: number, h: number, key: string) => (
+    <UiEntity key={key}
+      uiTransform={{
+        width: w, height: h, positionType: 'absolute',
+        position: { top: '50%', left: '50%' }, margin: { left, top }
+      }}
+      uiBackground={{ color: col }} />
+  )
+
+  return (
+    <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
+      {bar(-th / 2, -(gap + len), th, len, 'up')}
+      {bar(-th / 2, gap, th, len, 'down')}
+      {bar(-(gap + len), -th / 2, len, th, 'left')}
+      {bar(gap, -th / 2, len, th, 'right')}
+      {locked && (
+        <UiEntity
+          uiTransform={{
+            width: 300, height: 24, positionType: 'absolute',
+            position: { top: '50%', left: '50%' }, margin: { left: -150, top: 34 },
+            justifyContent: 'center'
+          }}
+        >
+          <Label value={`${combatView.targetName.toUpperCase()}  ·  ${Math.round(combatView.targetDist)} m`}
+            fontSize={14} color={Color4.fromHexString('#ff8b8bff')} textAlign="middle-center" />
+        </UiEntity>
+      )}
+    </UiEntity>
+  )
+}
+
 const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <WelcomePanel />
     {!welcomeView.open && <IndexPanel />}
     {!welcomeView.open && <QuestsPanel />}
+
+    {!welcomeView.open && !menuView.open && !slotView.active && <Crosshair />}
 
     {!welcomeView.open && (
     <UiEntity
@@ -349,9 +399,9 @@ const uiComponent = () => (
 
     <UiEntity
       uiTransform={{
-        width: 470, height: 62, positionType: 'absolute',
-        position: { bottom: 24, left: '50%' }, margin: { left: -320 },
-        flexDirection: 'row', justifyContent: 'flex-start'
+        width: 700, height: 62, positionType: 'absolute',
+        position: { bottom: 24, left: '50%' }, margin: { left: -350 },
+        flexDirection: 'row', justifyContent: 'center'
       }}
     >
       {theftView.pending > 0 && !slotView.active && (
@@ -375,7 +425,7 @@ const uiComponent = () => (
 
       {theftView.basePosee && view.items > 0 && !slotView.active && (
         <Button
-          uiTransform={{ width: 140, height: 58 }}
+          uiTransform={{ width: 140, height: 58, margin: { right: 10 } }}
           value={
             theftView.lockSec > 0 ? `LOCKED ${theftView.lockSec}s`
             : theftView.rechargeSec > 0 ? `WAIT ${theftView.rechargeSec}s`
@@ -384,6 +434,25 @@ const uiComponent = () => (
           variant={theftView.lockSec === 0 && theftView.rechargeSec === 0 ? 'primary' : 'secondary'}
           fontSize={14}
           onMouseDown={lockBase} />
+      )}
+
+      {/*
+        The fire control. uiInputBinding holds IA_SECONDARY down while the button is
+        pressed, so one element serves the phone, where there is no key, and the desktop,
+        where F alone told the player nothing. pointerFilter blocks the click so aiming at
+        the button does not also click whatever stands behind it in the world.
+      */}
+      {!slotView.active && (
+        <Button
+          uiTransform={{ width: 150, height: 58, pointerFilter: 'block' }}
+          uiInputBinding={{ actions: [InputAction.IA_SECONDARY] }}
+          value={
+            combatView.cooldown > 0 ? 'RELOADING'
+            : combatView.aiming ? 'RELEASE TO FIRE'
+            : combatView.targetName !== '' ? 'SHOOT  F' : 'AIM  F'
+          }
+          variant={combatView.targetName !== '' && combatView.cooldown === 0 ? 'primary' : 'secondary'}
+          fontSize={combatView.aiming ? 11 : 14} />
       )}
     </UiEntity>
   </UiEntity>

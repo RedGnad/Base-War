@@ -1,38 +1,67 @@
 import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
+import { AIM_SPEED_SHARE } from '../shared/schemas'
 
 export const JOG_NORMAL = 11
 export const THIEF_JOG = 6.5   // -41 %
 export const SAUT_NORMAL = 1.15
 export const THIEF_JUMP = 0.69 // -40 %
+const FREEZE_JOG = 0.6
+const FREEZE_JUMP = 0.2
 
 /**
+ * One place decides how fast the player moves.
+ *
+ * Three separate things slow the player and they overlap: the thief penalty, a sentry
+ * freeze, and aiming. Each writing AvatarLocomotionSettings on its own means whichever
+ * one ends last restores full speed and silently cancels the others. The state lives
+ * here, and the component is written from the whole state, never from a single cause.
+ *
  * Uses AvatarLocomotionSettings rather than InputModifier: the latter is documented as
  * having no effect outside the DCL 2.0 desktop client, and most of the score is mobile.
  */
+const etat = { thief: false, aiming: false, frozenUntil: 0 }
+
+function appliquer(): void {
+  const frozen = etat.frozenUntil > Date.now()
+  const base = etat.thief ? THIEF_JOG : JOG_NORMAL
+  AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
+    jogSpeed: frozen ? FREEZE_JOG : base * (etat.aiming ? AIM_SPEED_SHARE : 1),
+    jumpHeight: frozen ? FREEZE_JUMP : etat.thief ? THIEF_JUMP : SAUT_NORMAL
+  })
+}
+
 export function applyFreeze(ms: number): void {
-  AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, { jogSpeed: 0.6, jumpHeight: 0.2 })
-  timers.setTimeout(() => applyThiefPenalty(false), ms)
+  etat.frozenUntil = Date.now() + ms
+  appliquer()
+  timers.setTimeout(appliquer, ms + 30)
 }
 
 export function applyThiefPenalty(active: boolean): void {
-  AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
-    jogSpeed: active ? THIEF_JOG : JOG_NORMAL,
-    jumpHeight: active ? THIEF_JUMP : SAUT_NORMAL
-  })
-  console.log(`[CLIENT] malus thief ${active ? 'ACTIF' : 'inactif'}: jog=${active ? THIEF_JOG : JOG_NORMAL} saut=${active ? THIEF_JUMP : SAUT_NORMAL}`)
+  etat.thief = active
+  appliquer()
+  console.log(`[CLIENT] malus thief ${active ? 'ACTIF' : 'inactif'}`)
+}
+
+/** Aiming halves the jog. Stacks with the thief penalty instead of replacing it. */
+export function setAiming(active: boolean): void {
+  if (etat.aiming === active) return
+  etat.aiming = active
+  appliquer()
 }
 
 export function setupTouchHud(): void {
   TouchScreenControls.setMainAction(InputAction.IA_PRIMARY)
-  // IA_SECONDARY fires the pistol; it must keep its on-screen button on a phone.
   TouchScreenControls.showAll()
 
+  // The scene draws its own SHOOT button, bound to IA_SECONDARY: keeping the native one
+  // would leave two buttons for the same action, and nothing on it says it fires.
   TouchScreenControls.hide([
+    InputAction.IA_SECONDARY,
     InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
     InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])
-  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, boutons 1-4 caches, joystick guard')
+  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, tir sur le bouton de la scene')
 }
 
 export function reportPlatform(): void {

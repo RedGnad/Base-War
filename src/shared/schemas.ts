@@ -97,6 +97,14 @@ export const GIFT_RANGE = 9
  */
 export const SHOT_RANGE = 28
 export const SHOT_COOLDOWN_MS = 900
+/**
+ * Half-angle of the aim cone, as the cosine the server compares against. 0.97 is about 14
+ * degrees. The client draws its reticle from this same number, so the crosshair states what
+ * the server will rule: a target shown as locked is a target the shot will reach.
+ */
+export const SHOT_CONE_DOT = 0.97
+/** Jog speed while aiming, as a fraction of the normal one. Aiming costs mobility. */
+export const AIM_SPEED_SHARE = 0.5
 /** Fraction of banked coins dropped per hit, and its absolute cap. */
 export const SHOT_DROP_SHARE = 0.10
 export const SHOT_DROP_CAP_S = 60
