@@ -53,7 +53,7 @@ async function flush(): Promise<void> {
     const value = JSON.stringify({ count: counts.get(address) ?? 0, at: Date.now() })
     const ok = await Storage.player.set(address, STORAGE_KEY, value)
     if (!ok) {
-      console.error(`[SERVER] ECHEC d'ecriture pour ${address}, remis en attente`)
+      console.error(`[SERVER] write failed for ${address}, requeued`)
       dirty.add(address)
     } else {
       console.log(`[SERVER] persiste ${address} = ${counts.get(address)}`)

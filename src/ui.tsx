@@ -77,8 +77,6 @@ const uiComponent = () => (
     {!welcomeView.open && <IndexPanel />}
     {!welcomeView.open && <QuestsPanel />}
 
-    {/* Bouton d'index, en haut a droite mais DANS la zone sure: le coin lui-meme
-        appartient au profil et aux controles camera du client mobile. */}
     {!welcomeView.open && (
     <UiEntity
       uiTransform={{
@@ -86,8 +84,6 @@ const uiComponent = () => (
         flexDirection: 'row', justifyContent: 'flex-end'
       }}
     >
-      {/* LES ONGLETS n'apparaissent QUE menu open: fermes, ils seraient deux boutons
-          permanents de plus, c'est-a-dire le probleme qu'on vient de resoudre. */}
       {menuView.open && (
         <Button
           uiTransform={{ width: 90, height: 36, margin: { right: 6 } }}
@@ -109,11 +105,6 @@ const uiComponent = () => (
     </UiEntity>
     )}
 
-    {/* GAUCHE: LE TUTORIEL, tant qu'il reste une etape.
-        Il ne se lit pas, il se SUIT: le serveur n'avance l'etape que quand l'action a
-        reellement eu lieu, donc la carte dit toujours le geste suivant et rien d'autre.
-        Elle disparait a la derniere etape: un tutoriel qui reste apres avoir servi
-        devient du decor, et le decor ne se lit plus. */}
     {tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
@@ -133,9 +124,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* PRIME DE PRESENCE. Elle ne s'affiche QUE quand elle vaut quelque chose, donc
-        seulement quand quelqu'un d'autre est la. Affichee en permanence a +0 %, elle
-        dirait surtout « tu es seul », ce qui est le contraire du but. */}
     {theftView.prime > 0 && (
       <UiEntity
         uiTransform={{
@@ -151,10 +139,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* VOYAGE, REPLIE. Un bouton, et les destinations n'apparaissent qu'a la demande.
-        Le lieu fait 80 m et un juge a trois minutes: marcher n'est pas du gameplay ici.
-        Mais trois boutons permanents pour des gestes rares, c'est trois choses a lire en
-        permanence, et la lisibilite est notee (Mobile UX, un tiers des 43 %). */}
     <UiEntity
       uiTransform={{
         width: 150, height: travelView.open ? 172 : 38,
@@ -188,7 +172,6 @@ const uiComponent = () => (
       )}
     </UiEntity>
 
-    {/* HAUT-CENTER: etat, non actionnable. */}
     <UiEntity
       uiTransform={{
         width: 380, height: 88, positionType: 'absolute',
@@ -215,7 +198,6 @@ const uiComponent = () => (
         } />
     </UiEntity>
 
-    {/* HAUT-CENTER, sous l'etat: fil d'activite, non actionnable. */}
     {theftView.fil.length > 0 && (
       <UiEntity
         uiTransform={{
@@ -231,7 +213,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* HAUT-CENTER: l'annonce du tapis. Non actionnable, mais elle doit faire lever la head. */}
     {beltView.annonce !== '' && (
       <UiEntity
         uiTransform={{
@@ -245,7 +226,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* CENTER: LA ROULETTE. Le moment du jeu: elle defile, ralentit, s'arrete. */}
     {(boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
@@ -255,9 +235,6 @@ const uiComponent = () => (
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.88) }}
       >
-        {/* Pendant la roulette on ne montre que la rarity qui defile; a l'arret on
-            revele le NOM COMPLET, mutation comprise: « Gold Epic » se lit autrement
-            qu'« Epic », et c'est la toute la surprise composee. */}
         <Label
           value={boxView.roule
             ? (RARITIES[boxView.index]?.name ?? '')
@@ -274,8 +251,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* Rappel AVANT d'ouvrir: sans base, l'item ne rapportera rien. On previent
-        plutot que d'interdire: bloquer un joueur qui veut juste voir sa crate serait pire. */}
     {!theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
       <UiEntity
         uiTransform={{
@@ -289,8 +264,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* Un item selectionne: on dit quoi faire, et on offre la revente ici. Sans ce
-        rappel, taper son propre item parait sans effet. */}
     {placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
@@ -309,7 +282,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* CENTER-BAS: les trois coups. */}
     {boxView.opening && (
       <UiEntity
         uiTransform={{
@@ -323,7 +295,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* CENTER: l'alerte, seule chose qui exige une reaction. */}
     {theftView.alerte !== '' && (
       <UiEntity
         uiTransform={{
@@ -337,17 +308,6 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {/* BARRE D'ACTION CONTEXTUELLE.
-        « Minimize options. Show only what the player needs right now and progressively
-        disclose the rest. » Nous en avions HUIT en permanence: illisible, et sur un
-        telephone chaque bouton mange un pouce.
-        REGLE TENUE PARTOUT ICI: on n'affiche JAMAIS un bouton avec lequel le joueur ne
-        peut rien faire. Un bouton mort n'est pas neutre, il occupe un pouce, il attire
-        le regard, et il oblige a deviner ce qu'il veut dire.
-        Les boutons sont ranges A GAUCHE avec un ecart fixe: en `space-between`, retirer
-        un bouton ecarterait les deux autres aux extremites et la bar bougerait sous
-        les doigts d'un tap a l'autre.
-        Decalee a gauche: le coin bas-droit appartient aux boutons du client mobile. */}
     <UiEntity
       uiTransform={{
         width: 470, height: 62, positionType: 'absolute',
@@ -355,7 +315,6 @@ const uiComponent = () => (
         flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
-      {/* 1. COLLECT: seulement s'il y a quelque chose a encaisser. */}
       {theftView.pending > 0 && !slotView.active && (
         <Button
           uiTransform={{ width: 160, height: 58, margin: { right: 10 } }}
@@ -365,8 +324,6 @@ const uiComponent = () => (
           onMouseDown={collectPending} />
       )}
 
-      {/* 2. UNE seule action selon l'etat, par ordre d'urgence. Toujours presente:
-             c'est elle qui door le pas suivant, jusqu'a BUILD BASE au tout debut. */}
       {(() => {
         const a = prochaineAction()
         return (
@@ -377,11 +334,6 @@ const uiComponent = () => (
         )
       })()}
 
-      {/* 3. LOCK: seulement quand il y a une base ET quelque chose dedans.
-             Sans base il ne protege rien; base vide, il gaspillerait sa recharge de
-             150 s pour proteger zero item. Il apparait donc au moment exact ou le
-             joueur a quelque chose a perdre, ce qui l'explique tout seul.
-             Cache aussi pendant la pose: un etat modal ne keeps que son propre geste. */}
       {theftView.basePosee && view.items > 0 && !slotView.active && (
         <Button
           uiTransform={{ width: 140, height: 58 }}

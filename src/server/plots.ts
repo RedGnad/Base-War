@@ -187,7 +187,7 @@ export async function accueillir(address: string): Promise<void> {
     dejala.lastSeen = Date.now()
     basesSales.add(address)
     publish(dejala)
-    log(`${name} retrouve sa base en ${dejala.x},${dejala.z}`)
+    log(`${name} found their base at ${dejala.x},${dejala.z}`)
     return
   }
 
@@ -200,7 +200,7 @@ export function auRevoir(address: string): void {
   b.lastSeen = Date.now()
   basesSales.add(address)
   publish(b)
-  log(`${b.name} est parti, sa base reste affichee et pillable`)
+  log(`${b.name} left; base stays visible and raidable`)
 }
 
 export async function placeItem(address: string, rarity: number): Promise<boolean> {
@@ -535,7 +535,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   p.z = z
   basesSales.add(address)
   profilsSales.add(address)
-  log(`${b.name} pose sa base en ${x},${z}${ancienne ? ` (deplacee depuis ${ancienne.x},${ancienne.z})` : ''}`)
+  log(`${b.name} placed a base at ${x},${z}${ancienne ? ` (deplacee depuis ${ancienne.x},${ancienne.z})` : ''}`)
   return { ok: true }
 }
 
@@ -710,7 +710,7 @@ export function reclamerQuotidienne(address: string): { log: number; crate: numb
   const crate = DAILY_REWARDS[p.serie - 1] ?? 0
   p.crates = [...(p.crates ?? []), crate]
   profilsSales.add(address)
-  log(`${nameOf(address)} recoit sa recompense du log ${p.serie}: crate ${crate}`)
+  log(`${nameOf(address)} claimed day ${p.serie} reward: crate ${crate}`)
   return { log: p.serie, crate }
 }
 

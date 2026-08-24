@@ -62,7 +62,6 @@ function Ligne(props: { i: number }): ReactEcs.JSX.Element {
         <Label value={q?.texte ?? ''} fontSize={15}
           color={pris ? Color4.fromHexString('#6f7a6fff') : Color4.White()}
           uiTransform={{ width: '100%', height: 22 }} textAlign="middle-left" />
-        {/* rail */}
         <UiEntity
           uiTransform={{ width: 290, height: 12, margin: { top: 2 } }}
           uiBackground={{ color: Color4.create(1, 1, 1, 0.12) }}
@@ -110,7 +109,6 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
 
       {questsView.ids.map((_, i) => <Ligne i={i} />)}
 
-      {/* Le bonus des trois: visible des le debut, sinon il n'incite a rien. */}
       <UiEntity
         uiTransform={{ width: '100%', height: 46, flexDirection: 'row', alignItems: 'center', margin: { top: 4 } }}
         uiBackground={{ color: Color4.create(1, 1, 1, 0.05) }}
@@ -128,8 +126,6 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
         )}
       </UiEntity>
 
-      {/* CALENDRIER 7 JOURS. Le memo l'exigeait des le log 1: c'est lui qui ANNONCE la
-          boucle. Une recompense qui tombe sans calendrier ne promet rien pour demain. */}
       <Label value="LOGIN STREAK" fontSize={16} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 26, margin: { top: 12 } }} textAlign="middle-left" />
       <UiEntity uiTransform={{ width: '100%', height: 62, flexDirection: 'row' }}>
