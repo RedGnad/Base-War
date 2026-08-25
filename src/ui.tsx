@@ -184,7 +184,16 @@ const MenuWindow = () => {
             onClick={() => chooseTab(o)}
             label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
         ))}
-        <UiEntity uiTransform={{ flexGrow: 1, height: 1 }} />
+        {/*
+          The purse, in the header, because a shop that hides what you can spend is a shop
+          you cannot use. The counter outside is suppressed while a window is open, and this
+          is where it belongs when one is: beside the tabs, in the same face and colour, so
+          it reads as the same number rather than a second one.
+        */}
+        <UiEntity uiTransform={{ flexGrow: 1, height: TAP.height, justifyContent: 'center' }}>
+          <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
+            color={C.money} align="center" box={300} top={(TAP.height - TYPE.body) / 2} />
+        </UiEntity>
         <Btn label="CLOSE" width={180} onClick={closeMenu} />
       </UiEntity>
 
@@ -515,14 +524,24 @@ const uiComponent = () => {
     )}
 
 
+    {/*
+      The counter, with nothing behind it.
+
+      It sat on an opaque plate five hundred and twenty wide and a hundred tall, which on a
+      phone is a real piece of the playing field spent on a background for six characters.
+      On a screen this size the rule is to obstruct as little as possible, so the plate is
+      gone and the letters carry their own contrast: the typeface draws a dark copy of itself
+      behind, which costs one element per character and no screen at all. Freed of the plate
+      the number can also be bigger, which is what a counter read from the corner of the eye
+      needs anyway.
+    */}
     {hud() && (
     <UiEntity
       uiTransform={{
-        width: strip(520).width, height: 104, positionType: 'absolute',
-        position: { top: band.money, left: '50%' }, margin: strip(520).margin,
-        padding: 8, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
+        width: strip(560).width, height: 104, positionType: 'absolute',
+        position: { top: band.money, left: '50%' }, margin: strip(560).margin,
+        flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center'
       }}
-      uiBackground={SKIN.panel}
     >
       {/*
         The one number that carries the whole game, at hero size and in the money colour.
@@ -535,48 +554,35 @@ const uiComponent = () => {
         quad per digit, each showing its cell of an atlas. Glyphs place themselves, so they
         need a box of their own in the column or the line under them is walked over.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: TYPE.title + 8 }}>
+      <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
           value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-          size={TYPE.title} color={C.money} align="center" box={504} />
+          size={TYPE.hero} color={C.money} align="center" box={strip(560).width} shadow />
       </UiEntity>
-      <Label
-        uiTransform={{ width: '100%', height: 32 }}
-        textWrap="nowrap"
-        value={
-          !view.serverAlive
-            ? (view.serverBooting
-                ? (intentEnAttente() ? 'starting up, your action is queued' : 'starting up')
-                : (intentEnAttente() ? 'reconnecting, your action is queued' : 'reconnecting'))
-          : !theftView.basePosee ? 'place your base so your loot earns'
-          : theftView.income === 0 ? 'open a crate to start earning'
-          /*
-            The crowd bonus rides the number it multiplies.
-
-            It had a green band of its own across the top of the screen, which is a lot of
-            furniture for a figure that only qualifies the income printed directly above it.
-            Read here it needs no label at all: the rate is shown, and what is lifting it.
-          */
-          /*
-            Two figures at most, because the plate is five hundred and twenty wide and this
-            line had grown to four. With no width and no wrapping rule a label takes its
-            natural size and simply leaves its parent, which is how the rate, the pool, the
-            crowd bonus and the sentry count ended up printed across the sky and over the
-            line below. The width above now pins it; keeping it short is what makes the pin
-            unnecessary.
-
-            The rate is what the base does, the pool is what is owed: everything else is
-            either on a button or in the menu.
-          */
-          : `+${formatIncome(theftView.income)}/s`
-            + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} banked` : '')
-        }
-        fontSize={TYPE.label}
-        color={
-          !view.serverAlive ? C.bonus
-          : (!theftView.basePosee || theftView.income === 0) ? C.bonus
-          : C.money
-        } />
+      {/*
+        The line under it, in the same face for the same reason: no plate, so it has to
+        carry its own contrast rather than borrow one.
+      */}
+      <UiEntity uiTransform={{ width: '100%', height: 34 }}>
+        <Glyphs
+          size={TYPE.label} align="center" box={strip(560).width} shadow
+          color={
+            !view.serverAlive ? C.bonus
+            : (!theftView.basePosee || theftView.income === 0) ? C.bonus
+            : C.money
+          }
+          value={
+            !view.serverAlive
+              ? (view.serverBooting
+                  ? (intentEnAttente() ? 'STARTING UP, ACTION QUEUED' : 'STARTING UP')
+                  : (intentEnAttente() ? 'RECONNECTING, ACTION QUEUED' : 'RECONNECTING'))
+            : !theftView.basePosee ? 'PLACE YOUR BASE'
+            : theftView.income === 0 ? 'OPEN A CRATE TO EARN'
+            : `+${formatIncome(theftView.income)}/S`
+              + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} BANKED` : '')
+              + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
+          } />
+      </UiEntity>
       {!view.serverAlive && <WaitBar />}
     </UiEntity>
     )}

@@ -1,13 +1,26 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  STEAL_RANGE, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, STEAL_HOLD_RANGE, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
+  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, SAME_STOREY, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, ABSENT_KEEP
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
+
+/**
+ * Can this player put a hand on that item, as the building would have it?
+ *
+ * The scene already answers this: slabs and walls carry a pointer collider, so a click aimed
+ * through a ceiling never reaches the item behind it. This says the same thing in a place a
+ * modified client cannot edit, which is the only reason it exists. Same storey, and no
+ * further than the reach a pointer event has by default.
+ */
+function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
+  if (Math.abs(joueur.y - objet.y) > SAME_STOREY) return false
+  return Vector3.distance(joueur, objet) <= rayon
+}
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, giftItem, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, giftItem, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet } from './plots'
 import { tutoFait } from './onboarding'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
@@ -90,12 +103,19 @@ export function startTheft(): void {
       const b = baseDe(v.victim)
       if (b === undefined) { enCours.delete(thief); continue }
 
-      // S'ELOIGNER ANNULE. C'est ce qui donne un sens au ralentissement: fuir la base
-      // pendant l'action fait perdre l'action.
+      /*
+        Walking away cancels it, and going downstairs counts as walking away.
+
+        This measured a flat distance to the base and ignored height entirely, so a theft
+        begun on the top floor survived a trip to the street. It follows the item now, in
+        three dimensions, which is what gives the thief's slowdown its meaning: the climb
+        back down is the part where the owner can catch you.
+      */
       const p = positionOf(thief)
-      if (p === null || Math.sqrt((p.x - b.x) ** 2 + (p.z - b.z) ** 2) > STEAL_HOLD_RANGE) {
+      const cible = positionObjet(v.victim, v.slot)
+      if (p === null || cible === null || !aPortee(p, cible, STEAL_HOLD_REACH)) {
         enCours.delete(thief)
-        void room.send('stealFailed', { reason: 'you left the base' }, { to: [thief] })
+        void room.send('stealFailed', { reason: 'you left the item' }, { to: [thief] })
         continue
       }
 
@@ -186,6 +206,12 @@ export function startTheft(): void {
       const slot = d.slot
       if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
         refus(thief, 'steal', 'that item is gone'); continue
+      }
+      // Say server-side what the building already says: that item is on another storey.
+      const objet = positionObjet(c.address, slot)
+      if (objet === null || !aPortee(p, objet, STEAL_REACH)) {
+        refus(thief, 'steal', 'not on this floor, or too far')
+        continue
       }
       if (enCours.has(thief)) { refus(thief, 'steal', 'you are already taking something'); return }
 

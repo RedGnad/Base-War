@@ -54,6 +54,18 @@ export function glyphWidth(value: string, size: number): number {
   return w
 }
 
+/**
+ * A dark copy behind the letters, so a number can live without a plate under it.
+ *
+ * The counter used to sit on an opaque panel, which is a lot of a phone screen spent on
+ * making six characters readable. Taking the panel away puts them straight over the game,
+ * where the background is a bright sky as often as a dark floor, and a single colour cannot
+ * survive both. An offset dark copy does what an outline would if the interface had one: it
+ * costs one more element per character and no screen at all.
+ */
+const OMBRE = Color4.create(0, 0, 0, 0.55)
+const DECALAGE = 3
+
 export const Glyphs = (props: {
   value: string
   size: number
@@ -61,6 +73,7 @@ export const Glyphs = (props: {
   align?: 'left' | 'center' | 'right'
   box?: number
   top?: number
+  shadow?: boolean
 }) => {
   const text = props.value.toUpperCase()
   const size = props.size
@@ -69,29 +82,36 @@ export const Glyphs = (props: {
   const align = props.align ?? 'left'
   const start = align === 'center' ? (box - total) / 2 : align === 'right' ? box - total : 0
 
-  let x = start
-  const parts = []
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    const idx = ATLAS.glyphs.indexOf(ch)
-    const adv = (ADVANCE[ch] ?? 0.5) + TRACKING
-    if (idx >= 0 && ch !== ' ') {
-      parts.push(
-        <UiEntity key={i}
-          uiTransform={{
-            width: size, height: size, positionType: 'absolute',
-            position: { left: x - (size - ADVANCE[ch] * size) / 2, top: 0 }
-          }}
-          uiBackground={{
-            color: props.color ?? C.name,
-            texture: { src: 'assets/ui/font.png' },
-            textureMode: 'stretch',
-            uvs: uvsFor(idx)
-          }} />
-      )
+  const couche = (teinte: Color4, dx: number, dy: number, cle: string) => {
+    let x = start
+    const out = []
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i]
+      const idx = ATLAS.glyphs.indexOf(ch)
+      const adv = (ADVANCE[ch] ?? 0.5) + TRACKING
+      if (idx >= 0 && ch !== ' ') {
+        out.push(
+          <UiEntity key={`${cle}${i}`}
+            uiTransform={{
+              width: size, height: size, positionType: 'absolute',
+              position: { left: x - (size - ADVANCE[ch] * size) / 2 + dx, top: dy }
+            }}
+            uiBackground={{
+              color: teinte,
+              texture: { src: 'assets/ui/font.png' },
+              textureMode: 'stretch',
+              uvs: uvsFor(idx)
+            }} />
+        )
+      }
+      x += adv * size
     }
-    x += adv * size
+    return out
   }
+
+  const parts = props.shadow === true
+    ? [...couche(OMBRE, DECALAGE, DECALAGE, 's'), ...couche(props.color ?? C.name, 0, 0, 'g')]
+    : couche(props.color ?? C.name, 0, 0, 'g')
 
   return (
     <UiEntity

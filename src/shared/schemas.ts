@@ -75,7 +75,15 @@ export const Belt = engine.defineComponent('basetycoon::belt', {
 export const STEAL_BASE_MS = 6000
 export const STEAL_PER_RARITY_MS = 2000
 /** Leaving this radius mid-theft cancels it. Slightly wider than STEAL_RANGE so a step back is not fatal. */
-export const STEAL_HOLD_RANGE = 7
+/**
+ * How far a thief may drift from the item while taking it, in three dimensions.
+ *
+ * This used to be a horizontal test that ignored `y` entirely, which is how somebody could
+ * start a theft on the third floor and walk down to the street without the attempt noticing.
+ * Wider than the reach to start one, so a step back or a shove does not cancel it, and paired
+ * with the same storey test, so taking the stairs does.
+ */
+export const STEAL_HOLD_REACH = 12
 /**
  * GIFT_RANGE is deliberately wider than STEAL_RANGE: the walls sit 5.5 m from the base
  * centre, so a 4 m range forced the giver INSIDE the building. You break in to take, you
@@ -260,10 +268,40 @@ export const LOCK_COOLDOWN_MS = 150_000
 export const LOCK_BONUS_MS = 10_000     // +10 s par prestige de progression
 export const PENALTY_MS = 12_000      // thief penalty duration
 export const RECOVER_WINDOW_MS = 20_000  // window to recover a stolen item
-export const STEAL_RANGE = 4
-export const RECOVER_RANGE = 6
+/**
+ * The footprint, widened so six display slots and a stairwell are not the same square metre.
+ *
+ * At eleven metres, minus a three metre stairwell, the walkable floor was eight by eleven and
+ * had to hold six pedestals and the player moving between them. Fourteen gives the room the
+ * building was always drawn as having.
+ */
+export const BASE_SIDE = 14.0
 
-export const MAX_BASES_AFFICHEES = 60
+/**
+ * How close a base has to be before its contents are even candidates, measured flat.
+ *
+ * Deliberately horizontal and generous: this only asks "am I at this building", and the real
+ * test is the reach below. It has to cover the footprint, because a thief on the top floor is
+ * directly above the base's origin and metres away from it in a straight line.
+ */
+export const STEAL_RANGE = BASE_SIDE / 2 + 2
+
+/**
+ * How far a thief can be from the ITEM, mirroring what the client already allows.
+ *
+ * The building itself is what stops a theft from below: floor slabs and walls carry a pointer
+ * collider as well as a physical one, so the ray behind a click is blocked by them and an
+ * item on the storey above cannot be clicked at all. That is the rule, and it is a good one
+ * because a player can see it.
+ *
+ * This exists so a modified client cannot simply send the message the honest one refuses to.
+ * It therefore reproduces the same rule rather than inventing a stricter one: ten metres is
+ * the SDK's own default reach for a pointer event, and the storey test below is the slab.
+ * A first attempt at this put it at three and a half metres, which quietly cut the honest
+ * game's reach by two thirds to enforce something the geometry was already enforcing.
+ */
+export const STEAL_REACH = 10
+
 /**
  * Ceiling height, set for the camera rather than for the avatar.
  *
@@ -276,6 +314,18 @@ export const MAX_BASES_AFFICHEES = 60
  * this many parcels, so height was never the constraint here.
  */
 export const FLOOR_HEIGHT = 4.0
+
+/**
+ * How much height between a thief and an item still counts as the same storey.
+ *
+ * Three quarters of a floor: it forgives a ramp, a pedestal and the difference between where
+ * an avatar's feet are reported and where they look like they are, and it refuses the storey
+ * above, whose nearest item is a full floor plus its plinth away.
+ */
+export const SAME_STOREY = FLOOR_HEIGHT * 0.75
+export const RECOVER_RANGE = 6
+
+export const MAX_BASES_AFFICHEES = 60
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.
@@ -292,14 +342,13 @@ export const SLOTS_PER_FLOOR = 6
 export const MAX_FLOORS = 12
 
 /**
- * The footprint, widened so six display slots and a stairwell are not the same square metre.
+ * Thirty-two degrees, which is a staircase; forty was a ladder.
  *
- * At eleven metres, minus a three metre stairwell, the walkable floor was eight by eleven and
- * had to hold six pedestals and the player moving between them. Fourteen gives the room the
- * building was always drawn as having.
+ * Real stairs are built between thirty and thirty-five, and a slope a player walks up dozens
+ * of times a session should sit inside that. At four metres of rise it makes the ramp 7.55 m
+ * long for 6.40 m of run, which the fourteen metre footprint takes easily.
  */
-export const BASE_SIDE = 14.0
-export const RAMP_ANGLE = 40
+export const RAMP_ANGLE = 32
 /** Derived, so a taller floor cannot leave the ramp reaching a floor it no longer meets. */
 export const RAMP_LENGTH = FLOOR_HEIGHT / Math.sin((RAMP_ANGLE * Math.PI) / 180)
 export const WALL_THICKNESS = 0.22

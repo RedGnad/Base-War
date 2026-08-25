@@ -39,7 +39,7 @@ import { steal, sell, monAdresseClient, moveItemBetweenSlots, gift, alerter } fr
 import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
 
-type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity }
+type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity }
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity
   floors: Floor[]; items: Entity[]; sentry: Entity; ascenseur: Entity; signature: string; ownerId: string
@@ -148,6 +148,22 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     Material.setPbrMaterial(rail, { albedoColor: Color4.fromHexString('#7d8698ff'), roughness: 0.6, metallic: 0.4 })
   }
 
+  /*
+    Somewhere to put your foot at the top.
+
+    The ramp climbs through the middle of the stairwell, at x = BASE_SIDE/2 - STAIRWELL/2,
+    while the floor above stops at the edge of the same hole, a metre and a half short. So the
+    last step of the climb arrived over open air: measured, not noticed by eye, because the
+    two pieces are defined in different functions and neither knows the other exists. This is
+    the landing that joins them, sitting at the upper floor's level just past the top of the
+    slope.
+  */
+  const course = RAMP_LENGTH * Math.cos((RAMP_ANGLE * Math.PI) / 180)
+  const landing = bloc(
+    x + r.dx, y + FLOOR_HEIGHT + 0.12, z + r.dz + course / 2 + 1.2,
+    STAIRWELL_WIDTH, 0.24, 2.4, FLOOR_COLOR
+  )
+
   const RAIL_HEIGHT = 1.1
   const stairwellEdge = c / 2 - STAIRWELL_WIDTH
   walls.push(
@@ -156,7 +172,7 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z + c / 2 - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698')
   )
 
-  return { floorSlab, walls, ramp }
+  return { floorSlab, walls, ramp, landing }
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
@@ -271,7 +287,7 @@ function destroyView(v: View): void {
   engine.removeEntity(v.sentry)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
-    for (const ent of [e.floorSlab, e.ramp, ...e.walls]) {
+    for (const ent of [e.floorSlab, e.ramp, e.landing, ...e.walls]) {
       taille.delete(ent)
       engine.removeEntity(ent)
     }
@@ -396,8 +412,10 @@ export function setupPlots(): void {
         }
         montrer(et.floorSlab, open)
         for (const m of et.walls) montrer(m, open)
-        // No ramp off the top floor: it would climb to nothing.
-        montrer(et.ramp, open && e + 1 < p.floors)
+        // No ramp off the top floor: it would climb to nothing, and neither would its landing.
+        const monte = open && e + 1 < p.floors
+        montrer(et.ramp, monte)
+        montrer(et.landing, monte)
       }
 
       const ptr = Transform.getMutableOrNull(v.door)

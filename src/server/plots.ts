@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus
+  MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -261,16 +261,35 @@ export function marquerCadeauPris(address: string): void {
 
 export type BaseView = { address: string; name: string; items: number[]; entity: ReturnType<typeof engine.addEntity> }
 
+/**
+ * Which buildings the player is standing at, measured flat on purpose.
+ *
+ * This was a straight-line distance to the base entity, which sits on the ground. A player on
+ * the third floor is directly above that point and twelve metres from it, so their own
+ * building stopped being a candidate the moment they climbed the stairs. Height is the job of
+ * the per-item reach; this one only asks which address the player is inside.
+ */
 export function basesProches(p: Vector3, range: number, sauf: string): BaseView[] {
   const out: BaseView[] = []
   for (const b of bases.values()) {
     if (b.address === sauf) continue
     const t = Transform.getOrNull(b.entity)
     if (t === null) continue
-    if (Vector3.distance(p, Vector3.create(t.position.x, t.position.y, t.position.z)) > range) continue
+    const dx = p.x - t.position.x, dz = p.z - t.position.z
+    if (Math.sqrt(dx * dx + dz * dz) > range) continue
     out.push({ address: b.address, name: b.name, items: b.items, entity: b.entity })
   }
   return out
+}
+
+/** Where a given slot of a given base actually stands, which is what a thief has to reach. */
+export function positionObjet(address: string, slot: number): Vector3 | null {
+  const b = bases.get(address)
+  if (b === undefined) return null
+  const t = Transform.getOrNull(b.entity)
+  if (t === null) return null
+  const d = slotPosition(slot)
+  return Vector3.create(t.position.x + d.dx, t.position.y + d.dy, t.position.z + d.dz)
 }
 
 export function lockOf(address: string): number {
