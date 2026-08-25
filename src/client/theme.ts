@@ -44,6 +44,8 @@ export const C = {
   name: Color4.fromHexString(HUE.name + 'ff'),
   danger: Color4.fromHexString(HUE.danger + 'ff'),
   dim: Color4.fromHexString(HUE.dim + 'ff'),
+  /** Label colour for a control on a light plate: the default pink vanishes on green. */
+  ink: Color4.fromHexString('#0b1a0fff'),
   plate: Color4.create(0, 0, 0, 0.62),
   inset: Color4.create(0, 0, 0, 0.45)
 }
@@ -54,3 +56,39 @@ export const C = {
  * that is 84 and 16 virtual pixels; both are rounded up.
  */
 export const TAP = { height: 96, gap: 20 } as const
+
+/**
+ * The skins, and why they exist at all.
+ *
+ * Decentraland offers three fonts and no more: 'sans-serif', 'serif' and 'monospace' in
+ * the interface, the same three in the world. Both are closed enums, so the rounded
+ * display face those reference games lean on is simply not available here. What the
+ * platform does give is a nine-sliced background image, and that is where the rounded
+ * corners, the border, the gradient and the grain come from instead. The images are drawn
+ * by tools/ui/build-ui-textures.js, so every colour in them is a number in a file.
+ *
+ * The slice fraction is the corner radius over the texture size, 40 over 128. Change one
+ * in the generator and this has to follow, which is why the generator prints it.
+ */
+const SLICE = { top: 0.3125, right: 0.3125, bottom: 0.3125, left: 0.3125 }
+const skin = (name: string) => ({
+  // White, explicitly: the Button component supplies a variant colour of its own, and a
+  // texture drawn under it comes out multiplied into whatever that colour is. Naming the
+  // tint white lets the image show the colours it was drawn with.
+  color: Color4.White(),
+  texture: { src: `assets/ui/${name}.png` },
+  textureMode: 'nine-slices' as const,
+  textureSlices: SLICE
+})
+
+export const SKIN = {
+  panel: skin('panel'),
+  card: skin('card'),
+  inset: skin('inset'),
+  primary: skin('primary'),
+  secondary: skin('secondary'),
+  danger: skin('danger')
+}
+
+/** The skin a control wears, picked from the same condition that picks its variant. */
+export const btn = (primary: boolean) => (primary ? SKIN.primary : SKIN.secondary)

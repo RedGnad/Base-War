@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -167,20 +167,20 @@ const uiComponent = () => (
       {menuView.open && (
         <Button
           uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
-          value="GOALS" variant={activeTab() === 'goals' ? 'primary' : 'secondary'}
+          value="GOALS" variant={activeTab() === 'goals' ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === 'goals')}
           fontSize={TYPE.caption} onMouseDown={() => chooseTab('goals')} />
       )}
       {menuView.open && (
         <Button
           uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
           value={`INDEX ${indexView.vus.length}`}
-          variant={activeTab() === 'index' ? 'primary' : 'secondary'}
+          variant={activeTab() === 'index' ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === 'index')}
           fontSize={TYPE.caption} onMouseDown={() => chooseTab('index')} />
       )}
       <Button
         uiTransform={{ width: 110, height: TAP.height }}
         value={menuView.open ? 'X' : (questsToClaim() > 0 ? `☰ ${questsToClaim()}` : '☰')}
-        variant={menuView.open || questsToClaim() > 0 ? 'primary' : 'secondary'}
+        variant={menuView.open || questsToClaim() > 0 ? 'primary' : 'secondary'} uiBackground={btn(menuView.open || questsToClaim() > 0)}
         fontSize={TYPE.label} onMouseDown={basculerMenu} />
     </UiEntity>
     )}
@@ -191,7 +191,7 @@ const uiComponent = () => (
           width: 480, height: 130, positionType: 'absolute', position: { top: 16, right: 24 },
           flexDirection: 'column', padding: 16
         }}
-        uiBackground={{ color: Color4.create(0.04, 0.07, 0.12, 0.88) }}
+        uiBackground={SKIN.panel}
       >
         {/*
           Anchored right, not left. The left edge belongs to the Decentraland client: its
@@ -245,25 +245,25 @@ const uiComponent = () => (
         <Button
           uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
           value={travelView.open ? 'CLOSE' : 'TRAVEL'}
-          variant={travelView.open ? 'primary' : 'secondary'}
+          variant={travelView.open ? 'primary' : 'secondary'} uiBackground={btn(travelView.open)} color={travelView.open ? C.ink : C.name}
           fontSize={TYPE.body} onMouseDown={basculerVoyage} />
         {travelView.open && (
           <Button
             uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
-            value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'}
+            value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'} uiBackground={btn(travelView.peutRentrer)} color={travelView.peutRentrer ? C.ink : C.name}
             fontSize={TYPE.body} onMouseDown={() => { rentrer(); basculerVoyage() }} />
         )}
         {travelView.open && (
           <Button
             uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
-            value="GO TO BELT" variant="secondary" fontSize={TYPE.body}
+            value="GO TO BELT" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.body}
             onMouseDown={() => { goToBelt(); basculerVoyage() }} />
         )}
         {travelView.open && theftView.basePosee && (
           <Button
             uiTransform={{ width: 300, height: TAP.height }}
             value={slotView.active ? 'CANCEL' : 'MOVE BASE'}
-            variant={slotView.active ? 'primary' : 'secondary'}
+            variant={slotView.active ? 'primary' : 'secondary'} uiBackground={btn(slotView.active)} color={slotView.active ? C.ink : C.name}
             fontSize={TYPE.body} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
         )}
       </UiEntity>
@@ -275,7 +275,7 @@ const uiComponent = () => (
         position: { top: 12, left: '50%' }, margin: { left: -280 },
         padding: 12, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
-      uiBackground={{ color: PANNEAU }}
+      uiBackground={SKIN.panel}
     >
       {/*
         The one number that carries the whole game, at hero size and in the money colour.
@@ -350,7 +350,7 @@ const uiComponent = () => (
           width: '100%', height: REEL_H + 8, positionType: 'absolute',
           position: { bottom: 250, left: 0 }
         }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.78) }}
+        uiBackground={SKIN.panel}
       >
         {boxView.reel.map((r, i) => {
           const x = 960 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
@@ -364,14 +364,14 @@ const uiComponent = () => (
                 position: { left: x, top: 4 },
                 flexDirection: 'column', justifyContent: 'space-between', padding: 10
               }}
-              uiBackground={{ color: gagnant ? col : Color4.create(0.09, 0.10, 0.13, 0.96) }}
+              uiBackground={gagnant ? { ...SKIN.card, color: col } : SKIN.card}
             >
               <Label value={RARITIES[r]?.name ?? ''} fontSize={TYPE.caption}
                 color={gagnant ? C.name : col}
                 uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
               <UiEntity
                 uiTransform={{ width: '100%', height: 84 }}
-                uiBackground={{ color: gagnant ? Color4.create(0, 0, 0, 0.35) : col }} />
+                uiBackground={gagnant ? SKIN.inset : { ...SKIN.inset, color: col }} />
               <Label value={`+${formatIncome(INCOME_UI[r] ?? 1)}/s`} fontSize={TYPE.caption}
                 color={C.money}
                 uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
@@ -415,7 +415,7 @@ const uiComponent = () => (
           position: { bottom: 150, left: '50%' }, margin: { left: -200 },
           justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: Color4.create(0.12, 0.10, 0.02, 0.8) }}
+        uiBackground={SKIN.panel}
       >
         <Label value="place your base first: crates are opened at your base" fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
@@ -434,7 +434,7 @@ const uiComponent = () => (
         <Label value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
         <Button
           uiTransform={{ width: 110, height: 34 }}
-          value="SELL IT" variant="secondary" fontSize={TYPE.caption}
+          value="SELL IT" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.caption}
           onMouseDown={() => { sell(placementView.selection); placementView.selection = -1 }} />
       </UiEntity>
     )}
@@ -486,7 +486,7 @@ const uiComponent = () => (
           position: { top: '42%', left: '50%' }, margin: { left: -260 },
           justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.85) }}
+        uiBackground={SKIN.panel}
       >
         <Label value={theftView.alert} fontSize={TYPE.title} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
@@ -522,7 +522,7 @@ const uiComponent = () => (
         <Button
           uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
           value={`COLLECT ${formatIncome(theftView.pending)}`}
-          variant="primary"
+          variant="primary" uiBackground={SKIN.primary} color={C.ink}
           fontSize={TYPE.body}
           onMouseDown={collectPending} />
       )}
@@ -532,7 +532,7 @@ const uiComponent = () => (
         return a === null ? null : (
           <Button
             uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
-            value={a.label} variant="primary"
+            value={a.label} variant="primary" uiBackground={SKIN.primary} color={C.ink}
             fontSize={TYPE.body} onMouseDown={a.action} />
         )
       })()}
@@ -541,7 +541,7 @@ const uiComponent = () => (
         && theftView.lockSec === 0 && theftView.rechargeSec === 0 && (
         <Button
           uiTransform={{ width: 180, height: TAP.height, margin: { right: TAP.gap } }}
-          value="LOCK" variant="secondary"
+          value="LOCK" variant="secondary" uiBackground={SKIN.secondary} color={C.name}
           fontSize={TYPE.body}
           onMouseDown={lockBase} />
       )}
@@ -561,7 +561,7 @@ const uiComponent = () => (
           uiTransform={{ width: 220, height: TAP.height, pointerFilter: 'block' }}
           uiInputBinding={{ actions: [InputAction.IA_SECONDARY] }}
           value={combatView.aiming ? 'HOLSTER' : 'DRAW'}
-          variant={combatView.aiming ? 'primary' : 'secondary'}
+          variant={combatView.aiming ? 'primary' : 'secondary'} uiBackground={btn(combatView.aiming)} color={combatView.aiming ? C.ink : C.name}
           fontSize={TYPE.body} />
       )}
     </UiEntity>

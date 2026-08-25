@@ -1,5 +1,5 @@
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP } from './theme'
+import { TYPE, TAP, SKIN, btn, C } from './theme'
 import { Color4 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
 import { QUESTS } from '../shared/quests'
@@ -83,7 +83,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         <Button
           uiTransform={{ width: 187, height: TAP.height }}
           value={fini ? 'CLAIM' : `+1 crate`}
-          variant={fini ? 'primary' : 'secondary'}
+          variant={fini ? 'primary' : 'secondary'} uiBackground={btn(fini)} color={fini ? C.ink : C.name}
           fontSize={TYPE.caption}
           onMouseDown={() => { if (fini) claim(i) }} />
       )}
@@ -122,7 +122,7 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
             uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
         ) : (
           <Button uiTransform={{ width: 187, height: TAP.height }}
-            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} fontSize={TYPE.caption}
+            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} uiBackground={btn(allDone)} color={allDone ? C.ink : C.name} fontSize={TYPE.caption}
             onMouseDown={() => { if (allDone) claim(3) }} />
         )}
       </UiEntity>
@@ -155,7 +155,7 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
       </UiEntity>
 
       <Button uiTransform={{ width: 221, height: TAP.height, margin: { top: 17 } }}
-        value="CLOSE" variant="secondary" fontSize={TYPE.label} onMouseDown={closeMenu} />
+        value="CLOSE" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.label} onMouseDown={closeMenu} />
     </UiEntity>
   )
 }

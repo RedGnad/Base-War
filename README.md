@@ -52,6 +52,12 @@ prestige follows a cube root of lifetime earnings.
 - Geometry is built from SDK primitives, apart from the pistol `assets/Models/gun.glb`,
   taken from the open Decentraland model catalog (`models.dclregenesislabs.xyz`), and the
   sound effects in `assets/sounds/`.
+- The interface textures in `assets/ui/` are generated too. Decentraland offers three
+  fonts and no more, both in the interface and in the world, so the rounded corners, the
+  borders and the gradients come from nine-sliced background images instead of a typeface.
+  Rebuild them with `node tools/ui/build-ui-textures.js`: each plate is drawn from a signed
+  distance field, so every colour is a number in that file rather than a binary nobody can
+  edit.
 - The two avatar clips in `assets/animations/` are generated, not hand-animated. A scene
   cannot pose the avatar skeleton except through emotes, and the platform's fixed emote
   list has neither an aim nor a shot, so the scene ships its own. Rebuild them with

@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP } from './theme'
+import { TYPE, C, TAP , SKIN } from './theme'
 
 export const welcomeView = { open: true }
 export function closeWelcome(): void { welcomeView.open = false }
@@ -46,7 +46,7 @@ export const WelcomePanel = () => {
 
         <Button
           uiTransform={{ width: 320, height: TAP.height, alignSelf: 'center' }}
-          value="START" variant="primary" fontSize={TYPE.body} onMouseDown={closeWelcome} />
+          value="START" variant="primary" uiBackground={SKIN.primary} color={C.ink} fontSize={TYPE.body} onMouseDown={closeWelcome} />
       </UiEntity>
     </UiEntity>
   )

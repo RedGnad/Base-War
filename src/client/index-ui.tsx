@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP } from './theme'
+import { TYPE, TAP , SKIN } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
 
 export const indexView = { open: false, vus: [] as number[] }
