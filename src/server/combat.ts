@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, LOOT_OWNER_LOCK_MS, forceDuTir,
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -154,10 +154,29 @@ export function startCombat(): void {
       : 0
 
     // fortune to one shot, and floored by nothing: shooting a broke player yields nothing.
-    const cap = Math.max(0, Math.floor(incomePerSecond(best.addr) * SHOT_DROP_CAP_S))
+    /*
+      How much a shot is worth is decided by the SHOOTER's economy, not the target's.
+      
+      This was eight seconds of the target's income, which caps nothing from the attacker's
+      side: it scales with the victim. Measured, a brand-new account shooting a developed
+      base three times collected around two hundred and ninety-seven thousand coins, a
+      hundred and forty-seven Basic crates, without playing. A currency source that pays out
+      far beyond every other one is the definition of a faucet the sinks cannot answer, and
+      it makes the entire progression curve above it decorative.
+      
+      Scaled to the shooter it behaves: peers still take real money off each other, because
+      their incomes are alike, and a newcomer emptying a whale takes a nuisance rather than a
+      fortune. It also means the weapon levels up with the player's own base, without a single
+      new system to buy or explain: your gun is already as good as your tycoon.
+      
+      This part is reasoning rather than citation. The framing is documented, a faucet
+      outrunning its sinks inflates the economy; the specific rule of scaling a PvP yield to
+      the attacker is ours, and it is written here so it can be argued with later.
+    */
+    const cap = Math.max(SHOT_MIN_YIELD, Math.floor(incomePerSecond(a) * SHOT_DROP_CAP_S))
     // Pockets pay by the same rule: a shot from across the plaza shakes less loose.
     const wanted = Math.floor(coinsOf(best.addr) * SHOT_DROP_SHARE * force)
-    const amount = Math.max(0, Math.min(wanted, cap === 0 ? wanted : cap))
+    const amount = Math.max(0, Math.min(wanted, cap))
     if (amount <= 0 || !spend(best.addr, amount)) {
       void room.send('shotResult', {
         hitName: displayName(best.addr), dropped: 0,

@@ -45,14 +45,23 @@ const Rang = (props: {
       margin: { bottom: 8 }
     }}
   >
+    {/*
+      What is dimmed is the button, and nothing else.
+
+      Both the name and the price used to fade when a player could not afford the row, which
+      on a fresh account greys out the entire shop: every figure the same colour as every
+      caption, and no way to tell a price from a sentence. A price is information you need
+      precisely when you cannot pay it, because it is what you are saving towards. The state
+      belongs on the control, which is the part that actually stops working.
+    */}
     <UiEntity uiTransform={{ width: '58%', height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
-      <Label value={props.titre} fontSize={TYPE.label} color={props.possible ? C.name : C.dim}
+      <Label value={props.titre} fontSize={TYPE.label} color={C.name}
         uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
       <Label value={props.detail} fontSize={TYPE.caption} color={C.dim}
         uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
     </UiEntity>
     <Label value={props.prix > 0 ? formatIncome(props.prix) : ''} fontSize={TYPE.label}
-      color={props.possible ? C.money : C.dim}
+      color={C.money}
       uiTransform={{ width: '18%', height: RANG }} textAlign="middle-center" textWrap="nowrap" />
     <UiEntity uiTransform={{ width: '24%', height: TAP.height, justifyContent: 'flex-end' }}>
       <Btn label={props.bouton} width={200} primary={props.possible}

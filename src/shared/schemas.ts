@@ -133,6 +133,13 @@ export const AIM_SPEED_SHARE = 0.5
  */
 export const SHOT_DROP_SHARE = 0.03
 export const SHOT_DROP_CAP_S = 8
+
+/**
+ * The floor under a shot, so a first-day player still sees something come off.
+ *
+ * Read with the cap below, which is measured against the SHOOTER rather than the target.
+ */
+export const SHOT_MIN_YIELD = 200
 /** A dropped pile is picked up by walking within this radius, and fades if nobody comes. */
 export const LOOT_PICKUP_RANGE = 3
 export const LOOT_LIFETIME_MS = 45_000
