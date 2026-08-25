@@ -129,6 +129,20 @@ export const SHOT_DROP_CAP_S = 8
 export const LOOT_PICKUP_RANGE = 3
 export const LOOT_LIFETIME_MS = 45_000
 
+/**
+ * How long the player who was shot cannot pick their own coins back up.
+ *
+ * The pile lands at the victim's feet, which is right: the shooter has to come and take it,
+ * and the walk is the risk that makes shooting worth defending against. But pickup credited
+ * whoever stood within three metres, and the victim stands at zero, so in practice they
+ * reclaimed their own coins on the very next tick and shooting paid exactly nothing. That is
+ * the mechanic our own player could not find: it was working, and it was self-cancelling.
+ *
+ * Six seconds is the width of the opening: long enough to cross the distance a shot is taken
+ * from, short enough that standing on your own money is not a lost cause.
+ */
+export const LOOT_OWNER_LOCK_MS = 6_000
+
 export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
   amount: Schemas.Int,
   droppedBy: Schemas.String,

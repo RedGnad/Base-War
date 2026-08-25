@@ -228,6 +228,22 @@ function nextAction(): { label: string; action: () => void } | null {
     // Opens the decision, never commits it: prestige wipes the base and cannot be undone.
     return { label: `PRESTIGE x${theftView.multiplier + 1}`, action: openPrestige }
   }
+  /*
+    Collecting, which had no button at all.
+
+    Items earn into a pool that only a `collect` message empties, and the client has always
+    had the call. Nothing ever invoked it. The pool filled and could not be banked, while the
+    tutorial's third step told the player in as many words to tap COLLECT, naming a control
+    that did not exist. A comment a few lines further down still explained that the pending
+    amount was not shown in the counter "because it already rides the COLLECT button".
+
+    It goes last on purpose. Something is nearly always pending, so anywhere higher and it
+    would hide every purchase behind itself; last, it is what the button offers whenever
+    there is nothing more urgent, which is most of the time.
+  */
+  if (theftView.pending >= 1) {
+    return { label: `COLLECT ${formatIncome(theftView.pending)}`, action: collectPending }
+  }
   return null
 }
 
@@ -465,8 +481,9 @@ const uiComponent = () => {
     >
       {/*
         The one number that carries the whole game, at hero size and in the money colour.
-        The pending amount is not repeated here: it already rides the COLLECT button, and
-        showing it twice was the clearest redundancy in the old interface.
+        The pool waiting to be banked is named here as well as on the button, because a
+        purchase the player can afford takes the button's place and would otherwise take the
+        only mention of the pool with it.
       */}
       {/*
         The money is set in the game's own face, which the platform does not carry: one
@@ -494,6 +511,7 @@ const uiComponent = () => {
             Read here it needs no label at all: the rate is shown, and what is lifting it.
           */
           : `+${formatIncome(theftView.income)}/s`
+            + (theftView.pending >= 1 ? `  ·  ${formatIncome(theftView.pending)} to collect` : '')
             + (theftView.prime > 0 ? `  ·  +${Math.round(theftView.prime * 100)}% crowd` : '')
             + (theftView.sentries > 0 ? `  ·  sentry ${theftView.sentries}` : '')
         }
@@ -522,24 +540,23 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
+    {/*
+      A crate worth crossing the room for. One in about thirteen now, rather than one in
+      four, so it is allowed to be loud; it is not allowed to be wider than its sentence.
+    */}
     {hud() && beltView.annonce !== '' && band.belt >= 0 && (
-      <UiEntity
-        uiTransform={{
-          width: strip(700).width, height: 58, positionType: 'absolute',
-          position: { top: band.belt, left: '50%' }, margin: strip(700).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={{ color: announceBackdrop() }}
-      >
-        {/*
-          Kept high and out of the middle third: that band is where the reticle sits and
-          where the player is looking when the weapon is out.
-        */}
-        <Label
-          value={beltView.annonce}
-          fontSize={TYPE.body + beltView.annonceTier * 4}
-          color={Color4.fromHexString(beltView.annonceColor + 'ff')} />
-      </UiEntity>
+      <Centre top={band.belt}>
+        <UiEntity
+          uiTransform={{
+            height: 58, padding: { left: 24, right: 24 },
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={{ color: Color4.create(0.10, 0.08, 0.02, 0.88) }}
+        >
+          <Label value={beltView.annonce} fontSize={TYPE.label}
+            color={C.bonus} textWrap="nowrap" />
+        </UiEntity>
+      </Centre>
     )}
 
     {/*

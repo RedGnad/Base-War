@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE,
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, LOOT_OWNER_LOCK_MS,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -105,15 +105,33 @@ export function startCombat(): void {
       const t = Transform.getOrNull(ent)
       if (t === null) continue
       if (c.untilMs < now) { engine.removeEntity(ent); continue }
+      /*
+        The nearest eligible player takes it, and for the first few seconds the player it
+        fell from is not eligible.
+
+        This used to credit the first player found within range, in whatever order the
+        roster happened to be in. The pile lands on the victim, so the victim was always
+        within range and usually first: they picked their own coins straight back up and a
+        hit was worth nothing to anybody. Nearest rather than first also settles the case
+        where two people arrive together.
+      */
+      const ouvert = c.untilMs - LOOT_LIFETIME_MS + LOOT_OWNER_LOCK_MS
+      let gagnant: string | null = null
+      let plusPres = LOOT_PICKUP_RANGE
       for (const addr of ici) {
+        if (addr === c.droppedBy && now < ouvert) continue
         const p = positionOf(addr)
         if (p === null) continue
-        if (Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2) > LOOT_PICKUP_RANGE) continue
-        crediter(addr, c.amount)
-        void room.send('pickedUp', { amount: c.amount }, { to: [addr] })
-        log(`${displayName(addr)} picked up ${c.amount}`)
+        const d = Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2)
+        if (d > plusPres) continue
+        plusPres = d
+        gagnant = addr
+      }
+      if (gagnant !== null) {
+        crediter(gagnant, c.amount)
+        void room.send('pickedUp', { amount: c.amount }, { to: [gagnant] })
+        log(`${displayName(gagnant)} picked up ${c.amount}`)
         engine.removeEntity(ent)
-        break
       }
     }
   })

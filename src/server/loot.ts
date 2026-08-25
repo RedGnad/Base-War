@@ -56,6 +56,29 @@ export function rollCrate(crateId: number): number {
  */
 const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1]
 
+/**
+ * Which crates are worth interrupting the screen for, read off the table above.
+ *
+ * The rule used to be `crateTier >= 2`, comparing a position in the CRATES array to the
+ * number two. The array runs Basic, Good, Rare, Epic, Gold, Lava, Cursed, so that announced
+ * five of the seven, which by these weights is Rare 10, Epic 3, Gold 8, Lava 4 and Cursed 1:
+ * twenty-six percent, better than one crate in four, each with a banner across the screen.
+ * An event that happens every fourth time is not an event, it is a background.
+ *
+ * Worse, it announced the Gold Crate, which sits fourth in the array but is a tier-one crate
+ * priced at nine tenths of a plain Good Crate. The loudest signal in the game was pointing at
+ * the cheapest thing on the belt.
+ *
+ * So the question is asked of the data instead: rare means rare. Four percent or less leaves
+ * Epic, Lava and Cursed, eight percent together, about one crate in twelve.
+ */
+const ANNONCE_MAX_POIDS = 4
+
+export function meriteAnnonce(crateId: number): boolean {
+  const poids = POIDS_APPARITION[crateId]
+  return poids !== undefined && poids <= ANNONCE_MAX_POIDS
+}
+
 export function rollCrateTier(): number {
   const total = POIDS_APPARITION.reduce((a, b) => a + b, 0)
   let n = Math.random() * total

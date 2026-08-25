@@ -8,7 +8,7 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
+import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
@@ -217,12 +217,24 @@ export function setupCombat(): void {
     appliquerVue(c.mode === CameraType.CT_FIRST_PERSON)
   })
 
+  /*
+    Both messages now say what to do about it.
+
+    "840 dropped" is a fact about a number, and it left a player who had just landed a shot
+    with no idea that coins were lying on the ground several metres away, waiting to be
+    walked over. The shot is only half the move; the run is the other half, and the run is
+    where the other player gets to stop you.
+  */
   room.onMessage('shotResult', (d) => {
-    if (d.reason === 'hit') alerter(`HIT ${d.hitName.toUpperCase()}  ·  ${formatIncome(d.dropped)} dropped`, '#ffd166', 3000)
-    else if (d.reason === 'nothing to drop') alerter(`${d.hitName.toUpperCase()} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
+    if (d.reason === 'hit') {
+      alerter(`HIT ${d.hitName.toUpperCase()}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', 3500)
+    } else if (d.reason === 'nothing to drop') {
+      alerter(`${d.hitName.toUpperCase()} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
+    }
   })
   room.onMessage('wasShot', (d) => {
-    alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} on the ground`, '#ff6b6b', 5000)
+    const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
+    alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} DROPPED, YOURS AGAIN IN ${s}s`, '#ff6b6b', 5000)
   })
   room.onMessage('pickedUp', (d) => alerter(`+${formatIncome(d.amount)} picked up`, '#8fe08f', 2500))
   room.onMessage('aiming', (d) => {

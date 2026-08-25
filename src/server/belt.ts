@@ -6,7 +6,7 @@ import {
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
-import { rollCrateTier, rollCrate, rollMutation } from './loot'
+import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce } from './loot'
 import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests, baseDe } from './plots'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
@@ -47,7 +47,7 @@ function spawnBeltItem(): void {
   articles.push({ id: prochainId, crateTier, price, progres: 0, vendu: false, entity: e })
   prochainId += 1
 
-  if (crateTier >= 2) {
+  if (meriteAnnonce(crateTier)) {
     void room.send('beltAlert', { crateTier })
     log(`announce: ${CRATES[crateTier].name} on the belt`)
   }
