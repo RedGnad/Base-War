@@ -78,7 +78,6 @@ export function setupBox(): void {
   MeshCollider.setBox(crateMesh)
   PointerEvents.create(crateMesh, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Smash' } },
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Smash' } }
     ]
   })
@@ -129,7 +128,6 @@ export function setupBox(): void {
   engine.addSystem((dt: number) => {
     if (boxView.opening) {
       if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, crateMesh) ||
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, crateMesh)
       ) {
         boxView.coups += 1

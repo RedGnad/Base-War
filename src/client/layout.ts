@@ -62,3 +62,35 @@ export function strip(width: number): { width: number; margin: { left: number } 
   // Centred on the usable area, expressed against the screen centre that '50%' refers to.
   return { width: w, margin: { left: -w / 2 - CLIENT_RIGHT / 2 } }
 }
+
+/**
+ * Which button means what, and why the scene adds almost none of its own.
+ *
+ * The mobile client already draws a set of controls, and its documentation says what each
+ * one emits and which ones a thumb can actually reach: the interaction button sends
+ * IA_POINTER at whatever sits under the reticle, E sends IA_PRIMARY, F sends IA_SECONDARY,
+ * and there is a jump. The numbered buttons hide behind a secondary menu and are described
+ * as not easily reachable, so they are hidden rather than used.
+ *
+ * Building a second row of controls beside those was the mistake: two sets of buttons for
+ * one pair of thumbs. The rule instead is one button, one meaning, and the scene borrows
+ * rather than adds.
+ *
+ *   interaction  acts on what the reticle covers, and fires when the weapon is out
+ *   E            the one action the game would offer right now: build, open, collect, buy
+ *   F            draw and holster
+ *   jump         jump
+ *
+ * That leaves nothing for the main loop to put on screen. What has no native home is the
+ * travel menu and the panels, and those get a single opener each, in the bottom band.
+ *
+ * What the player cannot read off a fixed icon is what E means at this instant, so that
+ * goes where the documentation puts context hints: one line, centre bottom, just above the
+ * interaction button. A line of text, never a control.
+ */
+export const NATIVE = {
+  interact: 'acts on the reticle target, fires while drawn',
+  primary: 'the contextual game action',
+  secondary: 'draw and holster',
+  jump: 'jump'
+} as const

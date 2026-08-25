@@ -54,10 +54,16 @@ export function setupTouchHud(): void {
   TouchScreenControls.setMainAction(InputAction.IA_PRIMARY)
   TouchScreenControls.showAll()
 
-  // The scene draws its own SHOOT button, bound to IA_SECONDARY: keeping the native one
-  // would leave two buttons for the same action, and nothing on it says it fires.
+  /*
+    The client's own buttons carry the game, and the scene adds none beside them.
+
+    Its documentation names what each one emits and which are reachable: the interaction
+    button, E, F and jump are, while 1 to 4 sit behind a secondary menu and are described
+    as not easily reachable. So those four are hidden and the rest are left alone. E takes
+    the contextual action, F draws the weapon, the interaction button acts on whatever is
+    under the reticle, and nothing of ours competes for the same thumb.
+  */
   TouchScreenControls.hide([
-    InputAction.IA_SECONDARY,
     InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
     InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])

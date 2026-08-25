@@ -69,14 +69,12 @@ export function setupConvoy(): void {
         }
         PointerEvents.createOrReplace(v.body, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: mine ? 'Yours' : `Outbid  ${price}` } },
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: mine ? 'Yours' : `Outbid  ${price}` } }
           ]
         })
       }
 
       if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.body) ||
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.body)
       ) {
         if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', 2500)

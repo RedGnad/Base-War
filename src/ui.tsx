@@ -3,7 +3,7 @@ import { Color4 } from '@dcl/sdk/math'
 import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
-import { InputAction } from '@dcl/sdk/ecs'
+import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
@@ -39,6 +39,22 @@ import { slotView, basculerPose, placeHere } from './client/slots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
+  /*
+    E is the game's action, and the only one.
+
+    The mobile client gives four buttons a thumb can reach and names what each emits: the
+    interaction button sends IA_POINTER at whatever is under the reticle, E sends
+    IA_PRIMARY, F sends IA_SECONDARY, and there is a jump. Adding our own row beside them
+    was noise. So the world answers the interaction button, E carries whatever the scene
+    would have put on a button of its own, and F draws the weapon. One button, one meaning.
+  */
+  engine.addSystem(() => {
+    if (modale()) return
+    if (!inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) return
+    const a = nextAction()
+    if (a !== null) a.action()
+  })
+
   function choose(): void {
     if (getPlatform() === null) return
     engine.removeSystem(choose)
@@ -534,61 +550,31 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!modale() && (
-    <UiEntity
-      uiTransform={{
-        width: 900, height: TAP.height, positionType: 'absolute',
-        position: { bottom: 26, left: '50%' }, margin: { left: -450 },
-        flexDirection: 'row', justifyContent: 'center'
-      }}
-    >
-      {theftView.pending > 0 && !slotView.active && !combatView.aiming && (
-        <Btn label={`COLLECT ${formatIncome(theftView.pending)}`} width={250} primary
-          right={TAP.gap} onClick={collectPending} />
-      )}
-
-      {!modale() && !combatView.aiming && (() => {
-        const a = nextAction()
-        return a === null ? null : (
-          <Btn label={a.label} width={250} primary right={TAP.gap} onClick={a.action} />
-        )
-      })()}
-
-      {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming
-        && theftView.lockSec === 0 && theftView.rechargeSec === 0 && (
-        <Btn label="LOCK" width={150} right={TAP.gap} onClick={lockBase} />
-      )}
-
-      {/*
-        The weapon control, and while the weapon is out it is the only control left.
-
-        A tap anywhere fires, so every other button in this bar would fire as well as do
-        its own job: the global input reports the tap whether or not the interface
-        swallowed it. Drawing therefore empties the bar down to this one button, which
-        also says what combat mode is without a word of explanation. uiInputBinding carries
-        IA_SECONDARY, so the same element serves the phone, where there is no key, and the
-        desktop, where F alone told the player nothing.
-      */}
-      {!slotView.active && (
-        <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={combatView.aiming ? 170 : 190}
-          primary={combatView.aiming} right={combatView.aiming ? TAP.gap : undefined}
-          bind={[InputAction.IA_SECONDARY]} />
-      )}
-
-      {/*
-        The trigger, and it only exists on screen because of how a phone works.
-
-        On a touch screen IA_POINTER is emitted by the client's own interaction button,
-        aimed at whatever is under the reticle. It is not a tap on the glass. So a scene
-        that fires on IA_POINTER and says "tap anywhere" works on a desktop and does
-        nothing at all on a phone, which is exactly what happened. Binding the action to a
-        control of our own gives the shot a button on both, and leaves the client's
-        interaction button to what it is for, the world.
-      */}
-      {combatView.aiming && !slotView.active && (
-        <Btn label="FIRE" width={190} primary bind={[InputAction.IA_POINTER]} />
-      )}
-    </UiEntity>
+    {/*
+      What the buttons do, said in one line, exactly where the documentation puts context
+      hints: centre bottom, just above the client's own interaction button. No control of
+      ours sits down there any more, because every one of them found a native button.
+    */}
+    {!modale() && !slotView.active && (
+      <UiEntity
+        uiTransform={{
+          width: 760, height: 52, positionType: 'absolute',
+          position: { bottom: 26, left: '50%' }, margin: { left: -540 },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label
+          value={
+            combatView.aiming
+              ? (combatView.targetName !== ''
+                  ? `FIRE on ${combatView.targetName}   ·   F to holster`
+                  : 'aim at someone   ·   F to holster')
+              : (() => { const a = nextAction(); return a === null ? 'F to draw' : `E   ${a.label}   ·   F to draw` })()
+          }
+          fontSize={TYPE.label} color={combatView.aiming ? C.danger : C.name} textAlign="middle-center" />
+      </UiEntity>
     )}
+
   </UiEntity>
 )

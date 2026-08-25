@@ -151,7 +151,6 @@ function createView(x: number, z: number): View {
   })
   PointerEvents.create(ascenseur, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Go up' } },
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }
     ]
   })
@@ -174,7 +173,6 @@ function createView(x: number, z: number): View {
   })
   PointerEvents.create(plinth, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Leave a gift' } },
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Leave a gift' } }
     ]
   })
@@ -220,7 +218,6 @@ function createView(x: number, z: number): View {
     MeshCollider.setBox(o)
     PointerEvents.create(o, {
       pointerEvents: [
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: 'Steal' } },
         { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
       ]
     })
@@ -249,7 +246,6 @@ export function setupPlots(): void {
     for (const v of views.values()) {
       for (let k = 0; k < v.items.length; k++) {
         if (
-          inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.items[k]) ||
           inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.items[k])
         ) {
           if (v.ownerId.toLowerCase() === monAdresseClient()) {
@@ -269,7 +265,6 @@ export function setupPlots(): void {
       }
 
       if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.ascenseur) ||
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
       ) {
         if (v.ownerId.toLowerCase() !== monAdresseClient()) {
@@ -281,7 +276,6 @@ export function setupPlots(): void {
       }
 
       if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.plinth) ||
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.plinth)
       ) {
         if (v.ownerId === '' || v.ownerId.toLowerCase() === monAdresseClient()) return
@@ -397,7 +391,6 @@ export function setupPlots(): void {
           : `${verbe} ${itemName(rarityOf(code), mutationDe(code))} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: label } },
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: label } }
           ]
         })

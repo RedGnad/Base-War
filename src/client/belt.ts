@@ -105,7 +105,6 @@ export function setupBelt(): void {
         Material.setPbrMaterial(item, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.45, metallic: 0.6, roughness: 0.35 })
         PointerEvents.create(item, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}` } },
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}` } }
           ]
         })
@@ -144,7 +143,6 @@ export function setupBelt(): void {
       if (tn !== null) tn.position = Vector3.create(t.position.x, t.position.y + 0.86, t.position.z)
 
       if (
-        inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, v.item) ||
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.item)
       ) {
         void room.send('buyBelt', { articleId: b.articleId })
