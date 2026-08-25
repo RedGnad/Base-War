@@ -25,7 +25,7 @@ export function closePrestige(): void { prestigeView.open = false }
 const Unlock = (props: { title: string; note: string }) => (
   <UiEntity
     uiTransform={{
-      width: 280, height: 190, margin: { right: TAP.gap },
+      width: 260, height: 150, margin: { right: TAP.gap },
       flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: 16
     }}
     uiBackground={SKIN.card}
@@ -51,35 +51,35 @@ export const PrestigePanel = () => {
       uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
     >
       <UiEntity
-        uiTransform={{ width: 960, height: 700, flexDirection: 'column', alignItems: 'center', padding: 34 }}
+        uiTransform={{ width: 940, height: 600, flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
-        <UiEntity uiTransform={{ width: '100%', height: 74 }}>
+        <UiEntity uiTransform={{ width: '100%', height: 56 }}>
           <Glyphs value="PRESTIGE" size={TYPE.title} color={C.bonus} />
         </UiEntity>
 
         <Label value="UNLOCKS" fontSize={TYPE.label} color={C.name}
-          uiTransform={{ width: '100%', height: 44 }} textAlign="middle-center" />
+          uiTransform={{ width: '100%', height: 34 }} textAlign="middle-center" />
 
-        <UiEntity uiTransform={{ width: 580, height: 190, flexDirection: 'row', justifyContent: 'center' }}>
+        <UiEntity uiTransform={{ width: 540, height: 150, flexDirection: 'row', justifyContent: 'center' }}>
           <Unlock title={`x${nextMultiplier}`} note="on everything you earn" />
           <Unlock title={nextFloor?.name ?? ''} note="the worst you can roll" />
         </UiEntity>
 
         <Label value="COSTS" fontSize={TYPE.label} color={C.name}
-          uiTransform={{ width: '100%', height: 52, margin: { top: 10 } }} textAlign="middle-center" />
+          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" />
 
         <UiEntity
-          uiTransform={{ width: 560, height: 92, justifyContent: 'center', alignItems: 'center' }}
+          uiTransform={{ width: 540, height: 78, justifyContent: 'center', alignItems: 'center' }}
           uiBackground={SKIN.inset}
         >
           <Glyphs value={formatIncome(cost)} size={TYPE.title} align="center" box={560}
-            top={(92 - TYPE.title) / 2} color={affordable ? C.money : C.danger} />
+            top={(78 - TYPE.title) / 2} color={affordable ? C.money : C.danger} />
         </UiEntity>
 
         <Label value="this resets your coins and everything on your base"
           fontSize={TYPE.label} color={C.bonus}
-          uiTransform={{ width: '100%', height: 62, margin: { top: 12 } }} textAlign="middle-center" />
+          uiTransform={{ width: '100%', height: 50 }} textAlign="middle-center" />
 
         <UiEntity uiTransform={{ width: 640, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
           <Btn label={affordable ? 'PRESTIGE' : 'NOT YET'} width={300} primary={affordable}

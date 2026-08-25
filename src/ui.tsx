@@ -98,6 +98,18 @@ function nextAction(): { label: string; action: () => void } | null {
 }
 
 /** What the player is waiting on, in one line, never as a control. */
+/**
+ * A dialog owns the screen.
+ *
+ * The heads-up display used to keep drawing under the welcome panel, so the title was
+ * crossed by the tutorial line and START sat next to BUILD BASE and DRAW. The condition
+ * existed on some blocks and not others, added one at a time. It lives here now, and
+ * every block reads the same function.
+ */
+function modale(): boolean {
+  return welcomeView.open || prestigeView.open
+}
+
 function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
@@ -161,16 +173,17 @@ const uiComponent = () => (
 
     <WelcomePanel />
     <PrestigePanel />
-    {!welcomeView.open && !prestigeView.open && <IndexPanel />}
-    {!welcomeView.open && !prestigeView.open && <QuestsPanel />}
+    {!modale() && <IndexPanel />}
+    {!modale() && <QuestsPanel />}
 
-    {combatView.aiming && !welcomeView.open && !prestigeView.open && !menuView.open && !slotView.active && <Crosshair />}
+    {combatView.aiming && !modale() && !menuView.open && !slotView.active && <Crosshair />}
 
-    {!welcomeView.open && !prestigeView.open && (
+    {!modale() && (
     <UiEntity
       uiTransform={{
-        width: 460, height: TAP.height, positionType: 'absolute', position: { top: 158, right: 24 },
-        flexDirection: 'row', justifyContent: 'flex-end'
+        width: 430, height: TAP.height, positionType: 'absolute',
+        position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -450 },
+        flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
       {menuView.open && (
@@ -194,11 +207,12 @@ const uiComponent = () => (
     </UiEntity>
     )}
 
-    {tutoView.etape < tutoView.total && (
+    {!modale() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: 480, height: 130, positionType: 'absolute', position: { top: 16, right: 24 },
-          flexDirection: 'column', padding: 16
+          width: 760, height: 64, positionType: 'absolute',
+          position: { top: 120, left: '50%' }, margin: { left: -380 },
+          flexDirection: 'row', alignItems: 'center', padding: 10
         }}
         uiBackground={SKIN.panel}
       >
@@ -211,15 +225,15 @@ const uiComponent = () => (
         <Label
           value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
           fontSize={TYPE.label} color={C.bonus}
-          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" />
+          uiTransform={{ width: 300, height: 44 }} textAlign="middle-left" />
         <Label
           value={ETAPES_TEXTE[tutoView.etape]?.aide ?? ''}
           fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
+          uiTransform={{ width: 430, height: 44 }} textAlign="middle-left" />
       </UiEntity>
     )}
 
-    {theftView.prime > 0 && (
+    {!modale() && theftView.prime > 0 && (
       <UiEntity
         uiTransform={{
           width: 300, height: 40, positionType: 'absolute',
@@ -243,31 +257,26 @@ const uiComponent = () => (
       client's own. Collapsed it is one control, which is the whole point: the three
       destinations only exist once the player has said they want to go somewhere.
     */}
-    {!combatView.aiming && (
+    {!modale() && !combatView.aiming && (
       <UiEntity
         uiTransform={{
-          width: 300, height: travelView.open ? TAP.height * 4 + TAP.gap * 3 : TAP.height,
-          positionType: 'absolute', position: { top: 158 + TAP.height + TAP.gap, right: 24 },
-          flexDirection: 'column', justifyContent: 'flex-start'
+          width: 880, height: TAP.height, positionType: 'absolute',
+          position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -430 },
+          flexDirection: 'row', justifyContent: 'flex-end'
         }}
       >
-        <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
-          <Btn label={travelView.open ? 'CLOSE' : 'TRAVEL'} width={300}
-            primary={travelView.open} onClick={basculerVoyage} />
-        </UiEntity>
+        <Btn label={travelView.open ? 'CLOSE' : 'TRAVEL'} width={travelView.open ? 200 : 240}
+          primary={travelView.open} right={TAP.gap} onClick={basculerVoyage} />
         {travelView.open && (
-          <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
-            <Btn label="GO HOME" width={300} primary={travelView.peutRentrer}
-              onClick={() => { rentrer(); basculerVoyage() }} />
-          </UiEntity>
+          <Btn label="GO HOME" width={220} primary={travelView.peutRentrer} right={TAP.gap}
+            onClick={() => { rentrer(); basculerVoyage() }} />
         )}
         {travelView.open && (
-          <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
-            <Btn label="GO TO BELT" width={300} onClick={() => { goToBelt(); basculerVoyage() }} />
-          </UiEntity>
+          <Btn label="TO BELT" width={200} right={TAP.gap}
+            onClick={() => { goToBelt(); basculerVoyage() }} />
         )}
         {travelView.open && theftView.basePosee && (
-          <Btn label={slotView.active ? 'CANCEL' : 'MOVE BASE'} width={300}
+          <Btn label={slotView.active ? 'CANCEL' : 'MOVE'} width={180}
             primary={slotView.active} onClick={() => { basculerPose(); basculerVoyage() }} />
         )}
       </UiEntity>
@@ -275,9 +284,9 @@ const uiComponent = () => (
 
     <UiEntity
       uiTransform={{
-        width: 560, height: 128, positionType: 'absolute',
-        position: { top: 12, left: '50%' }, margin: { left: -280 },
-        padding: 12, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
+        width: 520, height: 104, positionType: 'absolute',
+        position: { top: 10, left: '50%' }, margin: { left: -260 },
+        padding: 8, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
       uiBackground={SKIN.panel}
     >
@@ -291,10 +300,10 @@ const uiComponent = () => (
         quad per digit, each showing its cell of an atlas. Glyphs place themselves, so they
         need a box of their own in the column or the line under them is walked over.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 8 }}>
+      <UiEntity uiTransform={{ width: '100%', height: TYPE.title + 8 }}>
         <Glyphs
           value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-          size={TYPE.hero} color={C.money} align="center" box={536} />
+          size={TYPE.title} color={C.money} align="center" box={504} />
       </UiEntity>
       <Label
         value={
@@ -314,7 +323,7 @@ const uiComponent = () => (
         } />
     </UiEntity>
 
-    {theftView.fil.length > 0 && (
+    {!modale() && theftView.fil.length > 0 && (
       <UiEntity
         uiTransform={{
           width: 400, height: 62, positionType: 'absolute',
@@ -329,11 +338,11 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {beltView.annonce !== '' && (
+    {!modale() && beltView.annonce !== '' && (
       <UiEntity
         uiTransform={{
-          width: 700, height: 62, positionType: 'absolute',
-          position: { top: 160, left: '50%' }, margin: { left: -350 },
+          width: 700, height: 58, positionType: 'absolute',
+          position: { top: 196, left: '50%' }, margin: { left: -350 },
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: announceBackdrop() }}
@@ -358,7 +367,7 @@ const uiComponent = () => (
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
-    {(boxView.roule || boxView.resultat >= 0) && (
+    {!modale() && (boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
           width: '100%', height: REEL_H + 8, positionType: 'absolute',
@@ -403,7 +412,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!boxView.roule && boxView.resultat >= 0 && (
+    {!modale() && !boxView.roule && boxView.resultat >= 0 && (
       <UiEntity
         uiTransform={{
           width: 900, height: 96, positionType: 'absolute',
@@ -422,7 +431,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
+    {!modale() && !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
       <UiEntity
         uiTransform={{
           width: 400, height: 40, positionType: 'absolute',
@@ -435,7 +444,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {placementView.selection >= 0 && (
+    {!modale() && placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
           width: 560, height: 46, positionType: 'absolute',
@@ -453,7 +462,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {boxView.opening && (
+    {!modale() && boxView.opening && (
       <UiEntity
         uiTransform={{
           width: 320, height: 54, positionType: 'absolute',
@@ -466,7 +475,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {theftView.stealing && (
+    {!modale() && theftView.stealing && (
       <UiEntity
         uiTransform={{
           width: 460, height: 76, positionType: 'absolute',
@@ -493,7 +502,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {theftView.alert !== '' && (
+    {!modale() && theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
           width: 520, height: 70, positionType: 'absolute',
@@ -513,11 +522,11 @@ const uiComponent = () => (
       TYPE.body, so a thumb can hit them and an eye can read them on a phone. What the
       player is merely waiting for sits above as one dim line, never as a dead button.
     */}
-    {hint() !== '' && !combatView.aiming && !prestigeView.open && (
+    {hint() !== '' && !combatView.aiming && !modale() && (
       <UiEntity
         uiTransform={{
           width: 900, height: 34, positionType: 'absolute',
-          position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -450 },
+          position: { bottom: 26 + (TAP.height + 14) * 2, left: '50%' }, margin: { left: -450 },
           justifyContent: 'center', alignItems: 'center'
         }}
       >
@@ -525,29 +534,29 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!prestigeView.open && (
+    {!modale() && (
     <UiEntity
       uiTransform={{
-        width: 1120, height: TAP.height, positionType: 'absolute',
-        position: { bottom: 26, left: '50%' }, margin: { left: -560 },
+        width: 900, height: TAP.height, positionType: 'absolute',
+        position: { bottom: 26, left: '50%' }, margin: { left: -450 },
         flexDirection: 'row', justifyContent: 'center'
       }}
     >
       {theftView.pending > 0 && !slotView.active && !combatView.aiming && (
-        <Btn label={`COLLECT ${formatIncome(theftView.pending)}`} width={300} primary
+        <Btn label={`COLLECT ${formatIncome(theftView.pending)}`} width={250} primary
           right={TAP.gap} onClick={collectPending} />
       )}
 
-      {!combatView.aiming && (() => {
+      {!modale() && !combatView.aiming && (() => {
         const a = nextAction()
         return a === null ? null : (
-          <Btn label={a.label} width={300} primary right={TAP.gap} onClick={a.action} />
+          <Btn label={a.label} width={250} primary right={TAP.gap} onClick={a.action} />
         )
       })()}
 
       {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming
         && theftView.lockSec === 0 && theftView.rechargeSec === 0 && (
-        <Btn label="LOCK" width={180} right={TAP.gap} onClick={lockBase} />
+        <Btn label="LOCK" width={150} right={TAP.gap} onClick={lockBase} />
       )}
 
       {/*
@@ -561,8 +570,23 @@ const uiComponent = () => (
         desktop, where F alone told the player nothing.
       */}
       {!slotView.active && (
-        <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={220}
-          primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
+        <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={combatView.aiming ? 170 : 190}
+          primary={combatView.aiming} right={combatView.aiming ? TAP.gap : undefined}
+          bind={[InputAction.IA_SECONDARY]} />
+      )}
+
+      {/*
+        The trigger, and it only exists on screen because of how a phone works.
+
+        On a touch screen IA_POINTER is emitted by the client's own interaction button,
+        aimed at whatever is under the reticle. It is not a tap on the glass. So a scene
+        that fires on IA_POINTER and says "tap anywhere" works on a desktop and does
+        nothing at all on a phone, which is exactly what happened. Binding the action to a
+        control of our own gives the shot a button on both, and leaves the client's
+        interaction button to what it is for, the world.
+      */}
+      {combatView.aiming && !slotView.active && (
+        <Btn label="FIRE" width={190} primary bind={[InputAction.IA_POINTER]} />
       )}
     </UiEntity>
     )}

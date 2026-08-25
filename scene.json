@@ -2,7 +2,7 @@
   "ecs7": true,
   "runtimeVersion": "7",
   "display": {
-    "title": "Base Tycoon",
+    "title": "Base War",
     "description": "Open crates, put your loot on show, and it earns while you're away. Everything on show can be taken by someone else. Arm a sentry, or come take theirs.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
@@ -14,9 +14,9 @@
   },
   "main": "bin/index.js",
   "tags": [
+    "social",
     "tycoon",
     "multiplayer",
-    "social",
     "competitive",
     "loot",
     "mobile"
@@ -176,22 +176,22 @@
       "default": true,
       "position": {
         "x": [
-          92.0,
-          100.0
+          92,
+          100
         ],
         "y": [
           0,
           0
         ],
         "z": [
-          99.0,
-          102.0
+          96.5,
+          104.5
         ]
       },
       "cameraTarget": {
-        "x": 96.0,
-        "y": 2.2,
-        "z": 96.0
+        "x": 96,
+        "y": 2.200000047683716,
+        "z": 96
       }
     }
   ],
@@ -211,5 +211,6 @@
   "requiredPermissions": [
     "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE",
     "ALLOW_TO_TRIGGER_AVATAR_EMOTE"
-  ]
+  ],
+  "rating": "A"
 }

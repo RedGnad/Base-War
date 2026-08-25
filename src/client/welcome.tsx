@@ -31,20 +31,20 @@ export const WelcomePanel = () => {
       onMouseDown={closeWelcome}
     >
       <UiEntity
-        uiTransform={{ width: 880, height: 620, flexDirection: 'column', padding: 34, justifyContent: 'space-between' }}
+        uiTransform={{ width: 900, height: 560, flexDirection: 'column', padding: 24, justifyContent: 'space-between' }}
         uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.97) }}
       >
-        <UiEntity uiTransform={{ width: '100%', height: 72 }}>
-          <Glyphs value="BASE TYCOON" size={TYPE.hero} color={C.bonus} />
+        <UiEntity uiTransform={{ width: '100%', height: 54 }}>
+          <Glyphs value="BASE TYCOON" size={TYPE.title} color={C.bonus} />
         </UiEntity>
         <Label
           value="Your loot earns while it is on show. While it is on show, anyone can take it."
-          fontSize={TYPE.label} color={C.dim} uiTransform={{ height: 56 }} />
+          fontSize={TYPE.caption} color={C.dim} uiTransform={{ height: 44 }} />
 
         {LIGNES.map(([n, t]) => (
-          <UiEntity key={n} uiTransform={{ height: 54, flexDirection: 'row', alignItems: 'center' }}>
-            <Label value={n} fontSize={TYPE.body} color={C.bonus} uiTransform={{ width: 44 }} />
-            <Label value={t} fontSize={TYPE.body} color={C.name} />
+          <UiEntity key={n} uiTransform={{ height: 46, flexDirection: 'row', alignItems: 'center' }}>
+            <Label value={n} fontSize={TYPE.label} color={C.bonus} uiTransform={{ width: 38 }} />
+            <Label value={t} fontSize={TYPE.label} color={C.name} />
           </UiEntity>
         ))}
 

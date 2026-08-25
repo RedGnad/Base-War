@@ -6,6 +6,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
+import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -99,6 +100,18 @@ const RECUL_DEG = 20
 const TIR_MS = 300
 /** Shortest gap between two arm animations, whatever the weapon's own rate. */
 const CLIP_MIN_MS = 340
+
+/**
+ * Whether the avatar is posed at all.
+ *
+ * Both clips are masked to the upper body so the legs stay on locomotion, and the mobile
+ * client lists upper-body masks among the features it does not support. Unmasked, the clip
+ * takes the whole body and any step cancels it, so a held aim would flicker on and off with
+ * every movement. The pose is therefore skipped there rather than played badly: the weapon
+ * still appears in the hand, the reticle still locks, and the weapon still kicks, because
+ * none of those go through an emote.
+ */
+function poseDisponible(): boolean { return !isMobile() }
 /**
  * The first-person volume that rides the player while the weapon is out. A camera area is
  * a region and not a per-player flag, so it stays barely wider than one body: anyone
@@ -312,7 +325,7 @@ function gunSystem(dt: number): void {
     // it played and turn a burst into a twitch, at one restricted call per round. The
     // muzzle flash and the weapon's own kick carry the cadence; the arm plays about three
     // times a second and that is enough to read as recoil.
-    if (now - dernierClipTir >= CLIP_MIN_MS) {
+    if (poseDisponible() && now - dernierClipTir >= CLIP_MIN_MS) {
       dernierClipTir = now
       void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
       // The shot clip displaces the held pose, so the aim goes back when it ends, unless a
@@ -388,7 +401,7 @@ function degainer(on: boolean): void {
     Transform.create(zoneVisee, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
     CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
-    void stopEmote({})
+    if (poseDisponible()) void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
     // Give the cursor back.
     //
