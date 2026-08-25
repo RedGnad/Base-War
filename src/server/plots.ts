@@ -782,10 +782,24 @@ export function spend(address: string, montant: number): boolean {
   return true
 }
 
-/** What one item is worth if sold, without needing it to be on a shelf first. */
-export function valeurRevente(address: string, code: number): number {
-  const p = profiles.get(address)
-  return Math.round(itemIncome(code, INCOME_PER_RARITY) * RESELL_SECONDS * incomeMultiplier(p?.rebirths ?? 0))
+/**
+ * What one item is worth if sold: thirty seconds of what it produces, and no prestige.
+ *
+ * The multiplier used to be in here, and crate prices are fixed constants, so the two curves
+ * eventually crossed. Resale is `income x 30 x multiplier` while a crate costs
+ * `income x payback`, which makes buy-open-sell worth `30 x multiplier / payback`: profitable
+ * from prestige 2 on a Basic crate, prestige 4 on a Good, and growing without limit after
+ * that. At prestige 30 a crate bought for 2,018 sold back for 31,276 on average, six times a
+ * minute off the belt.
+ *
+ * It never beat SHELVING, since selling is thirty seconds of what a shelf pays for ever. What
+ * it was is RISK-FREE, in a game whose whole tension is that displayed wealth can be taken.
+ * The multiplier meant to reward putting your loot on show was also rewarding never showing
+ * anything. Without it the ratio is 0.5 down to 0.06 whatever the prestige, so buying to sell
+ * is always a loss, and selling keeps the job it should have had: clearing a slot for better.
+ */
+export function valeurRevente(_address: string, code: number): number {
+  return Math.round(itemIncome(code, INCOME_PER_RARITY) * RESELL_SECONDS)
 }
 
 export function crediterVente(address: string, code: number): number {
