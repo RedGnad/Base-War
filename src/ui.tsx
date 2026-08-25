@@ -278,7 +278,21 @@ function announceBackdrop(): Color4 {
  * the world or in a line of text instead. What cannot be tapped now goes to `hint`.
  */
 function nextAction(): { label: string; action: () => void; icon?: string } | null {
-  if (slotView.active) return slotView.valid ? { label: 'PLACE HERE', action: placeHere } : null
+  /*
+    Almost everything here carries a picture, and the two exceptions are on purpose.
+
+    The rule was written when COLLECT got its coins and then applied to nothing else, which
+    left seven of eight actions still announcing themselves on a plate above the controls. A
+    plate is furniture; a button that already exists is free. So building, recovering and
+    opening take their own shapes, and only the carrying verbs keep words, because PUT IT
+    DOWN, GIVE IT and DROP differ by where you are standing rather than by what you are doing,
+    and three variations on an arrow at the size of a thumb would blur exactly the distinction
+    that matters. They are also the shortest-lived state in the game, which is the one moment
+    a word is worth its room.
+  */
+  if (slotView.active) {
+    return slotView.valid ? { label: 'PLACE HERE', icon: 'icon-build', action: placeHere } : null
+  }
   /*
     Hands first, because full hands are the loudest fact about your situation.
 
@@ -295,10 +309,10 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
       ? { label: 'PUT IT DOWN', action: () => placeDown(ou.ownerId) }
       : { label: 'GIVE IT', action: () => placeDown(ou.ownerId) }
   }
-  if (theftView.canRecover) return { label: 'RECOVER', action: recover }
-  if (!theftView.basePosee) return { label: 'BUILD BASE', action: basculerPose }
+  if (theftView.canRecover) return { label: 'RECOVER', icon: 'icon-recover', action: recover }
+  if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
-    return { label: `OPEN ${boxView.stock.length}`, action: openBestCrate }
+    return { label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }
   }
   /*
     No purchase past this point, and that is the whole rule.
