@@ -179,22 +179,26 @@ const MenuWindow = () => {
           alignItems: 'center', margin: { bottom: 14 }
         }}
       >
+        {/*
+          The purse leads, because a shop that hides what you can spend is a shop you cannot
+          use, and the counter outside is suppressed while a window is open.
+
+          Everything here is measured against the window's inner width: four tabs, the purse
+          and the way out come to 1034 of the 1052 a full-width window gives, and the spacer
+          swallows what is left. Sized by hand rather than by flexGrow because these glyphs
+          need a box in pixels, and a box wider than the room it was given draws outside it.
+        */}
+        <UiEntity uiTransform={{ width: 220, height: TAP.height, justifyContent: 'center' }}>
+          <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
+            color={C.money} align="left" box={220} top={(TAP.height - TYPE.body) / 2} />
+        </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
-          <Btn key={o} width={165} right={TAP.gap} primary={activeTab() === o}
+          <Btn key={o} width={150} right={16} primary={activeTab() === o}
             onClick={() => chooseTab(o)}
             label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
         ))}
-        {/*
-          The purse, in the header, because a shop that hides what you can spend is a shop
-          you cannot use. The counter outside is suppressed while a window is open, and this
-          is where it belongs when one is: beside the tabs, in the same face and colour, so
-          it reads as the same number rather than a second one.
-        */}
-        <UiEntity uiTransform={{ flexGrow: 1, height: TAP.height, justifyContent: 'center' }}>
-          <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
-            color={C.money} align="center" box={300} top={(TAP.height - TYPE.body) / 2} />
-        </UiEntity>
-        <Btn label="CLOSE" width={180} onClick={closeMenu} />
+        <UiEntity uiTransform={{ flexGrow: 1, height: 1 }} />
+        <Btn label="CLOSE" width={150} onClick={closeMenu} />
       </UiEntity>
 
       <UiEntity
