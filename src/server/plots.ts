@@ -69,11 +69,23 @@ const dirtyBases = new Set<string>()
 const dirtyProfiles = new Set<string>()
 
 
+/**
+ * A name for a player, and a readable stand-in when the client has not published one.
+ *
+ * The fallback used to be the first eight characters of the wallet address, which is how a
+ * line of the event feed came to read "3vE5GGa3 took a Rare from ...". It is not wrong, it
+ * is unreadable, and it looks like a defect to anybody who does not know what an address
+ * is. Four characters after the word Guest say the same thing, tell the reader it is a
+ * placeholder, and stay short enough for a feed line.
+ */
 function nameOf(address: string): string {
   for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
-    if (id.address?.toLowerCase() === address) return AvatarBase.getOrNull(e)?.name ?? address.slice(0, 8)
+    if (id.address?.toLowerCase() !== address) continue
+    const n = AvatarBase.getOrNull(e)?.name
+    if (n !== undefined && n !== '') return n
+    break
   }
-  return address.slice(0, 8)
+  return `Guest ${address.slice(-4)}`
 }
 
 export function presents(): Set<string> {

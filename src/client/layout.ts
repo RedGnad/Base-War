@@ -145,6 +145,21 @@ export function noticeBand(blocks: Array<[string, boolean, number]>): Record<str
 }
 
 /**
+ * How much of the right edge to leave for the client, at the top of the screen.
+ *
+ * Written down from a photograph of the running mobile client rather than from this file's
+ * own earlier claim, which said the top right carried the profile and camera controls and
+ * was crowded. On the phone those four buttons sit at the top LEFT, in a row, and the top
+ * right is empty. On the desktop client there are two small icons in that corner, so the
+ * margin is sized for those.
+ *
+ * That corner matters because it is where a running objective belongs: eye-tracking work on
+ * game interfaces puts persistent readouts in the periphery and keeps the middle for the
+ * action, and an objective tracker is conventionally read top right.
+ */
+export const COIN_HAUT_DROIT = 96
+
+/**
  * Which button means what, and why the scene adds almost none of its own.
  *
  * The mobile client already draws a set of controls, and its documentation says what each

@@ -68,13 +68,14 @@ export const WelcomePanel = () => {
           <Glyphs value="BASE WAR" size={TYPE.title} color={C.bonus} />
         </UiEntity>
         <Label
+          uiTransform={{ width: '100%', height: 44 }}
           value="Your loot earns while it is on show. While it is on show, anyone can take it."
-          fontSize={TYPE.caption} color={C.dim} uiTransform={{ height: 44 }} />
+          fontSize={TYPE.caption} color={C.dim} />
 
         {LIGNES.map(([n, t]) => (
           <UiEntity key={n} uiTransform={{ height: 46, flexDirection: 'row', alignItems: 'center' }}>
             <Label value={n} fontSize={TYPE.label} color={C.bonus} uiTransform={{ width: 38 }} />
-            <Label value={t} fontSize={TYPE.label} color={C.name} />
+            <Label uiTransform={{ width: '100%' }} value={t} fontSize={TYPE.label} color={C.name} />
           </UiEntity>
         ))}
 

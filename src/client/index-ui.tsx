@@ -37,10 +37,10 @@ export const IndexContent = () => {
   return (
     <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_INDEX, flexDirection: 'column' }}>
       <Label
+        uiTransform={{ width: '100%', height: TITRE_H }}
         value={`COLLECTION  ${vus.size} / ${total}`}
         fontSize={TYPE.body}
-        color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ height: TITRE_H }} />
+        color={Color4.fromHexString('#ffd166ff')} />
 
       {RARITIES.map((r) => (
         <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
@@ -66,10 +66,10 @@ export const IndexContent = () => {
       ))}
 
       <Label
+        uiTransform={{ width: '100%', height: PIED_H }}
         value="rows: rarity   ·   columns: mutation"
         fontSize={TYPE.caption}
-        color={Color4.fromHexString('#7d8798ff')}
-        uiTransform={{ height: PIED_H }} />
+        color={Color4.fromHexString('#7d8798ff')} />
     </UiEntity>
   )
 }

@@ -103,19 +103,23 @@ function poserIcone(action: InputAction, nom: string | null): void {
       ]
 }
 
-let gachette: boolean | null = null
+let iconePrimaire: string | null = null
 
 /**
- * The central button becomes the trigger, and says so, for as long as the weapon is out.
+ * The picture on the central button, decided in one place.
  *
- * Its normal job is the contextual action, which has a word for itself on the line above the
- * controls. While aiming there is no contextual action worth taking, so the button changes
- * meaning, and a reticle is the one picture that means trigger without a caption.
+ * That button is whatever the game currently offers: the trigger while the weapon is out,
+ * banking the takings the rest of the time. Two different parts of the scene wanting to
+ * write to it is how a button ends up showing the wrong thing after a state it did not know
+ * about, so only the interface decides, once a frame, and everything else reads.
+ *
+ * Passing null puts the built-in "E" back, which is the right answer for the actions that
+ * carry a price or a count and are better said in words.
  */
-export function setGachette(actif: boolean): void {
-  if (gachette === actif) return
-  gachette = actif
-  poserIcone(InputAction.IA_PRIMARY, actif ? 'icon-fire' : null)
+export function setIconePrimaire(nom: string | null): void {
+  if (iconePrimaire === nom) return
+  iconePrimaire = nom
+  poserIcone(InputAction.IA_PRIMARY, nom)
 }
 
 let armeSortie: boolean | null = null

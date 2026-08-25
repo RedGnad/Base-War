@@ -8,9 +8,10 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, setReference } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
+import { setIconePrimaire } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
@@ -50,6 +51,15 @@ export function setupUi() {
     would have put on a button of its own, and F draws the weapon. One button, one meaning.
   */
   engine.addSystem(() => {
+    /*
+      What the central button is for, right now, drawn on the central button.
+
+      Aiming makes it the trigger. Otherwise it takes the picture of whatever action is on
+      offer, when that action has one, and falls back to the plain E for the actions whose
+      price or count has to be read rather than recognised.
+    */
+    setIconePrimaire(combatView.aiming ? 'icon-fire' : (nextAction()?.icon ?? null))
+
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
     if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
     if (modale()) return
@@ -210,7 +220,7 @@ function announceBackdrop(): Color4 {
  * when pressed is worse than an absent one, and the reference games put those states in
  * the world or in a line of text instead. What cannot be tapped now goes to `hint`.
  */
-function nextAction(): { label: string; action: () => void } | null {
+function nextAction(): { label: string; action: () => void; icon?: string } | null {
   if (slotView.active) return slotView.valid ? { label: 'PLACE HERE', action: placeHere } : null
   if (theftView.canRecover) return { label: 'RECOVER', action: recover }
   if (!theftView.basePosee) return { label: 'BUILD BASE', action: basculerPose }
@@ -242,7 +252,9 @@ function nextAction(): { label: string; action: () => void } | null {
     there is nothing more urgent, which is most of the time.
   */
   if (theftView.pending >= 1) {
-    return { label: `COLLECT ${formatIncome(theftView.pending)}`, action: collectPending }
+    // A picture, so the button says it and the bar above the controls can stay away. The
+    // amount is not lost: the counter states the pool, which is where a total belongs.
+    return { label: 'COLLECT', icon: 'icon-collect', action: collectPending }
   }
   return null
 }
@@ -319,7 +331,10 @@ function barre(): string {
   }
   if (intentEnAttente()) return 'queued, the game is still starting up'
   const a = nextAction()
-  return a === null ? '' : `E   ${a.label}`
+  // An action that put a picture on the button has already said itself; repeating it on a
+  // plate above the controls is the furniture this line exists to avoid.
+  if (a === null || a.icon !== undefined) return ''
+  return `E   ${a.label}`
 }
 
 function hint(): string {
@@ -374,7 +389,8 @@ function Crosshair() {
             justifyContent: 'center'
           }}
         >
-          <Label value={`${combatView.targetName.toUpperCase()}  ·  ${Math.round(combatView.targetDist)} m`}
+          <Label uiTransform={{ width: '100%' }} textWrap="nowrap"
+            value={`${combatView.targetName.toUpperCase()}  ·  ${Math.round(combatView.targetDist)} m`}
             fontSize={TYPE.label} color={Color4.fromHexString('#ff8b8bff')} textAlign="middle-center" />
         </UiEntity>
       )}
@@ -392,7 +408,6 @@ const uiComponent = () => {
   */
   const band = topBand([
     ['money', true, 104],
-    ['tuto', tutoView.etape < tutoView.total, 56],
     ['belt', beltView.annonce !== '', 58],
     ['feed', theftView.fil.length > 0, 62]
   ])
@@ -435,38 +450,37 @@ const uiComponent = () => {
     )}
 
     {/*
-      The current step, as short as it can be said.
+      The current step, in the top right corner.
 
-      It was a bar a thousand wide carrying the step, its title and a line of help, which is
-      most of the width of a phone spent on a caption. The help was the expensive half and
-      the redundant one: it explained the action that the button hint already names at the
-      moment the player can take it. What is left is the step and its title, on a plate that
-      hugs them.
+      It was centred at the top, directly under the money, which put a running objective in
+      the middle of the screen: the one place eye-tracking work on game interfaces says to
+      keep clear, because it is where the player is looking. An objective tracker is read in
+      the periphery and is conventionally in that corner.
 
-      Centred without knowing its own width: a transparent full-width row does the centring,
-      so the plate inside is free to be exactly as wide as its text. Computing a margin from
-      a width is only possible while the width is fixed, which is what forced the fixed width
-      in the first place.
+      The corner is genuinely free here, which is not what this scene assumed. A photograph
+      of the mobile client shows its four buttons in a row at the top LEFT with nothing at
+      the top right; the desktop client has two small icons there, and the margin clears them.
+      It is also no longer part of the stacked top band, since it now occupies a corner
+      nothing else competes for.
     */}
-    {hud() && tutoView.etape < tutoView.total && band.tuto >= 0 && (
-      <Centre top={band.tuto}>
-        <UiEntity
-          uiTransform={{
-            height: 56, padding: { left: 22, right: 22 },
-            flexDirection: 'row', alignItems: 'center'
-          }}
-          uiBackground={SKIN.panel}
-        >
-          <Label
-            value={`STEP ${tutoView.etape + 1}/${tutoView.total}`}
-            fontSize={TYPE.caption} color={C.dim}
-            uiTransform={{ height: 34, margin: { right: 16 } }} textWrap="nowrap" />
-          <Label
-            value={ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}
-            fontSize={TYPE.label} color={C.bonus}
-            uiTransform={{ height: 34 }} textWrap="nowrap" />
-        </UiEntity>
-      </Centre>
+    {hud() && tutoView.etape < tutoView.total && (
+      <UiEntity
+        uiTransform={{
+          height: 52, positionType: 'absolute', padding: { left: 20, right: 20 },
+          position: { top: BAND.top, right: COIN_HAUT_DROIT },
+          flexDirection: 'row', alignItems: 'center'
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label
+          value={`STEP ${tutoView.etape + 1}/${tutoView.total}`}
+          fontSize={TYPE.caption} color={C.dim}
+          uiTransform={{ height: 32, margin: { right: 14 } }} textWrap="nowrap" />
+        <Label
+          value={ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}
+          fontSize={TYPE.label} color={C.bonus}
+          uiTransform={{ height: 32 }} textWrap="nowrap" />
+      </UiEntity>
     )}
 
 
@@ -496,6 +510,8 @@ const uiComponent = () => {
           size={TYPE.title} color={C.money} align="center" box={504} />
       </UiEntity>
       <Label
+        uiTransform={{ width: '100%', height: 32 }}
+        textWrap="nowrap"
         value={
           !view.serverAlive
             ? (view.serverBooting
@@ -510,10 +526,19 @@ const uiComponent = () => {
             furniture for a figure that only qualifies the income printed directly above it.
             Read here it needs no label at all: the rate is shown, and what is lifting it.
           */
+          /*
+            Two figures at most, because the plate is five hundred and twenty wide and this
+            line had grown to four. With no width and no wrapping rule a label takes its
+            natural size and simply leaves its parent, which is how the rate, the pool, the
+            crowd bonus and the sentry count ended up printed across the sky and over the
+            line below. The width above now pins it; keeping it short is what makes the pin
+            unnecessary.
+
+            The rate is what the base does, the pool is what is owed: everything else is
+            either on a button or in the menu.
+          */
           : `+${formatIncome(theftView.income)}/s`
-            + (theftView.pending >= 1 ? `  ·  ${formatIncome(theftView.pending)} to collect` : '')
-            + (theftView.prime > 0 ? `  ·  +${Math.round(theftView.prime * 100)}% crowd` : '')
-            + (theftView.sentries > 0 ? `  ·  sentry ${theftView.sentries}` : '')
+            + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} banked` : '')
         }
         fontSize={TYPE.label}
         color={
@@ -535,7 +560,8 @@ const uiComponent = () => {
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
       >
         {theftView.fil.slice(0, 3).map((l, i) => (
-          <Label key={i} value={l} fontSize={TYPE.caption} color={Color4.fromHexString('#b8c2d0ff')} />
+          <Label key={i} uiTransform={{ width: '100%' }} textWrap="nowrap"
+            value={l} fontSize={TYPE.caption} color={Color4.fromHexString('#b8c2d0ff')} />
         ))}
       </UiEntity>
     )}
@@ -625,10 +651,12 @@ const uiComponent = () => {
         }}
       >
         <Label
+          uiTransform={{ width: '100%' }}
           value={itemName(boxView.resultat, boxView.resultatMutation)}
           fontSize={TYPE.title}
           color={Color4.fromHexString(itemColor(boxView.resultat, boxView.resultatMutation) + 'ff')} />
         <Label
+          uiTransform={{ width: '100%' }}
           value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}
           fontSize={TYPE.label}
           color={boxView.state === 'expose' ? C.money : C.bonus} />
@@ -644,7 +672,7 @@ const uiComponent = () => {
         }}
         uiBackground={SKIN.panel}
       >
-        <Label value="place your base first: crates are opened at your base" fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')} />
+        <Label uiTransform={{ width: '100%' }} value="place your base first: crates are opened at your base" fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')} />
       </UiEntity>
     )}
 
@@ -658,7 +686,7 @@ const uiComponent = () => {
         }}
         uiBackground={{ color: Color4.create(0.05, 0.12, 0.05, 0.85) }}
       >
-        <Label value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
+        <Label uiTransform={{ width: 400 }} value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
         <Button
           uiTransform={{ width: 110, height: 34 }}
           value="SELL IT" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.caption}
@@ -675,7 +703,7 @@ const uiComponent = () => {
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
       >
-        <Label value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} />
+        <Label uiTransform={{ width: '100%' }} textWrap="nowrap" value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} />
       </UiEntity>
     )}
 
@@ -715,7 +743,7 @@ const uiComponent = () => {
         }}
         uiBackground={SKIN.panel}
       >
-        <Label value={theftView.alert} fontSize={TYPE.title} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
+        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.title} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}
 
@@ -734,7 +762,7 @@ const uiComponent = () => {
           justifyContent: 'center', alignItems: 'center'
         }}
       >
-        <Label value={hint()} fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" />
+        <Label uiTransform={{ width: '100%' }} value={hint()} fontSize={TYPE.caption} color={C.dim} textAlign="middle-center" />
       </UiEntity>
     )}
 

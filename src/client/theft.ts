@@ -73,10 +73,10 @@ export function setupTheft(): void {
 
   room.onMessage('stolen', (d) => {
     theftView.stealing = false
-    pushToFeed(`${d.byName} a pris un ${rarity(d.rarity).name} a ${d.fromName}`)
+    pushToFeed(`${d.byName} took a ${rarity(d.rarity).name} from ${d.fromName}`)
   })
   room.onMessage('reclaimed', (d) => {
-    pushToFeed(`${d.byName} a repris son ${rarity(d.rarity).name} a ${d.fromName}`)
+    pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name} from ${d.fromName}`)
   })
   room.onMessage('sentryBlocked', (d) => {
     applyFreeze(d.gelMs)
