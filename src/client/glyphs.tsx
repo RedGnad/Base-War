@@ -16,8 +16,18 @@ import { C } from './theme'
  * the game's face, the title and the money, and not for prose. Everything else stays on
  * the platform font, which is perfectly readable at the sizes the type scale sets.
  *
- * The glyphs are baked white, so `color` tints them and one atlas serves every colour in
- * the palette.
+ * There is one atlas per colour, and that is not a choice.
+ *
+ * The obvious build is a white atlas tinted at render time by `uiBackground.color`, and it is
+ * what this file did. On a real handset the tint never arrives: a photograph of the running
+ * game shows the platform's own Labels rendering their amber and their grey exactly as asked,
+ * while every glyph of ours comes out the colour of the file whatever colour it was given.
+ * White before a gradient was baked in, grey after, which is what a player saw and reported.
+ *
+ * So the colour lives in the file. The shapes are identical across the set and PNG compresses
+ * a flat hue to nearly nothing, so six files cost 412 KB against a bundle of seven megabytes.
+ * A role is asked for by name, which is also a better interface than a raw colour: it is the
+ * palette's meaning rather than one of its values.
  */
 
 const CELL = 1 / ATLAS.cols
@@ -63,14 +73,15 @@ export function glyphWidth(value: string, size: number): number {
  * survive both. An offset dark copy does what an outline would if the interface had one: it
  * costs one more element per character and no screen at all.
  */
-const OMBRE = Color4.create(0, 0, 0, 0.55)
+export type Role = 'money' | 'bonus' | 'name' | 'danger' | 'ink'
+
 /** Offset in proportion to the letters, so one number does not wear another's shadow. */
 const decalage = (size: number): number => Math.min(5, Math.max(2, Math.round(size * 0.055)))
 
 export const Glyphs = (props: {
   value: string
   size: number
-  color?: Color4
+  role?: Role
   align?: 'left' | 'center' | 'right'
   box?: number
   top?: number
@@ -83,7 +94,7 @@ export const Glyphs = (props: {
   const align = props.align ?? 'left'
   const start = align === 'center' ? (box - total) / 2 : align === 'right' ? box - total : 0
 
-  const couche = (teinte: Color4, dx: number, dy: number, cle: string) => {
+  const couche = (fichier: string, dx: number, dy: number, cle: string) => {
     let x = start
     const out = []
     for (let i = 0; i < text.length; i++) {
@@ -98,8 +109,7 @@ export const Glyphs = (props: {
               position: { left: x - (size - ADVANCE[ch] * size) / 2 + dx, top: dy }
             }}
             uiBackground={{
-              color: teinte,
-              texture: { src: 'assets/ui/font.png' },
+              texture: { src: `assets/ui/font-${fichier}.png` },
               textureMode: 'stretch',
               uvs: uvsFor(idx)
             }} />
@@ -110,9 +120,10 @@ export const Glyphs = (props: {
     return out
   }
 
+  const role = props.role ?? 'name'
   const parts = props.shadow === true
-    ? [...couche(OMBRE, decalage(size), decalage(size), 's'), ...couche(props.color ?? C.name, 0, 0, 'g')]
-    : couche(props.color ?? C.name, 0, 0, 'g')
+    ? [...couche('shadow', decalage(size), decalage(size), 's'), ...couche(role, 0, 0, 'g')]
+    : couche(role, 0, 0, 'g')
 
   return (
     <UiEntity

@@ -55,7 +55,7 @@ export const PrestigePanel = () => {
         uiBackground={SKIN.panel}
       >
         <UiEntity uiTransform={{ width: '100%', height: 56 }}>
-          <Glyphs value="PRESTIGE" size={TYPE.title} color={C.bonus} />
+          <Glyphs value="PRESTIGE" size={TYPE.title} role="bonus" />
         </UiEntity>
 
         <Label value="UNLOCKS" fontSize={TYPE.label} color={C.name}
@@ -74,7 +74,7 @@ export const PrestigePanel = () => {
           uiBackground={SKIN.inset}
         >
           <Glyphs value={formatIncome(cost)} size={TYPE.title} align="center" box={560}
-            top={(78 - TYPE.title) / 2} color={affordable ? C.money : C.danger} />
+            top={(78 - TYPE.title) / 2} role={affordable ? 'money' : 'danger'} />
         </UiEntity>
 
         <Label value="this resets your coins and everything on your base"

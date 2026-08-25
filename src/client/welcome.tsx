@@ -65,7 +65,7 @@ export const WelcomePanel = () => {
         }}
       >
         <UiEntity uiTransform={{ width: '100%', height: 54 }}>
-          <Glyphs value="BASE WAR" size={TYPE.title} color={C.bonus} />
+          <Glyphs value="BASE WAR" size={TYPE.title} role="bonus" />
         </UiEntity>
         <Label
           uiTransform={{ width: '100%', height: 44 }}

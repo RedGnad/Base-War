@@ -42,7 +42,7 @@ export const Btn = (props: {
       <Glyphs
         value={props.label} size={size} align="center" box={props.width}
         top={(TAP.height - size) / 2}
-        color={props.primary === true ? C.ink : C.name} />
+        role={props.primary === true ? 'ink' : 'name'} />
     </UiEntity>
   )
 }

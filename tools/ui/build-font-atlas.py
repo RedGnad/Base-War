@@ -117,22 +117,51 @@ def main():
     #
     # Only the colour is touched. The alpha is left exactly as drawn, so the shape, and the
     # proof that no ink crosses a cell boundary, are unchanged.
-    HAUT, BAS = 1.0, 0.68
+    # 0.80: enough gradient to read as one, not enough to change the hue.
+    HAUT, BAS = 1.0, 0.80
     px = atlas.load()
     encre_y0 = baseline + encre_haut
     encre_y1 = baseline + encre_bas
-    for cy in range(ROWS):
-        for y in range(CELL):
-            t = (y - encre_y0) / max(1.0, encre_y1 - encre_y0)
-            f = HAUT + (BAS - HAUT) * min(1.0, max(0.0, t))
-            v = int(round(255 * f))
-            gy = cy * CELL + y
-            for gx in range(COLS * CELL):
-                r, g, b, a = px[gx, gy]
-                if a:
-                    px[gx, gy] = (v, v, v, a)
 
-    atlas.save(os.path.join(OUT, 'font.png'))
+    # One file per colour, because the tint never arrives.
+    #
+    # The interface asks for these glyphs in five colours by setting `uiBackground.color`
+    # over the texture. On a real handset that tint is simply not applied: a photograph of
+    # the running game shows platform Labels rendering their amber and their grey correctly
+    # while every glyph of ours, whatever colour it was given, comes out the colour of the
+    # file. It was white before this ramp existed and grey after, which is exactly what a
+    # player reported and exactly what an untinted texture would do.
+    #
+    # So the colour goes in the file. The shapes are identical across the set, only the RGB
+    # differs, and PNG compresses a flat hue to almost nothing, so six files cost barely more
+    # than one. The shadow is a sixth: an offset copy needs to be black, and black is a
+    # colour like any other once tinting is off the table.
+    ROLES = {
+        'money': (0xff, 0xd1, 0x66),
+        'bonus': (0xff, 0x8a, 0x3d),
+        'name': (0xff, 0xff, 0xff),
+        'danger': (0xff, 0x5c, 0x5c),
+        'ink': (0x0b, 0x1a, 0x0f),
+        'shadow': (0, 0, 0)
+    }
+    alphas = [[px[gx, gy][3] for gx in range(COLS * CELL)] for gy in range(ROWS * CELL)]
+    total = 0
+    for role, (rr, gg, bb) in ROLES.items():
+        img = Image.new('RGBA', (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
+        q = img.load()
+        for gy in range(ROWS * CELL):
+            t = (gy % CELL - encre_y0) / max(1.0, encre_y1 - encre_y0)
+            f = HAUT + (BAS - HAUT) * min(1.0, max(0.0, t))
+            r2, g2, b2 = int(rr * f), int(gg * f), int(bb * f)
+            ligne = alphas[gy]
+            for gx in range(COLS * CELL):
+                a = ligne[gx]
+                if a:
+                    q[gx, gy] = (r2, g2, b2, a)
+        nom = 'font-%s.png' % role
+        img.save(os.path.join(OUT, nom))
+        total += os.path.getsize(os.path.join(OUT, nom))
+    print('%d atlas colores, %.0f Ko au total' % (len(ROLES), total / 1024))
 
     # The metrics go out as TypeScript rather than JSON: the scene bundle has no loader to
     # argue with, and the table is small enough that inlining it costs nothing.
@@ -142,9 +171,8 @@ def main():
     with open(src, 'w') as f:
         f.write(body)
 
-    size = os.path.getsize(os.path.join(OUT, 'font.png'))
-    print('font.png  %d x %d  %d B  face %d px, ink %.1f..%.1f in a %d cell'
-          % (COLS * CELL, ROWS * CELL, size, taille,
+    print('%d x %d  face %d px, ink %.1f..%.1f in a %d cell'
+          % (COLS * CELL, ROWS * CELL, taille,
              baseline + encre_haut, baseline + encre_bas, CELL))
     print('src/client/font-metrics.ts  %d glyphs' % len(GLYPHS))
 

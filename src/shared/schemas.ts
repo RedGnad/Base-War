@@ -508,7 +508,17 @@ export { OFFLINE_CAP_PRODUCTION_S }
 
 export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
 
-export const DAILY_REWARDS = [0, 0, 1, 1, 2, 2, 3] as const   // type de crate offerte
+/**
+ * The seven days, and one of each crate the game has.
+ *
+ * It ran Basic, Basic, Good, Good, Rare, Rare, Epic: four of the seven kinds, each shown
+ * twice, and none of the themed ones. The themed crates are the whole reason the belt is
+ * worth watching, so a week of rewards that never shows one is a week that says the game is
+ * smaller than it is. Ordered by price, which puts Gold second because it costs less than a
+ * Good Crate, and leaves the Cursed Crate, the rarest thing on the belt at one percent, as
+ * the reason to come back a seventh time.
+ */
+export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
 
 export const RESELL_SECONDS = 30
 

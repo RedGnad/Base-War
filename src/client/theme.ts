@@ -55,13 +55,19 @@ export const TYPE = {
 /**
  * Colour carries meaning, and the same meaning everywhere.
  *
- * Four roles, no decorative exceptions: money is green, a bonus or a warning is amber, a
- * name is white, and anything destructive or refused is red. A player who learns the code
- * once reads any new panel without being taught it.
+ * Five roles, no decorative exceptions: money is gold, the thing to press is green, a
+ * warning is orange, a name is white, and anything destructive or refused is red. A player
+ * who learns the code once reads any new panel without being taught it.
+ *
+ * Money was green, and a coin lying on the ground has always been gold: the same object in
+ * two colours, which is why the counter read as neither and a player called it grey. It takes
+ * the colour it already has in the world. Green keeps a job of its own, on the primary button
+ * skin, where it means the thing to press. And the warning hue moved off amber, which sat too
+ * close to the new gold to be told apart at a glance.
  */
 export const HUE = {
-  money: '#6ef07a',
-  bonus: '#ffb340',
+  money: '#ffd166',
+  bonus: '#ff8a3d',
   name: '#ffffff',
   danger: '#ff5c5c',
   dim: '#9aa3ad'

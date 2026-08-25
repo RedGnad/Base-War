@@ -159,6 +159,17 @@ const MenuWindow = () => {
     short window instead of a tall one with a hole in it, which is the other half of the
     complaint: a card for three objectives should not take over the screen.
   */
+  /*
+    The header, divided out of the width this window really has rather than the one it wanted.
+    Five gaps: one after the purse and one after each of the first three tabs, plus the one
+    before CLOSE, which is what the fourth tab's own margin provides.
+  */
+  const dedans = strip(MENU_W).width - MENU_PAD * 2
+  const ecart = Math.round(dedans * 0.018)
+  const bourse = Math.round(dedans * 0.19)
+  const fermer = Math.round(dedans * 0.15)
+  const onglet = Math.floor((dedans - bourse - fermer - ecart * 5) / 4)
+
   const besoin = questsView.open ? HAUTEUR_GOALS
     : indexView.open ? HAUTEUR_INDEX
     : shopView.open ? HAUTEUR_SHOP
@@ -183,25 +194,25 @@ const MenuWindow = () => {
         }}
       >
         {/*
-          The purse leads, because a shop that hides what you can spend is a shop you cannot
-          use, and the counter outside is suppressed while a window is open.
+          Every width here is a share of the window that actually got drawn.
 
-          Everything here is measured against the window's inner width: four tabs, the purse
-          and the way out come to 1034 of the 1052 a full-width window gives, and the spacer
-          swallows what is left. Sized by hand rather than by flexGrow because these glyphs
-          need a box in pixels, and a box wider than the room it was given draws outside it.
+          They were fixed pixel sizes adding up to 1034, checked against the 1052 a full-width
+          window gives. But `strip` trims that window on a narrow phone, and a row of fixed
+          children in a flex line does not shrink to fit: it overflows. A photograph of the
+          real thing showed the four tabs touching each other and CLOSE hanging off the right
+          edge of its own panel. Shares of the measured width cannot do that at any size, and
+          the glyphs still get their box in pixels, which is the one thing they need.
         */}
-        <UiEntity uiTransform={{ width: 220, height: TAP.height, justifyContent: 'center' }}>
+        <UiEntity uiTransform={{ width: bourse, height: TAP.height, justifyContent: 'center' }}>
           <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
-            color={C.money} align="left" box={220} top={(TAP.height - TYPE.body) / 2} />
+            role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
         </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
-          <Btn key={o} width={150} right={16} primary={activeTab() === o}
+          <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}
             onClick={() => chooseTab(o)}
             label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
         ))}
-        <UiEntity uiTransform={{ flexGrow: 1, height: 1 }} />
-        <Btn label="CLOSE" width={150} onClick={closeMenu} />
+        <Btn label="CLOSE" width={fermer} onClick={closeMenu} />
       </UiEntity>
 
       <UiEntity
@@ -623,7 +634,7 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
           value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-          size={TYPE.hero} color={C.money} align="center" box={strip(560).width} shadow />
+          size={TYPE.hero} role="money" align="center" box={strip(560).width} shadow />
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
@@ -632,10 +643,10 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: 34 }}>
         <Glyphs
           size={TYPE.label} align="center" box={strip(560).width} shadow
-          color={
-            !view.serverAlive ? C.bonus
-            : (!theftView.basePosee || theftView.income === 0) ? C.bonus
-            : C.money
+          role={
+            (!view.serverAlive || !theftView.basePosee || theftView.income === 0)
+              ? 'bonus'
+              : 'money'
           }
           value={
             !view.serverAlive
