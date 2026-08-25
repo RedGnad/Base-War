@@ -4,7 +4,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem,
   Tween, TweenSequence, TweenLoop, EasingFunction
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, slotPosition,
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
@@ -36,13 +36,19 @@ function goUpOneFloor(v: View): void {
   })
 }
 import { steal, sell, monAdresseClient, moveItemBetweenSlots, gift, alerter } from './theft'
+import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity }
 type View = {
-  plinth: Entity; label: Entity; door: Entity
+  plinth: Entity; label: Entity; gain: Entity; door: Entity
   floors: Floor[]; items: Entity[]; sentry: Entity; ascenseur: Entity; signature: string; ownerId: string
 }
+
+/** World-label colours, built here rather than read from the shared token object: that one
+ * is constructed at module load and a system can run before its module was touched. */
+const NOIR = Color3.create(0, 0, 0)
+const VERT = Color4.fromHexString(HUE.money + 'ff')
 
 const GRIS = '#9aa3b0ff'
 const GRIS_CLAIR = '#b6bec9ff'
@@ -185,10 +191,22 @@ function createView(x: number, z: number): View {
     emissiveIntensity: 1.6, metallic: 0.8, roughness: 0.2
   })
 
+  // A base reads like a belt crate: what it earns in green above who owns it in white,
+  // both outlined so they hold over sky, grass or a wall. One TextShape carries one colour,
+  // which is why this is two entities and not two lines of one.
+  const gain = engine.addEntity()
+  Transform.create(gain, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.62, z), scale: Vector3.create(0.6, 0.6, 0.6) })
+  Billboard.create(gain, {})
+  TextShape.create(gain, {
+    text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR
+  })
+
   const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.0, z), scale: Vector3.create(0.6, 0.6, 0.6) })
   Billboard.create(label, {})
-  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
+  TextShape.create(label, {
+    text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
+  })
 
   const items: Entity[] = []
   for (let k = 0; k < PLOT_MAX_ITEMS; k++) {
@@ -208,12 +226,13 @@ function createView(x: number, z: number): View {
     })
     items.push(o)
   }
-  return { plinth, label, door, sentry, ascenseur, floors, items, signature: '', ownerId: '' }
+  return { plinth, label, gain, door, sentry, ascenseur, floors, items, signature: '', ownerId: '' }
 }
 
 function destroyView(v: View): void {
   engine.removeEntity(v.plinth)
   engine.removeEntity(v.label)
+  engine.removeEntity(v.gain)
   engine.removeEntity(v.door)
   engine.removeEntity(v.sentry)
   engine.removeEntity(v.ascenseur)
@@ -315,6 +334,15 @@ export function setupPlots(): void {
         }
         txt.text = `${p.ownerName}${state}${guard}${ledger}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+
+        // What the base earns, read off its own items, so a passer-by can price a target
+        // without opening anything.
+        const tg = TextShape.getMutableOrNull(v.gain)
+        if (tg !== null) {
+          let perSecond = 0
+          for (const code of p.items) perSecond += itemIncome(code, PRODUCTION_PER_RARITY)
+          tg.text = perSecond > 0 ? `+${formatIncome(perSecond)}/s` : ''
+        }
       }
       Material.setPbrMaterial(v.plinth, {
         albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
