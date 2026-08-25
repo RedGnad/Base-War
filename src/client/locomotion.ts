@@ -76,18 +76,43 @@ export function setupTouchHud(): void {
   TouchScreenControls.hide([
     InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])
+  poserIcone(InputAction.IA_ACTION_3, 'icon-menu')
+  setArmeIcone(false)
+  console.log('[CLIENT] HUD tactile: 5 boutons directs, menu sur IA_ACTION_3, arme sur IA_SECONDARY')
+}
+
+/** Put one of our images on a client button, replacing whatever glyph it came with. */
+function poserIcone(action: InputAction, nom: string): void {
   const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
-  if (ctrl !== null) {
-    ctrl.touchInputs = [
-      ...ctrl.touchInputs.filter((t) => t.inputAction !== InputAction.IA_ACTION_3),
-      {
-        inputAction: InputAction.IA_ACTION_3,
-        hide: false,
-        icon: { tex: { $case: 'texture', texture: { src: 'assets/ui/icon-menu.png' } } }
-      }
-    ]
-  }
-  console.log('[CLIENT] HUD tactile: 5 boutons directs, menu sur IA_ACTION_3')
+  if (ctrl === null) return
+  ctrl.touchInputs = [
+    ...ctrl.touchInputs.filter((t) => t.inputAction !== action),
+    {
+      inputAction: action,
+      hide: false,
+      icon: { tex: { $case: 'texture', texture: { src: `assets/ui/${nom}.png` } } }
+    }
+  ]
+}
+
+let armeSortie: boolean | null = null
+
+/**
+ * What F means right now, said on F.
+ *
+ * The scene used to print "F to draw" on a bar across the bottom of the screen, which is
+ * furniture spent on a caption for a button that was already there. A control can carry its
+ * own meaning: a pistol when the weapon is holstered, the same pistol struck through once it
+ * is out. Nothing on screen, and the answer is under the thumb that needs it.
+ *
+ * Guarded on the value because this is called from the aiming toggle: rewriting the
+ * component with an identical value every time would put a network update on every change
+ * of mind.
+ */
+export function setArmeIcone(sortie: boolean): void {
+  if (armeSortie === sortie) return
+  armeSortie = sortie
+  poserIcone(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')
 }
 
 export function reportPlatform(): void {

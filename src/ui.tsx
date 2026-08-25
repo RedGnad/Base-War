@@ -97,6 +97,27 @@ export function setupUi() {
  * ever agree on where they are and how big they are, and the controls that steer them can
  * no longer land on top of them.
  */
+/**
+ * A full-width row whose only job is to centre one thing of unknown width.
+ *
+ * Everything else in this interface is placed by computing a margin of minus half its
+ * width, which works and is exact, and which quietly requires every plate to declare a
+ * width it may not need. A line of text that changes with the game does not have a width to
+ * declare, and padding it out to a fixed one is how a two-word hint came to take a third of
+ * a phone screen. This lets the layout do the centring instead of the arithmetic.
+ */
+const Centre = (props: { top?: number; bottom?: number; children?: unknown }) => (
+  <UiEntity
+    uiTransform={{
+      width: '100%', positionType: 'absolute',
+      position: props.top !== undefined ? { top: props.top, left: 0 } : { bottom: props.bottom ?? 0, left: 0 },
+      justifyContent: 'center', alignItems: 'center'
+    }}
+  >
+    {props.children}
+  </UiEntity>
+)
+
 const MENU_W = 1088
 
 const MenuWindow = () => {
@@ -238,6 +259,22 @@ function hud(): boolean {
   return !modale() && !menuView.open
 }
 
+/**
+ * The one line above the controls, or nothing at all.
+ *
+ * Kept short on purpose: it is read out of the corner of the eye, and a sentence read that
+ * way is a sentence not read. What the weapon button means is no longer in here, because it
+ * is drawn on the weapon button.
+ */
+function barre(): string {
+  if (combatView.aiming) {
+    return combatView.targetName !== '' ? `FIRE on ${combatView.targetName}` : 'aim at someone'
+  }
+  if (intentEnAttente()) return 'queued, the game is still starting up'
+  const a = nextAction()
+  return a === null ? '' : `E   ${a.label}`
+}
+
 function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
@@ -350,30 +387,39 @@ const uiComponent = () => {
     </UiEntity>
     )}
 
+    {/*
+      The current step, as short as it can be said.
+
+      It was a bar a thousand wide carrying the step, its title and a line of help, which is
+      most of the width of a phone spent on a caption. The help was the expensive half and
+      the redundant one: it explained the action that the button hint already names at the
+      moment the player can take it. What is left is the step and its title, on a plate that
+      hugs them.
+
+      Centred without knowing its own width: a transparent full-width row does the centring,
+      so the plate inside is free to be exactly as wide as its text. Computing a margin from
+      a width is only possible while the width is fixed, which is what forced the fixed width
+      in the first place.
+    */}
     {hud() && tutoView.etape < tutoView.total && band.tuto >= 0 && (
-      <UiEntity
-        uiTransform={{
-          width: strip(1000).width, height: 56, positionType: 'absolute',
-          position: { top: band.tuto, left: '50%' }, margin: strip(1000).margin,
-          flexDirection: 'row', alignItems: 'center', padding: 12
-        }}
-        uiBackground={SKIN.panel}
-      >
-        {/*
-          Anchored right, not left. The left edge belongs to the Decentraland client: its
-          own icon rail, its place card and the chat all live there, and on a phone the
-          interactable inset reserves it. Sitting there put this panel under the client's
-          own furniture, which a capture of the running game showed plainly.
-        */}
-        <Label
-          value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
-          fontSize={TYPE.label} color={C.bonus}
-          uiTransform={{ width: 360, height: 34 }} textAlign="middle-left" textWrap="nowrap" />
-        <Label
-          value={ETAPES_TEXTE[tutoView.etape]?.aide ?? ''}
-          fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ width: 600, height: 34 }} textAlign="middle-left" textWrap="nowrap" />
-      </UiEntity>
+      <Centre top={band.tuto}>
+        <UiEntity
+          uiTransform={{
+            height: 56, padding: { left: 22, right: 22 },
+            flexDirection: 'row', alignItems: 'center'
+          }}
+          uiBackground={SKIN.panel}
+        >
+          <Label
+            value={`STEP ${tutoView.etape + 1}/${tutoView.total}`}
+            fontSize={TYPE.caption} color={C.dim}
+            uiTransform={{ height: 34, margin: { right: 16 } }} textWrap="nowrap" />
+          <Label
+            value={ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}
+            fontSize={TYPE.label} color={C.bonus}
+            uiTransform={{ height: 34 }} textWrap="nowrap" />
+        </UiEntity>
+      </Centre>
     )}
 
 
@@ -645,37 +691,33 @@ const uiComponent = () => {
     )}
 
     {/*
-      What the buttons do, said in one line, exactly where the documentation puts context
-      hints: centre bottom, just above the client's own interaction button. No control of
-      ours sits down there any more, because every one of them found a native button.
+      What E does right now, and nothing else.
+
+      This was a fixed plate six hundred and twenty wide holding two captions, "E BUILD
+      BASE" and "F to draw", parked above the client's buttons. Two things were wrong with
+      it. Half of it captioned a control that can carry its own meaning, and now does: F
+      wears a pistol, struck through once the weapon is out. And a plate with a fixed width
+      is a block of furniture whatever it has to say, which is how a single short word came
+      to occupy a third of the screen.
+
+      What is left hugs its text and appears only when there is something to say. Eye
+      tracking on game interfaces is blunt about this: players hold their gaze on the action
+      and read the rest in peripheral vision, so anything permanent near the middle is paid
+      for out of the part of the screen they are actually using.
     */}
-    {hud() && !slotView.active && (
-      <UiEntity
-        uiTransform={{
-          width: strip(620).width, height: 52, positionType: 'absolute',
-          position: { bottom: row(0), left: '50%' }, margin: strip(620).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={SKIN.panel}
-      >
-        <Label
-          value={
-            combatView.aiming
-              ? (combatView.targetName !== ''
-                  ? `FIRE on ${combatView.targetName}   ·   F to holster`
-                  : 'aim at someone   ·   F to holster')
-              /*
-                A press that cannot reach the server yet answers here, where the player
-                was looking when they pressed, and not only in the counter at the top of
-                the screen. Feedback that appears somewhere else is feedback the player
-                does not connect to what they did, which is the whole complaint against a
-                held action: it reads as a dead button.
-              */
-              : intentEnAttente() ? 'queued, the game is still starting up'
-              : (() => { const a = nextAction(); return a === null ? 'F to draw' : `E   ${a.label}   ·   F to draw` })()
-          }
-          fontSize={TYPE.label} color={combatView.aiming ? C.danger : C.name} textAlign="middle-center" />
-      </UiEntity>
+    {hud() && !slotView.active && barre() !== '' && (
+      <Centre bottom={row(0)}>
+        <UiEntity
+          uiTransform={{
+            height: 52, padding: { left: 26, right: 26 },
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={SKIN.panel}
+        >
+          <Label value={barre()} fontSize={TYPE.label}
+            color={combatView.aiming ? C.danger : C.name} textWrap="nowrap" />
+        </UiEntity>
+      </Centre>
     )}
 
   </UiEntity>

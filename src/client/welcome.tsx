@@ -3,6 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
+import { strip } from './layout'
 
 export const welcomeView = { open: true }
 export function closeWelcome(): void { welcomeView.open = false }
@@ -36,14 +37,32 @@ const LIGNES: Array<[string, string]> = [
 export const WelcomePanel = () => {
   if (!welcomeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   return (
+    /*
+      Full bleed, and no veil behind it.
+
+      This was a panel floating on a sixty-two percent black wash of the whole screen. On a
+      desktop the wash covers everything and reads as a dimming; on a phone the renderer
+      insets the canvas by the device's safe margins, so the wash stops short of the edges
+      and turns into a second dark rectangle around the first. That is what looked like an
+      extra panel, and it was only ever visible on a handset because desktop insets are zero.
+
+      A wash that cannot reach the edges is not worth keeping, and a first screen has no
+      reason to be a window: it is the only thing there is at that moment. So it fills what
+      it is given, and the content inside is what gets a width.
+    */
     <UiEntity
-      uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.62) }}
+      uiTransform={{
+        width: '100%', height: '100%', positionType: 'absolute',
+        justifyContent: 'center', alignItems: 'center'
+      }}
+      uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.98) }}
       onMouseDown={closeWelcome}
     >
       <UiEntity
-        uiTransform={{ width: 900, height: 560, flexDirection: 'column', padding: 24, justifyContent: 'space-between' }}
-        uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.97) }}
+        uiTransform={{
+          width: strip(900).width, height: 560,
+          flexDirection: 'column', padding: 24, justifyContent: 'space-between'
+        }}
       >
         <UiEntity uiTransform={{ width: '100%', height: 54 }}>
           <Glyphs value="BASE WAR" size={TYPE.title} color={C.bonus} />

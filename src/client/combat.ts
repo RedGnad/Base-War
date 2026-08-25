@@ -12,7 +12,7 @@ import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../sh
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
-import { setAiming } from './locomotion'
+import { setAiming, setArmeIcone } from './locomotion'
 
 /**
  * The pistol, client side.
@@ -387,6 +387,7 @@ function degainer(on: boolean): void {
   if (combatView.aiming === on) return
   combatView.aiming = on
   setAiming(on)
+  setArmeIcone(on)
   if (on) enJoue.add(moi)
   else enJoue.delete(moi)
   void room.send('aim', { on })
