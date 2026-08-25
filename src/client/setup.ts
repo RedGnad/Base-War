@@ -25,6 +25,17 @@ export const view = {
   lastBeatValue: 0,
   lastBeatSeenAt: 0,
   penaltyActive: false,
+  /**
+   * True until the very first heartbeat is seen, false ever after.
+   *
+   * A server that has never spoken is booting; one that spoke and went quiet has died.
+   * They look identical in a boolean and read completely differently to a player: the
+   * platform only runs a scene's server while someone is in it, keeps it about two minutes
+   * after the last player leaves, then stops it, so the next visitor waits roughly fifteen
+   * seconds for a cold start. Telling that visitor the server is OFFLINE says the game is
+   * broken when it is merely starting.
+   */
+  serverBooting: true,
   floors: 1
 }
 
@@ -79,6 +90,7 @@ export function startClient(): void {
       changements += 1
       if (changements >= 2) view.lastBeatSeenAt = now
     }
+    view.serverBooting = view.lastBeatSeenAt === 0
     const alive = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
     if (alive !== view.serverAlive) {
       console.log(`[CLIENT] server ${alive ? 'ALIVE' : 'SILENT'} (last beat ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)

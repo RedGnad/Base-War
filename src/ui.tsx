@@ -298,14 +298,14 @@ const uiComponent = () => (
       </UiEntity>
       <Label
         value={
-          !view.serverAlive ? 'SERVER OFFLINE'
+          !view.serverAlive ? (view.serverBooting ? 'waking the server up' : 'SERVER OFFLINE')
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.income === 0 ? 'open a crate to start earning'
           : `+${formatIncome(theftView.income)}/s${theftView.sentries > 0 ? '   sentry ' + theftView.sentries : ''}`
         }
         fontSize={TYPE.label}
         color={
-          !view.serverAlive ? C.danger
+          !view.serverAlive ? (view.serverBooting ? C.bonus : C.danger)
           : (!theftView.basePosee || theftView.income === 0) ? C.bonus
           : C.money
         } />
