@@ -32,7 +32,7 @@ export const theftView = {
   alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
-  fil: [] as string[],
+  fil: [] as Array<{ t: string; jusqua: number }>,
   malusJusqua: 0,
 }
 
@@ -44,9 +44,30 @@ export function alerter(texte: string, color: string, durationMs = 6000): void {
   theftView.alerteJusqua = Date.now() + durationMs
 }
 
+/*
+  Twelve seconds, because a feed that never forgets is a feed that is always in the way.
+
+  Lines used to sit there until four more pushed them out, so a quiet server kept a corner of
+  the screen spent on something that happened twenty minutes ago. With an expiry the panel is
+  absent most of the time, which is the only real way for it not to cost screen.
+*/
+const FIL_MS = 12_000
+
 function pushToFeed(ligne: string): void {
-  theftView.fil.unshift(ligne)
+  theftView.fil.unshift({ t: ligne, jusqua: Date.now() + FIL_MS })
   if (theftView.fil.length > 4) theftView.fil.pop()
+}
+
+/** The lines still worth drawing, newest first, never more than three. */
+export function filVisible(): string[] {
+  const now = Date.now()
+  const out: string[] = []
+  for (const f of theftView.fil) {
+    if (f.jusqua <= now) continue
+    out.push(f.t)
+    if (out.length === 3) break
+  }
+  return out
 }
 
 export function setupTheft(): void {
@@ -74,10 +95,20 @@ export function setupTheft(): void {
 
   room.onMessage('stolen', (d) => {
     theftView.stealing = false
-    pushToFeed(`${d.byName} took a ${rarity(d.rarity).name} from ${d.fromName}`)
+    /*
+      No victim's name, because it does not fit and it is the least useful word on the line.
+
+      Measured against the panel: four hundred wide, sixteen of padding, eleven pixels a
+      character at this size, so thirty-four characters. `Guest6621 took a Legendary from
+      Guest5020` needs forty-one, which is why the three lines were spilling out of their own
+      plate and over each other. Of the three things a line carries, WHO, WHAT and FROM WHOM,
+      the third is the one a bystander needs least, and the one player who genuinely needs it
+      is the victim, who already gets a full alert with a sound of their own.
+    */
+    pushToFeed(`${d.byName} stole a ${rarity(d.rarity).name}`)
   })
   room.onMessage('reclaimed', (d) => {
-    pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name} from ${d.fromName}`)
+    pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name}`)
   })
   room.onMessage('sentryBlocked', (d) => {
     applyFreeze(d.gelMs)
@@ -99,10 +130,10 @@ export function setupTheft(): void {
     alerter(`${d.byName} LEFT YOU A ${r.name.toUpperCase()}!`, r.color, 8000)
   })
   room.onMessage('outbidFeed', (d) => {
-    pushToFeed(`${d.byName} outbid ${d.fromName} for ${d.price}`)
+    pushToFeed(`${d.byName} outbid a crate for ${d.price}`)
   })
   room.onMessage('gifted', (d) => {
-    pushToFeed(`${d.byName} gifted ${rarity(d.rarity).name} to ${d.toName}`)
+    pushToFeed(`${d.byName} gifted a ${rarity(d.rarity).name}`)
   })
 
   room.onMessage('stealProgress', (d) => {

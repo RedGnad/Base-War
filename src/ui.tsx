@@ -13,7 +13,7 @@ import { forceDuTir } from './shared/schemas'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 
@@ -156,6 +156,8 @@ const MENU_W = 1088
  * decides, and it leaves a real gap.
  */
 const COIN_H = [52, 52, 62]
+/** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
+const FIL_LIGNE = 26
 const COIN_GAP = 14
 
 function coinDroit(rang: number): number {
@@ -843,17 +845,28 @@ const uiComponent = () => {
       periphery. It stacks under the tutorial step in the same right-hand corner, and takes
       that corner over once the tutorial is done with it.
     */}
-    {hud() && theftView.fil.length > 0 && (
+    {hud() && filVisible().length > 0 && (
       <UiEntity
         uiTransform={{
-          width: 400, height: 62, positionType: 'absolute',
+          /*
+            A row per line, a plate the size of the rows, and a left edge to read down.
+
+            Each line was a Label with a width and NO HEIGHT, inside a column. Everywhere else
+            in this interface a Label carries an explicit height, because text does not give
+            this layout engine a size to lay out with: three lines all resolved to nothing and
+            were painted at the same y, which is the illegible stack in the photograph. The
+            plate was a fixed sixty-two whatever it held, so one line sat in a box built for
+            three, and centring lines of different lengths turned a list into a shape.
+          */
+          width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
           position: { top: coinDroit(2), right: COIN_HAUT_DROIT },
-          padding: 8, flexDirection: 'column', alignItems: 'center'
+          padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
       >
-        {theftView.fil.slice(0, 3).map((l, i) => (
-          <Label key={i} uiTransform={{ width: '100%' }} textWrap="nowrap"
+        {filVisible().map((l, i) => (
+          <Label key={i} uiTransform={{ width: '100%', height: FIL_LIGNE }} textWrap="nowrap"
+            textAlign="middle-left"
             value={l} fontSize={TYPE.caption} color={Color4.fromHexString('#b8c2d0ff')} />
         ))}
       </UiEntity>
