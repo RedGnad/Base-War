@@ -50,6 +50,21 @@ export function row(n: number): number {
 }
 
 /**
+ * The top band, as numbered slots.
+ *
+ * Messages arrive from unrelated parts of the game, the money, the tutorial, a crowd
+ * bonus, a crate on the belt, and each used to carry a `top:` of its own. Two of them
+ * picked numbers eight pixels apart and drew over each other on a phone. A slot index
+ * cannot collide with itself.
+ */
+const SLOT_H = [104, 56, 44, 58]
+export function slot(n: number): { top: number; height: number } {
+  let top = BAND.top
+  for (let i = 0; i < n; i++) top += SLOT_H[i] + 8
+  return { top, height: SLOT_H[n] ?? 44 }
+}
+
+/**
  * A centred strip, returned as the width and the left margin that centres it.
  *
  * Everything of ours is centred on the usable area rather than on the screen, because the

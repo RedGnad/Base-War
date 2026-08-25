@@ -60,7 +60,17 @@ export function setupUi() {
     if (getPlatform() === null) return
     engine.removeSystem(choose)
     const phone = isMobile() || FORCE_MOBILE_LAYOUT
-    const inset = phone ? 'interactable' : 'device'
+    /*
+      'device' rather than 'interactable', deliberately.
+
+      The interactable inset shifts the whole canvas inward to clear the client's controls,
+      so '50%' stops being the middle of the screen and a centred dialog drifts to one side,
+      which is what a phone showed. The documentation puts dialogs at the centre of the
+      screen, so the canvas is left whole and only the hardware margins are avoided here.
+      Staying clear of the client's own controls is a placement question, and it is answered
+      one place, in layout.ts, where the forbidden columns are named.
+    */
+    const inset = 'device'
     // 1600x720 is what the client substitutes on a handset for a 16:9 request; asking for
     // it directly is what makes the desktop preview measure like a phone.
     ReactEcsRenderer.setUiRenderer(uiComponent, {

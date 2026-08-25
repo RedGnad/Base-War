@@ -27,6 +27,15 @@ function dropAt(from: string, amount: number, at: { x: number; y: number; z: num
 }
 
 export function startCombat(): void {
+  // Same trail as the belt: coins dropped by a server that no longer exists would sit on
+  // the ground for ever, pickable and never expiring, because nothing ticks their timer.
+  let vieux = 0
+  for (const [e] of engine.getEntitiesWith(DroppedCoins)) {
+    if ((e & 0xffff) < 512) continue
+    engine.removeEntity(e); vieux += 1
+  }
+  if (vieux > 0) log(`swept ${vieux} pile(s) left by a previous server`)
+
   // Drawing a weapon is public: relayed so every client shows the same armed players.
   room.onMessage('aim', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()

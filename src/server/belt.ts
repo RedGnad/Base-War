@@ -53,6 +53,29 @@ function spawnBeltItem(): void {
   }
 }
 
+/**
+ * Clear what a previous server left behind.
+ *
+ * The platform stops this server two minutes after the venue empties and starts a fresh
+ * one on the next visit, but the synchronised entities it created outlive it: they sit in
+ * the room's state with nobody moving them. Without this sweep, every restart leaves a
+ * trail of crates frozen along the belt while new ones slide past them, which is exactly
+ * what a phone showed. The in-memory list is empty at this point, so anything still
+ * carrying a Belt component belongs to a server that no longer exists.
+ *
+ * Entities numbered under 512 are the runtime's own, avatars among them, and are never
+ * touched.
+ */
+function balayer(): void {
+  let n = 0
+  for (const [e] of engine.getEntitiesWith(Belt)) {
+    if ((e & 0xffff) < 512) continue
+    engine.removeEntity(e)
+    n += 1
+  }
+  if (n > 0) log(`swept ${n} crate(s) left by a previous server`)
+}
+
 function retirer(a: Article): void {
   engine.removeEntity(a.entity)
   const i = articles.indexOf(a)
@@ -60,6 +83,7 @@ function retirer(a: Article): void {
 }
 
 export function startBelt(): void {
+  balayer()
   engine.addSystem((dt: number) => {
     depuisSpawn += dt
     if (depuisSpawn >= BELT_INTERVAL_S) {

@@ -84,6 +84,16 @@ export function startConvoy(buyer: string, crateTier: number, price: number, fro
   return true
 }
 
+/** Convoys left by a previous server: same trail as the belt and the loot piles. */
+export function balayerConvois(): void {
+  let n = 0
+  for (const [e] of engine.getEntitiesWith(Convoy)) {
+    if ((e & 0xffff) < 512) continue
+    engine.removeEntity(e); n += 1
+  }
+  if (n > 0) log(`swept ${n} convoy(s) left by a previous server`)
+}
+
 export function runConvoys(): void {
   room.onMessage('outbid', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()

@@ -5,7 +5,7 @@ import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { startPlots, accueillir, auRevoir, placeItem, coinsOf, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
-import { runConvoys } from './convoy'
+import { runConvoys, balayerConvois } from './convoy'
 import { startCombat } from './combat'
 import { log, flushLog, replayLog } from './log'
 import { startTheft, lockOnArrival, delivrerAlertes, recordPrestige } from './theft'
@@ -97,6 +97,7 @@ export function startServer(): void {
   startTheft()
   startBelt()
   runConvoys()
+  balayerConvois()
   startCombat()
 
   const presents = new Set<string>()
