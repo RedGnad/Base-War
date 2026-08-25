@@ -7,7 +7,7 @@ import {
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
-import { forcerLacher } from './carry'
+import { frapperPorteur } from './carry'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents } from './plots'
 
 /**
@@ -74,34 +74,44 @@ export function startCombat(): void {
     }
 
     if (best === null) {
-      void room.send('shotResult', { hitName: '', dropped: 0, reason: 'missed' }, { to: [a] })
+      void room.send('shotResult', { hitName: '', dropped: 0, reason: 'missed', loot: 0 }, { to: [a] })
       return
     }
 
     // A share of what the target is CARRYING, capped so a rich player never loses a
+    /*
+      Hands before pockets.
+
+      Everything below can return early: a target with no coins, or no income to cap against,
+      produces "nothing to drop" and the function ends. That put the one player a bullet
+      really ought to disarm, a thief who has just spent everything or never had anything, out
+      of reach of being disarmed at all. What they are holding is settled first, and the shot
+      reports both facts in one message rather than two, the second of which used to erase the
+      first on the way to the screen.
+    */
+    const butin = frapperPorteur(best.addr)
+    const codeButin = butin === 'lache' ? 2 : butin === 'ebranle' ? 1 : 0
+
     // fortune to one shot, and floored by nothing: shooting a broke player yields nothing.
     const cap = Math.max(0, Math.floor(incomePerSecond(best.addr) * SHOT_DROP_CAP_S))
     const wanted = Math.floor(coinsOf(best.addr) * SHOT_DROP_SHARE)
     const amount = Math.max(0, Math.min(wanted, cap === 0 ? wanted : cap))
     if (amount <= 0 || !spend(best.addr, amount)) {
-      void room.send('shotResult', { hitName: displayName(best.addr), dropped: 0, reason: 'nothing to drop' }, { to: [a] })
+      void room.send('shotResult', {
+        hitName: displayName(best.addr), dropped: 0,
+        reason: codeButin > 0 ? 'hit' : 'nothing to drop', loot: codeButin
+      }, { to: [a] })
+      if (codeButin > 0) void room.send('wasShot', { byName: displayName(a), lost: 0 }, { to: [best.addr] })
+      log(`${displayName(a)} hit ${displayName(best.addr)} for nothing, loot ${butin}`)
       return
     }
 
-    /*
-      A hit knocks loose whatever they were carrying, as well as coins.
-
-      This is what makes the walk home the risky half of a theft: the thief is out in the
-      open with something that is not theirs, and one shot sends it back where it came from.
-      It is also the only counterplay an owner has once the prying is done.
-    */
-    if (forcerLacher(best.addr, 'shot, you dropped it')) {
-      void room.send('shotResult', { hitName: displayName(best.addr), dropped: 0, reason: 'knocked it loose' }, { to: [a] })
-    }
     dropAt(best.addr, amount, best.pos)
-    void room.send('shotResult', { hitName: displayName(best.addr), dropped: amount, reason: 'hit' }, { to: [a] })
+    void room.send('shotResult', {
+      hitName: displayName(best.addr), dropped: amount, reason: 'hit', loot: codeButin
+    }, { to: [a] })
     void room.send('wasShot', { byName: displayName(a), lost: amount }, { to: [best.addr] })
-    log(`${displayName(a)} hit ${displayName(best.addr)} for ${amount} dropped`)
+    log(`${displayName(a)} hit ${displayName(best.addr)} for ${amount} dropped, loot ${butin}`)
   })
 
   // Pickup and decay.

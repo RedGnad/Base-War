@@ -172,8 +172,31 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
   holder: Schemas.String,
   code: Schemas.Int,
   origin: Schemas.String,
-  sinceMs: Schemas.Int64
+  sinceMs: Schemas.Int64,
+  grip: Schemas.Int
 })
+
+/**
+ * How many hits it takes to knock a carried item loose.
+ *
+ * One was the first answer and it was wrong. Prying something off a shelf costs six to
+ * eighteen seconds of standing still in somebody's building; undoing all of it with a single
+ * bullet, from a weapon that fires five times a second, turns the walk home into a coin flip
+ * on first contact rather than a chase. Three hits is a pursuit: the owner has to stay on
+ * their target, and the thief has a reason to run rather than to accept the inevitable.
+ */
+export const CARRY_GRIP = 3
+
+/**
+ * How much a full pair of hands slows you down.
+ *
+ * The prying penalty was set to run for the theft plus two seconds, so it expired just after
+ * the item reached the thief's hands: the half of the theft meant to be dangerous was the
+ * half they ran through at full speed. Carrying is its own slowdown now, for exactly as long
+ * as the carrying lasts, and it is lighter than the prying penalty because being pinned in
+ * place and being weighed down are not the same punishment.
+ */
+export const CARRY_SPEED_SHARE = 0.72
 
 /** How long a carried item waits for its carrier before taking itself home. */
 export const CARRY_TIMEOUT_MS = 90_000

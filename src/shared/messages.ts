@@ -59,7 +59,7 @@ export const MESSAGES = {
   /** client -> server: I fired at this point. The server decides who, if anyone, was hit. */
   shoot: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> shooter: what the shot did. */
-  shotResult: Schemas.Map({ hitName: Schemas.String, dropped: Schemas.Int, reason: Schemas.String }),
+  shotResult: Schemas.Map({ hitName: Schemas.String, dropped: Schemas.Int, reason: Schemas.String, loot: Schemas.Int }),
   /** server -> the target: they were hit and lost coins on the spot. */
   wasShot: Schemas.Map({ byName: Schemas.String, lost: Schemas.Int }),
   /** server -> the picker: they collected a pile. */

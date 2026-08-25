@@ -226,10 +226,16 @@ export function setupCombat(): void {
     where the other player gets to stop you.
   */
   room.onMessage('shotResult', (d) => {
-    if (d.reason === 'hit') {
-      alerter(`HIT ${d.hitName.toUpperCase()}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', 3500)
+    // One shot, one line. What it did to their hands leads, because that is the bigger prize.
+    const qui = d.hitName.toUpperCase()
+    if (d.loot === 2) {
+      alerter(`${qui} DROPPED THE LOOT, IT IS GOING HOME`, '#ff6b6b', 3500)
+    } else if (d.loot === 1) {
+      alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', 2600)
+    } else if (d.reason === 'hit') {
+      alerter(`HIT ${qui}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', 3500)
     } else if (d.reason === 'nothing to drop') {
-      alerter(`${d.hitName.toUpperCase()} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
+      alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
     }
   })
   room.onMessage('wasShot', (d) => {

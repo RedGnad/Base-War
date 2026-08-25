@@ -7,6 +7,7 @@ import { Carried } from '../shared/schemas'
 import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
+import { setCarrying } from './locomotion'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -87,6 +88,7 @@ export function setupCarry(): void {
 
     if (porteMoi !== carryView.code) {
       carryView.code = porteMoi
+      setCarrying(porteMoi >= 0)
       carryView.name = porteMoi < 0 ? '' : itemName(rarityOf(porteMoi), mutationDe(porteMoi))
     }
   })

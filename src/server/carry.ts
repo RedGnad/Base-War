@@ -1,7 +1,7 @@
 import { engine, Transform, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
-import { Carried, CARRY_TIMEOUT_MS, PLACE_RANGE } from '../shared/schemas'
+import { Carried, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
 import { log } from './log'
@@ -37,7 +37,7 @@ export function portePour(address: string): boolean {
 
 function poser(address: string, code: number, origin: string): void {
   const e = engine.addEntity()
-  Carried.create(e, { holder: address, code, origin, sinceMs: Date.now() })
+  Carried.create(e, { holder: address, code, origin, sinceMs: Date.now(), grip: CARRY_GRIP })
   syncEntity(e, [Carried.componentId])
   portes.set(address, e)
 }
@@ -77,6 +77,24 @@ export function forcerLacher(address: string, pourquoi: string): boolean {
   if (quoi === null) return false
   rentrer(address, quoi, pourquoi)
   return true
+}
+
+/**
+ * A hit on somebody's hands. Returns what it achieved, so the shooter can be told once.
+ *
+ * Called before anything else a shot does, because the coin logic returns early when the
+ * target has nothing to give: a thief who has just spent everything, or who never had
+ * anything, was the one player a bullet could not disarm.
+ */
+export function frapperPorteur(address: string): 'rien' | 'ebranle' | 'lache' {
+  const e = portes.get(address)
+  if (e === undefined) return 'rien'
+  const c = Carried.getMutableOrNull(e)
+  if (c === null) return 'rien'
+  c.grip -= 1
+  if (c.grip > 0) return 'ebranle'
+  forcerLacher(address, 'shot, you dropped it')
+  return 'lache'
 }
 
 export function startCarry(): void {

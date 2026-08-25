@@ -1,6 +1,6 @@
 import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
-import { AIM_SPEED_SHARE } from '../shared/schemas'
+import { AIM_SPEED_SHARE, CARRY_SPEED_SHARE } from '../shared/schemas'
 
 export const JOG_NORMAL = 11
 export const THIEF_JOG = 6.5   // -41 %
@@ -20,13 +20,15 @@ const FREEZE_JUMP = 0.2
  * Uses AvatarLocomotionSettings rather than InputModifier: the latter is documented as
  * having no effect outside the DCL 2.0 desktop client, and most of the score is mobile.
  */
-const etat = { thief: false, aiming: false, frozenUntil: 0 }
+const etat = { thief: false, aiming: false, carrying: false, frozenUntil: 0 }
 
 function appliquer(): void {
   const frozen = etat.frozenUntil > Date.now()
   const base = etat.thief ? THIEF_JOG : JOG_NORMAL
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
-    jogSpeed: frozen ? FREEZE_JOG : base * (etat.aiming ? AIM_SPEED_SHARE : 1),
+    jogSpeed: frozen
+      ? FREEZE_JOG
+      : base * (etat.aiming ? AIM_SPEED_SHARE : 1) * (etat.carrying ? CARRY_SPEED_SHARE : 1),
     jumpHeight: frozen ? FREEZE_JUMP : etat.thief ? THIEF_JUMP : SAUT_NORMAL
   })
 }
@@ -35,6 +37,20 @@ export function applyFreeze(ms: number): void {
   etat.frozenUntil = Date.now() + ms
   appliquer()
   timers.setTimeout(appliquer, ms + 30)
+}
+
+/**
+ * Full hands weigh, for as long as they are full.
+ *
+ * The prying penalty covered the theft plus two seconds and then let go, so the walk home,
+ * the half of a theft that is meant to be dangerous, was run at full speed. This lasts as
+ * long as the carrying does. It stacks with the prying penalty and with aiming rather than
+ * replacing them: someone who tries to shoot their way out while loaded should feel it.
+ */
+export function setCarrying(active: boolean): void {
+  if (etat.carrying === active) return
+  etat.carrying = active
+  appliquer()
 }
 
 export function applyThiefPenalty(active: boolean): void {
