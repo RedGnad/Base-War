@@ -69,8 +69,8 @@ export function setupConvoy(): void {
         }
         PointerEvents.createOrReplace(v.body, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: mine ? 'Yours' : `Outbid for ${price}` } },
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: mine ? 'Yours' : `Outbid for ${price}` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_PRIMARY, hoverText: mine ? 'Yours' : `Outbid  ${price}` } },
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: mine ? 'Yours' : `Outbid  ${price}` } }
           ]
         })
       }

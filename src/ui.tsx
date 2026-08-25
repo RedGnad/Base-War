@@ -6,6 +6,7 @@ import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/re
 import { InputAction } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
 import { Glyphs } from './client/glyphs'
+import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -85,7 +86,8 @@ function nextAction(): { label: string; action: () => void } | null {
     return { label: '+1 FLOOR', action: buyFloorFor }
   }
   if (theftView.nextPrestige > 0 && theftView.coins >= theftView.nextPrestige) {
-    return { label: `PRESTIGE x${theftView.multiplier + 1}`, action: doPrestige }
+    // Opens the decision, never commits it: prestige wipes the base and cannot be undone.
+    return { label: `PRESTIGE x${theftView.multiplier + 1}`, action: openPrestige }
   }
   return null
 }
@@ -153,12 +155,13 @@ const uiComponent = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <WelcomePanel />
-    {!welcomeView.open && <IndexPanel />}
-    {!welcomeView.open && <QuestsPanel />}
+    <PrestigePanel />
+    {!welcomeView.open && !prestigeView.open && <IndexPanel />}
+    {!welcomeView.open && !prestigeView.open && <QuestsPanel />}
 
-    {combatView.aiming && !welcomeView.open && !menuView.open && !slotView.active && <Crosshair />}
+    {combatView.aiming && !welcomeView.open && !prestigeView.open && !menuView.open && !slotView.active && <Crosshair />}
 
-    {!welcomeView.open && (
+    {!welcomeView.open && !prestigeView.open && (
     <UiEntity
       uiTransform={{
         width: 460, height: TAP.height, positionType: 'absolute', position: { top: 158, right: 24 },
@@ -507,7 +510,7 @@ const uiComponent = () => (
       TYPE.body, so a thumb can hit them and an eye can read them on a phone. What the
       player is merely waiting for sits above as one dim line, never as a dead button.
     */}
-    {hint() !== '' && !combatView.aiming && (
+    {hint() !== '' && !combatView.aiming && !prestigeView.open && (
       <UiEntity
         uiTransform={{
           width: 900, height: 34, positionType: 'absolute',
@@ -519,6 +522,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {!prestigeView.open && (
     <UiEntity
       uiTransform={{
         width: 1120, height: TAP.height, positionType: 'absolute',
@@ -573,5 +577,6 @@ const uiComponent = () => (
           fontSize={TYPE.body} />
       )}
     </UiEntity>
+    )}
   </UiEntity>
 )
