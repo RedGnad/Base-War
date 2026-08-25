@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
@@ -42,11 +42,14 @@ export function setupUi() {
   function choose(): void {
     if (getPlatform() === null) return
     engine.removeSystem(choose)
-    const inset = isMobile() ? 'interactable' : 'device'
+    const phone = isMobile() || FORCE_MOBILE_LAYOUT
+    const inset = phone ? 'interactable' : 'device'
+    // 1600x720 is what the client substitutes on a handset for a 16:9 request; asking for
+    // it directly is what makes the desktop preview measure like a phone.
     ReactEcsRenderer.setUiRenderer(uiComponent, {
-      virtualWidth: 1920, virtualHeight: 1080, screenInset: inset
+      virtualWidth: phone ? 1600 : 1920, virtualHeight: phone ? 720 : 1080, screenInset: inset
     })
-    console.log(`[CLIENT] interface en screenInset '${inset}'`)
+    console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}'`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choose)

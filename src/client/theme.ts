@@ -76,6 +76,20 @@ export const C = {
 export const TAP = { height: 96, gap: 20 } as const
 
 /**
+ * Draw the interface as a phone would, while sitting at a desk.
+ *
+ * Decentraland overrides a 16:9 virtual screen to 1600x720 on a handset and insets the
+ * interface out of the client's own furniture, and those two facts are what set every
+ * size in this file. Flipping this to true applies both on the desktop preview, so the
+ * layout a phone gets can be looked at without one.
+ *
+ * It tests the layout and nothing else: not touch, not framerate, not the native mobile
+ * HUD, not the mobile client at all. Those still need a device or an emulator. Ship it
+ * false.
+ */
+export const FORCE_MOBILE_LAYOUT = false
+
+/**
  * The skins, and why they exist at all.
  *
  * Decentraland offers three fonts and no more: 'sans-serif', 'serif' and 'monospace' in
