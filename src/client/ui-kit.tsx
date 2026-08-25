@@ -1,4 +1,5 @@
 import { InputAction } from '@dcl/sdk/ecs'
+import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs } from './glyphs'
@@ -46,16 +47,33 @@ export const Btn = (props: {
         top={(TAP.height - size) / 2}
         role={props.primary === true ? 'ink' : 'name'} />
       {/*
-        The oldest signal there is, and the reason it works is that it needs no reading:
-        a player who has never seen this interface knows a red pip means go and look.
+        A pip that sits ON the corner, not inside it.
+
+        It was drawn ten pixels in from the edge, which makes it look like part of the label
+        rather than something attached to the control. The documented pattern is a corner
+        OVERLAY: anchored top right, straddling the boundary, and separated from a busy parent
+        by a ring of the surrounding colour so the two shapes never merge. Sitting half outside
+        is what makes it read as a notification rather than as decoration.
+
+        A dot rather than a number, because what matters here is that something is waiting and
+        not how much. And it never takes a click: it annotates the button, the button acts.
+
+        The sizes are ours, derived from the control: a fifth of a 96-tall button, which is the
+        smallest disc that survives a phone's scale factor, plus a four-pixel ring.
       */}
       {props.badge === true && (
         <UiEntity
           uiTransform={{
-            width: 18, height: 18, positionType: 'absolute',
-            position: { top: 10, right: 10 }, borderRadius: 9
+            width: 28, height: 28, positionType: 'absolute',
+            position: { top: -10, right: -10 }, borderRadius: 14,
+            justifyContent: 'center', alignItems: 'center'
           }}
-          uiBackground={{ color: C.danger }} />
+          uiBackground={{ color: Color4.fromHexString('#0b0e17ff') }}
+        >
+          <UiEntity
+            uiTransform={{ width: 20, height: 20, borderRadius: 10 }}
+            uiBackground={{ color: C.danger }} />
+        </UiEntity>
       )}
     </UiEntity>
   )
