@@ -5,6 +5,7 @@ import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
+import { Glyphs } from './client/glyphs'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -282,9 +283,16 @@ const uiComponent = () => (
         The pending amount is not repeated here: it already rides the COLLECT button, and
         showing it twice was the clearest redundancy in the old interface.
       */}
-      <Label
-        value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-        fontSize={TYPE.hero} color={C.money} />
+      {/*
+        The money is set in the game's own face, which the platform does not carry: one
+        quad per digit, each showing its cell of an atlas. Glyphs place themselves, so they
+        need a box of their own in the column or the line under them is walked over.
+      */}
+      <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 8 }}>
+        <Glyphs
+          value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
+          size={TYPE.hero} color={C.money} align="center" box={536} />
+      </UiEntity>
       <Label
         value={
           !view.serverAlive ? 'SERVER OFFLINE'

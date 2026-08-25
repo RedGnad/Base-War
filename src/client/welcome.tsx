@@ -32,7 +32,9 @@ export const WelcomePanel = () => {
         uiTransform={{ width: 880, height: 620, flexDirection: 'column', padding: 34, justifyContent: 'space-between' }}
         uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.97) }}
       >
-        <Label value="BASE TYCOON" fontSize={TYPE.hero} color={C.bonus} uiTransform={{ height: 66 }} />
+        <UiEntity uiTransform={{ width: '100%', height: 72 }}>
+          <Glyphs value="BASE TYCOON" size={TYPE.hero} color={C.bonus} />
+        </UiEntity>
         <Label
           value="Your loot earns while it is on show. While it is on show, anyone can take it."
           fontSize={TYPE.label} color={C.dim} uiTransform={{ height: 56 }} />
