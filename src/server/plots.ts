@@ -127,7 +127,7 @@ function createBase(address: string, name: string, items: number[], lastSeen: nu
   publish(b)
   return b
   } catch (err) {
-    log(`createBase A JETE pour ${address.slice(0, 8)}: ${err}`)
+    log(`createBase THREW for ${address.slice(0, 8)}: ${err}`)
     return null
   }
 }
@@ -542,7 +542,7 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   const b = bases.get(address)
   if (b) { b.items = [...p.items]; dirtyBases.add(address); publish(b) }
   const et = openFloors(p.floorsBought ?? 0)
-  log(`${b?.name ?? address.slice(0, 8)} franchit le prestige ${p.rebirths}: -${exige.cost} pieces, guard ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
+  log(`${b?.name ?? address.slice(0, 8)} reached prestige ${p.rebirths}: -${exige.cost} coins, kept ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
   return { ok: true, prestige: p.rebirths, floors: et }
 }
 

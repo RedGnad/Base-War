@@ -197,6 +197,41 @@ const MenuWindow = () => {
   )
 }
 
+/**
+ * The controls, for a machine that has no touch cluster to lend us.
+ *
+ * Everything of ours moved onto the client's own buttons, which was right for a phone and
+ * left the desktop with nothing: the pictures we write go into TouchScreenControls, which
+ * that client does not draw. The moment COLLECT started carrying an icon instead of a
+ * sentence, a desktop player was shown no way to bank their takings at all.
+ *
+ * So the desktop gets the same three controls, in the same corner, drawn by us: the menu,
+ * the weapon, and whatever the game currently offers. They carry their key as well as their
+ * name, and they are bound to the same actions, so they can be clicked or typed.
+ */
+const DesktopControls = () => {
+  if (phone() || !hud()) return null
+  const a = nextAction()
+  const action = combatView.aiming ? 'FIRE' : a?.label ?? null
+  return (
+    <UiEntity
+      uiTransform={{
+        height: TAP.height, positionType: 'absolute',
+        position: { bottom: row(0), right: 40 },
+        flexDirection: 'row', alignItems: 'center'
+      }}
+    >
+      <Btn label="1  MENU" width={190} right={TAP.gap}
+        primary={questsToClaim() > 0} onClick={basculerMenu} />
+      <Btn label={combatView.aiming ? 'F  HOLSTER' : 'F  DRAW'} width={210} right={TAP.gap}
+        primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
+      {action !== null && (
+        <Btn label={`E  ${action}`} width={300} primary bind={[InputAction.IA_PRIMARY]} />
+      )}
+    </UiEntity>
+  )
+}
+
 /** A handset, or the desktop preview asked to measure like one. */
 function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
 
@@ -331,9 +366,14 @@ function barre(): string {
     return combatView.targetName !== '' ? `FIRE on ${combatView.targetName}` : 'aim at someone'
   }
   if (intentEnAttente()) return 'queued, the game is still starting up'
+  /*
+    Below here it is captioning the client's own buttons, which only a phone has. A desktop
+    draws its own controls with their names on them, so a plate repeating those names is
+    furniture. And on a phone, an action that put a picture on the button has already said
+    itself.
+  */
+  if (!phone()) return ''
   const a = nextAction()
-  // An action that put a picture on the button has already said itself; repeating it on a
-  // plate above the controls is the furniture this line exists to avoid.
   if (a === null || a.icon !== undefined) return ''
   return `E   ${a.label}`
 }
@@ -427,31 +467,13 @@ const uiComponent = () => {
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
+    <DesktopControls />
     <WelcomePanel />
     <PrestigePanel />
     <MenuWindow />
 
     {combatView.aiming && hud() && !slotView.active && <Crosshair />}
 
-    {/*
-      The way in, on a machine that has no control cluster of its own.
-
-      A handset opens the menu with the client's own button, so it needs nothing here. A
-      desktop has no such button, so it keeps one opener, and only while the menu is shut:
-      once it is open, closing it belongs to the window, next to the tabs.
-    */}
-    {hud() && !phone() && (
-    <UiEntity
-      uiTransform={{
-        width: strip(760).width, height: TAP.height, positionType: 'absolute',
-        position: { bottom: row(1), left: '50%' }, margin: strip(760).margin,
-        flexDirection: 'row', justifyContent: 'flex-start'
-      }}
-    >
-      <Btn width={190} primary={questsToClaim() > 0} onClick={basculerMenu}
-        label={questsToClaim() > 0 ? `MENU ${questsToClaim()}` : 'MENU'} />
-    </UiEntity>
-    )}
 
     {/*
       The current step, in the top right corner.

@@ -314,7 +314,7 @@ export function startTheft(): void {
     const duration = LOCK_FREE_MS + lockBonus(a)
     const until = Date.now() + duration
     if (!setLock(a, until)) { refus(a, 'lock', 'no base placed'); return }
-    log(`${displayName(a)} locked sa base ${Math.round(duration / 1000)} s`)
+    log(`${displayName(a)} locked their base for ${Math.round(duration / 1000)}s`)
   })
 
   room.onMessage('reclaim', (_d, ctx) => {

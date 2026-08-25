@@ -175,7 +175,7 @@ export function startBelt(): void {
     const mut = rollMutation(d.crateTier)
     const code = encoder(rarity, mut)
     const prevu = etatPrevisible(a)
-    log(`${displayName(a)} ouvre une crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, pose differee)`)
+    log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, deferred placement)`)
     void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: prevu }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 
@@ -186,7 +186,7 @@ export function startBelt(): void {
       inFlight.delete(a)
       const reel = addItem(a, code)
       if (reel === 'expose') { advanceQuest(a, 'poser'); pushQuests(a) }
-      if (reel !== prevu) log(`pose differee: prevu ${prevu}, obtenu ${reel} pour ${displayName(a)}`)
+      if (reel !== prevu) log(`deferred placement: expected ${prevu}, got ${reel} for ${displayName(a)}`)
     }, POSE_DIFFEREE_MS)
   })
 
