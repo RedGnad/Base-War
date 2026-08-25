@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
-import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP, SKIN } from './theme'
+import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
+import { TYPE, C, TAP } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
 
