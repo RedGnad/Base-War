@@ -6,7 +6,7 @@ import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
-import { C } from './theme'
+import { HUE } from './theme'
 
 export const beltView = {
   annonce: '',
@@ -20,8 +20,16 @@ export const beltView = {
   annonceTier: 0
 }
 
-/** Outline colour for every world label: black reads over sky, ground and avatars alike. */
+/**
+ * World-label colours, built where they are used.
+ *
+ * The shared token object is constructed at module load, and the bundler emits these
+ * modules with lazy initialisers whose order is its own business: reading it from a
+ * function that runs before its module was touched threw every frame. Anything read
+ * outside the interface tree therefore builds its own colour from the same hex.
+ */
 const NOIR = Color3.create(0, 0, 0)
+const VERT = Color4.fromHexString(HUE.money + 'ff')
 
 type View = { item: Entity; label: Entity; nom: Entity }
 const views = new Map<number, View>()
@@ -112,7 +120,7 @@ export function setupBelt(): void {
         Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 1.24, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, {})
         TextShape.create(label, {
-          text: formatIncome(b.price), fontSize: 4.2, textColor: C.money,
+          text: formatIncome(b.price), fontSize: 4.2, textColor: VERT,
           outlineWidth: 0.22, outlineColor: NOIR
         })
 
