@@ -1,5 +1,5 @@
 import {
-  PRODUCTION_PER_RARITY, FLOOR_PRICES, MAX_PRESTIGE, lifetimeForPrestige, prestigeMultiplier,
+  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, lifetimeForPrestige, prestigeMultiplier,
   OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
@@ -266,7 +266,19 @@ export const RECOVER_RANGE = 6
 export const MAX_BASES_AFFICHEES = 60
 export const FLOOR_HEIGHT = 2.8
 export const SLOTS_PER_FLOOR = 6
-export const MAX_FLOORS = 3
+/**
+ * High enough that the cost curve is what stops you, not this number.
+ *
+ * Twelve floors is seventy-two slots and thirty-four metres, against a platform ceiling of
+ * 143 m for this many parcels, and each one costs four times the last.
+ *
+ * The number is deliberately out of reach rather than a design statement: simulated second
+ * by second, the twelfth floor is hundreds of hours away, and a base lives at three or four
+ * for a very long time. The scarcity this design rests on is preserved by the price curve,
+ * not by a wall. Raising it costs nothing either, because each base now draws a floor only
+ * once it has been bought.
+ */
+export const MAX_FLOORS = 12
 
 export const BASE_SIDE = 11.0
 export const RAMP_ANGLE = 40
@@ -293,10 +305,8 @@ export function incomeMultiplier(n: number): number {
   return n <= 0 ? 1 : PRESTIGE_TIERS[Math.min(n, PRESTIGE_TIERS.length) - 1].multiplier
 }
 
-export const FLOOR_PRICE = FLOOR_PRICES
-
 export function floorPrice(targetFloor: number): number {
-  return FLOOR_PRICE[Math.max(0, Math.min(targetFloor - 1, FLOOR_PRICE.length - 1))]
+  return floorCost(targetFloor)
 }
 
 export function openFloors(floorsBought = 0): number {

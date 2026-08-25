@@ -134,8 +134,16 @@ const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 function createView(x: number, z: number): View {
   const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, '#6b6f78ff')
 
-  const floors: Floor[] = []
-  for (let e = 0; e < MAX_FLOORS; e++) floors.push(buildFloor(x, z, e))
+  /*
+    Only the ground floor is built here; the rest appear when they are bought.
+
+    Every base used to create all of its possible floors at once, hidden by a zero scale.
+    That was affordable at three. At eight, with sixty bases on screen, it is several
+    thousand entities standing in for buildings nobody has earned, paid for in scene budget
+    and in network traffic the moment anyone walks in. Floors are added in the update below
+    as the plot reports them, so an unreached floor costs exactly nothing.
+  */
+  const floors: Floor[] = [buildFloor(x, z, 0)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
@@ -341,6 +349,11 @@ export function setupPlots(): void {
       Material.setPbrMaterial(v.plinth, {
         albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
       })
+
+      // Catch up to what this base has actually opened, one floor at a time.
+      while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
+        v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length))
+      }
 
       for (let e = 0; e < v.floors.length; e++) {
         const open = e < p.floors

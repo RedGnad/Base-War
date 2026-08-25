@@ -39,14 +39,31 @@ export const CRATE_PRICE = [2018, 17425, 165140, 1473212] as const
 export const CRATE_PAYBACK_S = [60, 120, 240, 480] as const
 
 /**
- * A floor returns in 2.5 crate-paybacks: it is the safe purchase, and it is capped at three.
+ * Floors grow geometrically, and that curve is the real ceiling.
  *
- * Both a floor and a prestige roughly double income at their first step, so if one is much
- * cheaper the other never gets chosen and the decision the loop is built on does not exist.
- * The floor stays the cheaper of the two, which is paid for by the cap; prestige has none.
- * Six slots at three hundred seconds each.
+ * There were three floors at fixed prices, the third reachable in about eighty minutes. For
+ * the one purchase that visibly makes the building taller, an hour is nothing: a tycoon's
+ * third storey should be the reward for several days. And a hard cap of three meant the
+ * player ran out of building to do while the game was meant to last months.
+ *
+ * So each floor costs four times the last. That is what makes the ladder endless in the only
+ * sense that matters: simulated second by second, the second floor lands at 1.1 hours, the
+ * third at 3.4, the fourth at 9.2, the fifth at 27, the sixth at 83, the seventh at 271 and
+ * the eighth at 916. Nobody meets the constant below; they meet the curve.
+ *
+ * It stays the safe purchase against prestige, which doubles income but takes the loot. And
+ * it is not free of risk in this game the way it is in the ones this genre came from: every
+ * slot is on show, distance to a base is measured at ground level, so building tall makes a
+ * bigger target rather than a safer one.
  */
-export const FLOOR_PRICES = [0, 261371, 1238549] as const
+export const FLOOR_BASE_PRICE = 800_000
+export const FLOOR_PRICE_GROWTH = 4
+
+/** Cost of reaching `targetFloor`, which is 2 or more. */
+export function floorCost(targetFloor: number): number {
+  if (targetFloor <= 1) return 0
+  return Math.round(FLOOR_BASE_PRICE * Math.pow(FLOOR_PRICE_GROWTH, targetFloor - 2))
+}
 
 /**
  * Prestige 1 lands at about thirty-one minutes of real play, simulated rather than assumed.
