@@ -17,9 +17,9 @@ import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 import { placementView } from './client/plots'
 import { IndexPanel, indexView } from './client/index-ui'
 import { QuestsPanel, questsToClaim } from './client/quests-ui'
+import { TravelPanel } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab } from './client/menu'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
-import { travelView, rentrer, goToBelt, basculerVoyage } from './client/travel'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { sell } from './client/theft'
 import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
@@ -50,6 +50,8 @@ export function setupUi() {
     would have put on a button of its own, and F draws the weapon. One button, one meaning.
   */
   engine.addSystem(() => {
+    // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
+    if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
     if (modale()) return
     if (!inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) return
     const a = nextAction()
@@ -82,6 +84,9 @@ export function setupUi() {
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choose)
 }
+
+/** A handset, or the desktop preview asked to measure like one. */
+function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
 
 const PANNEAU = C.plate
 const BTN_H = TAP.height
@@ -256,10 +261,20 @@ const uiComponent = () => {
     <PrestigePanel />
     {!modale() && <IndexPanel />}
     {!modale() && <QuestsPanel />}
+    {!modale() && <TravelPanel />}
 
     {combatView.aiming && !modale() && !menuView.open && !slotView.active && <Crosshair />}
 
-    {!modale() && (
+    {/*
+      The tabs, and on a phone nothing else.
+
+      The client draws its own control cluster and will show one button of ours in it before
+      folding the rest behind a "+", so the menu lives there instead of on a bar we draw.
+      That is the whole reason this row is empty during play on a handset: the way in is the
+      client's own button, and these tabs only exist once it has been pressed. A desktop has
+      no such cluster, so it keeps a visible opener.
+    */}
+    {!modale() && (menuView.open || !phone()) && (
     <UiEntity
       uiTransform={{
         width: strip(760).width, height: TAP.height, positionType: 'absolute',
@@ -267,24 +282,18 @@ const uiComponent = () => {
         flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
-      {menuView.open && (
-        <Button
+      {menuView.open && (['goals', 'index', 'travel'] as const).map((o) => (
+        <Button key={o}
           uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
-          value="GOALS" variant={activeTab() === 'goals' ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === 'goals')}
-          fontSize={TYPE.caption} onMouseDown={() => chooseTab('goals')} />
-      )}
-      {menuView.open && (
-        <Button
-          uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
-          value={`INDEX ${indexView.vus.length}`}
-          variant={activeTab() === 'index' ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === 'index')}
-          fontSize={TYPE.caption} onMouseDown={() => chooseTab('index')} />
-      )}
+          value={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()}
+          variant={activeTab() === o ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === o)}
+          fontSize={TYPE.caption} onMouseDown={() => chooseTab(o)} />
+      ))}
       <Btn
         width={menuView.open ? 140 : 190}
         primary={menuView.open || questsToClaim() > 0}
         onClick={basculerMenu}
-        label={menuView.open ? 'CLOSE' : (questsToClaim() > 0 ? `GOALS ${questsToClaim()}` : 'GOALS')} />
+        label={menuView.open ? 'CLOSE' : (questsToClaim() > 0 ? `MENU ${questsToClaim()}` : 'MENU')} />
     </UiEntity>
     )}
 
@@ -326,40 +335,6 @@ const uiComponent = () => {
         <Label
           value={`CROWD BONUS  +${Math.round(theftView.prime * 100)}%  ·  ${theftView.presents} players here`}
           fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
-      </UiEntity>
-    )}
-
-    {/*
-      The travel rail, down the right edge under the step panel.
-
-      The reference games keep their menus in a vertical rail of large entries at the edge
-      of the screen rather than in the action bar, and they keep it collapsed until asked.
-      Theirs runs down the left; ours cannot, because that edge is the Decentraland
-      client's own. Collapsed it is one control, which is the whole point: the three
-      destinations only exist once the player has said they want to go somewhere.
-    */}
-    {!modale() && !combatView.aiming && (
-      <UiEntity
-        uiTransform={{
-          width: strip(760).width, height: TAP.height, positionType: 'absolute',
-          position: { bottom: row(1), left: '50%' }, margin: strip(760).margin,
-          flexDirection: 'row', justifyContent: 'flex-end'
-        }}
-      >
-        <Btn label={travelView.open ? 'CLOSE' : 'TRAVEL'} width={travelView.open ? 200 : 240}
-          primary={travelView.open} right={TAP.gap} onClick={basculerVoyage} />
-        {travelView.open && (
-          <Btn label="GO HOME" width={220} primary={travelView.peutRentrer} right={TAP.gap}
-            onClick={() => { rentrer(); basculerVoyage() }} />
-        )}
-        {travelView.open && (
-          <Btn label="TO BELT" width={200} right={TAP.gap}
-            onClick={() => { goToBelt(); basculerVoyage() }} />
-        )}
-        {travelView.open && theftView.basePosee && (
-          <Btn label={slotView.active ? 'CANCEL' : 'MOVE'} width={180}
-            primary={slotView.active} onClick={() => { basculerPose(); basculerVoyage() }} />
-        )}
       </UiEntity>
     )}
 

@@ -143,7 +143,8 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
 
       <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 44, margin: { top: 20 } }} textAlign="middle-left" />
-      <UiEntity uiTransform={{ width: '100%', height: 105, flexDirection: 'row' }}>
+      {/* Seven fixed cards come to 1022; they wrap rather than run off a narrowed panel. */}
+      <UiEntity uiTransform={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap' }}>
         {DAILY_REWARDS.map((t, j) => {
           const dayN = j + 1
           const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)

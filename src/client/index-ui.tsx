@@ -10,6 +10,21 @@ export function basculerIndex(): void { indexView.open = !indexView.open }
 
 const CASE = 30
 const GAP = 3
+/*
+  The box is the sum of what goes in it, not a guess with a round number added.
+
+  It was `MUTATIONS.length * (CASE + GAP) + 130` wide, where the 130 was meant to cover the
+  rarity label at the start of each row. That label is 184, and the padding another 24, so
+  every row ran seventy-eight pixels past its own container. The height was short by
+  twenty-six for the same reason. Both are now added up from the pieces, so a new rarity or
+  a new mutation resizes the panel instead of overflowing it.
+*/
+const LABEL_W = 184
+const PAD = 12
+const TITRE_H = 44
+const PIED_H = 34
+const PANEL_W = PAD * 2 + LABEL_W + MUTATIONS.length * (CASE + GAP)
+const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
 export const IndexPanel = () => {
   if (!indexView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
@@ -19,13 +34,13 @@ export const IndexPanel = () => {
   return (
     <UiEntity
       uiTransform={{
-        width: strip(MUTATIONS.length * (CASE + GAP) + 130).width,
-        height: RARITIES.length * (CASE + GAP) + 76,
+        width: strip(PANEL_W).width,
+        height: PANEL_H,
         positionType: 'absolute',
-        position: { top: '14%', left: '50%' },
-        margin: strip(MUTATIONS.length * (CASE + GAP) + 130).margin,
+        position: { top: '50%', left: '50%' },
+        margin: { left: strip(PANEL_W).margin.left, top: -PANEL_H / 2 },
         flexDirection: 'column',
-        padding: 12
+        padding: PAD
       }}
       uiBackground={{ color: Color4.create(0, 0, 0, 0.9) }}
     >
@@ -33,7 +48,7 @@ export const IndexPanel = () => {
         value={`COLLECTION  ${vus.size} / ${total}`}
         fontSize={TYPE.body}
         color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ height: 44 }} />
+        uiTransform={{ height: TITRE_H }} />
 
       {RARITIES.map((r) => (
         <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
@@ -41,7 +56,7 @@ export const IndexPanel = () => {
             value={r.name}
             fontSize={TYPE.caption}
             color={Color4.fromHexString(r.color + 'ff')}
-            uiTransform={{ width: 184, height: CASE }} />
+            uiTransform={{ width: LABEL_W, height: CASE }} />
           {MUTATIONS.map((m) => {
             const trouve = vus.has(encoder(r.id, m.id))
             return (
@@ -62,7 +77,7 @@ export const IndexPanel = () => {
         value="rows: rarity   ·   columns: mutation"
         fontSize={TYPE.caption}
         color={Color4.fromHexString('#7d8798ff')}
-        uiTransform={{ height: 34 }} />
+        uiTransform={{ height: PIED_H }} />
     </UiEntity>
   )
 }

@@ -55,19 +55,39 @@ export function setupTouchHud(): void {
   TouchScreenControls.showAll()
 
   /*
-    The client's own buttons carry the game, and the scene adds none beside them.
+    Five buttons, which is exactly as many as the client will show without folding any away.
 
-    Its documentation names what each one emits and which are reachable: the interaction
-    button, E, F and jump are, while 1 to 4 sit behind a secondary menu and are described
-    as not easily reachable. So those four are hidden and the rest are left alone. E takes
-    the contextual action, F draws the weapon, the interaction button acts on whatever is
-    under the reticle, and nothing of ours competes for the same thumb.
+    The eight touch controls are one priority stack, JUMP, the interaction button, E, F,
+    then 1 to 4, and the slots on screen are fixed. Visible buttons fill those slots from
+    the top of the stack down, and the rule that matters is the count: five or fewer and
+    every one is drawn directly, a sixth and the client hands the last slot to a "+" that
+    hides the rest behind a second tap.
+
+    The numbered buttons are not badly placed, then. They occupy the same good slots as any
+    other, and they only became awkward because we were showing too many things at once.
+    Four are needed for the game: jump, the interaction button, E for the contextual action,
+    F to draw. That leaves one, and one is what we take, for the menu, which is what removes
+    a bar of our own from the bottom of the screen. The other three stay hidden rather than
+    being pushed behind a "+".
+
+    The glyph on it is ours. A control that reads "1" says nothing; the client lets a scene
+    replace the picture with an image it ships, so the button says menu without a caption.
   */
   TouchScreenControls.hide([
-    InputAction.IA_ACTION_3, InputAction.IA_ACTION_4,
-    InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
+    InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
   ])
-  console.log('[CLIENT] HUD tactile: action centrale = IA_PRIMARY, tir sur le bouton de la scene')
+  const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
+  if (ctrl !== null) {
+    ctrl.touchInputs = [
+      ...ctrl.touchInputs.filter((t) => t.inputAction !== InputAction.IA_ACTION_3),
+      {
+        inputAction: InputAction.IA_ACTION_3,
+        hide: false,
+        icon: { tex: { $case: 'texture', texture: { src: 'assets/ui/icon-menu.png' } } }
+      }
+    ]
+  }
+  console.log('[CLIENT] HUD tactile: 5 boutons directs, menu sur IA_ACTION_3')
 }
 
 export function reportPlatform(): void {
