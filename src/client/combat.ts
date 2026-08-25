@@ -12,7 +12,7 @@ import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT } from '../sh
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
-import { setAiming, setArmeIcone } from './locomotion'
+import { setAiming, setArmeIcone, setGachette } from './locomotion'
 
 /**
  * The pistol, client side.
@@ -317,7 +317,19 @@ function gunSystem(dt: number): void {
   // drawn weapon on automatic would shoot every neutral who crossed the cone, and a shot
   // costs the target real coins. Drawing already carries the intent; the tap carries the
   // shot. The reticle naming its target is the assist, rather than firing for the player.
-  if (combatView.aiming && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN) && tirer(now)) {
+  /*
+    Two ways to fire, and the big one is the point.
+
+    The trigger was the client's interaction button alone, which is the small one off to the
+    side and wears a pointing hand: correct for picking things up, silent about being a
+    trigger, and the reason the first question asked of this game was how to shoot. E is the
+    central button, the largest and the one a thumb finds without looking, and while the
+    weapon is out it has nothing else to do. So it fires, and it wears a reticle for as long
+    as it does. The interaction button keeps working for anyone who already found it.
+  */
+  const gachette = inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
+    || inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
+  if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
     //
     // The weapon can leave five and a half rounds a second and the clip lasts three
@@ -388,6 +400,7 @@ function degainer(on: boolean): void {
   combatView.aiming = on
   setAiming(on)
   setArmeIcone(on)
+  setGachette(on)
   if (on) enJoue.add(moi)
   else enJoue.delete(moi)
   void room.send('aim', { on })

@@ -34,10 +34,13 @@ const Rang = (props: { label: string; note: string; primary?: boolean; onClick: 
   </UiEntity>
 )
 
+/** Heading plus the three rows, the most it can ever be. */
+export const HAUTEUR_TRAVEL = 52 + 3 * (RANG + 26 + 10)
+
 export const TravelContent = () => {
   if (!travelView.open) return null
   return (
-    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_TRAVEL, flexDirection: 'column' }}>
       <Label value="WHERE TO" fontSize={TYPE.body} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
 

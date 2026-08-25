@@ -26,13 +26,16 @@ const PIED_H = 34
 const PANEL_W = PAD * 2 + LABEL_W + MUTATIONS.length * (CASE + GAP)
 const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
+/** The grid plus its two labels, which is what the window is asked to make room for. */
+export const HAUTEUR_INDEX = TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
+
 export const IndexContent = () => {
   if (!indexView.open) return null
   const vus = new Set(indexView.vus)
   const total = RARITIES.length * MUTATIONS.length
 
   return (
-    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column', overflow: 'scroll' }}>
+    <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_INDEX, flexDirection: 'column' }}>
       <Label
         value={`COLLECTION  ${vus.size} / ${total}`}
         fontSize={TYPE.body}

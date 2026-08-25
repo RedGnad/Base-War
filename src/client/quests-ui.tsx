@@ -92,18 +92,26 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   )
 }
 
+/**
+ * What this tab needs, so the window can be exactly that tall and no taller.
+ *
+ * Added up rather than guessed: title, subtitle, three rows with their gaps, the
+ * all-three strip, the streak heading and the streak cards.
+ */
+export const HAUTEUR_GOALS = 51 + 51 + 3 * (105 + 14) + (78 + 7) + (44 + 20) + 105
+
 export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
   const allDone = allQuestsDone()
   return (
-    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_GOALS, flexDirection: 'column' }}>
 
     <Label value="DAILY OBJECTIVES" fontSize={TYPE.title} color={Color4.fromHexString('#ffd166ff')}
         uiTransform={{ width: '100%', height: 51 }} textAlign="middle-left" />
     <Label value="resets every day at 00:00 UTC" fontSize={TYPE.caption} color={Color4.fromHexString('#7d879bff')}
         uiTransform={{ width: '100%', height: 34, margin: { bottom: 17 } }} textAlign="middle-left" />
 
-    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, overflow: 'scroll', flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
     <UiEntity

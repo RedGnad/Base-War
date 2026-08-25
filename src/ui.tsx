@@ -15,9 +15,9 @@ import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, 
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 import { placementView } from './client/plots'
-import { IndexContent, indexView } from './client/index-ui'
-import { QuestsContent, questsToClaim } from './client/quests-ui'
-import { TravelContent } from './client/travel-ui'
+import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
+import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
+import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
@@ -53,6 +53,9 @@ export function setupUi() {
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
     if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
     if (modale()) return
+    // While the weapon is out this button is the trigger, and combat.ts owns it. Without
+    // this, one press would fire and open the nearest crate in the same frame.
+    if (combatView.aiming) return
     if (!inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) return
     const a = nextAction()
     if (a !== null) a.action()
@@ -120,16 +123,38 @@ const Centre = (props: { top?: number; bottom?: number; children?: unknown }) =>
 
 const MENU_W = 1088
 
+const MENU_PAD = 18
+const MENU_ENTETE = TAP.height + 14
+
 const MenuWindow = () => {
   if (modale() || !menuView.open) return null
-  const h = BAND.dialogMaxHeight
+
+  /*
+    The height is computed, and the scrolling area is given a number rather than a wish.
+    
+    The body used to be `flexGrow: 1` inside a fixed-height window, on the assumption that
+    it would take the space left over and no more. That is CSS reasoning. The engine lays
+    out with Yoga, where `flexShrink` defaults to zero rather than one, so a child whose
+    content is taller than the room available does not shrink to fit: it keeps its size and
+    runs out through the bottom of the frame. On a desktop it happened to scroll; on a phone
+    it simply spilled past the panel, which is what a photograph of the running game showed.
+    
+    So each tab declares what it needs, the window takes that or the ceiling, whichever is
+    smaller, and the body is handed the exact remainder in pixels. A tab that fits makes a
+    short window instead of a tall one with a hole in it, which is the other half of the
+    complaint: a card for three objectives should not take over the screen.
+  */
+  const besoin = questsView.open ? HAUTEUR_GOALS : indexView.open ? HAUTEUR_INDEX : HAUTEUR_TRAVEL
+  const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
+  const corps = h - MENU_PAD * 2 - MENU_ENTETE
+
   return (
     <UiEntity
       uiTransform={{
         width: strip(MENU_W).width, height: h, positionType: 'absolute',
         position: { top: '50%', left: '50%' },
         margin: { left: strip(MENU_W).margin.left, top: -h / 2 },
-        flexDirection: 'column', padding: 18
+        flexDirection: 'column', padding: MENU_PAD
       }}
       uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.97) }}
     >
@@ -148,9 +173,15 @@ const MenuWindow = () => {
         <Btn label="CLOSE" width={180} onClick={closeMenu} />
       </UiEntity>
 
-      <QuestsContent />
-      <IndexContent />
-      <TravelContent />
+      <UiEntity
+        uiTransform={{
+          width: '100%', height: corps, overflow: 'scroll', flexDirection: 'column'
+        }}
+      >
+        <QuestsContent />
+        <IndexContent />
+        <TravelContent />
+      </UiEntity>
     </UiEntity>
   )
 }

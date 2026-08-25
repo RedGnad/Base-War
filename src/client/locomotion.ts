@@ -81,18 +81,41 @@ export function setupTouchHud(): void {
   console.log('[CLIENT] HUD tactile: 5 boutons directs, menu sur IA_ACTION_3, arme sur IA_SECONDARY')
 }
 
-/** Put one of our images on a client button, replacing whatever glyph it came with. */
-function poserIcone(action: InputAction, nom: string): void {
+/**
+ * Put one of our images on a client button, or take ours back off it.
+ *
+ * Passing null drops our entry entirely, which restores the button's built-in glyph: there
+ * is no "no icon" value to write, only an entry that is or is not there.
+ */
+function poserIcone(action: InputAction, nom: string | null): void {
   const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
   if (ctrl === null) return
-  ctrl.touchInputs = [
-    ...ctrl.touchInputs.filter((t) => t.inputAction !== action),
-    {
-      inputAction: action,
-      hide: false,
-      icon: { tex: { $case: 'texture', texture: { src: `assets/ui/${nom}.png` } } }
-    }
-  ]
+  const autres = ctrl.touchInputs.filter((t) => t.inputAction !== action)
+  ctrl.touchInputs = nom === null
+    ? autres
+    : [
+        ...autres,
+        {
+          inputAction: action,
+          hide: false,
+          icon: { tex: { $case: 'texture', texture: { src: `assets/ui/${nom}.png` } } }
+        }
+      ]
+}
+
+let gachette: boolean | null = null
+
+/**
+ * The central button becomes the trigger, and says so, for as long as the weapon is out.
+ *
+ * Its normal job is the contextual action, which has a word for itself on the line above the
+ * controls. While aiming there is no contextual action worth taking, so the button changes
+ * meaning, and a reticle is the one picture that means trigger without a caption.
+ */
+export function setGachette(actif: boolean): void {
+  if (gachette === actif) return
+  gachette = actif
+  poserIcone(InputAction.IA_PRIMARY, actif ? 'icon-fire' : null)
 }
 
 let armeSortie: boolean | null = null
