@@ -86,6 +86,23 @@ export function hasSomethingToRecover(address: string): boolean {
 type EnCours = { victim: string; slot: number; code: number; fin: number; total: number }
 const enCours = new Map<string, EnCours>()
 
+/**
+ * A shot lands on somebody who is prying: the attempt ends there.
+ *
+ * This was the hole the whole defence had. Prying costs six to eighteen seconds standing
+ * still inside somebody else's building, which is the only stretch where a thief is properly
+ * exposed, and a gun did nothing to them during it: nothing outside this file ever touched
+ * the in-progress map. Every counterplay the owner had arrived afterwards, once the item was
+ * already in the thief's hands. The vulnerable window and the punishable window were
+ * different windows.
+ */
+export function interrompreVol(thief: string): boolean {
+  if (!enCours.has(thief)) return false
+  enCours.delete(thief)
+  void room.send('stealFailed', { reason: 'shot, you lost your grip' }, { to: [thief] })
+  return true
+}
+
 /** Un vol en cours est-il ouvert sur cette base ? Sert a la sentinelle et a la reprise. */
 export function volEnCoursSur(address: string): boolean {
   for (const v of enCours.values()) if (v.victim === address) return true

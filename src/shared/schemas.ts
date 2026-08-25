@@ -188,6 +188,44 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
 export const CARRY_GRIP = 3
 
 /**
+ * How close a shot has to land to reach somebody's hands, as opposed to their pockets.
+ *
+ * The general shot range is twenty-eight metres, and measuring the chase showed what that
+ * means: a thief leaving your doorway at 7.92 m/s stays inside it for three and a half
+ * seconds, while knocking their load loose takes 0.54 of sustained fire. The owner had six
+ * and a half times the time they needed, standing still, so the tension the design was built
+ * on, that aiming costs half your speed, never engaged at all: there was nothing to chase.
+ *
+ * Ten metres is 1.26 seconds of exposure against 0.54 of firing. Close enough that reacting
+ * fast wins it, far enough that the thief who is already moving gets out, after which the
+ * owner has to alternate between running to close the gap and stopping to shoot, which is
+ * the chase that was supposed to exist.
+ */
+export const LOOT_KNOCK_RANGE = 10
+
+/** How long a knocked-loose item lies on the ground before it takes itself home. */
+export const LOOT_ITEM_LIFETIME_MS = 30_000
+export const LOOT_ITEM_PICKUP_RANGE = 3
+
+/** The one who just dropped it cannot scoop it straight back up. */
+export const LOOT_ITEM_OWNER_LOCK_MS = 2_000
+
+/**
+ * An item lying where its carrier was hit, waiting for whoever gets there first.
+ *
+ * Sending it straight back to the base it came from was the tidy answer and the dull one:
+ * it ends the moment instead of opening it. On the ground it is a scramble. The owner runs
+ * to reclaim what is theirs, the thief can try again if they survive, and a third party who
+ * had no stake at all suddenly has a reason to have been carrying a gun.
+ */
+export const DroppedItem = engine.defineComponent('basetycoon::dropped-item', {
+  code: Schemas.Int,
+  origin: Schemas.String,
+  droppedBy: Schemas.String,
+  untilMs: Schemas.Int64
+})
+
+/**
  * How much a full pair of hands slows you down.
  *
  * The prying penalty was set to run for the theft plus two seconds, so it expired just after

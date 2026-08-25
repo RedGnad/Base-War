@@ -228,8 +228,10 @@ export function setupCombat(): void {
   room.onMessage('shotResult', (d) => {
     // One shot, one line. What it did to their hands leads, because that is the bigger prize.
     const qui = d.hitName.toUpperCase()
-    if (d.loot === 2) {
-      alerter(`${qui} DROPPED THE LOOT, IT IS GOING HOME`, '#ff6b6b', 3500)
+    if (d.loot === 3) {
+      alerter(`${qui} LOST THEIR GRIP, THE THEFT IS OFF`, '#8fe08f', 3200)
+    } else if (d.loot === 2) {
+      alerter(`${qui} DROPPED IT, GRAB IT OFF THE GROUND`, '#ff6b6b', 3500)
     } else if (d.loot === 1) {
       alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', 2600)
     } else if (d.reason === 'hit') {

@@ -1,7 +1,10 @@
-import { engine, Transform, PlayerIdentityData } from '@dcl/sdk/ecs'
+import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
-import { Carried, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE } from '../shared/schemas'
+import {
+  Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE,
+  LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS
+} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
 import { log } from './log'
@@ -79,6 +82,14 @@ export function forcerLacher(address: string, pourquoi: string): boolean {
   return true
 }
 
+/** Put it on the floor, right where they were standing, for whoever gets there first. */
+function jeterAuSol(code: number, origin: string, par: string, ou: Vector3): void {
+  const e = engine.addEntity()
+  Transform.create(e, { position: Vector3.create(ou.x, 0.5, ou.z) })
+  DroppedItem.create(e, { code, origin, droppedBy: par, untilMs: Date.now() + LOOT_ITEM_LIFETIME_MS })
+  syncEntity(e, [DroppedItem.componentId, Transform.componentId])
+}
+
 /**
  * A hit on somebody's hands. Returns what it achieved, so the shooter can be told once.
  *
@@ -93,7 +104,23 @@ export function frapperPorteur(address: string): 'rien' | 'ebranle' | 'lache' {
   if (c === null) return 'rien'
   c.grip -= 1
   if (c.grip > 0) return 'ebranle'
-  forcerLacher(address, 'shot, you dropped it')
+  /*
+    It falls where they stood; it does not teleport home.
+
+    Returning it to its base was tidy and it closed the moment instead of opening it. On the
+    ground it is a scramble: the owner runs to reclaim what is theirs, the thief can try again
+    if they are still standing, and somebody who had no stake at all now has a reason to have
+    been carrying a gun.
+  */
+  const quoi = lacher(address)
+  if (quoi === null) return 'rien'
+  const p = positionOf(address)
+  if (p === null) { rentrer(address, quoi, 'shot, you dropped it'); return 'lache' }
+  jeterAuSol(quoi.code, quoi.origin, address, p)
+  void room.send('carryResult', {
+    ok: false, reason: 'shot, you dropped it', rarity: rarityOf(quoi.code), mutation: mutationDe(quoi.code)
+  }, { to: [address] })
+  log(`carry: ${displayName(address)} was shot and dropped a ${rarityOf(quoi.code)} on the ground`)
   return 'lache'
 }
 
@@ -185,6 +212,42 @@ export function startCarry(): void {
     acc = 0
     const ici = presents()
     const now = Date.now()
+
+    /*
+      Whatever is lying on the floor goes to the nearest person who is allowed to take it,
+      and the one who just dropped it is not allowed to for a couple of seconds. Anything
+      nobody reaches in time gives up and goes back to the base it belonged to.
+    */
+    for (const [e, d] of engine.getEntitiesWith(DroppedItem)) {
+      const t = Transform.getOrNull(e)
+      if (t === null) continue
+      if (d.untilMs < now) {
+        addItem(d.origin, d.code)
+        engine.removeEntity(e)
+        continue
+      }
+      const ouvert = d.untilMs - LOOT_ITEM_LIFETIME_MS + LOOT_ITEM_OWNER_LOCK_MS
+      let gagnant: string | null = null
+      let plusPres = LOOT_ITEM_PICKUP_RANGE
+      for (const addr of ici) {
+        if (addr === d.droppedBy && now < ouvert) continue
+        if (portePour(addr)) continue
+        const p = positionOf(addr)
+        if (p === null) continue
+        const dist = Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2)
+        if (dist > plusPres) continue
+        plusPres = dist
+        gagnant = addr
+      }
+      if (gagnant !== null) {
+        poser(gagnant, d.code, d.origin)
+        void room.send('carryResult', {
+          ok: true, reason: 'picked it up', rarity: rarityOf(d.code), mutation: mutationDe(d.code)
+        }, { to: [gagnant] })
+        log(`carry: ${displayName(gagnant)} picked a ${rarityOf(d.code)} up off the ground`)
+        engine.removeEntity(e)
+      }
+    }
     for (const [a, e] of [...portes]) {
       const c = Carried.getOrNull(e)
       if (c === null) { portes.delete(a); continue }

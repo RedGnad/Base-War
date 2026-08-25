@@ -19,6 +19,7 @@ import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
 import { setupCarry } from './carry'
+import { setupLootUi } from './loot-ui'
 import { setupIntent } from './intent'
 
 export const view = {
@@ -64,6 +65,7 @@ export function startClient(): void {
   setupPlots()
   setupTheft()
   setupCarry()
+  setupLootUi()
   setupBelt()
   setupSlots()
   setupConvoy()

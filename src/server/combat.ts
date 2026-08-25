@@ -2,12 +2,13 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, LOOT_OWNER_LOCK_MS,
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, LOOT_OWNER_LOCK_MS, LOOT_KNOCK_RANGE,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { frapperPorteur } from './carry'
+import { interrompreVol } from './theft'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents } from './plots'
 
 /**
@@ -89,8 +90,22 @@ export function startCombat(): void {
       reports both facts in one message rather than two, the second of which used to erase the
       first on the way to the screen.
     */
-    const butin = frapperPorteur(best.addr)
-    const codeButin = butin === 'lache' ? 2 : butin === 'ebranle' ? 1 : 0
+    /*
+      Close enough to reach their hands, which is nearer than close enough to hit them.
+
+      The general range is twenty-eight metres and the escape from a doorway takes three and
+      a half seconds, so anybody could disarm a thief without moving: the chase this design
+      is built around never happened. Ten metres makes it a chase again.
+    */
+    const aBout = best.d <= LOOT_KNOCK_RANGE
+    const butin = aBout ? frapperPorteur(best.addr) : 'rien'
+    /*
+      And a shot lands on the prying too, which is the window a gun did nothing about at all.
+      Six to eighteen seconds standing still in somebody's building was the only stretch where
+      a thief was properly exposed, and it was the one stretch the owner could not punish.
+    */
+    const coupe = aBout ? interrompreVol(best.addr) : false
+    const codeButin = butin === 'lache' ? 2 : butin === 'ebranle' ? 1 : coupe ? 3 : 0
 
     // fortune to one shot, and floored by nothing: shooting a broke player yields nothing.
     const cap = Math.max(0, Math.floor(incomePerSecond(best.addr) * SHOT_DROP_CAP_S))
