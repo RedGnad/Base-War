@@ -39,25 +39,38 @@ export const CRATE_PRICE = [2018, 17425, 165140, 1473212] as const
 export const CRATE_PAYBACK_S = [60, 120, 240, 480] as const
 
 /**
- * Floors grow geometrically, and that curve is the real ceiling.
+ * Floors grow geometrically, and the RATE is the whole ladder. It was set too high.
  *
  * There were three floors at fixed prices, the third reachable in about eighty minutes. For
  * the one purchase that visibly makes the building taller, an hour is nothing: a tycoon's
- * third storey should be the reward for several days. And a hard cap of three meant the
- * player ran out of building to do while the game was meant to last months.
+ * third storey should be the reward for several days. A geometric price is the right answer
+ * and it is what the genre does. Four was the wrong number for it.
  *
- * So each floor costs four times the last. That is what makes the ladder endless in the only
- * sense that matters: simulated second by second, the second floor lands at 1.1 hours, the
- * third at 3.4, the fourth at 9.2, the fifth at 27, the sixth at 83, the seventh at 271 and
- * the eighth at 916. Nobody meets the constant below; they meet the curve.
+ * The old comment here claimed four times the last is "what makes the ladder endless". It is
+ * the opposite, and the simulation printed right below it was already saying so: 1.1 hours,
+ * 3.4, 9.2, 27, 83, 271, 916 for floors two through eight. Those times multiply by about
+ * 3.3 each rung, and that ratio tends to the growth rate itself, because cost rises like
+ * `g^n` while income rises like `n`. Extending it: floor 12 costs 4^10 times floor 2, which
+ * from a measured 1.1 hours is a hundred and thirty-one YEARS. Floors nine through twelve
+ * were ornaments nobody could reach, and raising `MAX_FLOORS` would only have added more.
  *
- * It stays the safe purchase against prestige, which doubles income but takes the loot. And
- * it is not free of risk in this game the way it is in the ones this genre came from: every
+ * Cookie Clicker charges 1.15 per building bought, stated as a formula on its own wiki and
+ * checked against its two published rules of thumb (a doubling every 5 purchases, 1.15^5 =
+ * 2.01; a thousandfold every 50, 1.15^50 = 1083). Its unit of production is one building.
+ * Ours is one SLOT, and a floor grants six of them, so the honest translation of that rate
+ * to our unit is 1.15^6. At that rate the same floor 12 lands at about 200 days, which is
+ * the months-long climb this file says it wants, and the twelve floors we already have are
+ * enough ladder to hold it. The cap was never the binding constraint; the rate was.
+ *
+ * It stays the safe purchase against prestige, which multiplies income but takes the loot.
+ * And it is not free of risk here the way it is in the games this genre came from: every
  * slot is on show, distance to a base is measured at ground level, so building tall makes a
- * bigger target rather than a safer one.
+ * bigger target rather than a safer one. If anything that argues for a gentler curve than
+ * the genre's, not a steeper one.
  */
 export const FLOOR_BASE_PRICE = 800_000
-export const FLOOR_PRICE_GROWTH = 4
+/** 1.15 per unit of production, the genre's rate, times the six slots a floor grants. */
+export const FLOOR_PRICE_GROWTH = Math.pow(1.15, 6)
 
 /** Cost of reaching `targetFloor`, which is 2 or more. */
 export function floorCost(targetFloor: number): number {
