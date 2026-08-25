@@ -8,7 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, slot } from './client/layout'
+import { strip, row, topBand, noticeBand, active, setReference } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
@@ -71,6 +71,7 @@ export function setupUi() {
       one place, in layout.ts, where the forbidden columns are named.
     */
     const inset = 'device'
+    setReference(phone ? 1600 : 1920, phone ? 720 : 1080)
     // 1600x720 is what the client substitutes on a handset for a 16:9 request; asking for
     // it directly is what makes the desktop preview measure like a phone.
     ReactEcsRenderer.setUiRenderer(uiComponent, {
@@ -224,7 +225,31 @@ function Crosshair() {
   )
 }
 
-const uiComponent = () => (
+const uiComponent = () => {
+  /*
+    The top band, resolved once per frame, in priority order.
+
+    The money is permanent and leads. The tutorial step matters only until it is finished.
+    A crowd bonus and a crate on the belt are moments. The feed is history, so it goes last
+    and is the one dropped when the band is full.
+  */
+  const band = topBand([
+    ['money', true, 104],
+    ['tuto', tutoView.etape < tutoView.total, 56],
+    ['prime', theftView.prime > 0, 44],
+    ['belt', beltView.annonce !== '', 58],
+    ['feed', theftView.fil.length > 0, 62]
+  ])
+  /*
+    What the game is waiting for, stacked above the controls, most urgent first.
+  */
+  const notice = noticeBand([
+    ['stealing', theftView.stealing, 76],
+    ['opening', boxView.opening, 54],
+    ['placement', placementView.selection >= 0, 46],
+    ['baseFirst', !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule, 40]
+  ])
+  return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <WelcomePanel />
@@ -263,11 +288,11 @@ const uiComponent = () => (
     </UiEntity>
     )}
 
-    {!modale() && tutoView.etape < tutoView.total && (
+    {!modale() && tutoView.etape < tutoView.total && band.tuto >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 1000, height: slot(1).height, positionType: 'absolute',
-          position: { top: slot(1).top, left: '50%' }, margin: { left: -500 },
+          width: strip(1000).width, height: 56, positionType: 'absolute',
+          position: { top: band.tuto, left: '50%' }, margin: strip(1000).margin,
           flexDirection: 'row', alignItems: 'center', padding: 12
         }}
         uiBackground={SKIN.panel}
@@ -289,11 +314,11 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!modale() && theftView.prime > 0 && (
+    {!modale() && theftView.prime > 0 && band.prime >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 620, height: slot(2).height, positionType: 'absolute',
-          position: { top: slot(2).top, left: '50%' }, margin: { left: -310 },
+          width: strip(620).width, height: 44, positionType: 'absolute',
+          position: { top: band.prime, left: '50%' }, margin: strip(620).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0.06, 0.20, 0.10, 0.85) }}
@@ -341,8 +366,8 @@ const uiComponent = () => (
     {!modale() && (
     <UiEntity
       uiTransform={{
-        width: 520, height: slot(0).height, positionType: 'absolute',
-        position: { top: slot(0).top, left: '50%' }, margin: { left: -260 },
+        width: strip(520).width, height: 104, positionType: 'absolute',
+        position: { top: band.money, left: '50%' }, margin: strip(520).margin,
         padding: 8, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
       uiBackground={SKIN.panel}
@@ -382,11 +407,11 @@ const uiComponent = () => (
     </UiEntity>
     )}
 
-    {!modale() && theftView.fil.length > 0 && (
+    {!modale() && theftView.fil.length > 0 && band.feed >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 400, height: 62, positionType: 'absolute',
-          position: { top: 106, left: '50%' }, margin: { left: -200 },
+          width: strip(400).width, height: 62, positionType: 'absolute',
+          position: { top: band.feed, left: '50%' }, margin: strip(400).margin,
           padding: 8, flexDirection: 'column', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
@@ -397,11 +422,11 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
-    {!modale() && beltView.annonce !== '' && (
+    {!modale() && beltView.annonce !== '' && band.belt >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 700, height: slot(3).height, positionType: 'absolute',
-          position: { top: slot(3).top, left: '50%' }, margin: { left: -350 },
+          width: strip(700).width, height: 58, positionType: 'absolute',
+          position: { top: band.belt, left: '50%' }, margin: strip(700).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: announceBackdrop() }}
@@ -435,8 +460,11 @@ const uiComponent = () => (
         uiBackground={SKIN.panel}
       >
         {boxView.reel.map((r, i) => {
-          const x = 960 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-          if (x < -REEL_W || x > 1920) return null
+          // Centred on the screen actually being drawn. These were 960 and 1920, the
+          // middle and the edge of a desktop canvas, so on a phone's 1600 the whole strip
+          // and its marker sat a hundred and sixty pixels right of centre.
+          const x = active.w / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+          if (x < -REEL_W || x > active.w) return null
           const gagnant = !boxView.roule && i === REEL_WIN
           const col = Color4.fromHexString((RARITIES[r]?.color ?? '#ffffff') + 'ff')
           return (
@@ -465,7 +493,7 @@ const uiComponent = () => (
         <UiEntity
           uiTransform={{
             width: 5, height: REEL_H + 8, positionType: 'absolute',
-            position: { left: 958, top: 0 }
+            position: { left: active.w / 2 - 2.5, top: 0 }
           }}
           uiBackground={{ color: C.name }} />
       </UiEntity>
@@ -474,8 +502,8 @@ const uiComponent = () => (
     {!modale() && !boxView.roule && boxView.resultat >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 900, height: 96, positionType: 'absolute',
-          position: { bottom: 250 + REEL_H + 26, left: '50%' }, margin: { left: -450 },
+          width: strip(900).width, height: 96, positionType: 'absolute',
+          position: { bottom: 250 + REEL_H + 26, left: '50%' }, margin: strip(900).margin,
           flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
         }}
       >
@@ -493,8 +521,8 @@ const uiComponent = () => (
     {!modale() && !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
       <UiEntity
         uiTransform={{
-          width: 400, height: 40, positionType: 'absolute',
-          position: { bottom: 150, left: '50%' }, margin: { left: -200 },
+          width: strip(400).width, height: 40, positionType: 'absolute',
+          position: { bottom: notice.baseFirst, left: '50%' }, margin: strip(400).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -506,8 +534,8 @@ const uiComponent = () => (
     {!modale() && placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
-          width: 560, height: 46, positionType: 'absolute',
-          position: { bottom: 150, left: '50%' }, margin: { left: -280 },
+          width: strip(560).width, height: 46, positionType: 'absolute',
+          position: { bottom: notice.placement, left: '50%' }, margin: strip(560).margin,
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
           padding: 6
         }}
@@ -524,8 +552,8 @@ const uiComponent = () => (
     {!modale() && boxView.opening && (
       <UiEntity
         uiTransform={{
-          width: 320, height: 54, positionType: 'absolute',
-          position: { bottom: 150, left: '50%' }, margin: { left: -160 },
+          width: strip(320).width, height: 54, positionType: 'absolute',
+          position: { bottom: notice.opening, left: '50%' }, margin: strip(320).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
@@ -537,8 +565,8 @@ const uiComponent = () => (
     {!modale() && theftView.stealing && (
       <UiEntity
         uiTransform={{
-          width: 460, height: 76, positionType: 'absolute',
-          position: { bottom: 210, left: '50%' }, margin: { left: -230 },
+          width: strip(460).width, height: 76, positionType: 'absolute',
+          position: { bottom: notice.stealing, left: '50%' }, margin: strip(460).margin,
           flexDirection: 'column', padding: 10
         }}
         uiBackground={{ color: Color4.create(0.24, 0.06, 0.06, 0.9) }}
@@ -564,8 +592,8 @@ const uiComponent = () => (
     {!modale() && theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
-          width: 520, height: 70, positionType: 'absolute',
-          position: { top: '42%', left: '50%' }, margin: { left: -260 },
+          width: strip(520).width, height: 70, positionType: 'absolute',
+          position: { top: '42%', left: '50%' }, margin: strip(520).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -628,4 +656,5 @@ const uiComponent = () => (
     )}
 
   </UiEntity>
-)
+  )
+}

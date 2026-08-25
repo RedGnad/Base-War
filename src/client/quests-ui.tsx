@@ -1,6 +1,7 @@
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, SKIN, btn, C } from './theme'
 import { Color4 } from '@dcl/sdk/math'
+import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
 import { QUESTS } from '../shared/quests'
 import { DAILY_REWARDS } from '../shared/schemas'
@@ -95,10 +96,22 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
   const allDone = allQuestsDone()
   return (
+    /*
+      A dialog that fits the screen it is drawn on.
+
+      It was 1088 by 731 with a top margin computed for a box of 430, on a phone whose whole
+      canvas is 1600 by 720. It was taller than the screen, and it was hung from the wrong
+      half-height, so it started too high and ran off the bottom. Its contents came to 862,
+      so it also overflowed itself, which is what put the login streak on top of the button.
+      Three separate reasons for one symptom, all of them arithmetic.
+      The header and the way out are pinned, and only the middle scrolls, so the button that
+      closes it can never be the thing pushed off the edge.
+    */
     <UiEntity
       uiTransform={{
-        width: 1088, height: 731, positionType: 'absolute',
-        position: { top: '50%', left: '50%' }, margin: { left: -320, top: -215 },
+        width: strip(1088).width, height: BAND.dialogMaxHeight, positionType: 'absolute',
+        position: { top: '50%', left: '50%' },
+        margin: { left: strip(1088).margin.left, top: -BAND.dialogMaxHeight / 2 },
         flexDirection: 'column', padding: 18
       }}
       uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.95) }}
@@ -108,6 +121,7 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
       <Label value="resets every day at 00:00 UTC" fontSize={TYPE.caption} color={Color4.fromHexString('#7d879bff')}
         uiTransform={{ width: '100%', height: 34, margin: { bottom: 17 } }} textAlign="middle-left" />
 
+      <UiEntity uiTransform={{ width: '100%', flexGrow: 1, overflow: 'scroll', flexDirection: 'column' }}>
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
       <UiEntity
@@ -152,6 +166,8 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
             </UiEntity>
           )
         })}
+      </UiEntity>
+
       </UiEntity>
 
       <Button uiTransform={{ width: 221, height: TAP.height, margin: { top: 17 } }}

@@ -1,4 +1,5 @@
 import { Color4 } from '@dcl/sdk/math'
+import { strip } from './layout'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP , SKIN } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
@@ -18,11 +19,11 @@ export const IndexPanel = () => {
   return (
     <UiEntity
       uiTransform={{
-        width: MUTATIONS.length * (CASE + GAP) + 130,
+        width: strip(MUTATIONS.length * (CASE + GAP) + 130).width,
         height: RARITIES.length * (CASE + GAP) + 76,
         positionType: 'absolute',
         position: { top: '14%', left: '50%' },
-        margin: { left: -(MUTATIONS.length * (CASE + GAP) + 130) / 2 },
+        margin: strip(MUTATIONS.length * (CASE + GAP) + 130).margin,
         flexDirection: 'column',
         padding: 12
       }}

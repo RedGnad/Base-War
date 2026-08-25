@@ -1,3 +1,4 @@
+import { engine, UiCanvasInformation } from '@dcl/sdk/ecs'
 import { TAP } from './theme'
 
 /**
@@ -22,16 +23,37 @@ import { TAP } from './theme'
  * renders 720 is what put a 620 tall panel on an 86 percent tall screen.
  */
 
-/** The reference the layout is authored against: the phone, because it is the tighter one. */
-export const REF = { w: 1600, h: 720 } as const
+/**
+ * The reference the interface is currently authored against.
+ *
+ * Set once the platform is known, because the client swaps a 16:9 request for 1600x720 on
+ * a handset. Everything below converts the client's measurements into these units.
+ */
+export const active = { w: 1920, h: 1080 }
+/** Heights are authored against the phone, 720, because what fits 720 fits 1080. */
+export function setReference(w: number, h: number): void { active.w = w; active.h = h }
 
 /**
- * How much of the right edge the client's own action buttons occupy.
+ * What the client's own controls take from the left and right edges, in our units.
  *
- * Nothing of ours crosses this line. Measured off the mobile client rather than guessed:
- * three round buttons and their padding.
+ * This used to be one guessed number, 320, for the action buttons on the right. Two things
+ * were wrong with it. The client publishes the answer itself, in UiCanvasInformation, and
+ * the protocol says the value changes with whatever HUD is currently shown, so a constant
+ * cannot be right. And it named only the right edge, while the phone puts a joystick on the
+ * left, so the interface was corrected for one obstruction and blind to the other.
+ *
+ * Returned in the units the layout is written in: the client reports canvas pixels, and the
+ * renderer multiplies our numbers by the same scale it derives from the virtual screen, so
+ * dividing here cancels it out. Missing or unreported means zero, which is the honest
+ * answer for a client that has not told us anything.
  */
-export const CLIENT_RIGHT = 320
+function clientEdges(): { left: number; right: number } {
+  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
+  if (info === null || info.interactableArea === undefined) return { left: 0, right: 0 }
+  const scale = Math.min(info.width / active.w, info.height / active.h)
+  if (!(scale > 0)) return { left: 0, right: 0 }
+  return { left: info.interactableArea.left / scale, right: info.interactableArea.right / scale }
+}
 
 /** The three bands, as offsets from the top and the bottom of the reference screen. */
 export const BAND = {
@@ -50,32 +72,76 @@ export function row(n: number): number {
 }
 
 /**
- * The top band, as numbered slots.
+ * The top band, as a stack.
  *
- * Messages arrive from unrelated parts of the game, the money, the tutorial, a crowd
- * bonus, a crate on the belt, and each used to carry a `top:` of its own. Two of them
- * picked numbers eight pixels apart and drew over each other on a phone. A slot index
- * cannot collide with itself.
+ * Messages arrive from unrelated parts of the game: the money, the tutorial step, a crowd
+ * bonus, the event feed, a crate announced on the belt. Giving each one a fixed address was
+ * the first fix, and it was only half right. It stopped two of them sharing a number, but a
+ * fixed address is wrong in both directions: a sixth message had nowhere to go and picked a
+ * `top:` by hand, landing on top of the money, and when the tutorial finished its address
+ * emptied and everything below it stayed put, floating under a hole.
+ *
+ * A band of messages is a stack. Each block is declared once, here, in priority order with
+ * the height it needs and whether it is showing right now; absent blocks take no room and
+ * everything below closes up. Collisions and holes both stop being possible, rather than
+ * being fixed one screenshot at a time.
+ *
+ * The band has a floor, because the middle of the screen belongs to dialogs. A block that
+ * would cross it is refused a position and does not draw: on a full band the least
+ * important message is dropped, which is the honest outcome and beats overlapping the game.
  */
-const SLOT_H = [104, 56, 44, 58]
-export function slot(n: number): { top: number; height: number } {
-  let top = BAND.top
-  for (let i = 0; i < n; i++) top += SLOT_H[i] + 8
-  return { top, height: SLOT_H[n] ?? 44 }
+export function topBand(blocks: Array<[string, boolean, number]>): Record<string, number> {
+  const out: Record<string, number> = {}
+  let y = BAND.top
+  for (const [name, present, height] of blocks) {
+    const room = y + height <= BAND.top + BAND.topHeight
+    out[name] = room ? y : -1
+    if (present && room) y += height + 8
+  }
+  return out
 }
 
 /**
  * A centred strip, returned as the width and the left margin that centres it.
  *
- * Everything of ours is centred on the usable area rather than on the screen, because the
- * screen's right edge belongs to the client. `usable` is what remains once that is taken
- * out, and a strip is never allowed to be wider than it.
+ * The rule this file got wrong for a long time, stated plainly: an obstruction in a corner
+ * limits how wide we are allowed to be, it does not move where the middle is. The old
+ * version shifted every strip half the width of the right-hand buttons, so anything routed
+ * through here sat a hundred and sixty pixels left of anything that placed itself by hand.
+ * That is why the interface never looked centred, and why straightening one panel knocked
+ * another one crooked: two different definitions of the word, in the same screen.
+ *
+ * The centre is the centre. Only the width answers to the client: a strip is trimmed to
+ * whatever survives between the controls it reports on either side, and the trim comes from
+ * the larger of the two so the result stays symmetric about the middle.
  */
 export function strip(width: number): { width: number; margin: { left: number } } {
-  const usable = REF.w - CLIENT_RIGHT
-  const w = Math.min(width, usable)
-  // Centred on the usable area, expressed against the screen centre that '50%' refers to.
-  return { width: w, margin: { left: -w / 2 - CLIENT_RIGHT / 2 } }
+  const edge = clientEdges()
+  const usable = active.w - 2 * Math.max(edge.left, edge.right)
+  const w = Math.min(width, Math.max(usable, active.w * 0.5))
+  return { width: w, margin: { left: -w / 2 } }
+}
+
+/**
+ * Context notices, stacked upward from above the control rows.
+ *
+ * These say what the game is waiting for right now: place your base first, tap a slot to
+ * move it, smash the crate, someone is robbing you. Each one used to carry its own
+ * `bottom:`, and three of them picked 150, which lands inside the row of controls that
+ * spans 136 to 232. They drew across the buttons.
+ *
+ * Same rule as the top band, in the other direction: declared once, in priority order, and
+ * each one stacks above the last so two can be up at the same time without touching. The
+ * first is the most urgent, and sits closest to the controls where the eye already is.
+ */
+export function noticeBand(blocks: Array<[string, boolean, number]>): Record<string, number> {
+  const out: Record<string, number> = {}
+  let y = row(2)
+  for (const [name, present, height] of blocks) {
+    out[name] = y
+    if (present) y += height + 10
+  }
+  return out
 }
 
 /**
