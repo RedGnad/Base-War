@@ -264,7 +264,18 @@ export const STEAL_RANGE = 4
 export const RECOVER_RANGE = 6
 
 export const MAX_BASES_AFFICHEES = 60
-export const FLOOR_HEIGHT = 2.8
+/**
+ * Ceiling height, set for the camera rather than for the avatar.
+ *
+ * It was 2.8, which is a real room and a bad game interior. A Decentraland avatar stands
+ * about 1.8 m, and in third person the camera floats above and behind the head, so under a
+ * 2.8 m slab it spends its time inside the ceiling. Interiors meant to be walked through in
+ * third person are built at three and a half to four metres for exactly this reason.
+ *
+ * Twelve floors at four metres is 48 m, against a platform ceiling of 143.6 m for a scene of
+ * this many parcels, so height was never the constraint here.
+ */
+export const FLOOR_HEIGHT = 4.0
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.
@@ -280,9 +291,17 @@ export const SLOTS_PER_FLOOR = 6
  */
 export const MAX_FLOORS = 12
 
-export const BASE_SIDE = 11.0
+/**
+ * The footprint, widened so six display slots and a stairwell are not the same square metre.
+ *
+ * At eleven metres, minus a three metre stairwell, the walkable floor was eight by eleven and
+ * had to hold six pedestals and the player moving between them. Fourteen gives the room the
+ * building was always drawn as having.
+ */
+export const BASE_SIDE = 14.0
 export const RAMP_ANGLE = 40
-export const RAMP_LENGTH = 4.4  // h/sin(40 deg) pour 2,8 m
+/** Derived, so a taller floor cannot leave the ramp reaching a floor it no longer meets. */
+export const RAMP_LENGTH = FLOOR_HEIGHT / Math.sin((RAMP_ANGLE * Math.PI) / 180)
 export const WALL_THICKNESS = 0.22
 export const WALL_HEIGHT = FLOOR_HEIGHT
 export const DOOR_WIDTH = 2.0
@@ -330,8 +349,8 @@ export const DAILY_REWARDS = [0, 0, 1, 1, 2, 2, 3] as const   // type de crate o
 export const RESELL_SECONDS = 30
 
 export const GRILLE = 2                    // snap step, in metres
-export const MIN_BASE_GAP = 15          // 11 m de base + 4 m de rue between deux voisins
-export const EDGE_MARGIN = 7                // from the scene edge
+export const MIN_BASE_GAP = BASE_SIDE + 4   // the footprint, plus a street between neighbours
+export const EDGE_MARGIN = BASE_SIDE / 2 + 2   // half a footprint clear of the scene edge
 /**
  * How close to your own base you must stand to open a crate.
  *
@@ -341,7 +360,14 @@ export const EDGE_MARGIN = 7                // from the scene edge
  * the belt and their plot, which is where theft and gunfire find each other.
  */
 export const OPEN_RANGE = 8
-export const BELT_CLEARANCE = 6               // from the belt, so it stays clear
+/**
+ * Measured from the base's CENTRE, so it has to cover the base's own half-width.
+ *
+ * It was a flat six against a footprint of eleven, which happened to work because half of
+ * eleven is five and a half. Widening the base to fourteen would have put the corner of every
+ * lane-side building through the conveyor without this being derived.
+ */
+export const BELT_CLEARANCE = BASE_SIDE / 2 + 2
 
 export function snapToGrid(v: number): number {
   return Math.round(v / GRILLE) * GRILLE
@@ -366,19 +392,35 @@ export function invalidReason(
 
 export const PLOT_MAX_ITEMS = SLOTS_PER_FLOOR * MAX_FLOORS
 
+/** The width of the hole the ramp climbs through, taken out of the +x side of every floor. */
+export const STAIRWELL_WIDTH = 3.6
+
+/**
+ * Where the six display slots stand on a floor, spread across the room they are given.
+ *
+ * The old figures were literals fitted to an eleven metre footprint, and they did not follow
+ * when it grew: six pedestals huddled in a 4.8 by 2.4 corner of a 10.4 by 14 slab, with the
+ * rest of the building empty. Derived from the footprint instead, so widening the base spaces
+ * them out rather than leaving them behind.
+ *
+ * The walkable slab is the footprint minus the stairwell, which sits on the +x side, so the
+ * usable centre is half a stairwell towards -x. The divisors leave air at both ends and keep
+ * the near row clear of the doorway, which is on +z.
+ */
 export function slotPosition(slot: number): { dx: number; dy: number; dz: number } {
   const floor = Math.floor(slot / SLOTS_PER_FLOOR)
   const k = slot % SLOTS_PER_FLOOR
   const col = k % 3
   const rang = Math.floor(k / 3)
+  const centreX = -STAIRWELL_WIDTH / 2
+  const pasX = (BASE_SIDE - STAIRWELL_WIDTH) / 3.4
+  const pasZ = BASE_SIDE / 4.4
   return {
-    dx: (col - 1.5) * 2.4,
+    dx: centreX + (col - 1) * pasX,
     dy: 0.45 + floor * FLOOR_HEIGHT,
-    dz: -3.4 + rang * 2.4
+    dz: -BASE_SIDE / 5 + rang * pasZ
   }
 }
-
-export const STAIRWELL_WIDTH = 3.0
 
 export function rampPosition(floor: number): { dx: number; dy: number; dz: number } {
   return {

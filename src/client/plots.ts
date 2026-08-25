@@ -54,9 +54,26 @@ const GRIS = '#9aa3b0ff'
 const GRIS_CLAIR = '#b6bec9ff'
 const FLOOR_COLOR = '#7f8794ff'
 
+/**
+ * The size every piece was built at, so showing and hiding never has to restate it.
+ *
+ * A floor used to be described twice: once here, with its real dimensions, and once again in
+ * the update below, where the same numbers were typed out a second time to scale a piece back
+ * up after it had been collapsed to zero. Two descriptions of one shape can disagree, and
+ * they did: the update handled `walls[0]` through `walls[9]` while the builder appended three
+ * more for the stairwell railings, so those three were never scaled at all and stayed hanging
+ * in the air over floors nobody had bought.
+ *
+ * Recording the size at construction removes the second description. Anything built through
+ * these helpers is hidden and shown correctly forever after, including pieces added later by
+ * somebody who never reads this comment.
+ */
+const taille = new Map<Entity, Vector3>()
+
 function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: string): Entity {
   const e = engine.addEntity()
   Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
   Material.setPbrMaterial(e, { albedoColor: Color4.fromHexString(color), roughness: 0.85 })
@@ -66,6 +83,7 @@ function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: numbe
 function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: number): Entity {
   const e = engine.addEntity()
   Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
   Material.setPbrMaterial(e, {
@@ -103,16 +121,27 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     scale: Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH),
     rotation: Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
   })
+  taille.set(ramp, Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH))
   MeshRenderer.setBox(ramp)
   MeshCollider.setBox(ramp)
   Material.setPbrMaterial(ramp, { albedoColor: Color4.fromHexString('#c9a227ff'), roughness: 0.7, metallic: 0.3 })
 
+  /*
+    Railings, sized in metres and then divided by the ramp they hang from.
+
+    A child's transform is multiplied by its parent's, and the ramp is a very flat, very long
+    box, so a rail written directly in parent space needs numbers like 3.0 and 6.0 that mean
+    nothing and quietly break the moment a floor gets taller. These are written as the metres
+    they should measure, then converted once.
+  */
+  const rampeX = STAIRWELL_WIDTH - 0.3
+  const RAIL_H = 1.1
   for (const cote of [-1, 1]) {
     const rail = engine.addEntity()
     Transform.create(rail, {
       parent: ramp,
-      position: Vector3.create(cote * 0.5, 3.0, 0),
-      scale: Vector3.create(0.06, 6.0, 1.0)
+      position: Vector3.create(cote * (rampeX / 2 - 0.03) / rampeX, (RAIL_H + 0.18) / 2 / 0.18, 0),
+      scale: Vector3.create(0.06 / rampeX, RAIL_H / 0.18, 1.0)
     })
     MeshRenderer.setBox(rail)
     MeshCollider.setBox(rail)
@@ -242,9 +271,10 @@ function destroyView(v: View): void {
   engine.removeEntity(v.sentry)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
-    engine.removeEntity(e.floorSlab)
-    engine.removeEntity(e.ramp)
-    for (const m of e.walls) engine.removeEntity(m)
+    for (const ent of [e.floorSlab, e.ramp, ...e.walls]) {
+      taille.delete(ent)
+      engine.removeEntity(ent)
+    }
   }
   for (const o of v.items) engine.removeEntity(o)
 }
@@ -358,21 +388,16 @@ export function setupPlots(): void {
       for (let e = 0; e < v.floors.length; e++) {
         const open = e < p.floors
         const et = v.floors[e]
-        const mettre = (ent: Entity, sx: number, sy: number, sz: number) => {
+        const montrer = (ent: Entity, visible: boolean) => {
           const tr = Transform.getMutableOrNull(ent)
-          if (tr !== null) tr.scale = open ? Vector3.create(sx, sy, sz) : Vector3.create(0, 0, 0)
+          const t = taille.get(ent)
+          if (tr === null || t === undefined) return
+          tr.scale = visible ? t : Vector3.create(0, 0, 0)
         }
-        mettre(et.floorSlab, BASE_SIDE - STAIRWELL_WIDTH, 0.24, BASE_SIDE)
-        mettre(et.walls[0], BASE_SIDE, WALL_HEIGHT, WALL_THICKNESS)
-        mettre(et.walls[1], WALL_THICKNESS, WALL_HEIGHT, BASE_SIDE)
-        mettre(et.walls[2], WALL_THICKNESS, WALL_HEIGHT, BASE_SIDE)
-        mettre(et.walls[3], (BASE_SIDE - DOOR_WIDTH) / 2, WALL_HEIGHT, WALL_THICKNESS)
-        mettre(et.walls[4], (BASE_SIDE - DOOR_WIDTH) / 2, WALL_HEIGHT, WALL_THICKNESS)
-        mettre(et.walls[5], DOOR_WIDTH, 0.3, WALL_THICKNESS)
-        for (let m = 6; m <= 9; m++) mettre(et.walls[m], 0.28, WALL_HEIGHT, 0.28)
-        mettre(et.ramp, 1.1, 0.18, RAMP_LENGTH)
-        const rtr = Transform.getMutableOrNull(et.ramp)
-        if (rtr !== null && (e + 1) >= p.floors) rtr.scale = Vector3.create(0, 0, 0)
+        montrer(et.floorSlab, open)
+        for (const m of et.walls) montrer(m, open)
+        // No ramp off the top floor: it would climb to nothing.
+        montrer(et.ramp, open && e + 1 < p.floors)
       }
 
       const ptr = Transform.getMutableOrNull(v.door)
