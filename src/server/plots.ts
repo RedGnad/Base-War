@@ -50,6 +50,16 @@ type Profil = {
   x?: number
   z?: number
   lastMove?: number
+  /**
+   * Seconds already spent in the venue, and whether the one-off welcome crate was taken.
+   *
+   * Both used to live in a Map on the server, and the platform stops that server two
+   * minutes after the venue empties. So the fifteen-minute clock restarted every time the
+   * place went quiet and the crate could be claimed again on the next visit, for ever.
+   * They belong to the player, so they are written with the player.
+   */
+  playedS?: number
+  giftTaken?: boolean
   alerts?: object[]
 }
 
@@ -220,6 +230,22 @@ export async function placeItem(address: string, rarity: number): Promise<boolea
 }
 
 export function coinsOf(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
+
+/** Time already spent here, across every visit and every server this scene has had. */
+export function tempsJoue(address: string): number { return profiles.get(address)?.playedS ?? 0 }
+export function ajouterTempsJoue(address: string, seconds: number): void {
+  const p = profiles.get(address)
+  if (p === undefined) return
+  p.playedS = (p.playedS ?? 0) + seconds
+  dirtyProfiles.add(address)
+}
+export function cadeauPris(address: string): boolean { return profiles.get(address)?.giftTaken === true }
+export function marquerCadeauPris(address: string): void {
+  const p = profiles.get(address)
+  if (p === undefined) return
+  p.giftTaken = true
+  dirtyProfiles.add(address)
+}
 
 export type BaseView = { address: string; name: string; items: number[]; entity: ReturnType<typeof engine.addEntity> }
 

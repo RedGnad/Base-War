@@ -1,6 +1,9 @@
 import { room } from '../shared/messages'
 import { log } from './log'
-import { addCrate, cratesOf, etapeTuto, avancerTuto } from './plots'
+import {
+  addCrate, cratesOf, etapeTuto, avancerTuto,
+  tempsJoue, ajouterTempsJoue, cadeauPris, marquerCadeauPris
+} from './plots'
 
 export const ETAPES = [
   'Place your base',
@@ -13,8 +16,17 @@ export const ETAPES = [
 export const CADEAU_MS = 15 * 60_000
 export const GIFT_CRATE = 2
 
-const entreA = new Map<string, number>()
-const giftGiven = new Set<string>()
+/**
+ * Seconds accrued this session, not yet folded into the player's profile.
+ *
+ * The total lives on the profile, because the platform stops the server two minutes after
+ * the venue empties and anything held here dies with it. But folding every second would
+ * mark the profile dirty every second, and storage writes are capped: the excess fails
+ * silently. So the session accrues here and is folded once a minute, and on the way out.
+ * A hard shutdown costs at most the last minute.
+ */
+const sessionS = new Map<string, number>()
+const REPLI_S = 60
 
 export function pousserTuto(address: string): void {
   const e = etapeTuto(address)
@@ -28,24 +40,43 @@ export function tutoFait(address: string, etape: number): void {
 }
 
 export function arrivee(address: string): void {
-  entreA.set(address, Date.now())
+  sessionS.set(address, 0)
   pousserTuto(address)
 }
 
 export function depart(address: string): void {
-  entreA.delete(address)
+  replier(address)
+  sessionS.delete(address)
 }
 
+/** Move this session's accrual onto the profile, where it survives the server. */
+function replier(address: string): void {
+  const s = sessionS.get(address) ?? 0
+  if (s <= 0) return
+  ajouterTempsJoue(address, s)
+  sessionS.set(address, 0)
+}
+
+/**
+ * Called once a second for every player in the scene.
+ *
+ * The threshold is read against the profile total plus this session, so fifteen minutes
+ * means fifteen minutes of playing, not fifteen minutes of one server happening to stay
+ * up. The flag is on the profile too, so the crate is given once and once only.
+ */
 export function verifierCadeau(presents: Iterable<string>): void {
-  const maintenant = Date.now()
   for (const a of presents) {
-    if (giftGiven.has(a)) continue
-    const t = entreA.get(a)
-    if (t === undefined || maintenant - t < CADEAU_MS) continue
-    giftGiven.add(a)
+    const s = (sessionS.get(a) ?? 0) + 1
+    sessionS.set(a, s)
+    if (s >= REPLI_S) replier(a)
+
+    if (cadeauPris(a)) continue
+    if (tempsJoue(a) + (sessionS.get(a) ?? 0) < CADEAU_MS / 1000) continue
+    replier(a)
+    marquerCadeauPris(a)
     addCrate(a, GIFT_CRATE)
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     void room.send('timeGift', { crate: GIFT_CRATE, minutes: Math.round(CADEAU_MS / 60000) }, { to: [a] })
-    log(`15-minute gift for ${a.slice(0, 8)}`)
+    log(`welcome crate for ${a.slice(0, 8)} after ${Math.round(tempsJoue(a) / 60)} min played`)
   }
 }
