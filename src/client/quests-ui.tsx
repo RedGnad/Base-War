@@ -1,5 +1,5 @@
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP, SKIN, btn, C } from './theme'
+import { TYPE, TAP, SKIN, btn, C, lisible } from './theme'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -165,7 +165,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
                 color={passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
               <Label value={crate(t).name} fontSize={TYPE.caption}
-                color={Color4.fromHexString(crate(t).color + 'ff')}
+                color={Color4.fromHexString(lisible(crate(t).color) + 'ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
             </UiEntity>
           )

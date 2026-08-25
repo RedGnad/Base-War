@@ -1,7 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import { strip } from './layout'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP , SKIN } from './theme'
+import { TYPE, TAP , SKIN, lisible } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
 
 export const indexView = { open: false, vus: [] as number[] }
@@ -47,7 +47,7 @@ export const IndexContent = () => {
           <Label
             value={r.name}
             fontSize={TYPE.caption}
-            color={Color4.fromHexString(r.color + 'ff')}
+            color={Color4.fromHexString(lisible(r.color) + 'ff')}
             uiTransform={{ width: LABEL_W, height: CASE }} />
           {MUTATIONS.map((m) => {
             const trouve = vus.has(encoder(r.id, m.id))
@@ -57,7 +57,7 @@ export const IndexContent = () => {
                 uiTransform={{ width: CASE, height: CASE, margin: { right: GAP } }}
                 uiBackground={{
                   color: trouve
-                    ? Color4.fromHexString(itemColor(r.id, m.id) + 'ff')
+                    ? Color4.fromHexString(lisible(itemColor(r.id, m.id)) + 'ff')
                     : Color4.create(1, 1, 1, 0.06)
                 }} />
             )

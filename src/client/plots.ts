@@ -224,11 +224,15 @@ function createView(x: number, z: number): View {
     metallic: 0,
     roughness: 0.1
   })
-  PointerEvents.create(plinth, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Leave a gift' } }
-    ]
-  })
+  /*
+    The plinth answers to nothing, so it offers nothing.
+
+    It carried a pointer event reading "Leave a gift", from the days when giving meant
+    clicking somebody's base with an item selected. That mechanic went when carrying arrived,
+    the handler with it, and this was left behind: a hover text promising an action nobody can
+    take. An affordance that lies is worse than none, because the player who tries it learns
+    the interface is not to be trusted.
+  */
 
   const sentry = engine.addEntity()
   Transform.create(sentry, {

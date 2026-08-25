@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, btn, lisible, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
@@ -739,7 +739,7 @@ const uiComponent = () => {
           const x = active.w / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
           if (x < -REEL_W || x > active.w) return null
           const gagnant = !boxView.roule && i === REEL_WIN
-          const col = Color4.fromHexString((RARITIES[r]?.color ?? '#ffffff') + 'ff')
+          const col = Color4.fromHexString(lisible(RARITIES[r]?.color ?? '#ffffff') + 'ff')
           return (
             <UiEntity key={i}
               uiTransform={{
@@ -784,7 +784,7 @@ const uiComponent = () => {
           uiTransform={{ width: '100%' }}
           value={itemName(boxView.resultat, boxView.resultatMutation)}
           fontSize={TYPE.title}
-          color={Color4.fromHexString(itemColor(boxView.resultat, boxView.resultatMutation) + 'ff')} />
+          color={Color4.fromHexString(lisible(itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
         <Label
           uiTransform={{ width: '100%' }}
           value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}

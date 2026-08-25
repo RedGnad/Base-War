@@ -74,6 +74,52 @@ export const HUE = {
   dim: '#9aa3ad'
 } as const
 
+/**
+ * Lift a colour until it can be read as text on our dark panels.
+ *
+ * Rarity and mutation colours are chosen to say what a thing IS: Cursed is a deep violet,
+ * Blood is a dark red, Galaxy is a dark purple. Printed as words on a panel that is nearly
+ * black they measure 1.21, 1.94 and 2.02 to one against it, which is to say a player looking
+ * for the seventh day of their login streak finds an empty space. The other colours pass
+ * comfortably, so the fault is not the palette, it is using an identity colour as a legibility
+ * colour without checking.
+ *
+ * Three to one is the floor WCAG sets for large text and for graphics; below it the colour is
+ * blended towards white until it reaches it, which keeps the hue recognisable rather than
+ * replacing it with a safe one. A colour that already passes is returned untouched.
+ */
+const PANNEAU_L = 0.0041
+const CONTRASTE_MIN = 3
+
+function lineaire(c: number): number {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+
+function luminance(r: number, g: number, b: number): number {
+  return 0.2126 * lineaire(r) + 0.7152 * lineaire(g) + 0.0722 * lineaire(b)
+}
+
+export function lisible(hex: string): string {
+  const h = hex.startsWith('#') ? hex.slice(1) : hex
+  let r = parseInt(h.slice(0, 2), 16)
+  let g = parseInt(h.slice(2, 4), 16)
+  let b = parseInt(h.slice(4, 6), 16)
+  const assez = (rr: number, gg: number, bb: number): boolean =>
+    (luminance(rr, gg, bb) + 0.05) / (PANNEAU_L + 0.05) >= CONTRASTE_MIN
+  if (assez(r, g, b)) return `#${h.slice(0, 6)}`
+  // Blend towards white in small steps: the hue survives, the reading becomes possible.
+  for (let k = 1; k <= 20; k++) {
+    const t = k / 20
+    const rr = Math.round(r + (255 - r) * t)
+    const gg = Math.round(g + (255 - g) * t)
+    const bb = Math.round(b + (255 - b) * t)
+    if (assez(rr, gg, bb)) { r = rr; g = gg; b = bb; break }
+  }
+  const deux = (v: number): string => v.toString(16).padStart(2, '0')
+  return `#${deux(r)}${deux(g)}${deux(b)}`
+}
+
 export const C = {
   money: Color4.fromHexString(HUE.money + 'ff'),
   bonus: Color4.fromHexString(HUE.bonus + 'ff'),
