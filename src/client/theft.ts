@@ -5,6 +5,7 @@ import { rarity } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
+import { envoyerOuAttendre } from './intent'
 
 export const theftView = {
   stealing: false,
@@ -187,14 +188,14 @@ export function cancelSteal(): void { theftView.stealing = false; void room.send
 export function steal(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })
 }
-export function lockBase(): void { void room.send('activateLock', {}) }
+export function lockBase(): void { envoyerOuAttendre(() => { void room.send('activateLock', {}) }) }
 export function recover(): void { void room.send('reclaim', {}) }
 export function doPrestige(): void { void room.send('rebirth', {}) }
 export function sell(slot: number): void { void room.send('sellItem', { slot }) }
 export function gift(ownerId: string, slot: number): void { void room.send('giveItem', { ownerId, slot }) }
-export function buyFloorFor(): void { void room.send('buyFloor', {}) }
-export function armSentry(): void { void room.send('buySentry', {}) }
-export function collectPending(): void { void room.send('collect', {}) }
+export function buyFloorFor(): void { envoyerOuAttendre(() => { void room.send('buyFloor', {}) }) }
+export function armSentry(): void { envoyerOuAttendre(() => { void room.send('buySentry', {}) }) }
+export function collectPending(): void { envoyerOuAttendre(() => { void room.send('collect', {}) }) }
 export function moveItemBetweenSlots(de: number, to: number): void { void room.send('moveItem', { de, to }) }
 
 let _adresse = ''

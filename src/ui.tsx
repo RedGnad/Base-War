@@ -7,6 +7,7 @@ import { InputAction } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
+import { intentEnAttente } from './client/intent'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -298,7 +299,10 @@ const uiComponent = () => (
       </UiEntity>
       <Label
         value={
-          !view.serverAlive ? (view.serverBooting ? 'waking the server up' : 'SERVER OFFLINE')
+          !view.serverAlive
+            ? (view.serverBooting
+                ? (intentEnAttente() ? 'waking the server up, your action is queued' : 'waking the server up')
+                : 'SERVER OFFLINE')
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.income === 0 ? 'open a crate to start earning'
           : `+${formatIncome(theftView.income)}/s${theftView.sentries > 0 ? '   sentry ' + theftView.sentries : ''}`

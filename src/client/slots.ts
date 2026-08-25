@@ -7,6 +7,7 @@ import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/sche
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { monAdresseClient } from './theft'
+import { envoyerOuAttendre } from './intent'
 
 
 
@@ -90,6 +91,7 @@ export function setupSlots(): void {
 export function placeHere(): void {
   if (!Transform.has(engine.PlayerEntity)) return
   const p = Transform.get(engine.PlayerEntity).position
-  void room.send('claimSlot', { x: snapToGrid(p.x), z: snapToGrid(p.z) })
+  const x = snapToGrid(p.x), z = snapToGrid(p.z)
+  envoyerOuAttendre(() => { void room.send('claimSlot', { x, z }) })
   basculerPose()
 }

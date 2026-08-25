@@ -8,6 +8,7 @@ import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE } from '../shared/schemas'
 import { rarity, crate, RARITIES, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
+import { envoyerOuAttendre } from './intent'
 
 let monAdresse = ''
 
@@ -158,7 +159,8 @@ export function setupBox(): void {
           const t = Transform.getOrNull(crateMesh)
           if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
           storeCrate()
-          void room.send('openBox', { crateTier: boxView.typeEnCours })
+          const tier = boxView.typeEnCours
+          envoyerOuAttendre(() => { void room.send('openBox', { crateTier: tier }) })
         }
       }
     }

@@ -18,6 +18,7 @@ import { setupTravel } from './travel'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
+import { setupIntent } from './intent'
 
 export const view = {
   items: 0,
@@ -42,6 +43,7 @@ export const view = {
 export function startClient(): void {
   console.log('[CLIENT] start')
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
+  setupIntent()
   setupTouchHud()
   reportPlatform()
   applyThiefPenalty(false)
