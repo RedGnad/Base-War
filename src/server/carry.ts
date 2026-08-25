@@ -97,12 +97,12 @@ function jeterAuSol(code: number, origin: string, par: string, ou: Vector3): voi
  * target has nothing to give: a thief who has just spent everything, or who never had
  * anything, was the one player a bullet could not disarm.
  */
-export function frapperPorteur(address: string): 'rien' | 'ebranle' | 'lache' {
+export function frapperPorteur(address: string, force: number): 'rien' | 'ebranle' | 'lache' {
   const e = portes.get(address)
   if (e === undefined) return 'rien'
   const c = Carried.getMutableOrNull(e)
   if (c === null) return 'rien'
-  c.grip -= 1
+  c.grip -= force
   if (c.grip > 0) return 'ebranle'
   /*
     It falls where they stood; it does not teleport home.

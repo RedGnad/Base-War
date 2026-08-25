@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, SAME_STOREY, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, ABSENT_KEEP
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, ABSENT_KEEP, CARRY_GRIP
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
@@ -83,7 +83,7 @@ export function hasSomethingToRecover(address: string): boolean {
   return larcins.some((l) => l.victim === address && t - l.quand <= RECOVER_WINDOW_MS)
 }
 
-type EnCours = { victim: string; slot: number; code: number; fin: number; total: number }
+type EnCours = { victim: string; slot: number; code: number; fin: number; total: number; grip: number }
 const enCours = new Map<string, EnCours>()
 
 /**
@@ -96,11 +96,14 @@ const enCours = new Map<string, EnCours>()
  * already in the thief's hands. The vulnerable window and the punishable window were
  * different windows.
  */
-export function interrompreVol(thief: string): boolean {
-  if (!enCours.has(thief)) return false
+export function interrompreVol(thief: string, force: number): 'rien' | 'ebranle' | 'coupe' {
+  const v = enCours.get(thief)
+  if (v === undefined) return 'rien'
+  v.grip -= force
+  if (v.grip > 0) return 'ebranle'
   enCours.delete(thief)
   void room.send('stealFailed', { reason: 'shot, you lost your grip' }, { to: [thief] })
-  return true
+  return 'coupe'
 }
 
 /** Un vol en cours est-il ouvert sur cette base ? Sert a la sentinelle et a la reprise. */
@@ -243,7 +246,7 @@ export function startTheft(): void {
       // que la defense agit et que le voleur est vulnerable.
       const code = c.items[slot]
       const duree = STEAL_BASE_MS + rarityOf(code) * STEAL_PER_RARITY_MS
-      enCours.set(thief, { victim: c.address, slot, code, fin: maintenant + duree, total: duree })
+      enCours.set(thief, { victim: c.address, slot, code, fin: maintenant + duree, total: duree, grip: CARRY_GRIP })
       void room.send('thiefPenalty', { ms: duree + 2000 }, { to: [thief] })
       void room.send('stealProgress', {
         ownerName: c.name, rarity: rarityOf(code), mutation: mutationDe(code),

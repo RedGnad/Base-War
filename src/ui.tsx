@@ -9,6 +9,7 @@ import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
+import { forceDuTir } from './shared/schemas'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient } from './client/locomotion'
@@ -439,12 +440,29 @@ function Crosshair() {
   // Our fifty percent is the middle of the safe area, not the middle of the glass, and the
   // shot goes to the middle of the glass. This is the difference.
   const c = decalageCentre()
-  const gap = 8
+
+  /*
+    The reticle says how much this shot is worth, and nothing new appears on screen to say it.
+
+    A hit weakens with the square of the distance, which is the rule the whole chase now turns
+    on, and a rule the player has to feel rather than be told. The place they are already
+    looking while they aim is the sight itself, and a sight that opens up as the shot gets
+    weaker is the one convention every shooter has taught them. So the four arms spread as the
+    target gets further, and the colour drains with them: tight and red means this shot takes
+    their loot, wide and pale means they are walking away with it.
+
+    Nothing is added. The reticle was already on screen, and it was already saying nothing
+    about the only thing it needed to say.
+  */
+  const force = locked ? forceDuTir(combatView.targetDist) : 1
+  const gap = Math.round(8 + (1 - force) * 22)
   const len = 12
   const th = 2
   const col = cold
     ? Color4.create(1, 1, 1, 0.22)
-    : locked ? Color4.fromHexString('#ff5c5cff') : Color4.create(1, 1, 1, 0.7)
+    : locked
+      ? Color4.create(1, 0.36 + (1 - force) * 0.5, 0.36 + (1 - force) * 0.5, 0.35 + force * 0.65)
+      : Color4.create(1, 1, 1, 0.7)
 
   const bar = (left: number, top: number, w: number, h: number, key: string) => (
     <UiEntity key={key}

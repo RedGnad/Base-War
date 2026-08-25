@@ -173,7 +173,7 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
   code: Schemas.Int,
   origin: Schemas.String,
   sinceMs: Schemas.Int64,
-  grip: Schemas.Int
+  grip: Schemas.Float
 })
 
 /**
@@ -185,23 +185,40 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
  * on first contact rather than a chase. Three hits is a pursuit: the owner has to stay on
  * their target, and the thief has a reason to run rather than to accept the inevitable.
  */
+/**
+ * How much hold a thief has, on a shelf they are prying or on something they carry.
+ *
+ * One number for both, because they are the same situation seen twice: somebody has their
+ * hands on a thing that is not theirs, and shots loosen that hold by an amount the distance
+ * decides. Three is three point-blank hits, half a second of sustained fire.
+ */
 export const CARRY_GRIP = 3
 
 /**
- * How close a shot has to land to reach somebody's hands, as opposed to their pockets.
+ * How much a shot is worth at the distance it was taken from.
  *
- * The general shot range is twenty-eight metres, and measuring the chase showed what that
- * means: a thief leaving your doorway at 7.92 m/s stays inside it for three and a half
- * seconds, while knocking their load loose takes 0.54 of sustained fire. The owner had six
- * and a half times the time they needed, standing still, so the tension the design was built
- * on, that aiming costs half your speed, never engaged at all: there was nothing to chase.
+ * A first attempt gave the loot its own hard range, ten metres, inside which a hit did
+ * everything and outside which it did nothing at all. It balanced the chase and it was a bad
+ * rule: at 9.9 metres you disarm somebody and at 10.1 you do not, and no player can see that
+ * line. It was also a second range bolted next to the first, which is a lot of machinery for
+ * a part of this game that is meant to be secondary.
  *
- * Ten metres is 1.26 seconds of exposure against 0.54 of firing. Close enough that reacting
- * fast wins it, far enough that the thief who is already moving gets out, after which the
- * owner has to alternate between running to close the gap and stopping to shoot, which is
- * the chase that was supposed to exist.
+ * One idea instead: a shot's effect falls with the square of the distance, the way anybody
+ * expects a gun to behave, full strength within a room's width and fading after. It carries
+ * the balance the hard range was there to produce, and it carries it as a gradient the player
+ * can feel rather than a wall they discover.
+ *
+ * Simulated against the chase, at three points of grip: point blank costs the thief their
+ * load in three shots, ten metres in six, fifteen in fifteen, and past twenty the owner
+ * cannot land enough before the thief is gone. So a burglar caught in your doorway loses it,
+ * and one with a head start gets home, which is the shape a theft should have.
  */
-export const LOOT_KNOCK_RANGE = 10
+export const SHOT_FULL_RANGE = 8
+
+export function forceDuTir(distance: number): number {
+  const d = Math.max(distance, 0.5)
+  return Math.min(1, (SHOT_FULL_RANGE / d) ** 2)
+}
 
 /** How long a knocked-loose item lies on the ground before it takes itself home. */
 export const LOOT_ITEM_LIFETIME_MS = 30_000
