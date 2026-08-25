@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
-import { ATLAS, ADVANCE } from './font-metrics'
+import { ATLAS, ADVANCE, FONT_FILES } from './font-metrics'
 import { C } from './theme'
 
 /**
@@ -94,7 +94,7 @@ export const Glyphs = (props: {
   const align = props.align ?? 'left'
   const start = align === 'center' ? (box - total) / 2 : align === 'right' ? box - total : 0
 
-  const couche = (fichier: string, dx: number, dy: number, cle: string) => {
+  const couche = (fichier: keyof typeof FONT_FILES, dx: number, dy: number, cle: string) => {
     let x = start
     const out = []
     for (let i = 0; i < text.length; i++) {
@@ -109,7 +109,7 @@ export const Glyphs = (props: {
               position: { left: x - (size - ADVANCE[ch] * size) / 2 + dx, top: dy }
             }}
             uiBackground={{
-              texture: { src: `assets/ui/font-${fichier}.png` },
+              texture: { src: `assets/ui/${FONT_FILES[fichier]}` },
               textureMode: 'stretch',
               uvs: uvsFor(idx)
             }} />

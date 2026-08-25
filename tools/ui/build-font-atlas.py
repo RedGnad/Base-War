@@ -16,6 +16,9 @@ building the scene needs neither.
 
     python3 tools/ui/build-font-atlas.py
 """
+import glob
+import hashlib
+import io
 import os
 import urllib.request
 
@@ -144,7 +147,12 @@ def main():
         'ink': (0x0b, 0x1a, 0x0f),
         'shadow': (0, 0, 0)
     }
+    # Old files go first: names now carry a content hash, so yesterday's are just litter.
+    for vieux in glob.glob(os.path.join(OUT, 'font-*.png')):
+        os.remove(vieux)
+
     alphas = [[px[gx, gy][3] for gx in range(COLS * CELL)] for gy in range(ROWS * CELL)]
+    fichiers = {}
     total = 0
     for role, (rr, gg, bb) in ROLES.items():
         img = Image.new('RGBA', (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
@@ -158,16 +166,29 @@ def main():
                 a = ligne[gx]
                 if a:
                     q[gx, gy] = (r2, g2, b2, a)
-        nom = 'font-%s.png' % role
-        img.save(os.path.join(OUT, nom))
-        total += os.path.getsize(os.path.join(OUT, nom))
+        # The name carries a hash of the pixels.
+        #
+        # Changing the money from gold to green rewrote the file and the running client kept
+        # showing gold: textures are cached against the path they came from, and the path had
+        # not moved. A name that changes whenever the bytes change cannot be served stale by
+        # any cache anywhere, and it costs one line.
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        octets = buf.getvalue()
+        empreinte = hashlib.sha1(octets).hexdigest()[:8]
+        nom = 'font-%s-%s.png' % (role, empreinte)
+        with open(os.path.join(OUT, nom), 'wb') as f:
+            f.write(octets)
+        fichiers[role] = nom
+        total += len(octets)
     print('%d atlas colores, %.0f Ko au total' % (len(ROLES), total / 1024))
 
     # The metrics go out as TypeScript rather than JSON: the scene bundle has no loader to
     # argue with, and the table is small enough that inlining it costs nothing.
     src = os.path.abspath(os.path.join(HERE, '../../src/client/font-metrics.ts'))
     rows = ',\n'.join('  "%s": %.4f' % (g, advance[g]) for g in GLYPHS)
-    body = TEMPLATE % (COLS, ROWS, ''.join(GLYPHS), rows)
+    noms = ',\n'.join("  %s: '%s'" % (r, n) for r, n in fichiers.items())
+    body = TEMPLATE % (COLS, ROWS, ''.join(GLYPHS), rows, noms)
     with open(src, 'w') as f:
         f.write(body)
 
@@ -188,6 +209,19 @@ export const ATLAS = { cols: %d, rows: %d, glyphs: '%s' } as const
 export const ADVANCE: Record<string, number> = {
 %s
 }
+
+/**
+ * Which file carries which colour, named after a hash of its own pixels.
+ *
+ * The tint that would let one white atlas serve every colour is not applied on the mobile
+ * client, so the colour lives in the file. And a file whose name never changes is a file a
+ * cache will happily keep serving after its contents have: a gold counter stayed gold on a
+ * handset for a build and a half after it had been rewritten green. The hash makes that
+ * impossible.
+ */
+export const FONT_FILES = {
+%s
+} as const
 """
 
 

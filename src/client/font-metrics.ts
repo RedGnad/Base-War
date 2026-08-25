@@ -58,3 +58,21 @@ export const ADVANCE: Record<string, number> = {
   ")": 0.2954,
   " ": 0.1937
 }
+
+/**
+ * Which file carries which colour, named after a hash of its own pixels.
+ *
+ * The tint that would let one white atlas serve every colour is not applied on the mobile
+ * client, so the colour lives in the file. And a file whose name never changes is a file a
+ * cache will happily keep serving after its contents have: a gold counter stayed gold on a
+ * handset for a build and a half after it had been rewritten green. The hash makes that
+ * impossible.
+ */
+export const FONT_FILES = {
+  money: 'font-money-230eb8e6.png',
+  bonus: 'font-bonus-1c50ee2b.png',
+  name: 'font-name-feb68646.png',
+  danger: 'font-danger-222f2c23.png',
+  ink: 'font-ink-5450189e.png',
+  shadow: 'font-shadow-82506fd3.png'
+} as const
