@@ -1,6 +1,7 @@
 import { questsView } from './quests-ui'
 import { indexView } from './index-ui'
 import { travelView } from './travel'
+import { shopView } from './shop-ui'
 
 /**
  * One way in, three destinations.
@@ -12,20 +13,21 @@ import { travelView } from './travel'
  * sixty pixels inside a container of seven hundred and sixty, and overflowed itself. Four
  * rarely-used controls do not belong on screen during play.
  */
-export type Onglet = 'goals' | 'index' | 'travel'
+export type Onglet = 'goals' | 'index' | 'travel' | 'shop'
 
 export const menuView = {
-  get open(): boolean { return questsView.open || indexView.open || travelView.open }
+  get open(): boolean { return questsView.open || indexView.open || travelView.open || shopView.open }
 }
 
 export function activeTab(): Onglet {
-  return indexView.open ? 'index' : travelView.open ? 'travel' : 'goals'
+  return indexView.open ? 'index' : travelView.open ? 'travel' : shopView.open ? 'shop' : 'goals'
 }
 
 export function closeMenu(): void {
   questsView.open = false
   indexView.open = false
   travelView.open = false
+  shopView.open = false
 }
 
 export function basculerMenu(): void {
@@ -37,4 +39,5 @@ export function chooseTab(o: Onglet): void {
   questsView.open = o === 'goals'
   indexView.open = o === 'index'
   travelView.open = o === 'travel'
+  shopView.open = o === 'shop'
 }

@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, STEAL_HOLD_RANGE, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, ABSENT_KEEP
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
@@ -167,6 +167,20 @@ export function startTheft(): void {
         continue
       }
       if (c.items.length === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
+      /*
+        An absent player keeps a floor, because they have no other answer.
+        
+        Theft never asked whether the owner was in the scene, so logging off meant being
+        stripped bare with nothing to defend with and nothing to react to. Long protections
+        were the tempting fix and the wrong one: they would seal every base during the review
+        window and hide the one mechanic this scene is built on. A floor instead. The base
+        stays worth robbing until it is down to its best few, and its owner comes back to
+        something rather than to an empty plot.
+      */
+      if (c.items.length <= ABSENT_KEEP && !presents().has(c.address)) {
+        refus(thief, 'steal', `${c.name} is away, their last ${ABSENT_KEEP} are safe`)
+        continue
+      }
 
 
       const slot = d.slot
@@ -225,10 +239,10 @@ export function startTheft(): void {
     if (!moveItemTo(a, d.de, d.to)) refus(a, 'move', 'cannot move there')
   })
 
-  room.onMessage('buySentry', (_d, ctx) => {
+  room.onMessage('buySentry', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    const r = buySentryFor(a)
+    const r = buySentryFor(a, Number.isInteger(d?.tier) ? d.tier : 0)
     if (!r.ok) { refus(a, 'sentry', r.reason ?? 'refused'); return }
     void room.send('sentryBought', { charges: r.charges ?? 0, cost: r.cost ?? 0 }, { to: [a] })
   })

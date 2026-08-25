@@ -6,17 +6,18 @@ import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/re
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
-import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
+import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 import { placementView } from './client/plots'
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
+import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
@@ -155,7 +156,10 @@ const MenuWindow = () => {
     short window instead of a tall one with a hole in it, which is the other half of the
     complaint: a card for three objectives should not take over the screen.
   */
-  const besoin = questsView.open ? HAUTEUR_GOALS : indexView.open ? HAUTEUR_INDEX : HAUTEUR_TRAVEL
+  const besoin = questsView.open ? HAUTEUR_GOALS
+    : indexView.open ? HAUTEUR_INDEX
+    : shopView.open ? HAUTEUR_SHOP
+    : HAUTEUR_TRAVEL
   const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
 
@@ -175,8 +179,8 @@ const MenuWindow = () => {
           alignItems: 'center', margin: { bottom: 14 }
         }}
       >
-        {(['goals', 'index', 'travel'] as const).map((o) => (
-          <Btn key={o} width={190} right={TAP.gap} primary={activeTab() === o}
+        {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
+          <Btn key={o} width={165} right={TAP.gap} primary={activeTab() === o}
             onClick={() => chooseTab(o)}
             label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
         ))}
@@ -190,6 +194,7 @@ const MenuWindow = () => {
         }}
       >
         <QuestsContent />
+        <ShopContent />
         <IndexContent />
         <TravelContent />
       </UiEntity>
@@ -263,17 +268,17 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
     return { label: `OPEN ${boxView.stock.length}`, action: openBestCrate }
   }
-  if (theftView.basePosee && view.items > 0 && theftView.sentries === 0
-      && theftView.sentryPrice > 0 && theftView.coins >= theftView.sentryPrice) {
-    return { label: `SENTRY ${formatIncome(theftView.sentryPrice)}`, action: armSentry }
-  }
-  if (theftView.floorPrice > 0 && theftView.coins >= theftView.floorPrice) {
-    return { label: '+1 FLOOR', action: buyFloorFor }
-  }
-  if (theftView.nextPrestige > 0 && theftView.coins >= theftView.nextPrestige) {
-    // Opens the decision, never commits it: prestige wipes the base and cannot be undone.
-    return { label: `PRESTIGE x${theftView.multiplier + 1}`, action: openPrestige }
-  }
+  /*
+    No purchase past this point, and that is the whole rule.
+
+    A floor, a defence tier and a prestige used to be offered here. They are not the same
+    kind of thing as the actions above: opening a crate is caused by standing next to one and
+    stops being available the moment it is done, while being able to afford a floor is a
+    condition that stays true until the money is spent. So the button locked onto the
+    purchase and everything else vanished behind it for as long as the player could pay.
+    The contextual action carries what the place and the last few seconds caused; the three
+    purchases live in the shop tab, which is a room you go to.
+  */
   /*
     Collecting, which had no button at all.
 

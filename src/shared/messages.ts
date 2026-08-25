@@ -71,7 +71,7 @@ export const MESSAGES = {
   outbidFeed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, price: Schemas.Int }),
   convoyArrived: Schemas.Map({ crateTier: Schemas.Int }),
 
-  buySentry: Schemas.Map({}),
+  buySentry: Schemas.Map({ tier: Schemas.Int }),
   sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int }),
   sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int }),
   sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int }),

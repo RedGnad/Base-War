@@ -149,9 +149,41 @@ export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
   untilMs: Schemas.Int64
 })
 
-export const SENTRY_CHARGES = 3
-export const SENTRY_SECONDS = 120
+/**
+ * Defence is sold in charges, never in minutes.
+ *
+ * The obvious ladder is durations: a minute, ten, an hour, eight hours. It is the wrong axis
+ * for this game. Our one distinguishing mechanic is players robbing each other, and a
+ * protection that outlasts a session does not produce a defence, it produces an absence of
+ * game. During the review window a judge would walk into a venue where every base is sealed
+ * and see nothing of what the scene is for. The rule this project already wrote down says
+ * theft must stay "slow, loud, DEFENDABLE, reversible": defendable, not preventable.
+ *
+ * A charge is spent by an actual theft attempt, so it turns an attack into an event both
+ * players are told about instead of cancelling it silently. Buying more of them is a real
+ * commitment, and the per-charge price falls as the tier rises, which is what makes the
+ * ladder a decision rather than a multiplication.
+ */
+export const SENTRY_TIERS = [
+  { name: 'GUARD', charges: 3, secondsPerCharge: 40 },
+  { name: 'TURRET', charges: 8, secondsPerCharge: 34 },
+  { name: 'BATTERY', charges: 20, secondsPerCharge: 28 }
+] as const
+
+/** The ceiling a base can hold, whichever tiers were bought to get there. */
+export const SENTRY_MAX_CHARGES = SENTRY_TIERS[SENTRY_TIERS.length - 1].charges
 export const SENTRY_MIN_PRICE = 240
+
+/**
+ * What an absent player always comes back to.
+ *
+ * Theft never checked whether the owner was in the scene, so anyone who logged off could be
+ * stripped bare with no counterplay at all: nothing to defend with, nothing to react to. The
+ * long protections above were the wrong answer to this real problem. The right one is a
+ * floor: while you are away, your best few items cannot be taken. Come back and there is
+ * still a base, and still a reason to.
+ */
+export const ABSENT_KEEP = 3
 export const SENTRY_FREEZE_MS = 7000
 export const SENTRY_LOCK_MS = 60_000
 

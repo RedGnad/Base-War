@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_CHARGES, SENTRY_SECONDS, SENTRY_MIN_PRICE, crowdBonus
+  MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -487,24 +487,35 @@ export function socialDe(address: string): { given: number; received: number } {
   return { given: p?.given ?? 0, received: p?.received ?? 0 }
 }
 
-export function sentryPrice(address: string): number {
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(incomePerSecond(address) * SENTRY_SECONDS))
+/**
+ * What a tier costs this player, in what their own base earns.
+ *
+ * Priced in seconds of income rather than in coins, so a defence never becomes trivial to a
+ * rich base nor unreachable to a new one. The per-charge rate falls as the tier rises, which
+ * is what makes buying the bigger one a decision instead of a multiplication.
+ */
+export function sentryPrice(address: string, tier = 0): number {
+  const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
+  return Math.max(SENTRY_MIN_PRICE, Math.floor(incomePerSecond(address) * t.charges * t.secondsPerCharge))
 }
 
-export function buySentryFor(address: string): { ok: boolean; reason?: string; charges?: number; cost?: number } {
+export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?: string; charges?: number; cost?: number } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
   if (!bases.has(address)) return { ok: false, reason: 'place your base first' }
-  if ((p.sentries ?? 0) >= SENTRY_CHARGES) return { ok: false, reason: 'sentry already full' }
-  const cost = sentryPrice(address)
+  const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
+  const avant = p.sentries ?? 0
+  if (avant >= SENTRY_MAX_CHARGES) return { ok: false, reason: 'sentry already full' }
+  const cost = sentryPrice(address, tier)
   if (p.coins < cost) return { ok: false, reason: `you need ${Math.ceil(cost - p.coins)} more coins` }
   p.coins -= cost
-  p.sentries = SENTRY_CHARGES
+  // Charges add up rather than replace, so a second purchase is never a downgrade.
+  p.sentries = Math.min(SENTRY_MAX_CHARGES, avant + t.charges)
   dirtyProfiles.add(address)
   const b = bases.get(address)
   if (b) publish(b)
-  log(`${displayName(address)} armed a sentry (${cost})`)
-  return { ok: true, charges: SENTRY_CHARGES, cost }
+  log(`${displayName(address)} armed a ${t.name} (${cost}, ${avant} -> ${p.sentries} charges)`)
+  return { ok: true, charges: p.sentries, cost }
 }
 
 export function useSentryCharge(address: string): boolean {
