@@ -34,7 +34,18 @@ import { Color4 } from '@dcl/sdk/math'
  * The sizes below serve both.
  */
 export const TYPE = {
-  hero: 52,     // 27 pt: the coin counter, and nothing else
+  /*
+    The coin counter, and nothing else.
+
+    Sized against the rule of thumb the HUD guides give for readouts, body text at about
+    twenty-eight pixels for a 1080p screen; ours is thirty-two, and a primary readout sits at
+    two to two and a half times that. Seventy-two is 2.25x. It was fifty-two because it had to
+    share a plate with a second line; with the plate gone the number is free to be the size it
+    should have been. On a phone the virtual screen is 720 tall rather than 1080, so the same
+    figure reads half again as large there, which is the right way round for the one number
+    the whole game is about.
+  */
+  hero: 72,
   title: 42,    // 22 pt: modal titles, the reveal
   body: 32,     // 17 pt: buttons and anything the player must read while moving
   label: 26,    // 14 pt: secondary lines inside a panel

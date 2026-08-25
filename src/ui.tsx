@@ -469,7 +469,7 @@ const uiComponent = () => {
     and is the one dropped when the band is full.
   */
   const band = topBand([
-    ['money', true, 104],
+    ['money', true, TYPE.hero + 6 + 34],
     ['belt', beltView.annonce !== '', 58],
     ['feed', theftView.fil.length > 0, 62]
   ])
@@ -542,7 +542,7 @@ const uiComponent = () => {
     {hud() && (
     <UiEntity
       uiTransform={{
-        width: strip(560).width, height: 104, positionType: 'absolute',
+        width: strip(560).width, height: TYPE.hero + 6 + 34, positionType: 'absolute',
         position: { top: band.money, left: '50%' }, margin: strip(560).margin,
         flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center'
       }}

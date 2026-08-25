@@ -64,7 +64,8 @@ export function glyphWidth(value: string, size: number): number {
  * costs one more element per character and no screen at all.
  */
 const OMBRE = Color4.create(0, 0, 0, 0.55)
-const DECALAGE = 3
+/** Offset in proportion to the letters, so one number does not wear another's shadow. */
+const decalage = (size: number): number => Math.min(5, Math.max(2, Math.round(size * 0.055)))
 
 export const Glyphs = (props: {
   value: string
@@ -110,7 +111,7 @@ export const Glyphs = (props: {
   }
 
   const parts = props.shadow === true
-    ? [...couche(OMBRE, DECALAGE, DECALAGE, 's'), ...couche(props.color ?? C.name, 0, 0, 'g')]
+    ? [...couche(OMBRE, decalage(size), decalage(size), 's'), ...couche(props.color ?? C.name, 0, 0, 'g')]
     : couche(props.color ?? C.name, 0, 0, 'g')
 
   return (

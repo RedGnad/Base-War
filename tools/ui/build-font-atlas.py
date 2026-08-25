@@ -104,6 +104,34 @@ def main():
                   fill=(255, 255, 255, 255), anchor='ls')
         advance[ch] = round(width / CELL, 4)
 
+    # A vertical ramp baked into the ink, so the tint applied at render time comes out as a
+    # gradient rather than a flat fill.
+    #
+    # The interface draws these glyphs by tinting a white texture, which multiplies: a pixel
+    # at full white takes the colour whole, one at seventy percent takes a darker version of
+    # the same colour. Writing the ramp here rather than as an effect at the call site is what
+    # keeps it consistent across the whole interface, which is the one thing every guide on
+    # the subject asks of a gradient. It is measured against the shared ink band, not each
+    # glyph's own height, so a line of mixed letters shades as one line instead of each
+    # character restarting.
+    #
+    # Only the colour is touched. The alpha is left exactly as drawn, so the shape, and the
+    # proof that no ink crosses a cell boundary, are unchanged.
+    HAUT, BAS = 1.0, 0.68
+    px = atlas.load()
+    encre_y0 = baseline + encre_haut
+    encre_y1 = baseline + encre_bas
+    for cy in range(ROWS):
+        for y in range(CELL):
+            t = (y - encre_y0) / max(1.0, encre_y1 - encre_y0)
+            f = HAUT + (BAS - HAUT) * min(1.0, max(0.0, t))
+            v = int(round(255 * f))
+            gy = cy * CELL + y
+            for gx in range(COLS * CELL):
+                r, g, b, a = px[gx, gy]
+                if a:
+                    px[gx, gy] = (v, v, v, a)
+
     atlas.save(os.path.join(OUT, 'font.png'))
 
     # The metrics go out as TypeScript rather than JSON: the scene bundle has no loader to
