@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity,
+  engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
@@ -45,7 +45,7 @@ export function setupSlots(): void {
 
   label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(0, 2.2, 0), scale: Vector3.create(0, 0, 0) })
-  Billboard.create(label, {})
+  Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
 
   room.onMessage('basePositions', (d) => {

@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -117,7 +117,7 @@ export function setupBelt(): void {
         // offers an outline at all, which is the second reason the reading lives here.
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 1.24, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
-        Billboard.create(label, {})
+        Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(label, {
           text: formatIncome(b.price), fontSize: 4.2, textColor: VERT,
           outlineWidth: 0.22, outlineColor: NOIR
@@ -125,7 +125,7 @@ export function setupBelt(): void {
 
         const nom = engine.addEntity()
         Transform.create(nom, { position: Vector3.create(t.position.x, t.position.y + 0.86, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
-        Billboard.create(nom, {})
+        Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(nom, {
           text: r.name, fontSize: 3, textColor: c,
           outlineWidth: 0.22, outlineColor: NOIR

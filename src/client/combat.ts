@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, Material, TextShape, Billboard, Entity, GltfContainer,
+  engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
   CameraType, CameraModeArea, AvatarMask, timers, PointerLock
@@ -555,7 +555,7 @@ function pileSystem(): void {
     // Hung from the same faller, so the number arrives with the coin instead of waiting for it.
     const label = engine.addEntity()
     Transform.create(label, { parent: chute, position: Vector3.create(0, 0.7, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
-    Billboard.create(label, {})
+    Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
     TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
     piles.set(id, { chute, body, label })
   }

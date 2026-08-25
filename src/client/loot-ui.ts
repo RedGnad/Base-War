@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, Material, Entity, Billboard, TextShape,
+  engine, Transform, MeshRenderer, Material, Entity, Billboard, BillboardMode, TextShape,
   Tween, TweenSequence, TweenLoop, EasingFunction
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
@@ -43,7 +43,7 @@ export function setupLootUi(): void {
         position: Vector3.create(t.position.x, t.position.y + 0.9, t.position.z),
         scale: Vector3.create(0.6, 0.6, 0.6)
       })
-      Billboard.create(etiquette, {})
+      Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
       TextShape.create(etiquette, {
         text: `${itemName(r, mutationDe(d.code))}\nGRAB IT`,
         fontSize: 3, textColor: teinte,

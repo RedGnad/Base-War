@@ -1,6 +1,6 @@
 import {
   engine, Transform, MeshRenderer, Material, AvatarAttach, AvatarAnchorPointType,
-  Entity, Billboard, TextShape
+  Entity, Billboard, BillboardMode, TextShape
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
@@ -65,7 +65,7 @@ export function setupCarry(): void {
         // Named above the head, so a witness knows what is being walked off with.
         const etiquette = engine.addEntity()
         Transform.create(etiquette, { position: Vector3.create(0, 0.4, 0), scale: Vector3.create(0.34, 0.34, 0.34) })
-        Billboard.create(etiquette, {})
+        Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(etiquette, {
           text: itemName(r, mutationDe(c.code)),
           fontSize: 3, textColor: teinte,

@@ -726,10 +726,26 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   return { ok: true }
 }
 
+/*
+  Five hundred, which nobody reaches, because the alternative fails in silence.
+
+  The stack had no ceiling and the whole of it is sent in the `inventory` message every
+  second and a half. The transport drops a message over about thirteen kilobytes without
+  telling anyone, so a hoard large enough would not degrade the crate screen, it would
+  switch it off. Five hundred entries is roughly two and a half kilobytes, and it is far
+  past anything a player who opens their crates will ever hold.
+*/
+const MAX_CRATES = 500
+
 export function addCrate(address: string, crateTier: number): void {
   const p = profiles.get(address)
   if (!p) return
-  p.crates = [...(p.crates ?? []), crateTier]
+  const pile = p.crates ?? []
+  if (pile.length >= MAX_CRATES) {
+    log(`${displayName(address)} is at the ${MAX_CRATES} crate ceiling, one was not added`)
+    return
+  }
+  p.crates = [...pile, crateTier]
   dirtyProfiles.add(address)
 }
 

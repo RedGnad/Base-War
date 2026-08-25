@@ -1,6 +1,6 @@
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem,
   Tween, TweenSequence, TweenLoop, EasingFunction
 } from '@dcl/sdk/ecs'
@@ -251,14 +251,14 @@ function createView(x: number, z: number): View {
   // which is why this is two entities and not two lines of one.
   const gain = engine.addEntity()
   Transform.create(gain, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.62, z), scale: Vector3.create(0.6, 0.6, 0.6) })
-  Billboard.create(gain, {})
+  Billboard.create(gain, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(gain, {
     text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR
   })
 
   const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.0, z), scale: Vector3.create(0.6, 0.6, 0.6) })
-  Billboard.create(label, {})
+  Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(label, {
     text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
   })
@@ -291,7 +291,17 @@ function destroyView(v: View): void {
   engine.removeEntity(v.sentry)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
-    for (const ent of [e.floorSlab, e.ramp, e.landing, ...e.walls]) {
+    /*
+      The ramp goes with its children, because `removeEntity` does not take them.
+
+      Its two handrails are parented to it and stored nowhere, so nothing could reach them
+      afterwards: every base that scrolled out of the field left two colliders behind,
+      hanging off a parent that no longer existed. `removeEntityWithChildren` is the function
+      that exists for exactly this, and combat.ts already uses it for the weapon.
+    */
+    taille.delete(e.ramp)
+    engine.removeEntityWithChildren(e.ramp)
+    for (const ent of [e.floorSlab, e.landing, ...e.walls]) {
       taille.delete(ent)
       engine.removeEntity(ent)
     }
@@ -383,6 +393,25 @@ export function setupPlots(): void {
 
       const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
       const monBase = p.ownerId.toLowerCase() === monAdresseClient()
+
+      /*
+        The signature is computed here rather than further down, because it guards twice.
+
+        It already gated the item shelves. Everything between here and the door was running
+        unconditionally, once per base per frame: a full material on the plinth, a Transform
+        rewritten for the slab, the ten walls, the ramp and the landing of every storey. At
+        sixty bases of three storeys that is on the order of two and a half thousand component
+        writes a frame, and a write is not free even when the value is identical: the engine
+        marks the entity dirty, serialises the component to bytes and compares it against the
+        last snapshot before deciding to send nothing. The comparison is what costs, and it
+        was being paid sixty times a second for buildings that had not changed since they were
+        built. Every input those blocks read is already in this string.
+
+        What stays per-frame is what genuinely ticks: the LOCKED countdown on the nameplate and
+        the shield, which is why neither of them is behind this flag.
+      */
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentries}`
+      const structurel = sig !== v.signature
       const txt = TextShape.getMutableOrNull(v.label)
       if (txt !== null) {
         const lock = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
@@ -390,7 +419,7 @@ export function setupPlots(): void {
         const ledger = (p.given > 0 || p.received > 0)
           ? `\n${p.received} received  ·  ${p.given} given`
           : ''
-        const ta = Transform.getMutableOrNull(v.ascenseur)
+        const ta = structurel ? Transform.getMutableOrNull(v.ascenseur) : null
         if (ta !== null) {
           const h = p.floors * FLOOR_HEIGHT
           ta.scale = Vector3.create(0.5, h, 0.5)
@@ -399,7 +428,7 @@ export function setupPlots(): void {
           )
         }
         const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
-        const ts = Transform.getMutableOrNull(v.sentry)
+        const ts = structurel ? Transform.getMutableOrNull(v.sentry) : null
         if (ts !== null) {
           const k = p.sentries === 0 ? 0 : 0.6 + p.sentries * 0.18
           ts.scale = Vector3.create(k, k, k)
@@ -409,37 +438,41 @@ export function setupPlots(): void {
 
         // What the base earns, read off its own items, so a passer-by can price a target
         // without opening anything.
-        const tg = TextShape.getMutableOrNull(v.gain)
+        const tg = structurel ? TextShape.getMutableOrNull(v.gain) : null
         if (tg !== null) {
           let perSecond = 0
           for (const code of p.items) perSecond += itemIncome(code, PRODUCTION_PER_RARITY)
           tg.text = perSecond > 0 ? `+${formatIncome(perSecond)}/s` : ''
         }
       }
-      Material.setPbrMaterial(v.plinth, {
-        albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
-      })
-
-      // Catch up to what this base has actually opened, one floor at a time.
-      while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
-        v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length))
+      if (structurel) {
+        Material.setPbrMaterial(v.plinth, {
+          albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
+        })
       }
 
-      for (let e = 0; e < v.floors.length; e++) {
-        const open = e < p.floors
-        const et = v.floors[e]
-        const montrer = (ent: Entity, visible: boolean) => {
-          const tr = Transform.getMutableOrNull(ent)
-          const t = taille.get(ent)
-          if (tr === null || t === undefined) return
-          tr.scale = visible ? t : Vector3.create(0, 0, 0)
+      // Catch up to what this base has actually opened, one floor at a time.
+      if (structurel) {
+        while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
+          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length))
         }
-        montrer(et.floorSlab, open)
-        for (const m of et.walls) montrer(m, open)
-        // No ramp off the top floor: it would climb to nothing, and neither would its landing.
-        const monte = open && e + 1 < p.floors
-        montrer(et.ramp, monte)
-        montrer(et.landing, monte)
+
+        for (let e = 0; e < v.floors.length; e++) {
+          const open = e < p.floors
+          const et = v.floors[e]
+          const montrer = (ent: Entity, visible: boolean) => {
+            const tr = Transform.getMutableOrNull(ent)
+            const t = taille.get(ent)
+            if (tr === null || t === undefined) return
+            tr.scale = visible ? t : Vector3.create(0, 0, 0)
+          }
+          montrer(et.floorSlab, open)
+          for (const m of et.walls) montrer(m, open)
+          // No ramp off the top floor: it would climb to nothing, and neither would its landing.
+          const monte = open && e + 1 < p.floors
+          montrer(et.ramp, monte)
+          montrer(et.landing, monte)
+        }
       }
 
       const ptr = Transform.getMutableOrNull(v.door)
@@ -469,8 +502,7 @@ export function setupPlots(): void {
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces
       // a full rebuild each second, which restarts item rotation tweens from identity.
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentries}`
-      if (sig === v.signature) continue
+      if (!structurel) continue
       v.signature = sig
       v.ownerId = p.ownerId
 

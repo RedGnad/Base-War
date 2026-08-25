@@ -136,10 +136,16 @@ export function setupTouchHud(): void {
  *
  * Passing null drops our entry entirely, which restores the button's built-in glyph: there
  * is no "no icon" value to write, only an entry that is or is not there.
+ *
+ * Answers whether it actually wrote, because the component does not exist until something
+ * creates it and every caller here remembers what it asked for. A caller that records the
+ * request before the write lands would never ask again, and the button would keep the wrong
+ * picture for ever. Today nothing reaches this before `setupTouchHud`, so it never fires;
+ * the callers are written so that reordering them cannot make it fire silently.
  */
-function poserIcone(action: InputAction, nom: string | null): void {
+function poserIcone(action: InputAction, nom: string | null): boolean {
   const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
-  if (ctrl === null) return
+  if (ctrl === null) return false
   const autres = ctrl.touchInputs.filter((t) => t.inputAction !== action)
   ctrl.touchInputs = nom === null
     ? autres
@@ -151,6 +157,7 @@ function poserIcone(action: InputAction, nom: string | null): void {
           icon: { tex: { $case: 'texture', texture: { src: `assets/ui/${nom}.png` } } }
         }
       ]
+  return true
 }
 
 let menuAlerte: boolean | null = null
@@ -164,8 +171,7 @@ let menuAlerte: boolean | null = null
  */
 export function setMenuIcone(alerte: boolean): void {
   if (menuAlerte === alerte) return
-  menuAlerte = alerte
-  poserIcone(InputAction.IA_ACTION_3, alerte ? 'icon-menu-alert' : 'icon-menu')
+  if (poserIcone(InputAction.IA_ACTION_3, alerte ? 'icon-menu-alert' : 'icon-menu')) menuAlerte = alerte
 }
 
 let iconePrimaire: string | null = null
@@ -201,8 +207,7 @@ export function setReticuleClient(visible: boolean): void {
 
 export function setIconePrimaire(nom: string | null): void {
   if (iconePrimaire === nom) return
-  iconePrimaire = nom
-  poserIcone(InputAction.IA_PRIMARY, nom)
+  if (poserIcone(InputAction.IA_PRIMARY, nom)) iconePrimaire = nom
 }
 
 let armeSortie: boolean | null = null
@@ -221,8 +226,7 @@ let armeSortie: boolean | null = null
  */
 export function setArmeIcone(sortie: boolean): void {
   if (armeSortie === sortie) return
-  armeSortie = sortie
-  poserIcone(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')
+  if (poserIcone(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')) armeSortie = sortie
 }
 
 export function reportPlatform(): void {

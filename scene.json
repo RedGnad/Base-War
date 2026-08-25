@@ -13,6 +13,7 @@
     "email": ""
   },
   "main": "bin/index.js",
+  "logsPermissions": [],
   "tags": [
     "social",
     "tycoon",

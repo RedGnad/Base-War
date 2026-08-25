@@ -1,5 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, Entity,
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
@@ -39,7 +39,7 @@ export function setupConvoy(): void {
         Material.setPbrMaterial(body, { albedoColor: color, emissiveColor: color, emissiveIntensity: 0.6, metallic: 0.5, roughness: 0.4 })
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
-        Billboard.create(label, {})
+        Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White() })
         v = { body, label, texte: '' }
         views.set(c.convoyId, v)
