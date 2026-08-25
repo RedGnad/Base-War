@@ -98,7 +98,9 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
  * Added up rather than guessed: title, subtitle, three rows with their gaps, the
  * all-three strip, the streak heading and the streak cards.
  */
-export const HAUTEUR_GOALS = 54 + 3 * (84 + 10) + (70 + 6) + (36 + 14) + 64
+const STREAK_H = 64
+
+export const HAUTEUR_GOALS = 3 * (84 + 10) + (70 + 6) + (30 + 10) + STREAK_H
 
 export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
@@ -106,13 +108,6 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
   return (
     <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_GOALS, flexDirection: 'column' }}>
 
-    {/* Heading and its footnote on one line: the footnote never deserved a line of its own. */}
-    <UiEntity uiTransform={{ width: '100%', height: 54, flexDirection: 'row', alignItems: 'center' }}>
-      <Label value="DAILY OBJECTIVES" fontSize={TYPE.body} color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ height: 44, margin: { right: 18 } }} textWrap="nowrap" />
-      <Label value="resets 00:00 UTC" fontSize={TYPE.caption} color={Color4.fromHexString('#7d879bff')}
-        uiTransform={{ height: 44 }} textWrap="nowrap" />
-    </UiEntity>
 
     <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
@@ -135,9 +130,20 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
     </UiEntity>
 
     <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
-        uiTransform={{ width: '100%', height: 36, margin: { top: 14 } }} textAlign="middle-left" />
-      {/* Seven fixed cards come to 1022; they wrap rather than run off a narrowed panel. */}
-    <UiEntity uiTransform={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap' }}>
+        uiTransform={{ width: '100%', height: 30, margin: { top: 10 } }} textAlign="middle-left" />
+      {/*
+        Seven chips sized as a share of the width, so the row can never wrap.
+
+        They were fixed at 104 wide and allowed to wrap when the panel narrowed, which broke
+        the one thing the window relies on: this tab declares how tall it is, and the
+        declaration assumed a single row. On the phone the seventh chip wrapped onto a second
+        row that fell outside the declared height, so it could not be scrolled to and simply
+        did not exist. A width in percent keeps all seven on one line at any panel width, and
+        the height stays the number that was promised.
+      */}
+      <UiEntity
+        uiTransform={{ width: '100%', height: STREAK_H, flexDirection: 'row', justifyContent: 'space-between' }}
+      >
         {DAILY_REWARDS.map((t, j) => {
           const dayN = j + 1
           const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)
@@ -145,7 +151,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           return (
             <UiEntity
               uiTransform={{
-                width: 104, height: 64, margin: { right: 6 },
+                width: '13.2%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                 borderWidth: actuel ? 2 : 0, borderColor: Color4.fromHexString('#ffd166ff')
               }}

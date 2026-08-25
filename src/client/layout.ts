@@ -145,6 +145,29 @@ export function noticeBand(blocks: Array<[string, boolean, number]>): Record<str
 }
 
 /**
+ * How far our idea of the middle is from the screen's actual middle, in our own units.
+ *
+ * The renderer is asked to keep our interface inside the device's safe margins, so what it
+ * hands us is a rectangle inset from the screen: our fifty percent is the centre of that
+ * rectangle, not the centre of the glass. On a desktop the insets are zero and the two are
+ * the same, which is why this never showed up there. On a phone the notch takes a bite out
+ * of one side only, so the two centres are a few pixels apart, and a reticle a few pixels
+ * off the one the client draws is exactly the sort of detail that reads as amateur.
+ *
+ * A shot travels along the camera's forward axis, which arrives at the centre of the glass.
+ * So the sight has to be there too, and this is the correction that puts it there: half the
+ * difference between the two insets, converted out of canvas pixels.
+ */
+export function decalageCentre(): { x: number; y: number } {
+  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
+  const zone = info?.screenInsetArea
+  if (info === undefined || info === null || zone === undefined) return { x: 0, y: 0 }
+  const scale = Math.min(info.width / active.w, info.height / active.h)
+  if (!(scale > 0)) return { x: 0, y: 0 }
+  return { x: (zone.right - zone.left) / (2 * scale), y: (zone.bottom - zone.top) / (2 * scale) }
+}
+
+/**
  * How much of the right edge to leave for the client, at the top of the screen.
  *
  * Written down from a photograph of the running mobile client rather than from this file's

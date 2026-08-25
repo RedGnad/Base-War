@@ -8,10 +8,10 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
-import { setIconePrimaire } from './client/locomotion'
+import { setIconePrimaire, setReticuleClient } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
@@ -59,6 +59,7 @@ export function setupUi() {
       price or count has to be read rather than recognised.
     */
     setIconePrimaire(combatView.aiming ? 'icon-fire' : (nextAction()?.icon ?? null))
+    setReticuleClient(!combatView.aiming && !modale() && !menuView.open)
 
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
     if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
@@ -359,6 +360,9 @@ function hint(): string {
 function Crosshair() {
   const locked = combatView.targetName !== ''
   const cold = combatView.cooldown > 0
+  // Our fifty percent is the middle of the safe area, not the middle of the glass, and the
+  // shot goes to the middle of the glass. This is the difference.
+  const c = decalageCentre()
   const gap = 8
   const len = 12
   const th = 2
@@ -370,7 +374,7 @@ function Crosshair() {
     <UiEntity key={key}
       uiTransform={{
         width: w, height: h, positionType: 'absolute',
-        position: { top: '50%', left: '50%' }, margin: { left, top }
+        position: { top: '50%', left: '50%' }, margin: { left: left + c.x, top: top + c.y }
       }}
       uiBackground={{ color: col }} />
   )
@@ -385,7 +389,7 @@ function Crosshair() {
         <UiEntity
           uiTransform={{
             width: 300, height: 24, positionType: 'absolute',
-            position: { top: '50%', left: '50%' }, margin: { left: -150, top: 34 },
+            position: { top: '50%', left: '50%' }, margin: { left: -150 + c.x, top: 34 + c.y },
             justifyContent: 'center'
           }}
         >

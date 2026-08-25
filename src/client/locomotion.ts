@@ -116,6 +116,24 @@ let iconePrimaire: string | null = null
  * Passing null puts the built-in "E" back, which is the right answer for the actions that
  * carry a price or a count and are better said in words.
  */
+let reticuleClient: boolean | null = null
+
+/**
+ * Whether the client draws its own crosshair.
+ *
+ * Two reasons to take it away. A window is open, and a sight over a menu means nothing. Or
+ * the weapon is out, and the scene draws its own sight, which says more: it turns red and
+ * names whoever is under it. Two crosshairs on screen at once is also how a small offset
+ * between them becomes visible, and there is one to be had, because the scene's coordinates
+ * are inset from the device's safe margins while the client's are not.
+ */
+export function setReticuleClient(visible: boolean): void {
+  if (reticuleClient === visible) return
+  reticuleClient = visible
+  if (visible) TouchScreenControls.showCrosshair()
+  else TouchScreenControls.hideCrosshair()
+}
+
 export function setIconePrimaire(nom: string | null): void {
   if (iconePrimaire === nom) return
   iconePrimaire = nom
