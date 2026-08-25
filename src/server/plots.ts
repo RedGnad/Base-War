@@ -123,11 +123,21 @@ function publish(b: Base, ici?: Set<string>): void {
   // what the base remembers, which is what an absent owner's building has to be drawn from.
   const pr = profiles.get(b.address)
   if (pr !== undefined) {
+    /*
+      Copied here, and marked for saving here, because remembering to do it at each call site
+      is the same as not doing it. Buying a floor happened to mark the base dirty; arming a
+      sentry and crossing a prestige did not, so those two would have shown correctly until
+      the owner logged off and then quietly reverted.
+    */
+    const avant = `${b.floorsBought}|${b.sentries}|${b.rebirths}|${b.given}|${b.received}`
     b.floorsBought = pr.floorsBought ?? 0
     b.sentries = pr.sentries ?? 0
     b.rebirths = pr.rebirths ?? 0
     b.given = pr.given ?? 0
     b.received = pr.received ?? 0
+    if (`${b.floorsBought}|${b.sentries}|${b.rebirths}|${b.given}|${b.received}` !== avant) {
+      dirtyBases.add(b.address)
+    }
   }
   c.floors = openFloors(b.floorsBought)
   c.rebirths = b.rebirths
@@ -178,8 +188,12 @@ async function loadBases(): Promise<void> {
         return {
           address: key.slice('base:'.length), name: v.name ?? '', items: v.items ?? [],
           lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z,
-          floorsBought: v.floorsBought ?? 0, sentries: v.sentries ?? 0,
-          rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
+          // Left undefined on purpose when the blob predates these fields: undefined means
+          // "never written", which is what tells the migration below to go and find them.
+          vitrine: v.floorsBought === undefined ? null : {
+            floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
+            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
+          }
         }
       })
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
@@ -187,12 +201,39 @@ async function loadBases(): Promise<void> {
       .slice(0, MAX_BASES_AFFICHEES)
     // The shopfront travels with the base, so a building whose owner is away still stands.
     for (const l of loaded) {
-      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, {
-        floorsBought: l.floorsBought, sentries: l.sentries,
-        rebirths: l.rebirths, given: l.given, received: l.received
-      })
+      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
     }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
+
+    /*
+      Bases saved before the shopfront existed are filled in from their owner's profile, once.
+
+      Moving those fields onto the base only helped what was saved after the move: everything
+      already in storage came back with no floors bought, so a three-storey building whose
+      owner happened to be offline still came up as a hut. The profile still holds the truth,
+      so it is read here for exactly the bases that never wrote one, and the next save cycle
+      makes the read unnecessary for ever.
+    */
+    const aRattraper = loaded.filter((l) => l.vitrine === null)
+    for (const l of aRattraper) {
+      try {
+        const raw = await Storage.player.get<string>(l.address, PLAYER_KEY)
+        if (!raw) continue
+        const prof = JSON.parse(raw) as Partial<Profil>
+        const b = bases.get(l.address)
+        if (b === undefined) continue
+        b.floorsBought = prof.floorsBought ?? 0
+        b.sentries = prof.sentries ?? 0
+        b.rebirths = prof.rebirths ?? 0
+        b.given = prof.given ?? 0
+        b.received = prof.received ?? 0
+        dirtyBases.add(l.address)
+        publish(b)
+      } catch (e) {
+        log(`could not backfill the shopfront of ${l.address.slice(0, 8)}: ${e}`)
+      }
+    }
+    if (aRattraper.length > 0) log(`shopfront backfilled for ${aRattraper.length} older base(s)`)
   } catch (e) {
     log(`ERROR could not read bases: ${e}`)
   }
