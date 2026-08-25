@@ -8,7 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row } from './client/layout'
+import { strip, row, slot } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
@@ -226,20 +226,20 @@ const uiComponent = () => (
           variant={activeTab() === 'index' ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === 'index')}
           fontSize={TYPE.caption} onMouseDown={() => chooseTab('index')} />
       )}
-      <Button
-        uiTransform={{ width: 110, height: TAP.height }}
-        value={menuView.open ? 'X' : (questsToClaim() > 0 ? `☰ ${questsToClaim()}` : '☰')}
-        variant={menuView.open || questsToClaim() > 0 ? 'primary' : 'secondary'} uiBackground={btn(menuView.open || questsToClaim() > 0)}
-        fontSize={TYPE.label} onMouseDown={basculerMenu} />
+      <Btn
+        width={menuView.open ? 140 : 190}
+        primary={menuView.open || questsToClaim() > 0}
+        onClick={basculerMenu}
+        label={menuView.open ? 'CLOSE' : (questsToClaim() > 0 ? `GOALS ${questsToClaim()}` : 'GOALS')} />
     </UiEntity>
     )}
 
     {!modale() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          width: 760, height: 64, positionType: 'absolute',
-          position: { top: 120, left: '50%' }, margin: { left: -380 },
-          flexDirection: 'row', alignItems: 'center', padding: 10
+          width: 1000, height: slot(1).height, positionType: 'absolute',
+          position: { top: slot(1).top, left: '50%' }, margin: { left: -500 },
+          flexDirection: 'row', alignItems: 'center', padding: 12
         }}
         uiBackground={SKIN.panel}
       >
@@ -252,19 +252,19 @@ const uiComponent = () => (
         <Label
           value={`STEP ${tutoView.etape + 1}/${tutoView.total}  ${ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}`}
           fontSize={TYPE.label} color={C.bonus}
-          uiTransform={{ width: 300, height: 44 }} textAlign="middle-left" />
+          uiTransform={{ width: 360, height: 34 }} textAlign="middle-left" textWrap="nowrap" />
         <Label
           value={ETAPES_TEXTE[tutoView.etape]?.aide ?? ''}
           fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ width: 430, height: 44 }} textAlign="middle-left" />
+          uiTransform={{ width: 600, height: 34 }} textAlign="middle-left" textWrap="nowrap" />
       </UiEntity>
     )}
 
     {!modale() && theftView.prime > 0 && (
       <UiEntity
         uiTransform={{
-          width: 300, height: 40, positionType: 'absolute',
-          position: { top: 112, left: '50%' }, margin: { left: -150 },
+          width: 620, height: slot(2).height, positionType: 'absolute',
+          position: { top: slot(2).top, left: '50%' }, margin: { left: -310 },
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0.06, 0.20, 0.10, 0.85) }}
@@ -312,8 +312,8 @@ const uiComponent = () => (
     {!modale() && (
     <UiEntity
       uiTransform={{
-        width: 520, height: 104, positionType: 'absolute',
-        position: { top: 10, left: '50%' }, margin: { left: -260 },
+        width: 520, height: slot(0).height, positionType: 'absolute',
+        position: { top: slot(0).top, left: '50%' }, margin: { left: -260 },
         padding: 8, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'
       }}
       uiBackground={SKIN.panel}
@@ -370,8 +370,8 @@ const uiComponent = () => (
     {!modale() && beltView.annonce !== '' && (
       <UiEntity
         uiTransform={{
-          width: 700, height: 58, positionType: 'absolute',
-          position: { top: 196, left: '50%' }, margin: { left: -350 },
+          width: 700, height: slot(3).height, positionType: 'absolute',
+          position: { top: slot(3).top, left: '50%' }, margin: { left: -350 },
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: announceBackdrop() }}
@@ -554,8 +554,8 @@ const uiComponent = () => (
     {hint() !== '' && !combatView.aiming && !modale() && (
       <UiEntity
         uiTransform={{
-          width: strip(760).width, height: 34, positionType: 'absolute',
-          position: { bottom: row(2), left: '50%' }, margin: strip(760).margin,
+          width: strip(620).width, height: 34, positionType: 'absolute',
+          position: { bottom: row(0) + 62, left: '50%' }, margin: strip(620).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
       >
@@ -571,8 +571,8 @@ const uiComponent = () => (
     {!modale() && !slotView.active && (
       <UiEntity
         uiTransform={{
-          width: strip(760).width, height: 52, positionType: 'absolute',
-          position: { bottom: row(0), left: '50%' }, margin: strip(760).margin,
+          width: strip(620).width, height: 52, positionType: 'absolute',
+          position: { bottom: row(0), left: '50%' }, margin: strip(620).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
