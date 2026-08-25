@@ -74,18 +74,23 @@ export function floorCost(targetFloor: number): number {
  * second run of the whole loop under the prices above, swept across candidates and read off
  * the milestones it produces.
  *
- * Cost grows with the cube of the tier, so the ladder is long by construction: the first
- * prestige at 2.4 hours, the sixth at 106, the twelfth past four hundred. That is the point.
+ * A price paid in coins held, not a lifetime total reached. Cost grows with the cube of the
+ * tier, so the ladder is long by construction: about 2.4 hours of base income for the first,
+ * 106 for the sixth, past four hundred for the twelfth, before any of it is spent elsewhere.
  * A tycoon is a thing somebody can still be playing in three months, and a threshold picked
  * so a visitor reaches the top of it in an afternoon would have thrown that away.
  */
 export const PRESTIGE_THRESHOLD = 2_500_000
 
-export function prestigeFor(cumul: number): number {
-  return cumul <= 0 ? 0 : Math.floor(Math.cbrt(cumul / PRESTIGE_THRESHOLD))
-}
+/*
+  What tier `n` costs, in coins the player must have in hand.
 
-export function lifetimeForPrestige(n: number): number {
+  It was called `lifetimeForPrestige` and it is spent straight out of `p.coins`, so the name
+  described a model the code does not implement. Its twin `prestigeFor(cumul)`, which derived
+  a tier from lifetime earnings, sat right here implementing the other model and was called by
+  nothing: two contradictory economies in nine lines, around real money. One survives.
+*/
+export function coutPrestige(n: number): number {
   return n <= 0 ? 0 : Math.round(n * n * n * PRESTIGE_THRESHOLD)
 }
 

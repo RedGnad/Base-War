@@ -6,9 +6,6 @@ import { registerMessages } from '@dcl/sdk/network'
  * statically from index.ts: it has to run before the engine seals.
  */
 export const MESSAGES = {
-  tap: Schemas.Map({}),
-  tapAck: Schemas.Map({ count: Schemas.Int, persisted: Schemas.Boolean }),
-
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
@@ -104,13 +101,7 @@ export const MESSAGES = {
   youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   thiefPenalty: Schemas.Map({ ms: Schemas.Int }),
   stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
-  reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int }),
-
-  crateBroken: Schemas.Map({
-    rarity: Schemas.Int,
-    byId: Schemas.String,
-    byName: Schemas.String
-  })
+  reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int })
 } as const
 
 export const room = registerMessages(MESSAGES)

@@ -1,28 +1,15 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, SAME_STOREY, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
+  STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
   LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
-
-/**
- * Can this player put a hand on that item, as the building would have it?
- *
- * The scene already answers this: slabs and walls carry a pointer collider, so a click aimed
- * through a ceiling never reaches the item behind it. This says the same thing in a place a
- * modified client cannot edit, which is the only reason it exists. Same storey, and no
- * further than the reach a pointer event has by default.
- */
-function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
-  if (Math.abs(joueur.y - objet.y) > SAME_STOREY) return false
-  return Vector3.distance(joueur, objet) <= rayon
-}
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible } from './plots'
 import { tutoFait } from './onboarding'
-import { remettreEnMain, portePour, forcerLacher } from './carry'
+import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
@@ -31,10 +18,15 @@ import {
   placeBase, basePoints, buyFloorFor, lockCooldown, collectPending
 } from './plots'
 
-type Larcin = { thief: string; victim: string; rarity: number; quand: number }
+/*
+  `code`, not `rarity`. An item is `rarity * 100 + mutation`, and this field has always held
+  the whole code; calling it a rarity is how it ended up sent as one to the client, which read
+  a 402 as rarity 402, fell back to entry zero, and told the room that a Legendary recovered in
+  front of witnesses was a Common.
+*/
+type Larcin = { thief: string; victim: string; code: number; quand: number }
 const larcins: Larcin[] = []
 
-export function recordPrestige(_address: string, _itemsFound: number): void { /* remplace par les prestigeTier */ }
 function lockBonus(address: string): number {
   return prestigeOf(address) * LOCK_BONUS_MS
 }
@@ -104,12 +96,6 @@ export function interrompreVol(thief: string, force: number): 'rien' | 'ebranle'
   enCours.delete(thief)
   void room.send('stealFailed', { reason: 'shot, you lost your grip' }, { to: [thief] })
   return 'coupe'
-}
-
-/** Un vol en cours est-il ouvert sur cette base ? Sert a la sentinelle et a la reprise. */
-export function volEnCoursSur(address: string): boolean {
-  for (const v of enCours.values()) if (v.victim === address) return true
-  return false
 }
 
 /*
@@ -189,7 +175,7 @@ export function startTheft(): void {
         something, and where anybody watching can see what this game is about.
       */
       remettreEnMain(thief, r, v.victim)
-      larcins.push({ thief, victim: v.victim, rarity: r, quand: maintenant })
+      larcins.push({ thief, victim: v.victim, code: r, quand: maintenant })
       const nomV = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
       storeAlert(v.victim, { byName: nomV, rarity: rar, mutation: mut })
@@ -345,6 +331,14 @@ export function startTheft(): void {
     if (!victim) return
     const p = positionOf(victim)
     if (p === null) { refus(victim, 'recover', 'position unknown'); return }
+    /*
+      Ask whether it can land before taking it off anybody.
+
+      `addItem` answers with a word and its answer was thrown away here, so a victim whose own
+      shelves were full took the item back out of the thief's possession and straight out of
+      the game. Settled first, once, for every candidate below.
+    */
+    if (etatPrevisible(victim) === 'plein') { refus(victim, 'recover', 'your own base is full'); return }
 
     const maintenant = Date.now()
     for (let i = larcins.length - 1; i >= 0; i--) {
@@ -360,15 +354,36 @@ export function startTheft(): void {
         continue
       }
 
-      const items = basesProches(pv, 0.1, '').find((b) => b.address === l.thief)
-      const idx = items ? items.items.lastIndexOf(l.rarity) : -1
-      const r = idx >= 0 ? removeItem(l.thief, idx) : null
-      if (r === null) { refus(victim, 'recover', 'they no longer have it'); continue }
+      /*
+        Their hands first, then their shelves. It used to be neither.
 
-      addItem(victim, r)
+        This looked the stolen item up with `basesProches(pv, 0.1, '')`, a proximity query with
+        a ten-centimetre radius, so it only ever found anything if the thief happened to be
+        standing on the exact centre point of their own building. And even standing there it
+        would have found nothing, because the whole point of the rework is that a fresh theft
+        is in the thief's FIST for the length of the walk home, which is longer than this
+        window. Recovery reached for a shelf during the one stretch when the item is never on
+        one. Take it out of their hands, and fall back to the shelf for the rare case where
+        they got home inside the twenty seconds.
+      */
+      let repris = arracherDesMains(l.thief, l.code)
+      if (!repris) {
+        const bv = baseDe(l.thief)
+        const idx = bv === undefined ? -1 : bv.items.lastIndexOf(l.code)
+        repris = idx >= 0 && removeItem(l.thief, idx) !== null
+      }
+      if (!repris) { refus(victim, 'recover', 'they no longer have it'); continue }
+
+      if (addItem(victim, l.code) === 'plein') {
+        // Unreachable: capacity was settled above and nothing runs in between. Written down
+        // rather than assumed, because the line that assumed it is what deleted the item.
+        log(`ERROR recover: ${displayName(victim)} could not receive their own ${rarityOf(l.code)}`)
+      }
       larcins.splice(i, 1)
-      void room.send('reclaimed', { byName: displayName(victim), fromName: displayName(l.thief), rarity: r })
-      log(`${displayName(victim)} a repris sa rarity ${r} a ${displayName(l.thief)}`)
+      void room.send('reclaimed', {
+        byName: displayName(victim), fromName: displayName(l.thief), rarity: rarityOf(l.code)
+      })
+      log(`${displayName(victim)} took back a ${itemName(rarityOf(l.code), mutationDe(l.code))} from ${displayName(l.thief)}`)
       return
     }
     refus(victim, 'recover', 'nothing to recover')

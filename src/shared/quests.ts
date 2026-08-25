@@ -17,7 +17,7 @@ export const QUESTS: readonly Quest[] = [
   { type: 'acheter',    cible: 3,    texte: 'Buy 3 crates from the belt' },
   { type: 'collectPending',  cible: 5,    texte: 'Collect your income 5 times' },
   { type: 'vendre',     cible: 3,    texte: 'Sell 3 items' },
-  { type: 'poser',      cible: 6,    texte: 'Place 6 items on your base' },
+  { type: 'poser',      cible: 6,    texte: 'Bring 6 items home to your base' },
   { type: 'bank',    cible: 2000, texte: 'Bank 2,000 coins' },
   { type: 'ouvrirRare', cible: 2,    texte: 'Open 2 uncommon crates or better' },
   { type: 'gift',     cible: 1,    texte: 'Leave an item on someone else\'s base' },

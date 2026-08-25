@@ -575,6 +575,68 @@ function Crosshair() {
   )
 }
 
+/**
+ * The reel, centred by the layout and measured once per frame instead of three times.
+ *
+ * The cards were placed against `active.w`, half the width of the whole virtual screen, inside
+ * a container declared at a hundred percent of the SAFE AREA, which is narrower. The two
+ * disagree by half the device's margin, so the whole reel and its marker sat off to one side,
+ * on the phone and on the desktop alike. A strip of a width we choose, centred the same way
+ * every other bar in this interface is centred, has nothing left to disagree with.
+ *
+ * `strip(active.w)` reads the client's canvas component and allocates a result; it was called
+ * for the strip, again for every card's placement, and again for the marker. It is one number
+ * and it cannot change inside a frame, so it is taken once, here, where there is a scope to
+ * hold it. Pulled out of the main tree for that scope and for nothing else.
+ */
+function Roulette(): ReactEcs.JSX.Element {
+  const large = strip(active.w).width
+  return (
+    <Centre bottom={250}>
+      <UiEntity
+        uiTransform={{ width: large, height: REEL_H + 8 }}
+        uiBackground={SKIN.panel}
+      >
+        {boxView.reel.map((r, i) => {
+          const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+          if (x < -REEL_W || x > large) return null
+          const gagnant = !boxView.roule && i === REEL_WIN
+          const col = Color4.fromHexString(lisible(RARITIES[r]?.color ?? '#ffffff') + 'ff')
+          return (
+            <UiEntity key={i}
+              uiTransform={{
+                width: REEL_W, height: REEL_H, positionType: 'absolute',
+                position: { left: x, top: 4 },
+                flexDirection: 'column', justifyContent: 'space-between', padding: 10
+              }}
+              uiBackground={gagnant ? { ...SKIN.card, color: col } : SKIN.card}
+            >
+              <Label value={RARITIES[r]?.name ?? ''} fontSize={TYPE.caption}
+                color={gagnant ? C.name : col}
+                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+              <UiEntity
+                uiTransform={{ width: '100%', height: 84 }}
+                uiBackground={gagnant ? SKIN.inset : { ...SKIN.inset, color: col }} />
+              <Label value={`+${formatIncome(INCOME_UI[r] ?? 1)}/s`} fontSize={TYPE.caption}
+                color={C.money}
+                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+            </UiEntity>
+          )
+        })}
+
+        {/* The selector. Whatever sits under it when the strip stops is what was won. */}
+        <UiEntity
+          uiTransform={{
+            width: 5, height: REEL_H + 8, positionType: 'absolute',
+            position: { left: large / 2 - 2.5, top: 0 }
+          }}
+          uiBackground={{ color: C.name }} />
+      </UiEntity>
+    </Centre>
+  )
+}
+
+
 const uiComponent = () => {
   /*
     The top band, resolved once per frame, in priority order.
@@ -805,59 +867,7 @@ const uiComponent = () => {
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
-    {/*
-      The strip is centred by the layout, and the cards are placed inside the strip.
-
-      They were placed against `active.w`, half the width of the whole virtual screen, inside
-      a container declared at a hundred percent of the SAFE AREA, which is narrower. The two
-      disagree by half the device's margin, so the whole reel and its marker sat off to one
-      side, on the phone and on the desktop alike. A strip of a width we chose, centred the
-      same way every other bar in this interface is centred, has nothing left to disagree with.
-    */}
-    {hud() && (boxView.roule || boxView.resultat >= 0) && (
-      <Centre bottom={250}>
-      <UiEntity
-        uiTransform={{ width: strip(active.w).width, height: REEL_H + 8 }}
-        uiBackground={SKIN.panel}
-      >
-        {boxView.reel.map((r, i) => {
-          const large = strip(active.w).width
-          const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-          if (x < -REEL_W || x > large) return null
-          const gagnant = !boxView.roule && i === REEL_WIN
-          const col = Color4.fromHexString(lisible(RARITIES[r]?.color ?? '#ffffff') + 'ff')
-          return (
-            <UiEntity key={i}
-              uiTransform={{
-                width: REEL_W, height: REEL_H, positionType: 'absolute',
-                position: { left: x, top: 4 },
-                flexDirection: 'column', justifyContent: 'space-between', padding: 10
-              }}
-              uiBackground={gagnant ? { ...SKIN.card, color: col } : SKIN.card}
-            >
-              <Label value={RARITIES[r]?.name ?? ''} fontSize={TYPE.caption}
-                color={gagnant ? C.name : col}
-                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-              <UiEntity
-                uiTransform={{ width: '100%', height: 84 }}
-                uiBackground={gagnant ? SKIN.inset : { ...SKIN.inset, color: col }} />
-              <Label value={`+${formatIncome(INCOME_UI[r] ?? 1)}/s`} fontSize={TYPE.caption}
-                color={C.money}
-                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-            </UiEntity>
-          )
-        })}
-
-        {/* The selector. Whatever sits under it when the strip stops is what was won. */}
-        <UiEntity
-          uiTransform={{
-            width: 5, height: REEL_H + 8, positionType: 'absolute',
-            position: { left: strip(active.w).width / 2 - 2.5, top: 0 }
-          }}
-          uiBackground={{ color: C.name }} />
-      </UiEntity>
-      </Centre>
-    )}
+    {hud() && (boxView.roule || boxView.resultat >= 0) && Roulette()}
 
     {hud() && !boxView.roule && boxView.resultat >= 0 && (
       <UiEntity

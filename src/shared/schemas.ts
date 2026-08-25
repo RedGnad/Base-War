@@ -1,24 +1,13 @@
 import {
-  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, lifetimeForPrestige, prestigeMultiplier,
+  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, coutPrestige, prestigeMultiplier,
   OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
 import { isServer } from '@dcl/sdk/network'
 import { AUTH_SERVER_PEER_ID } from '@dcl/sdk/network/message-bus-sync'
 
-export const PlayerTaps = engine.defineComponent('basetycoon::player-taps', {
-  playerId: Schemas.String,
-  count: Schemas.Int
-})
-
 export const ServerBeat = engine.defineComponent('basetycoon::server-beat', {
   at: Schemas.Int64
-})
-
-export const Crate = engine.defineComponent('basetycoon::crate', {
-  hits: Schemas.Int,
-  maxHits: Schemas.Int,
-  breakSeq: Schemas.Int
 })
 
 export const Plot = engine.defineComponent('basetycoon::plot', {
@@ -378,9 +367,15 @@ export function beltPosition(progres: number): { x: number; y: number; z: number
 
 export const RARITY_PRICE = [40, 150, 600, 2600, 11000]
 
+/*
+  Fixed network identities, for singletons only.
+
+  Everything else auto-allocates, which is unique by construction. `crate: 2` was reserved for
+  a component that was defined and never once used; a reserved id that names nothing is an
+  invitation to reuse it for something else and collide with a room that still remembers it.
+*/
 export const SYNC_ID = {
-  serverBeat: 1,
-  crate: 2
+  serverBeat: 1
 } as const
 
 export const HIT_RANGE = 4
@@ -484,7 +479,7 @@ export const DOOR_WIDTH = 2.0
 export const PRESTIGE_TIERS = Array.from({ length: MAX_PRESTIGE }, (_, i) => {
   const n = i + 1
   return {
-    cost: lifetimeForPrestige(n),
+    cost: coutPrestige(n),
     minRarity: Math.min(1 + Math.floor(i / 2), PRODUCTION_PER_RARITY.length - 1),
     multiplier: prestigeMultiplier(n),
     guard: i < 2 ? 1 : 2
@@ -511,7 +506,6 @@ export function openSlots(floorsBought = 0): number {
   return openFloors(floorsBought) * SLOTS_PER_FLOOR
 }
 
-export const MOVE_COOLDOWN_MS = 180_000
 
 export const OFFLINE_RATE = OFFLINE_RATE_V2        // 35 % du income normal
 export const OFFLINE_CAP_MS = 4 * 3600_000
@@ -633,9 +627,7 @@ export function registerValidators(): void {
   const serverOnly = (value: { senderAddress: string }) =>
     value.senderAddress.toLowerCase() === AUTH_SERVER_PEER_ID.toLowerCase()
 
-  PlayerTaps.validateBeforeChange(serverOnly)
   ServerBeat.validateBeforeChange(serverOnly)
-  Crate.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
   Convoy.validateBeforeChange(serverOnly)

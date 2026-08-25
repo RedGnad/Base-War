@@ -2,7 +2,7 @@ import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE,
+  Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE, STEAL_REACH,
   LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -10,8 +10,9 @@ import { rarityOf, mutationDe } from '../shared/loot-table'
 import { log } from './log'
 import {
   baseDe, removeItem, addItem, displayName, presents, positionOf, crediterVente,
-  advanceQuest, pushQuests
+  advanceQuest, pushQuests, aPortee, positionObjet, enregistrerDon, storeAlert
 } from './plots'
+import { tutoFait } from './onboarding'
 
 /**
  * Carrying, which is the one verb the rest of this game turned out to be made of.
@@ -40,6 +41,17 @@ export function portePour(address: string): boolean {
 }
 
 function poser(address: string, code: number, origin: string): void {
+  /*
+    Nobody holds two things, and the map used to let them.
+
+    `portes.set` overwrote the previous entry without touching the entity behind it: the old
+    `Carried` stayed in the room, synced, glued to that player's hand for the rest of the
+    server's life, while the item it named had already left every base. Every caller guards
+    against arriving here with full hands, so this line should never fire; it exists because
+    the cost of it firing was an item deleted from the game, and the cost of the guard is one
+    comparison. Whatever was held goes home rather than nowhere.
+  */
+  forcerLacher(address, 'you cannot hold two things')
   const e = engine.addEntity()
   Carried.create(e, { holder: address, code, origin, sinceMs: Date.now(), grip: CARRY_GRIP })
   syncEntity(e, [Carried.componentId])
@@ -55,7 +67,6 @@ function lacher(address: string): { code: number; origin: string } | null {
   return c === null ? null : { code: c.code, origin: c.origin }
 }
 
-/** Send it back where it came from, or to the carrier if that base is gone or full. */
 /**
  * Send it back where it came from, or to the carrier if that base is gone or full.
  *
@@ -67,6 +78,29 @@ function lacher(address: string): { code: number; origin: string } | null {
  */
 function rentrer(address: string, quoi: { code: number; origin: string }, pourquoi: string): void {
   if (addItem(quoi.origin, quoi.code) === 'plein' && addItem(address, quoi.code) === 'plein') {
+    /*
+      Two full shelves is not a reason to delete somebody's trophy.
+
+      This branch used to log the loss and return, which is the game quietly eating an item
+      because two buildings happened to be full at the same second, and telling nobody. The
+      floor is already this game's overflow: a dropped item that cannot go home stays on the
+      ground and keeps trying. Send it there instead, and say so.
+    */
+    const p = positionOf(address)
+    if (p !== null) {
+      jeterAuSol(quoi.code, quoi.origin, address, p)
+      void room.send('carryResult', {
+        ok: false, reason: `${pourquoi}, no room left: it is on the ground`,
+        rarity: rarityOf(quoi.code), mutation: mutationDe(quoi.code)
+      }, { to: [address] })
+      log(`carry: ${displayName(address)} had nowhere to put a ${rarityOf(quoi.code)}, it is on the ground (${pourquoi})`)
+      return
+    }
+    // Only when we do not even know where they were standing is it truly gone.
+    void room.send('carryResult', {
+      ok: false, reason: `${pourquoi}, and there was nowhere left to put it`,
+      rarity: rarityOf(quoi.code), mutation: mutationDe(quoi.code)
+    }, { to: [address] })
     log(`carry: ${displayName(address)} lost a ${rarityOf(quoi.code)}, nowhere to put it (${pourquoi})`)
     return
   }
@@ -82,6 +116,26 @@ export function remettreEnMain(thief: string, code: number, origin: string): voi
   void room.send('carryResult', {
     ok: true, reason: 'carrying', rarity: rarityOf(code), mutation: mutationDe(code)
   }, { to: [thief] })
+}
+
+/**
+ * Take something out of somebody's hands, for the one case where the game says it is not theirs.
+ *
+ * Recovery has to reach the stolen item wherever it currently is, and since the rework that is
+ * a fist far more often than a shelf: the thief holds it for the whole walk home, and the
+ * victim's window is shorter than that walk. Deliberately narrow, it names the code it expects,
+ * so it can only ever take back the exact thing that was taken.
+ */
+export function arracherDesMains(address: string, code: number): boolean {
+  const e = portes.get(address)
+  if (e === undefined) return false
+  const c = Carried.getOrNull(e)
+  if (c === null || c.code !== code) return false
+  lacher(address)
+  void room.send('carryResult', {
+    ok: false, reason: 'they took it back', rarity: rarityOf(code), mutation: mutationDe(code)
+  }, { to: [address] })
+  return true
 }
 
 /** Shot, disconnected, or simply done with it: whatever the reason, it goes home. */
@@ -143,6 +197,22 @@ export function startCarry(): void {
     if (b === undefined) { void room.send('carryResult', { ok: false, reason: 'you have no base', rarity: 0, mutation: 0 }, { to: [a] }); return }
     const slot = d?.slot
     if (!Number.isInteger(slot) || slot < 0 || slot >= b.items.length) { void room.send('carryResult', { ok: false, reason: 'no such item', rarity: 0, mutation: 0 }, { to: [a] }); return }
+    /*
+      Reaching your own shelf is reaching a shelf, and it was the one the server never checked.
+
+      Taking from a rival is checked twice, by the pointer collider on the client and by
+      `aPortee` here, because a modified client cannot be trusted about where it stands.
+      Lifting from your OWN base had no check of any kind: the message named a slot and the
+      server obeyed, from anywhere on the map, through any number of floors. That is a free
+      remote hand, and worse, it is the way to arrive at `poser` with hands that are already
+      full from somewhere else. Same rule as theft, for the same reason.
+    */
+    const p = positionOf(a)
+    const objet = positionObjet(a, slot)
+    if (p === null || objet === null || !aPortee(p, objet, STEAL_REACH)) {
+      void room.send('carryResult', { ok: false, reason: 'too far, or not on this floor', rarity: 0, mutation: 0 }, { to: [a] })
+      return
+    }
     const code = removeItem(a, slot)
     if (code === null) { void room.send('carryResult', { ok: false, reason: 'it is gone', rarity: 0, mutation: 0 }, { to: [a] }); return }
     poser(a, code, a)
@@ -179,22 +249,61 @@ export function startCarry(): void {
       void room.send('carryResult', { ok: false, reason: 'that base is full', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
+    // Read before releasing: `c` is the component's own value and `lacher` destroys the entity.
+    const rar = rarityOf(c.code), mut = mutationDe(c.code)
+    const code = c.code, origine = c.origin
     lacher(a)
-    void room.send('carryResult', { ok: true, reason: vise === a ? 'placed' : 'given', rarity: rarityOf(c.code), mutation: mutationDe(c.code) }, { to: [a] })
-    /*
-      The quest is credited HERE, because this is where the act happens now.
+    void room.send('carryResult', { ok: true, reason: vise === a ? 'placed' : 'given', rarity: rar, mutation: mut }, { to: [a] })
 
-      Leaving something on somebody else's base used to be its own message, and the hook that
-      credits the quest went with it. Carrying replaced that message and the hook stayed
-      behind on a handler no client calls any more: the quest was unwinnable, which a player
-      discovered by doing exactly what it asked. Same story for selling.
+    /*
+      Everything below is credited HERE, because this is where the act happens now.
+
+      Leaving something on somebody else's base used to be its own message, and every hook
+      that hung off it went with it: the quest, the tutorial's last step, both social
+      counters, and the two notifications. Carrying replaced the message; the hooks stayed
+      behind on a handler no client calls any more. The quest was unwinnable and the tutorial
+      could not finish, which a player discovers by doing exactly what the screen asks.
     */
-    advanceQuest(a, vise === a ? 'poser' : 'gift')
-    pushQuests(a)
-    if (vise !== a) {
-      void room.send('gifted', { byName: displayName(a), toName: b.name, rarity: rarityOf(c.code) })
+    if (vise === a) {
+      /*
+        Putting back what was already yours is not placing an item.
+
+        The credit used to be unconditional, so lifting your own trophy off its plinth and
+        setting it down again advanced the quest. Six of those is about twenty seconds of
+        standing still for a free crate, which is not the shape of anything anybody meant to
+        build. `origin` is the base the item belongs to, so `origin !== a` is exactly "this
+        came from somewhere else and I walked it home", and that is the act being rewarded.
+        It costs one honest case: your own item, shot out of your hands by somebody and
+        picked back up off the floor, still carries your address as its origin and no longer
+        counts. Denying that is cheap; allowing the farm is not.
+      */
+      if (origine !== a) { advanceQuest(a, 'poser'); pushQuests(a) }
+      log(`carry: ${displayName(a)} placed a ${rar} in their own base`)
+      return
     }
-    log(`carry: ${displayName(a)} placed a ${rarityOf(c.code)} in ${b.name}'s base`)
+
+    enregistrerDon(a, vise)
+    advanceQuest(a, 'gift')
+    pushQuests(a)
+    tutoFait(a, 4)
+
+    /*
+      Both ends of a gift get told, which is the whole reason anybody gives one.
+
+      The act produced a single line in a feed everyone shares and nothing else: the giver got
+      no confirmation, and the person receiving a trophy learned about it the same way a
+      stranger did. `gaveItem` and `wasGifted` are the two messages the client has always been
+      listening for; nothing had sent them since carrying replaced the old handler.
+    */
+    void room.send('gaveItem', { toName: b.name, rarity: rar, mutation: mut }, { to: [a] })
+    if (presents().has(vise)) {
+      void room.send('wasGifted', { byName: displayName(a), rarity: rar, mutation: mut }, { to: [vise] })
+    } else {
+      // Away right now: it waits on their profile and is delivered when they next arrive.
+      storeAlert(vise, { type: 'gift', byName: displayName(a), code })
+    }
+    void room.send('gifted', { byName: displayName(a), toName: b.name, rarity: rar })
+    log(`carry: ${displayName(a)} placed a ${rar} in ${b.name}'s base`)
   })
 
   /*
@@ -244,6 +353,15 @@ export function startCarry(): void {
     the timeout, or held by somebody who is no longer here, goes back where it came from.
   */
   let acc = 0
+  /*
+    Which entities looked orphaned on the previous tick, and nothing more.
+
+    A one-tick grace, because `lacher` removes an entity and the sweep below runs in the same
+    system: without it, an item legitimately released this second could be read as abandoned
+    before the engine has finished forgetting it, and handed back to its base a second time.
+    Seeing it twice costs one second and removes the question entirely.
+  */
+  const orphelinsVus = new Set<number>()
   engine.addSystem((dt) => {
     acc += dt
     if (acc < 1) return
@@ -297,6 +415,40 @@ export function startCarry(): void {
       if (!ici.has(a)) { forcerLacher(a, 'you left'); continue }
       if (now - c.sinceMs > CARRY_TIMEOUT_MS) forcerLacher(a, 'you held it too long')
     }
+
+    /*
+      And now everything the server does NOT know it is holding, which a restart guarantees.
+
+      The loop above walks `portes`, this server's memory of who is carrying what. The platform
+      stops the server two minutes after the venue empties, and `portes` dies with it, but the
+      `Carried` entity does not: it was synced, so it sits in the room's snapshot and the next
+      server inherits it knowing nothing about it. The item had already been taken off its
+      base, so it was gone from every shelf in the game, and the trophy stayed welded to a
+      player's hand for as long as that scene lived. The floor and the belt are both swept at
+      start-up; hands were the one place nobody looked.
+
+      Two rules make this safe to run every second rather than only at boot. It never touches
+      an entity `portes` knows about, so a live carry is never interrupted. And it never
+      destroys: if the item's home cannot take it back, because the bases have not finished
+      loading or that base is full, the entity is simply left alone and tried again a second
+      later. A ghost that outlives its usefulness is a cosmetic bug; a deleted trophy is not.
+    */
+    const connus = new Set<number>()
+    for (const e of portes.values()) connus.add(e as unknown as number)
+    const orphelins = new Set<number>()
+    for (const [e, c] of engine.getEntitiesWith(Carried)) {
+      const id = e as unknown as number
+      if (connus.has(id)) continue
+      // Reserved/avatar slots belong to the runtime and are never ours to remove.
+      if ((id & 0xffff) < 512) continue
+      orphelins.add(id)
+      if (!orphelinsVus.has(id)) continue
+      if (addItem(c.origin, c.code) === 'plein') continue
+      log(`carry: an orphaned ${rarityOf(c.code)} was found in nobody's hands and sent home`)
+      engine.removeEntity(e)
+    }
+    orphelinsVus.clear()
+    for (const id of orphelins) orphelinsVus.add(id)
   })
 
   log('carry ready')

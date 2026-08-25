@@ -309,14 +309,28 @@ export function baseIci(): { ownerId: string; mienne: boolean } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
   const moi = monAdresseClient()
+  /*
+    The NEAREST base, not the first one the iterator happens to yield.
+
+    Buildings are kept `MIN_BASE_GAP` apart, which is `BASE_SIDE + 4`, and `PLACE_RANGE` is
+    `BASE_SIDE / 2 + 2`: twice the reach is exactly the minimum gap. So two neighbours at the
+    minimum distance have ranges that meet, and a player standing on the seam was inside both.
+    Returning the first match made the verb offered there depend on entity creation order,
+    which is to say on nothing the player can see. Whichever one they are actually closer to
+    is the only defensible answer.
+  */
+  let proche: { ownerId: string; mienne: boolean } | null = null
+  let distance = PLACE_RANGE
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
     const bt = Transform.getOrNull(e)
     if (bt === null) continue
     const dx = t.position.x - bt.position.x, dz = t.position.z - bt.position.z
-    if (Math.sqrt(dx * dx + dz * dz) > PLACE_RANGE) continue
-    return { ownerId: p.ownerId, mienne: p.ownerId.toLowerCase() === moi }
+    const d = Math.sqrt(dx * dx + dz * dz)
+    if (d > distance) continue
+    distance = d
+    proche = { ownerId: p.ownerId, mienne: p.ownerId.toLowerCase() === moi }
   }
-  return null
+  return proche
 }
 
 export function setupPlots(): void {

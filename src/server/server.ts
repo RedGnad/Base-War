@@ -1,68 +1,26 @@
-import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
+import { engine, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
-import { Storage } from '@dcl/sdk/server'
-import { PlayerTaps, ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
+import { ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, placeItem, coinsOf, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
+import { startPlots, accueillir, auRevoir, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
 import { runConvoys, balayerConvois } from './convoy'
 import { startCombat } from './combat'
 import { startCarry } from './carry'
 import { log, flushLog, replayLog } from './log'
-import { startTheft, lockOnArrival, delivrerAlertes, recordPrestige } from './theft'
+import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
 import { startBelt } from './belt'
 
-const STORAGE_KEY = 'taps'
-const SAVE_EVERY_MS = 5000
+/*
+  The template's tap counter was deleted here on 25 Aug.
 
-const counts = new Map<string, number>()
-const dirty = new Set<string>()
-const entities = new Map<string, ReturnType<typeof engine.addEntity>>()
-
-function entityFor(address: string) {
-  const cached = entities.get(address)
-  if (cached !== undefined && PlayerTaps.getOrNull(cached) !== null) return cached
-
-  const e = engine.addEntity()
-  Transform.create(e, { position: { x: 0, y: -100, z: 0 } }) // hors de vue: porteur de donnees
-  PlayerTaps.create(e, { playerId: address, count: counts.get(address) ?? 0 })
-  syncEntity(e, [PlayerTaps.componentId])
-  entities.set(address, e)
-  return e
-}
-
-function publish(address: string) {
-  const e = entityFor(address)
-  const c = PlayerTaps.getMutableOrNull(e)
-  if (c === null) return
-  c.count = counts.get(address) ?? 0
-}
-
-async function load(address: string): Promise<number> {
-  if (counts.has(address)) return counts.get(address)!
-  const raw = await Storage.player.get<string>(address, STORAGE_KEY)
-  const n = raw ? (JSON.parse(raw).count ?? 0) : 0
-  counts.set(address, n)
-  console.log(`[SERVER] loaded ${address} -> ${n}`)
-  return n
-}
-
-async function flush(): Promise<void> {
-  if (dirty.size === 0) return
-  const batch = [...dirty]
-  dirty.clear()
-  for (const address of batch) {
-    const value = JSON.stringify({ count: counts.get(address) ?? 0, at: Date.now() })
-    const ok = await Storage.player.set(address, STORAGE_KEY, value)
-    if (!ok) {
-      console.error(`[SERVER] write failed for ${address}, requeued`)
-      dirty.add(address)
-    } else {
-      console.log(`[SERVER] persiste ${address} = ${counts.get(address)}`)
-    }
-  }
-}
-
+  It shipped with the SDK example and nothing in this game ever touched it: no client sent
+  `tap`, so the handler never ran, the per-player entity it would have created was never
+  created, and `tapAck` was answered to nobody. It was not merely inert. It held a `Storage`
+  key of its own and flushed it on a five-second interval and on every departure, and server
+  storage writes are capped per isolate with the excess failing silently, so a dead feature
+  was spending a budget the real saves need.
+*/
 export function startServer(): void {
   console.log('[SERVER] start')
 
@@ -75,24 +33,6 @@ export function startServer(): void {
   }, BEAT_MS)
 
   timers.setInterval(() => { flushLog() }, 1000)
-
-  timers.setInterval(() => {
-    void flush()
-  }, SAVE_EVERY_MS)
-
-  room.onMessage('tap', (_data, context) => {
-    const address = context?.from?.toLowerCase()
-    if (!address) return
-    void (async () => {
-      const current = await load(address)
-      const next = current + 1
-      counts.set(address, next)
-      dirty.add(address)
-      publish(address)
-      console.log(`[SERVER] tap de ${address} -> ${next}`)
-      void room.send('tapAck', { count: next, persisted: false }, { to: [address] })
-    })()
-  })
 
   startPlots()
   startTheft()
@@ -119,8 +59,6 @@ export function startServer(): void {
       if (presents.has(address)) continue
       presents.add(address)
       void (async () => {
-        const n = await load(address)
-        publish(address)
         await accueillir(address)
         const hl = cashOfflineEarnings(address)
         if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
@@ -131,7 +69,7 @@ export function startServer(): void {
         lockOnArrival(address)    // grace period on arrival
         delivrerAlertes(address)  // what happened while away
         replayLog(address)
-        console.log(`[SERVER] ${address} joined, state restored: ${n}`)
+        console.log(`[SERVER] ${address} joined`)
       })()
     }
 
@@ -140,10 +78,8 @@ export function startServer(): void {
     for (const address of [...presents]) {
       if (ici.has(address)) continue
       presents.delete(address)
-      dirty.add(address)
       auRevoir(address)
       depart(address)
-      void flush()
     }
   })
 }

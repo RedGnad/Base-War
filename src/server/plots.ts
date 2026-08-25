@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  MOVE_COOLDOWN_MS, RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition
+  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -372,6 +372,24 @@ export function basesProches(p: Vector3, range: number, sauf: string): BaseView[
   return out
 }
 
+/**
+ * Can this player put a hand on that item, as the building would have it?
+ *
+ * The scene already answers this: slabs and walls carry a pointer collider, so a click aimed
+ * through a ceiling never reaches the item behind it. This says the same thing in a place a
+ * modified client cannot edit, which is the only reason it exists. Same storey, and no
+ * further than the reach a pointer event has by default.
+ *
+ * It lives here, next to `positionObjet`, because the two are one question asked in two
+ * halves: where does that plinth stand, and can this player touch it. It used to sit in the
+ * theft module, so only theft asked it, and lifting an item off your OWN base was checked
+ * for nothing at all.
+ */
+export function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
+  if (Math.abs(joueur.y - objet.y) > SAME_STOREY) return false
+  return Vector3.distance(joueur, objet) <= rayon
+}
+
 /** Where a given slot of a given base actually stands, which is what a thief has to reach. */
 export function positionObjet(address: string, slot: number): Vector3 | null {
   const b = bases.get(address)
@@ -584,32 +602,23 @@ export function takeAlerts(address: string): object[] {
   if (a.length > 0) dirtyProfiles.add(address)
   return a
 }
-export function giftItem(giver: string, receiver: string, slot: number): { ok: boolean; reason?: string; code?: number } {
-  if (giver === receiver) return { ok: false, reason: 'that is your own base' }
-  const bd = bases.get(giver)
-  const br = bases.get(receiver)
-  if (!bd) return { ok: false, reason: 'you have no base' }
-  if (!br) return { ok: false, reason: 'they have no base' }
-  if (slot < 0 || slot >= bd.items.length) return { ok: false, reason: 'no such item' }
-
-  const pr = profiles.get(receiver)
-  const placesR = openSlots(pr?.floorsBought ?? 0)
-  if (br.items.length >= placesR) return { ok: false, reason: 'their base is full' }
-
-  const code = removeItem(giver, slot)
-  if (code === null) return { ok: false, reason: 'no such item' }
-
-  br.items = [...br.items, code]
-  if (pr) { pr.items = [...br.items]; dirtyProfiles.add(receiver) }
-  dirtyBases.add(receiver)
-  publish(br)
-
+/**
+ * Book a gift, which is now the only thing the old `giftItem` still did that mattered.
+ *
+ * Giving used to be a whole function: pick a slot, name a receiver, move the item between two
+ * arrays. Carrying replaced all of that, and the replacement moved the item correctly while
+ * quietly dropping the two counters the shopfront reads. Every base has advertised `0 given`
+ * and `0 received` since. This is that bookkeeping, and nothing else.
+ */
+export function enregistrerDon(giver: string, receiver: string): void {
   const pd = profiles.get(giver)
+  const pr = profiles.get(receiver)
   if (pd) { pd.given = (pd.given ?? 0) + 1; dirtyProfiles.add(giver) }
   if (pr) { pr.received = (pr.received ?? 0) + 1; dirtyProfiles.add(receiver) }
-  storeAlert(receiver, { type: 'gift', byName: displayName(giver), code })
-  log(`${displayName(giver)} gifted an item to ${displayName(receiver)}`)
-  return { ok: true, code }
+  const bd = bases.get(giver)
+  const br = bases.get(receiver)
+  if (bd) publish(bd)
+  if (br) publish(br)
 }
 
 export function socialDe(address: string): { given: number; received: number } {
@@ -747,22 +756,6 @@ export function spend(address: string, montant: number): boolean {
   p.coins -= montant
   dirtyProfiles.add(address)
   return true
-}
-
-export function sellItemFromBase(address: string, index: number): { ok: boolean; gain?: number; reason?: string } {
-  const p = profiles.get(address)
-  const b = bases.get(address)
-  if (!p || !b) return { ok: false, reason: 'no base' }
-  if (index < 0 || index >= b.items.length) return { ok: false, reason: 'no such item' }
-  const r = b.items[index]
-  const gain = Math.round(itemIncome(r, INCOME_PER_RARITY) * RESELL_SECONDS * incomeMultiplier(p.rebirths ?? 0))
-  b.items.splice(index, 1)
-  p.items = [...b.items]
-  p.coins += gain
-  dirtyBases.add(address); dirtyProfiles.add(address)
-  publish(b)
-  log(`${b.name} sold a rarity ${r} for ${gain}`)
-  return { ok: true, gain }
 }
 
 /** What one item is worth if sold, without needing it to be on a shelf first. */
@@ -905,29 +898,6 @@ export function reclamerQuotidienne(address: string): { log: number; crate: numb
   dirtyProfiles.add(address)
   log(`${nameOf(address)} claimed day ${p.streak} reward: crate ${crate}`)
   return { log: p.streak, crate }
-}
-
-export function moveItemTo(address: string, de: number, to: number): boolean {
-  const p = profiles.get(address)
-  const b = bases.get(address)
-  if (!p || !b) return false
-  const max = openSlots(p.floorsBought ?? 0)
-  if (de < 0 || de >= b.items.length) return false
-  if (to < 0 || to >= max) return false
-  if (de === to) return false
-
-  const it = [...b.items]
-  if (to < it.length) {
-    const t = it[de]; it[de] = it[to]; it[to] = t
-  } else {
-    const [obj] = it.splice(de, 1)
-    it.push(obj)
-  }
-  b.items = it
-  p.items = [...it]
-  dirtyBases.add(address); dirtyProfiles.add(address)
-  publish(b)
-  return true
 }
 
 export function vusDe(address: string): number[] {

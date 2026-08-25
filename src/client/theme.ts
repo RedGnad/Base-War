@@ -100,7 +100,25 @@ function luminance(r: number, g: number, b: number): number {
   return 0.2126 * lineaire(r) + 0.7152 * lineaire(g) + 0.0722 * lineaire(b)
 }
 
+/*
+  Memoised, because this is a pure function called per cell per frame.
+
+  The collection grid asks it for every one of its ninety-eight squares, and the answer walks
+  up to twenty blend steps computing a relative luminance at each one, so an open index was
+  paying a couple of thousand of them sixty times a second for a set of colours that is fixed
+  at compile time. Same input, same answer, for ever.
+*/
+const lisibleCache = new Map<string, string>()
+
 export function lisible(hex: string): string {
+  const cache = lisibleCache.get(hex)
+  if (cache !== undefined) return cache
+  const valeur = calculerLisible(hex)
+  lisibleCache.set(hex, valeur)
+  return valeur
+}
+
+function calculerLisible(hex: string): string {
   const h = hex.startsWith('#') ? hex.slice(1) : hex
   let r = parseInt(h.slice(0, 2), 16)
   let g = parseInt(h.slice(2, 4), 16)
