@@ -82,6 +82,8 @@ export const MESSAGES = {
   placeDown: Schemas.Map({ ownerId: Schemas.String }),
   dropCarried: Schemas.Map({}),
   sellCarried: Schemas.Map({}),
+  /** Seconds left before the play-time crate, or -1 once it has been given. */
+  giftProgress: Schemas.Map({ leftS: Schemas.Int, totalS: Schemas.Int }),
   carryResult: Schemas.Map({ ok: Schemas.Boolean, reason: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   gaveItem: Schemas.Map({ toName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   wasGifted: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),

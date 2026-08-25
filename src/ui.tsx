@@ -22,7 +22,7 @@ import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
-import { tutoView, ETAPES_TEXTE } from './client/tutorial'
+import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { sell } from './client/theft'
 import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
@@ -31,6 +31,8 @@ const INCOME_UI = PRODUCTION_PER_RARITY
 
 /** Card geometry for the reel, in virtual pixels. */
 const REEL_W = 210
+/** The strip's own width, so the cards can be centred against something we actually know. */
+const REEL_STRIP = 1400
 const REEL_H = 172
 const REEL_GAP = 12
 
@@ -687,6 +689,44 @@ const uiComponent = () => {
     )}
 
     {/*
+      The crate being earned by simply being here, and how much of it is left.
+
+      Nothing said this was coming: the game took fifteen minutes of somebody's attention and
+      turned it into a surprise, when the same fifteen minutes shown as a filling bar is an
+      anticipation the whole time. That is not decoration and it is not clutter, it is the
+      product of the wait, and the research on progress indicators says plainly why it works:
+      an unfinished bar reads as something to be finished, every time it is glanced at.
+
+      Which is also a correction to how the rest of this screen was pruned. Two tests were
+      used all evening, is it time-critical and is it available elsewhere, and both only ask
+      whether an element WASTES the screen. Neither asks whether it EARNS it by showing
+      progress towards something wanted. This one fails the first two and passes the third.
+    */}
+    {hud() && cadeauView.leftS > 0 && (
+      <UiEntity
+        uiTransform={{
+          width: 320, height: 52, positionType: 'absolute',
+          position: { top: BAND.top + (tutoView.etape < tutoView.total ? 60 : 0), right: COIN_HAUT_DROIT },
+          flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label
+          value={`FREE CRATE IN ${Math.floor(cadeauView.leftS / 60)}:${String(cadeauView.leftS % 60).padStart(2, '0')}`}
+          fontSize={TYPE.caption} color={C.bonus}
+          uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
+        <UiEntity uiTransform={{ width: '100%', height: 8 }} uiBackground={{ color: C.inset }}>
+          <UiEntity
+            uiTransform={{
+              width: `${Math.round((1 - cadeauView.leftS / Math.max(1, cadeauView.totalS)) * 100)}%`,
+              height: 8
+            }}
+            uiBackground={{ color: C.bonus }} />
+        </UiEntity>
+      </UiEntity>
+    )}
+
+    {/*
       The event feed lives in a corner, not across the middle of the play area.
 
       It was centred at the top, which is where the player is looking, for a stream of things
@@ -698,7 +738,12 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           width: 400, height: 62, positionType: 'absolute',
-          position: { top: BAND.top + (tutoView.etape < tutoView.total ? 60 : 0), right: COIN_HAUT_DROIT },
+          position: {
+            top: BAND.top
+              + (tutoView.etape < tutoView.total ? 60 : 0)
+              + (cadeauView.leftS > 0 ? 60 : 0),
+            right: COIN_HAUT_DROIT
+          },
           padding: 8, flexDirection: 'column', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
@@ -738,20 +783,25 @@ const uiComponent = () => {
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
+    {/*
+      The strip is centred by the layout, and the cards are placed inside the strip.
+
+      They were placed against `active.w`, half the width of the whole virtual screen, inside
+      a container declared at a hundred percent of the SAFE AREA, which is narrower. The two
+      disagree by half the device's margin, so the whole reel and its marker sat off to one
+      side, on the phone and on the desktop alike. A strip of a width we chose, centred the
+      same way every other bar in this interface is centred, has nothing left to disagree with.
+    */}
     {hud() && (boxView.roule || boxView.resultat >= 0) && (
+      <Centre bottom={250}>
       <UiEntity
-        uiTransform={{
-          width: '100%', height: REEL_H + 8, positionType: 'absolute',
-          position: { bottom: 250, left: 0 }
-        }}
+        uiTransform={{ width: strip(REEL_STRIP).width, height: REEL_H + 8 }}
         uiBackground={SKIN.panel}
       >
         {boxView.reel.map((r, i) => {
-          // Centred on the screen actually being drawn. These were 960 and 1920, the
-          // middle and the edge of a desktop canvas, so on a phone's 1600 the whole strip
-          // and its marker sat a hundred and sixty pixels right of centre.
-          const x = active.w / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-          if (x < -REEL_W || x > active.w) return null
+          const large = strip(REEL_STRIP).width
+          const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+          if (x < -REEL_W || x > large) return null
           const gagnant = !boxView.roule && i === REEL_WIN
           const col = Color4.fromHexString(lisible(RARITIES[r]?.color ?? '#ffffff') + 'ff')
           return (
@@ -780,10 +830,11 @@ const uiComponent = () => {
         <UiEntity
           uiTransform={{
             width: 5, height: REEL_H + 8, positionType: 'absolute',
-            position: { left: active.w / 2 - 2.5, top: 0 }
+            position: { left: strip(REEL_STRIP).width / 2 - 2.5, top: 0 }
           }}
           uiBackground={{ color: C.name }} />
       </UiEntity>
+      </Centre>
     )}
 
     {hud() && !boxView.roule && boxView.resultat >= 0 && (

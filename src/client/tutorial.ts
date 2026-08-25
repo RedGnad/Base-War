@@ -12,8 +12,12 @@ export const ETAPES_TEXTE = [
 
 export const tutoView = { etape: 0, total: ETAPES_TEXTE.length as number }
 
+/** Seconds until the play-time crate, and the full span, so a bar can be drawn from them. */
+export const cadeauView = { leftS: -1, totalS: 900 }
+
 export function setupTutorial(): void {
   room.onMessage('tutorial', (d) => { tutoView.etape = d.etape; tutoView.total = d.total })
+  room.onMessage('giftProgress', (d) => { cadeauView.leftS = d.leftS; cadeauView.totalS = d.totalS })
   room.onMessage('timeGift', (d) => {
     alerter(`${d.minutes} MINUTES PLAYED  ·  free ${crate(d.crate).name}`, '#ffd166', 8000)
   })

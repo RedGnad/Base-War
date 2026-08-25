@@ -64,11 +64,29 @@ function replier(address: string): void {
  * means fifteen minutes of playing, not fifteen minutes of one server happening to stay
  * up. The flag is on the profile too, so the crate is given once and once only.
  */
+/**
+ * Tell them how long is left, because the waiting IS the reward being built.
+ *
+ * The crate for fifteen minutes of play arrived out of nowhere: nothing on screen said it was
+ * coming, so the game spent fifteen minutes of a player's attention and got a surprise out of
+ * it instead of an anticipation. Work on progress indicators is blunt about which is worth
+ * more: an unfinished bar reads to the brain as something to be finished, and it keeps
+ * reading that way every time the player glances at it.
+ *
+ * Sent every five seconds rather than every one: the number moves slowly enough that nobody
+ * can tell, and a per-second broadcast to everybody present is a lot of traffic for a clock.
+ */
 export function verifierCadeau(presents: Iterable<string>): void {
   for (const a of presents) {
     const s = (sessionS.get(a) ?? 0) + 1
     sessionS.set(a, s)
     if (s >= REPLI_S) replier(a)
+
+    const total = Math.round(CADEAU_MS / 1000)
+    if (s % 5 === 0 || s === 1) {
+      const reste = cadeauPris(a) ? -1 : Math.max(0, total - (tempsJoue(a) + s))
+      void room.send('giftProgress', { leftS: reste, totalS: total }, { to: [a] })
+    }
 
     if (cadeauPris(a)) continue
     if (tempsJoue(a) + (sessionS.get(a) ?? 0) < CADEAU_MS / 1000) continue
