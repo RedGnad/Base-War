@@ -140,6 +140,10 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
         row that fell outside the declared height, so it could not be scrolled to and simply
         did not exist. A width in percent keeps all seven on one line at any panel width, and
         the height stays the number that was promised.
+
+        12.4 rather than 13.2: seven of them leave 13 percent for six gaps, which on the
+        narrowed window a phone actually gets is a visible space rather than the hairline the
+        old figure produced.
       */}
       <UiEntity
         uiTransform={{ width: '100%', height: STREAK_H, flexDirection: 'row', justifyContent: 'space-between' }}
@@ -151,7 +155,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           return (
             <UiEntity
               uiTransform={{
-                width: '13.2%', height: STREAK_H,
+                width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                 borderWidth: actuel ? 2 : 0, borderColor: Color4.fromHexString('#ffd166ff')
               }}
