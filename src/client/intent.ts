@@ -47,14 +47,14 @@ export function setupIntent(): void {
     if (differe === null) return
     const now = Date.now()
     if (now > differe.jusqua) {
-      console.log('[CLIENT] intention differee expiree')
+      console.log('[CLIENT] deferred intent expired')
       differe = null
       return
     }
     if (!view.serverAlive) return
     const envoyer = differe.envoyer
     differe = null
-    console.log('[CLIENT] intention differee envoyee au premier battement')
+    console.log('[CLIENT] deferred intent sent on the first heartbeat')
     envoyer()
   })
 }

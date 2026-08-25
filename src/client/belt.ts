@@ -168,7 +168,7 @@ export function setupBelt(): void {
     // A rarer crate stays on screen longer: it deserves more attention, and it is also
     // the one worth crossing the venue for.
     beltView.annonceJusqua = Date.now() + 5000 + d.crateTier * 2000
-    console.log(`[CLIENT] annonce: ${r.name}`)
+    console.log(`[CLIENT] announced: ${r.name}`)
   })
 
   room.onMessage('bought', (d) => {

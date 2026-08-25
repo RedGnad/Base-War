@@ -40,7 +40,7 @@ export function applyFreeze(ms: number): void {
 export function applyThiefPenalty(active: boolean): void {
   etat.thief = active
   appliquer()
-  console.log(`[CLIENT] malus thief ${active ? 'ACTIF' : 'inactif'}`)
+  console.log(`[CLIENT] thief penalty ${active ? 'ON' : 'off'}`)
 }
 
 /** Aiming halves the jog. Stacks with the thief penalty instead of replacing it. */
@@ -78,7 +78,7 @@ export function setupTouchHud(): void {
   ])
   poserIcone(InputAction.IA_ACTION_3, 'icon-menu')
   setArmeIcone(false)
-  console.log('[CLIENT] HUD tactile: 5 boutons directs, menu sur IA_ACTION_3, arme sur IA_SECONDARY')
+  console.log('[CLIENT] touch HUD: 5 direct buttons, menu on IA_ACTION_3, weapon on IA_SECONDARY')
 }
 
 /**
@@ -164,7 +164,7 @@ export function reportPlatform(): void {
   function once(): void {
     if (getPlatform() === null) return
     engine.removeSystem(once)
-    console.log(`[CLIENT] plateforme = ${getPlatform()} (mobile: ${isMobile()})`)
+    console.log(`[CLIENT] platform = ${getPlatform()} (mobile: ${isMobile()})`)
   }
   engine.addSystem(once)
 }

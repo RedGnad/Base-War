@@ -68,7 +68,7 @@ export function setupTheft(): void {
       applyThiefPenalty(false)
       theftView.malusJusqua = 0
     }, d.ms)
-    console.log(`[CLIENT] malus thief pour ${d.ms} ms`)
+    console.log(`[CLIENT] thief penalty for ${d.ms} ms`)
   })
 
   room.onMessage('stolen', (d) => {
@@ -167,7 +167,7 @@ export function setupTheft(): void {
 
   room.onMessage('sold', (d) => {
     alerter(`+${d.gain} coins`, '#8fe08f', 2500)
-    console.log(`[CLIENT] revendu pour ${d.gain}`)
+    console.log(`[CLIENT] sold for ${d.gain}`)
   })
 
   room.onMessage('actionRejected', (d) => {

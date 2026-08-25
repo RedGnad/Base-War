@@ -84,7 +84,7 @@ export function startClient(): void {
       if (p.items.length !== view.items || p.floors !== view.floors) {
         view.items = p.items.length
         view.floors = p.floors
-        console.log(`[CLIENT] ma base: ${view.items} items, ${view.floors} floor(s)`)
+        console.log(`[CLIENT] my base: ${view.items} items, ${view.floors} floor(s)`)
       }
       return
     }
