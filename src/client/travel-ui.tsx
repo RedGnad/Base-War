@@ -28,27 +28,17 @@ const RANG = 96
 
 const Rang = (props: { label: string; note: string; primary?: boolean; onClick: () => void }) => (
   <UiEntity uiTransform={{ width: '100%', height: RANG + 26, flexDirection: 'column', margin: { bottom: 10 } }}>
-    <Btn label={props.label} width={LARGEUR - 36} primary={props.primary} onClick={props.onClick} />
+    <Btn label={props.label} width={LARGEUR} primary={props.primary} onClick={props.onClick} />
     <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
       uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
   </UiEntity>
 )
 
-export const TravelPanel = () => {
-  if (!travelView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
-  const rangs = 2 + (theftView.basePosee ? 1 : 0)
-  const hauteur = 36 + 52 + rangs * (RANG + 26 + 10)
+export const TravelContent = () => {
+  if (!travelView.open) return null
   return (
-    <UiEntity
-      uiTransform={{
-        width: strip(LARGEUR).width, height: hauteur, positionType: 'absolute',
-        position: { top: '50%', left: '50%' },
-        margin: { left: strip(LARGEUR).margin.left, top: -hauteur / 2 },
-        flexDirection: 'column', padding: 18
-      }}
-      uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.95) }}
-    >
-      <Label value="TRAVEL" fontSize={TYPE.body} color={Color4.fromHexString('#4dd2ffff')}
+    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column' }}>
+      <Label value="WHERE TO" fontSize={TYPE.body} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
 
       <Rang label="GO HOME" note="back to your own base" primary={travelView.peutRentrer}

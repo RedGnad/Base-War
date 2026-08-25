@@ -26,24 +26,13 @@ const PIED_H = 34
 const PANEL_W = PAD * 2 + LABEL_W + MUTATIONS.length * (CASE + GAP)
 const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
-export const IndexPanel = () => {
-  if (!indexView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+export const IndexContent = () => {
+  if (!indexView.open) return null
   const vus = new Set(indexView.vus)
   const total = RARITIES.length * MUTATIONS.length
 
   return (
-    <UiEntity
-      uiTransform={{
-        width: strip(PANEL_W).width,
-        height: PANEL_H,
-        positionType: 'absolute',
-        position: { top: '50%', left: '50%' },
-        margin: { left: strip(PANEL_W).margin.left, top: -PANEL_H / 2 },
-        flexDirection: 'column',
-        padding: PAD
-      }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.9) }}
-    >
+    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column', overflow: 'scroll' }}>
       <Label
         value={`COLLECTION  ${vus.size} / ${total}`}
         fontSize={TYPE.body}

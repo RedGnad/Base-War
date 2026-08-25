@@ -46,7 +46,7 @@ export const WelcomePanel = () => {
         uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.97) }}
       >
         <UiEntity uiTransform={{ width: '100%', height: 54 }}>
-          <Glyphs value="BASE TYCOON" size={TYPE.title} color={C.bonus} />
+          <Glyphs value="BASE WAR" size={TYPE.title} color={C.bonus} />
         </UiEntity>
         <Label
           value="Your loot earns while it is on show. While it is on show, anyone can take it."

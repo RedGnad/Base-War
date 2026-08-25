@@ -46,14 +46,52 @@ def main():
         print('ok')
 
     assert len(GLYPHS) <= COLS * ROWS, 'the grid is too small for this glyph set'
-    font = ImageFont.truetype(CACHE, CELL - PAD * 2)
     atlas = Image.new('RGBA', (COLS * CELL, ROWS * CELL), (255, 255, 255, 0))
     draw = ImageDraw.Draw(atlas)
 
+    # The size is measured, not assumed.
+    #
+    # This used to ask for a face of CELL - 2 * PAD and put the baseline at PAD + ascent.
+    # Both numbers come from the font's declared metrics, and this face declares very tall
+    # ones: at a nominal 108 its ascent alone passes 128, so the baseline landed below the
+    # bottom of the cell and every glyph spilled into the row underneath. The atlas came out
+    # with the bottom of one row of letters baked into the top of the next, which is what put
+    # yellow fragments above the title. No amount of trimming the sampling rectangle can
+    # remove ink that is genuinely inside the cell.
+    #
+    # So the fit is computed from the ink instead. We are baking capitals and digits, whose
+    # real extent is roughly the cap height, far short of ascent plus descent. Measuring the
+    # union of the actual outlines lets the letters stay as large as the cell can hold while
+    # guaranteeing nothing crosses into a neighbour.
+    PROBE = 100
+    probe = ImageFont.truetype(CACHE, PROBE)
+    haut, bas, large = 0.0, 0.0, 0.0
+    for ch in GLYPHS:
+        if ch == ' ':
+            continue
+        x0, y0, x1, y1 = draw.textbbox((0, 0), ch, font=probe, anchor='ls')
+        haut = min(haut, y0)
+        bas = max(bas, y1)
+        large = max(large, x1 - x0)
+    dispo = CELL - PAD * 2
+    # Height and width both have to fit, so the tighter of the two decides.
+    facteur = min(dispo / (bas - haut), dispo / large)
+    taille = max(8, int(PROBE * facteur))
+
+    font = ImageFont.truetype(CACHE, taille)
+    x0, y0, x1, y1 = 0, 0, 0, 0
+    encre_haut, encre_bas = 0.0, 0.0
+    for ch in GLYPHS:
+        if ch == ' ':
+            continue
+        _, y0, _, y1 = draw.textbbox((0, 0), ch, font=font, anchor='ls')
+        encre_haut = min(encre_haut, y0)
+        encre_bas = max(encre_bas, y1)
     # One baseline for the whole set, so glyphs sit on a line instead of each centring
-    # itself in its own cell and making the text wobble.
-    ascent, descent = font.getmetrics()
-    baseline = PAD + ascent
+    # itself in its own cell and making the text wobble. Placed so the tallest ink starts
+    # exactly PAD below the top of the cell.
+    baseline = PAD - encre_haut + (dispo - (encre_bas - encre_haut)) / 2
+    assert baseline + encre_bas <= CELL, 'the ink would still cross the cell'
 
     advance = {}
     for i, ch in enumerate(GLYPHS):
@@ -77,7 +115,9 @@ def main():
         f.write(body)
 
     size = os.path.getsize(os.path.join(OUT, 'font.png'))
-    print('font.png  %d x %d  %d B' % (COLS * CELL, ROWS * CELL, size))
+    print('font.png  %d x %d  %d B  face %d px, ink %.1f..%.1f in a %d cell'
+          % (COLS * CELL, ROWS * CELL, size, taille,
+             baseline + encre_haut, baseline + encre_bas, CELL))
     print('src/client/font-metrics.ts  %d glyphs' % len(GLYPHS))
 
 

@@ -18,6 +18,7 @@ import { Glyphs } from './glyphs'
  * hold a string of its own.
  */
 export const Btn = (props: {
+  key?: string
   label: string
   width: number
   primary?: boolean

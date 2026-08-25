@@ -92,39 +92,21 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   )
 }
 
-export function QuestsPanel(): ReactEcs.JSX.Element | null {
+export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
   const allDone = allQuestsDone()
   return (
-    /*
-      A dialog that fits the screen it is drawn on.
+    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column' }}>
 
-      It was 1088 by 731 with a top margin computed for a box of 430, on a phone whose whole
-      canvas is 1600 by 720. It was taller than the screen, and it was hung from the wrong
-      half-height, so it started too high and ran off the bottom. Its contents came to 862,
-      so it also overflowed itself, which is what put the login streak on top of the button.
-      Three separate reasons for one symptom, all of them arithmetic.
-      The header and the way out are pinned, and only the middle scrolls, so the button that
-      closes it can never be the thing pushed off the edge.
-    */
-    <UiEntity
-      uiTransform={{
-        width: strip(1088).width, height: BAND.dialogMaxHeight, positionType: 'absolute',
-        position: { top: '50%', left: '50%' },
-        margin: { left: strip(1088).margin.left, top: -BAND.dialogMaxHeight / 2 },
-        flexDirection: 'column', padding: 18
-      }}
-      uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.95) }}
-    >
-      <Label value="DAILY OBJECTIVES" fontSize={TYPE.title} color={Color4.fromHexString('#ffd166ff')}
+    <Label value="DAILY OBJECTIVES" fontSize={TYPE.title} color={Color4.fromHexString('#ffd166ff')}
         uiTransform={{ width: '100%', height: 51 }} textAlign="middle-left" />
-      <Label value="resets every day at 00:00 UTC" fontSize={TYPE.caption} color={Color4.fromHexString('#7d879bff')}
+    <Label value="resets every day at 00:00 UTC" fontSize={TYPE.caption} color={Color4.fromHexString('#7d879bff')}
         uiTransform={{ width: '100%', height: 34, margin: { bottom: 17 } }} textAlign="middle-left" />
 
-      <UiEntity uiTransform={{ width: '100%', flexGrow: 1, overflow: 'scroll', flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ width: '100%', flexGrow: 1, overflow: 'scroll', flexDirection: 'column' }}>
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
-      <UiEntity
+    <UiEntity
         uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center', margin: { top: 7 } }}
         uiBackground={{ color: Color4.create(1, 1, 1, 0.05) }}
       >
@@ -139,12 +121,12 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
             value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} uiBackground={btn(allDone)} color={allDone ? C.ink : C.name} fontSize={TYPE.caption}
             onMouseDown={() => { if (allDone) claim(3) }} />
         )}
-      </UiEntity>
+    </UiEntity>
 
-      <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
+    <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
         uiTransform={{ width: '100%', height: 44, margin: { top: 20 } }} textAlign="middle-left" />
       {/* Seven fixed cards come to 1022; they wrap rather than run off a narrowed panel. */}
-      <UiEntity uiTransform={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap' }}>
+    <UiEntity uiTransform={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap' }}>
         {DAILY_REWARDS.map((t, j) => {
           const dayN = j + 1
           const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)
@@ -167,12 +149,9 @@ export function QuestsPanel(): ReactEcs.JSX.Element | null {
             </UiEntity>
           )
         })}
-      </UiEntity>
+    </UiEntity>
 
-      </UiEntity>
-
-      <Button uiTransform={{ width: 221, height: TAP.height, margin: { top: 17 } }}
-        value="CLOSE" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.label} onMouseDown={closeMenu} />
+    </UiEntity>
     </UiEntity>
   )
 }

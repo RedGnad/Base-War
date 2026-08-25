@@ -8,17 +8,17 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, setReference } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 import { placementView } from './client/plots'
-import { IndexPanel, indexView } from './client/index-ui'
-import { QuestsPanel, questsToClaim } from './client/quests-ui'
-import { TravelPanel } from './client/travel-ui'
-import { menuView, activeTab, basculerMenu, chooseTab } from './client/menu'
+import { IndexContent, indexView } from './client/index-ui'
+import { QuestsContent, questsToClaim } from './client/quests-ui'
+import { TravelContent } from './client/travel-ui'
+import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { tutoView, ETAPES_TEXTE } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { sell } from './client/theft'
@@ -83,6 +83,55 @@ export function setupUi() {
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
   engine.addSystem(choose)
+}
+
+/**
+ * One window, one row of tabs, three contents.
+ *
+ * The three panels each used to draw their own frame, centred, while the row that switched
+ * between them sat in the bottom band at a fixed height. On a phone that height falls inside
+ * the frame, so the tabs were printed across the middle of the very panel they command, and
+ * each panel was free to be a different size from its neighbours.
+ *
+ * A tab row belongs to its window. Putting the frame here, once, means the three can only
+ * ever agree on where they are and how big they are, and the controls that steer them can
+ * no longer land on top of them.
+ */
+const MENU_W = 1088
+
+const MenuWindow = () => {
+  if (modale() || !menuView.open) return null
+  const h = BAND.dialogMaxHeight
+  return (
+    <UiEntity
+      uiTransform={{
+        width: strip(MENU_W).width, height: h, positionType: 'absolute',
+        position: { top: '50%', left: '50%' },
+        margin: { left: strip(MENU_W).margin.left, top: -h / 2 },
+        flexDirection: 'column', padding: 18
+      }}
+      uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.97) }}
+    >
+      <UiEntity
+        uiTransform={{
+          width: '100%', height: TAP.height, flexDirection: 'row',
+          alignItems: 'center', margin: { bottom: 14 }
+        }}
+      >
+        {(['goals', 'index', 'travel'] as const).map((o) => (
+          <Btn key={o} width={190} right={TAP.gap} primary={activeTab() === o}
+            onClick={() => chooseTab(o)}
+            label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
+        ))}
+        <UiEntity uiTransform={{ flexGrow: 1, height: 1 }} />
+        <Btn label="CLOSE" width={180} onClick={closeMenu} />
+      </UiEntity>
+
+      <QuestsContent />
+      <IndexContent />
+      <TravelContent />
+    </UiEntity>
+  )
 }
 
 /** A handset, or the desktop preview asked to measure like one. */
@@ -168,8 +217,25 @@ const WaitBar = () => {
   )
 }
 
+/** A panel that takes the whole screen: nothing of the game draws behind it, not even tabs. */
 function modale(): boolean {
   return welcomeView.open || prestigeView.open
+}
+
+/**
+ * Whether the running game's own display is allowed on screen.
+ *
+ * This is the distinction the interface was missing, and it is why an opened menu came out
+ * looking like a collision: `modale()` knew about the welcome screen and the prestige
+ * dialog, and nothing else. The objectives window is neither, so the money counter, the
+ * tutorial step and the crowd bonus kept drawing straight over it, and the tab row landed
+ * across the middle of its own panel.
+ *
+ * A window is open or it is not. When one is, the game's readouts have nothing to say that
+ * cannot wait, and they go away. Only the window and the controls that steer it remain.
+ */
+function hud(): boolean {
+  return !modale() && !menuView.open
 }
 
 function hint(): string {
@@ -177,8 +243,10 @@ function hint(): string {
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
     return `${boxView.stock.length} crate${boxView.stock.length > 1 ? 's' : ''} waiting at your base`
   }
-  if (theftView.lockSec > 0) return `base locked for ${theftView.lockSec}s`
-  if (theftView.rechargeSec > 0) return `lock recharges in ${theftView.rechargeSec}s`
+  // Said from the owner's side. "base locked" and "lock recharges" describe the mechanism,
+  // and read like a fault on your own screen; what the player owns here is a protection.
+  if (theftView.lockSec > 0) return `your base is shielded for ${theftView.lockSec}s`
+  if (theftView.rechargeSec > 0) return `shield ready in ${theftView.rechargeSec}s`
   if (theftView.floorPrice > 0) return `next floor at ${formatIncome(theftView.floorPrice)}`
   if (theftView.nextPrestige > 0) return `prestige at ${formatIncome(theftView.nextPrestige)}`
   return ''
@@ -241,7 +309,6 @@ const uiComponent = () => {
   const band = topBand([
     ['money', true, 104],
     ['tuto', tutoView.etape < tutoView.total, 56],
-    ['prime', theftView.prime > 0, 44],
     ['belt', beltView.annonce !== '', 58],
     ['feed', theftView.fil.length > 0, 62]
   ])
@@ -259,22 +326,18 @@ const uiComponent = () => {
 
     <WelcomePanel />
     <PrestigePanel />
-    {!modale() && <IndexPanel />}
-    {!modale() && <QuestsPanel />}
-    {!modale() && <TravelPanel />}
+    <MenuWindow />
 
-    {combatView.aiming && !modale() && !menuView.open && !slotView.active && <Crosshair />}
+    {combatView.aiming && hud() && !slotView.active && <Crosshair />}
 
     {/*
-      The tabs, and on a phone nothing else.
+      The way in, on a machine that has no control cluster of its own.
 
-      The client draws its own control cluster and will show one button of ours in it before
-      folding the rest behind a "+", so the menu lives there instead of on a bar we draw.
-      That is the whole reason this row is empty during play on a handset: the way in is the
-      client's own button, and these tabs only exist once it has been pressed. A desktop has
-      no such cluster, so it keeps a visible opener.
+      A handset opens the menu with the client's own button, so it needs nothing here. A
+      desktop has no such button, so it keeps one opener, and only while the menu is shut:
+      once it is open, closing it belongs to the window, next to the tabs.
     */}
-    {!modale() && (menuView.open || !phone()) && (
+    {hud() && !phone() && (
     <UiEntity
       uiTransform={{
         width: strip(760).width, height: TAP.height, positionType: 'absolute',
@@ -282,22 +345,12 @@ const uiComponent = () => {
         flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
-      {menuView.open && (['goals', 'index', 'travel'] as const).map((o) => (
-        <Button key={o}
-          uiTransform={{ width: 150, height: TAP.height, margin: { right: TAP.gap } }}
-          value={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()}
-          variant={activeTab() === o ? 'primary' : 'secondary'} uiBackground={btn(activeTab() === o)}
-          fontSize={TYPE.caption} onMouseDown={() => chooseTab(o)} />
-      ))}
-      <Btn
-        width={menuView.open ? 140 : 190}
-        primary={menuView.open || questsToClaim() > 0}
-        onClick={basculerMenu}
-        label={menuView.open ? 'CLOSE' : (questsToClaim() > 0 ? `MENU ${questsToClaim()}` : 'MENU')} />
+      <Btn width={190} primary={questsToClaim() > 0} onClick={basculerMenu}
+        label={questsToClaim() > 0 ? `MENU ${questsToClaim()}` : 'MENU'} />
     </UiEntity>
     )}
 
-    {!modale() && tutoView.etape < tutoView.total && band.tuto >= 0 && (
+    {hud() && tutoView.etape < tutoView.total && band.tuto >= 0 && (
       <UiEntity
         uiTransform={{
           width: strip(1000).width, height: 56, positionType: 'absolute',
@@ -323,22 +376,8 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && theftView.prime > 0 && band.prime >= 0 && (
-      <UiEntity
-        uiTransform={{
-          width: strip(620).width, height: 44, positionType: 'absolute',
-          position: { top: band.prime, left: '50%' }, margin: strip(620).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={{ color: Color4.create(0.06, 0.20, 0.10, 0.85) }}
-      >
-        <Label
-          value={`CROWD BONUS  +${Math.round(theftView.prime * 100)}%  ·  ${theftView.presents} players here`}
-          fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
-      </UiEntity>
-    )}
 
-    {!modale() && (
+    {hud() && (
     <UiEntity
       uiTransform={{
         width: strip(520).width, height: 104, positionType: 'absolute',
@@ -370,7 +409,16 @@ const uiComponent = () => {
                 : (intentEnAttente() ? 'reconnecting, your action is queued' : 'reconnecting'))
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.income === 0 ? 'open a crate to start earning'
-          : `+${formatIncome(theftView.income)}/s${theftView.sentries > 0 ? '   sentry ' + theftView.sentries : ''}`
+          /*
+            The crowd bonus rides the number it multiplies.
+
+            It had a green band of its own across the top of the screen, which is a lot of
+            furniture for a figure that only qualifies the income printed directly above it.
+            Read here it needs no label at all: the rate is shown, and what is lifting it.
+          */
+          : `+${formatIncome(theftView.income)}/s`
+            + (theftView.prime > 0 ? `  ·  +${Math.round(theftView.prime * 100)}% crowd` : '')
+            + (theftView.sentries > 0 ? `  ·  sentry ${theftView.sentries}` : '')
         }
         fontSize={TYPE.label}
         color={
@@ -382,7 +430,7 @@ const uiComponent = () => {
     </UiEntity>
     )}
 
-    {!modale() && theftView.fil.length > 0 && band.feed >= 0 && (
+    {hud() && theftView.fil.length > 0 && band.feed >= 0 && (
       <UiEntity
         uiTransform={{
           width: strip(400).width, height: 62, positionType: 'absolute',
@@ -397,7 +445,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && beltView.annonce !== '' && band.belt >= 0 && (
+    {hud() && beltView.annonce !== '' && band.belt >= 0 && (
       <UiEntity
         uiTransform={{
           width: strip(700).width, height: 58, positionType: 'absolute',
@@ -426,7 +474,7 @@ const uiComponent = () => {
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
-    {!modale() && (boxView.roule || boxView.resultat >= 0) && (
+    {hud() && (boxView.roule || boxView.resultat >= 0) && (
       <UiEntity
         uiTransform={{
           width: '100%', height: REEL_H + 8, positionType: 'absolute',
@@ -474,7 +522,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && !boxView.roule && boxView.resultat >= 0 && (
+    {hud() && !boxView.roule && boxView.resultat >= 0 && (
       <UiEntity
         uiTransform={{
           width: strip(900).width, height: 96, positionType: 'absolute',
@@ -493,7 +541,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
+    {hud() && !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
       <UiEntity
         uiTransform={{
           width: strip(400).width, height: 40, positionType: 'absolute',
@@ -506,7 +554,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && placementView.selection >= 0 && (
+    {hud() && placementView.selection >= 0 && (
       <UiEntity
         uiTransform={{
           width: strip(560).width, height: 46, positionType: 'absolute',
@@ -524,7 +572,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && boxView.opening && (
+    {hud() && boxView.opening && (
       <UiEntity
         uiTransform={{
           width: strip(320).width, height: 54, positionType: 'absolute',
@@ -537,7 +585,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && theftView.stealing && (
+    {hud() && theftView.stealing && (
       <UiEntity
         uiTransform={{
           width: strip(460).width, height: 76, positionType: 'absolute',
@@ -564,7 +612,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {!modale() && theftView.alert !== '' && (
+    {hud() && theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
           width: strip(520).width, height: 70, positionType: 'absolute',
@@ -584,7 +632,7 @@ const uiComponent = () => {
       TYPE.body, so a thumb can hit them and an eye can read them on a phone. What the
       player is merely waiting for sits above as one dim line, never as a dead button.
     */}
-    {hint() !== '' && !combatView.aiming && !modale() && (
+    {hint() !== '' && !combatView.aiming && hud() && (
       <UiEntity
         uiTransform={{
           width: strip(620).width, height: 34, positionType: 'absolute',
@@ -601,7 +649,7 @@ const uiComponent = () => {
       hints: centre bottom, just above the client's own interaction button. No control of
       ours sits down there any more, because every one of them found a native button.
     */}
-    {!modale() && !slotView.active && (
+    {hud() && !slotView.active && (
       <UiEntity
         uiTransform={{
           width: strip(620).width, height: 52, positionType: 'absolute',

@@ -370,6 +370,20 @@ export function setupPlots(): void {
         ptr.scale = locked
           ? Vector3.create(BASE_SIDE + 1.2, h, BASE_SIDE + 1.2)
           : Vector3.create(0, 0, 0)
+
+        /*
+          The shield keeps thieves out. It must not keep the owner out.
+
+          Every player is shielded for thirty seconds the moment they arrive, which is a
+          kindness: nobody wants to be robbed while the scene is still loading around them.
+          But the shield is a solid box, and it was solid for everyone, so the first thing a
+          returning player met was a wall around their own base with no way through and no
+          explanation. The protection is against other people by definition, so the collider
+          only exists on somebody else's shield. Ours is drawn and walked through.
+        */
+        const solide = locked && !monBase
+        if (solide && !MeshCollider.has(v.door)) MeshCollider.setBox(v.door)
+        else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
       }
 
       // The signature only carries STRUCTURAL state. A value that ticks every second
