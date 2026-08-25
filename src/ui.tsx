@@ -384,6 +384,11 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
  * journey belongs to the heartbeat: the bar disappears because the server answered, which
  * is the only thing that was ever worth reporting.
  */
+/** True once the wait has outrun the fifteen seconds the platform documents for a cold start. */
+function attenteLongue(): boolean {
+  return view.waitingSince !== 0 && Date.now() - view.waitingSince > 25_000
+}
+
 const WaitBar = () => {
   const attente = view.waitingSince === 0 ? 0 : Date.now() - view.waitingSince
   const part = 0.9 * (1 - Math.exp(-attente / 5000))
@@ -650,8 +655,19 @@ const uiComponent = () => {
           }
           value={
             !view.serverAlive
+              /*
+                A wait that outlives its own estimate has to say so.
+
+                The bar approaches nine tenths and stops, on purpose, because the fifteen
+                seconds it is drawn against is a documented figure and not a measurement of
+                our server. That honesty becomes silence if the wait runs long: the player
+                watches a bar that has not moved in half a minute and concludes it is stuck.
+                Past twenty-five seconds the line stops repeating itself and admits the delay,
+                which is the only thing left that is true.
+              */
               ? (view.serverBooting
-                  ? (intentEnAttente() ? 'STARTING UP, ACTION QUEUED' : 'STARTING UP')
+                  ? (attenteLongue() ? 'STILL STARTING, THIS ONE IS SLOW'
+                    : intentEnAttente() ? 'STARTING UP, ACTION QUEUED' : 'STARTING UP')
                   : (intentEnAttente() ? 'RECONNECTING, ACTION QUEUED' : 'RECONNECTING'))
             : !theftView.basePosee ? 'PLACE YOUR BASE'
             : theftView.income === 0 ? 'OPEN A CRATE TO EARN'

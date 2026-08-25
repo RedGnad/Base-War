@@ -22,7 +22,7 @@ import { setCarrying } from './locomotion'
  * exactly right for something you are carrying: it swings as they run.
  */
 
-export const carryView = { code: -1, name: '' }
+export const carryView = { code: -1, name: '', vole: false }
 
 const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
 
@@ -36,12 +36,13 @@ export function setupCarry(): void {
   engine.addSystem(() => {
     const moi = monAdresseClient()
     let porteMoi = -1
+    let volee = false
     const vivants = new Set<number>()
 
     for (const [e, c] of engine.getEntitiesWith(Carried)) {
       const id = e as unknown as number
       vivants.add(id)
-      if (c.holder.toLowerCase() === moi) porteMoi = c.code
+      if (c.holder.toLowerCase() === moi) { porteMoi = c.code; volee = c.origin.toLowerCase() !== moi }
 
       if (!vues.has(id)) {
         const r = rarityOf(c.code)
@@ -86,9 +87,10 @@ export function setupCarry(): void {
       vues.delete(id)
     }
 
-    if (porteMoi !== carryView.code) {
+    if (porteMoi !== carryView.code || volee !== carryView.vole) {
       carryView.code = porteMoi
-      setCarrying(porteMoi >= 0)
+      carryView.vole = volee
+      setCarrying(porteMoi < 0 ? 'non' : volee ? 'vole' : 'sien')
       carryView.name = porteMoi < 0 ? '' : itemName(rarityOf(porteMoi), mutationDe(porteMoi))
     }
   })

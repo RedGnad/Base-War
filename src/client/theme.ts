@@ -59,14 +59,15 @@ export const TYPE = {
  * warning is orange, a name is white, and anything destructive or refused is red. A player
  * who learns the code once reads any new panel without being taught it.
  *
- * Money was green, and a coin lying on the ground has always been gold: the same object in
- * two colours, which is why the counter read as neither and a player called it grey. It takes
- * the colour it already has in the world. Green keeps a job of its own, on the primary button
- * skin, where it means the thing to press. And the warning hue moved off amber, which sat too
- * close to the new gold to be told apart at a glance.
+ * Money stays green, and that is a deliberate departure from the coin lying on the ground,
+ * which is gold. Gold was tried: it matches the world, and against a bright sky at speed a
+ * warm yellow is harder on the eye than a green over the same long session. The reading of
+ * the counter as grey was never the hue anyway, it was the tint never arriving; with the
+ * colour baked into the atlas the green is finally the green that was asked for. The warning
+ * hue stays on the orange it moved to, which now differs from both.
  */
 export const HUE = {
-  money: '#ffd166',
+  money: '#6ef07a',
   bonus: '#ff8a3d',
   name: '#ffffff',
   danger: '#ff5c5c',

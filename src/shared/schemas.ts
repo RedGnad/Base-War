@@ -197,9 +197,11 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
  *
  * One number for both, because they are the same situation seen twice: somebody has their
  * hands on a thing that is not theirs, and shots loosen that hold by an amount the distance
- * decides. Three is three point-blank hits, half a second of sustained fire.
+ * decides. Five is five point-blank hits, about nine tenths of a second of sustained fire:
+ * raised from three when carrying was made heavy, because a slower runner is a much easier
+ * target and the chase had to keep the shape it was tuned for.
  */
-export const CARRY_GRIP = 3
+export const CARRY_GRIP = 5
 
 /**
  * How much a shot is worth at the distance it was taken from.
@@ -250,15 +252,25 @@ export const DroppedItem = engine.defineComponent('basetycoon::dropped-item', {
 })
 
 /**
- * How much a full pair of hands slows you down.
+ * How much full hands slow you down, and it depends whose hands the thing was in before.
  *
- * The prying penalty was set to run for the theft plus two seconds, so it expired just after
- * the item reached the thief's hands: the half of the theft meant to be dangerous was the
- * half they ran through at full speed. Carrying is its own slowdown now, for exactly as long
- * as the carrying lasts, and it is lighter than the prying penalty because being pinned in
- * place and being weighed down are not the same punishment.
+ * A first pass gave carrying a single share of 0.72 and left the prying penalty running
+ * alongside it. The two multiply, and the penalty expires two seconds after the item lands in
+ * the hands, so the thief went 6.5 while prying and then **7.92 the instant they walked off
+ * with it**: they accelerated at the exact moment the dangerous half of the theft began, which
+ * is why a player reported feeling no slowdown at all. They were right, it was a speed-up.
+ *
+ * Stolen goods now carry their own share and replace the prying penalty rather than stacking
+ * with it, so the transition is continuous: 6.5 while prying, 6.82 while running for it. Your
+ * own belongings are lighter, because moving a trophy around your own shelves is not the same
+ * act as running off with somebody else's.
+ *
+ * 0.62 is not a taste. Simulated against the chase, it is the share that keeps the shape the
+ * balance was tuned for once the grip is raised to match: the owner wins at point blank in
+ * about a second, struggles at ten metres, and cannot land enough past fifteen.
  */
-export const CARRY_SPEED_SHARE = 0.72
+export const CARRY_STOLEN_SHARE = 0.62
+export const CARRY_OWN_SHARE = 0.85
 
 /** How long a carried item waits for its carrier before taking itself home. */
 export const CARRY_TIMEOUT_MS = 90_000
@@ -295,15 +307,14 @@ export const SENTRY_MAX_CHARGES = SENTRY_TIERS[SENTRY_TIERS.length - 1].charges
 export const SENTRY_MIN_PRICE = 240
 
 /**
- * What an absent player always comes back to.
+ * Nothing shelters an absent player except what they left behind.
  *
- * Theft never checked whether the owner was in the scene, so anyone who logged off could be
- * stripped bare with no counterplay at all: nothing to defend with, nothing to react to. The
- * long protections above were the wrong answer to this real problem. The right one is a
- * floor: while you are away, your best few items cannot be taken. Come back and there is
- * still a base, and still a reason to.
+ * There was a floor here, three items an absent owner could never lose, added because logging
+ * off with no counterplay looked harsh. It is the wrong tool: a base that cannot be emptied is
+ * a base nobody has to defend, and defending is what the sentries, the shield and the whole
+ * back half of this design are for. The answer to being robbed while away is to have armed
+ * something before leaving, not to be immune.
  */
-export const ABSENT_KEEP = 3
 export const SENTRY_FREEZE_MS = 7000
 export const SENTRY_LOCK_MS = 60_000
 

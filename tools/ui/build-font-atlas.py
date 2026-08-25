@@ -137,7 +137,7 @@ def main():
     # than one. The shadow is a sixth: an offset copy needs to be black, and black is a
     # colour like any other once tinting is off the table.
     ROLES = {
-        'money': (0xff, 0xd1, 0x66),
+        'money': (0x6e, 0xf0, 0x7a),
         'bonus': (0xff, 0x8a, 0x3d),
         'name': (0xff, 0xff, 0xff),
         'danger': (0xff, 0x5c, 0x5c),

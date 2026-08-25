@@ -18,6 +18,16 @@ const BASE_KEY = (a: string) => `base:${a}`
 const PLAYER_KEY = 'profile'
 const SAUVE_MS = 5000
 
+/**
+ * A base, including the parts of its owner that a visitor can see.
+ *
+ * Floors, sentries and prestige used to be read out of the owner's profile at publish time.
+ * Profiles are loaded when a player joins; bases are restored for everybody. So the building
+ * of anyone who was not currently connected went out with one floor, no sentries and no
+ * prestige, which is to say it looked like a beginner's, and a visitor walking into a
+ * three-storey base saw a hut. The visible parts are kept on the base and saved with it, and
+ * refreshed from the profile whenever there is one.
+ */
 type Base = {
   address: string
   name: string
@@ -26,6 +36,11 @@ type Base = {
   z: number
   entity: ReturnType<typeof engine.addEntity>
   lastSeen: number
+  floorsBought: number
+  sentries: number
+  rebirths: number
+  given: number
+  received: number
 }
 type Profil = {
   coins: number
@@ -104,25 +119,40 @@ function arrange(items: number[]): number[] {
 function publish(b: Base, ici?: Set<string>): void {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return
+  // A loaded profile is the truth and refreshes the shopfront; otherwise the shopfront is
+  // what the base remembers, which is what an absent owner's building has to be drawn from.
   const pr = profiles.get(b.address)
-  c.floors = openFloors(pr?.floorsBought ?? 0)
-  c.rebirths = pr?.rebirths ?? 0
+  if (pr !== undefined) {
+    b.floorsBought = pr.floorsBought ?? 0
+    b.sentries = pr.sentries ?? 0
+    b.rebirths = pr.rebirths ?? 0
+    b.given = pr.given ?? 0
+    b.received = pr.received ?? 0
+  }
+  c.floors = openFloors(b.floorsBought)
+  c.rebirths = b.rebirths
   c.ownerId = b.address
   c.ownerName = b.name
   c.items = arrange(b.items)
   c.ownerPresent = (ici ?? presents()).has(b.address)
-  c.given = pr?.given ?? 0
-  c.received = pr?.received ?? 0
-  c.sentries = pr?.sentries ?? 0
+  c.given = b.given
+  c.received = b.received
+  c.sentries = b.sentries
 }
 
-function createBase(address: string, name: string, items: number[], lastSeen: number, x: number, z: number): Base | null {
+type Vitrine = { floorsBought: number; sentries: number; rebirths: number; given: number; received: number }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, rebirths: 0, given: 0, received: 0 }
+
+function createBase(
+  address: string, name: string, items: number[], lastSeen: number, x: number, z: number,
+  vitrine: Vitrine = VITRINE_VIDE
+): Base | null {
   try {
   const e = engine.addEntity()
   Transform.create(e, { position: Vector3.create(x, 0, z) })
   Plot.create(e, { floors: 1, rebirths: 0, index: 0, ownerId: address, ownerName: name, items: arrange(items), ownerPresent: false, lockedUntil: 0 })
   syncEntity(e, [Plot.componentId, Transform.componentId])
-  const b: Base = { address, name, items: [...items], x, z, entity: e, lastSeen }
+  const b: Base = { address, name, items: [...items], x, z, entity: e, lastSeen, ...vitrine }
   bases.set(address, b)
   publish(b)
   return b
@@ -147,13 +177,21 @@ async function loadBases(): Promise<void> {
         const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
         return {
           address: key.slice('base:'.length), name: v.name ?? '', items: v.items ?? [],
-          lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z
+          lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z,
+          floorsBought: v.floorsBought ?? 0, sentries: v.sentries ?? 0,
+          rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
         }
       })
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, MAX_BASES_AFFICHEES)
-    for (const l of loaded) createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z)
+    // The shopfront travels with the base, so a building whose owner is away still stands.
+    for (const l of loaded) {
+      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, {
+        floorsBought: l.floorsBought, sentries: l.sentries,
+        rebirths: l.rebirths, given: l.given, received: l.received
+      })
+    }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
   } catch (e) {
     log(`ERROR could not read bases: ${e}`)
@@ -165,7 +203,11 @@ async function save(): Promise<void> {
     dirtyBases.delete(a)
     const b = bases.get(a)
     if (!b) continue
-    const ok = await Storage.set(BASE_KEY(a), JSON.stringify({ name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z }))
+    const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
+      name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
+      floorsBought: b.floorsBought, sentries: b.sentries, rebirths: b.rebirths,
+      given: b.given, received: b.received
+    }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
   }
   for (const a of [...dirtyProfiles]) {

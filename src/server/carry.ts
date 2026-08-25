@@ -186,8 +186,23 @@ export function startCarry(): void {
   room.onMessage('sellCarried', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
+    const e = portes.get(a)
+    const c = e === undefined ? null : Carried.getOrNull(e)
+    if (c === null) { void room.send('carryResult', { ok: false, reason: 'you are not carrying anything', rarity: 0, mutation: 0 }, { to: [a] }); return }
+    /*
+      Stolen goods cannot be cashed on the spot.
+      
+      Selling from the hand was written for tidying your own shelves and applied to anything in
+      them, so a thief could turn somebody else's trophy into coins standing in their doorway.
+      That deletes the walk home, which is the only part of a theft the victim can contest, and
+      with it the whole reason the carry exists. What is not yours has to reach a base first.
+    */
+    if (c.origin !== a) {
+      void room.send('carryResult', { ok: false, reason: 'not yours to sell, put it down first', rarity: 0, mutation: 0 }, { to: [a] })
+      return
+    }
     const quoi = lacher(a)
-    if (quoi === null) { void room.send('carryResult', { ok: false, reason: 'you are not carrying anything', rarity: 0, mutation: 0 }, { to: [a] }); return }
+    if (quoi === null) return
     const gain = crediterVente(a, quoi.code)
     void room.send('sold', { gain, rarity: rarityOf(quoi.code) }, { to: [a] })
     log(`carry: ${displayName(a)} sold a ${rarityOf(quoi.code)} out of hand for ${gain}`)

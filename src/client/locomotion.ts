@@ -1,6 +1,6 @@
 import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
-import { AIM_SPEED_SHARE, CARRY_SPEED_SHARE } from '../shared/schemas'
+import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE } from '../shared/schemas'
 
 export const JOG_NORMAL = 11
 export const THIEF_JOG = 6.5   // -41 %
@@ -20,15 +20,26 @@ const FREEZE_JUMP = 0.2
  * Uses AvatarLocomotionSettings rather than InputModifier: the latter is documented as
  * having no effect outside the DCL 2.0 desktop client, and most of the score is mobile.
  */
-const etat = { thief: false, aiming: false, carrying: false, frozenUntil: 0 }
+const etat = { thief: false, aiming: false, carrying: 'non' as Charge, frozenUntil: 0 }
+
+export type Charge = 'non' | 'sien' | 'vole'
 
 function appliquer(): void {
   const frozen = etat.frozenUntil > Date.now()
-  const base = etat.thief ? THIEF_JOG : JOG_NORMAL
+  /*
+    Stolen goods REPLACE the prying penalty rather than multiplying with it.
+    
+    The two used to stack, and the penalty expires two seconds after the item reaches the
+    hands, so the thief went 6.5 while prying and 7.92 the moment they ran: an acceleration
+    at the exact instant the dangerous half began. Carrying something that is not yours is
+    now the single governing load, so 6.5 becomes 6.82 and the change is continuous.
+  */
+  const charge = etat.carrying === 'vole' ? CARRY_STOLEN_SHARE
+    : etat.carrying === 'sien' ? CARRY_OWN_SHARE
+    : 1
+  const base = (etat.thief && etat.carrying !== 'vole') ? THIEF_JOG : JOG_NORMAL
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
-    jogSpeed: frozen
-      ? FREEZE_JOG
-      : base * (etat.aiming ? AIM_SPEED_SHARE : 1) * (etat.carrying ? CARRY_SPEED_SHARE : 1),
+    jogSpeed: frozen ? FREEZE_JOG : base * charge * (etat.aiming ? AIM_SPEED_SHARE : 1),
     jumpHeight: frozen ? FREEZE_JUMP : etat.thief ? THIEF_JUMP : SAUT_NORMAL
   })
 }
@@ -47,9 +58,9 @@ export function applyFreeze(ms: number): void {
  * long as the carrying does. It stacks with the prying penalty and with aiming rather than
  * replacing them: someone who tries to shoot their way out while loaded should feel it.
  */
-export function setCarrying(active: boolean): void {
-  if (etat.carrying === active) return
-  etat.carrying = active
+export function setCarrying(charge: Charge): void {
+  if (etat.carrying === charge) return
+  etat.carrying = charge
   appliquer()
 }
 
