@@ -139,7 +139,7 @@ let recul = 0
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
 
-const piles = new Map<number, { body: Entity; label: Entity }>()
+const piles = new Map<number, { chute: Entity; body: Entity; label: Entity }>()
 
 /**
  * A holder whose origin is the grip, and the model hung off it by its measured pivot.
@@ -532,20 +532,36 @@ function pileSystem(): void {
     alive.add(id)
     const t = Transform.get(ent)
     if (piles.has(id)) continue
+    /*
+      Two entities per coin, because one of them can only be doing one thing.
+
+      An entity carries at most one Tween, and this one has to both fall and spin. So the
+      outer one falls, once, with a bounce at the end, and the coin itself hangs from it and
+      turns for ever. Parenting composes the two transforms, which is the cheapest way to get
+      a second animation out of an engine that allows one.
+    */
+    const chute = engine.addEntity()
+    const sol = Vector3.create(t.position.x, t.position.y, t.position.z)
+    const haut = Vector3.create(t.position.x, t.position.y + 1.2, t.position.z)
+    Transform.create(chute, { position: haut })
+    Tween.setMove(chute, haut, sol, 520, EasingFunction.EF_EASEOUTBOUNCE)
+
     const body = engine.addEntity()
-    Transform.create(body, { position: t.position, scale: Vector3.create(0.34, 0.12, 0.34) })
+    Transform.create(body, { parent: chute, position: Vector3.create(0, 0, 0), scale: Vector3.create(0.34, 0.12, 0.34) })
     MeshRenderer.setCylinder(body, 0.34, 0.34)
     Material.setPbrMaterial(body, { albedoColor: OR, emissiveColor: OR, emissiveIntensity: 1.6, metallic: 0.8 })
     Tween.setRotate(body, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1600, EasingFunction.EF_LINEAR)
     TweenSequence.createOrReplace(body, { sequence: [], loop: TweenLoop.TL_RESTART })
+    // Hung from the same faller, so the number arrives with the coin instead of waiting for it.
     const label = engine.addEntity()
-    Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 0.7, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+    Transform.create(label, { parent: chute, position: Vector3.create(0, 0.7, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
     Billboard.create(label, {})
     TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
-    piles.set(id, { body, label })
+    piles.set(id, { chute, body, label })
   }
   for (const [id, v] of [...piles]) {
     if (alive.has(id)) continue
-    engine.removeEntity(v.body); engine.removeEntity(v.label); piles.delete(id)
+    engine.removeEntity(v.body); engine.removeEntity(v.chute); engine.removeEntity(v.label)
+    piles.delete(id)
   }
 }
