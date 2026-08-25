@@ -8,6 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
+import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
@@ -247,29 +248,24 @@ const uiComponent = () => (
           flexDirection: 'column', justifyContent: 'flex-start'
         }}
       >
-        <Button
-          uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
-          value={travelView.open ? 'CLOSE' : 'TRAVEL'}
-          variant={travelView.open ? 'primary' : 'secondary'} uiBackground={btn(travelView.open)} color={travelView.open ? C.ink : C.name}
-          fontSize={TYPE.body} onMouseDown={basculerVoyage} />
+        <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
+          <Btn label={travelView.open ? 'CLOSE' : 'TRAVEL'} width={300}
+            primary={travelView.open} onClick={basculerVoyage} />
+        </UiEntity>
         {travelView.open && (
-          <Button
-            uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
-            value="GO HOME" variant={travelView.peutRentrer ? 'primary' : 'secondary'} uiBackground={btn(travelView.peutRentrer)} color={travelView.peutRentrer ? C.ink : C.name}
-            fontSize={TYPE.body} onMouseDown={() => { rentrer(); basculerVoyage() }} />
+          <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
+            <Btn label="GO HOME" width={300} primary={travelView.peutRentrer}
+              onClick={() => { rentrer(); basculerVoyage() }} />
+          </UiEntity>
         )}
         {travelView.open && (
-          <Button
-            uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}
-            value="GO TO BELT" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.body}
-            onMouseDown={() => { goToBelt(); basculerVoyage() }} />
+          <UiEntity uiTransform={{ width: 300, height: TAP.height, margin: { bottom: TAP.gap } }}>
+            <Btn label="GO TO BELT" width={300} onClick={() => { goToBelt(); basculerVoyage() }} />
+          </UiEntity>
         )}
         {travelView.open && theftView.basePosee && (
-          <Button
-            uiTransform={{ width: 300, height: TAP.height }}
-            value={slotView.active ? 'CANCEL' : 'MOVE BASE'}
-            variant={slotView.active ? 'primary' : 'secondary'} uiBackground={btn(slotView.active)} color={slotView.active ? C.ink : C.name}
-            fontSize={TYPE.body} onMouseDown={() => { basculerPose(); basculerVoyage() }} />
+          <Btn label={slotView.active ? 'CANCEL' : 'MOVE BASE'} width={300}
+            primary={slotView.active} onClick={() => { basculerPose(); basculerVoyage() }} />
         )}
       </UiEntity>
     )}
@@ -535,31 +531,20 @@ const uiComponent = () => (
       }}
     >
       {theftView.pending > 0 && !slotView.active && !combatView.aiming && (
-        <Button
-          uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
-          value={`COLLECT ${formatIncome(theftView.pending)}`}
-          variant="primary" uiBackground={SKIN.primary} color={C.ink}
-          fontSize={TYPE.body}
-          onMouseDown={collectPending} />
+        <Btn label={`COLLECT ${formatIncome(theftView.pending)}`} width={300} primary
+          right={TAP.gap} onClick={collectPending} />
       )}
 
       {!combatView.aiming && (() => {
         const a = nextAction()
         return a === null ? null : (
-          <Button
-            uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
-            value={a.label} variant="primary" uiBackground={SKIN.primary} color={C.ink}
-            fontSize={TYPE.body} onMouseDown={a.action} />
+          <Btn label={a.label} width={300} primary right={TAP.gap} onClick={a.action} />
         )
       })()}
 
       {theftView.basePosee && view.items > 0 && !slotView.active && !combatView.aiming
         && theftView.lockSec === 0 && theftView.rechargeSec === 0 && (
-        <Button
-          uiTransform={{ width: 180, height: TAP.height, margin: { right: TAP.gap } }}
-          value="LOCK" variant="secondary" uiBackground={SKIN.secondary} color={C.name}
-          fontSize={TYPE.body}
-          onMouseDown={lockBase} />
+        <Btn label="LOCK" width={180} right={TAP.gap} onClick={lockBase} />
       )}
 
       {/*
@@ -573,12 +558,8 @@ const uiComponent = () => (
         desktop, where F alone told the player nothing.
       */}
       {!slotView.active && (
-        <Button
-          uiTransform={{ width: 220, height: TAP.height, pointerFilter: 'block' }}
-          uiInputBinding={{ actions: [InputAction.IA_SECONDARY] }}
-          value={combatView.aiming ? 'HOLSTER' : 'DRAW'}
-          variant={combatView.aiming ? 'primary' : 'secondary'} uiBackground={btn(combatView.aiming)} color={combatView.aiming ? C.ink : C.name}
-          fontSize={TYPE.body} />
+        <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={220}
+          primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
       )}
     </UiEntity>
     )}

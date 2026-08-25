@@ -2,6 +2,7 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs } from './glyphs'
+import { Btn } from './ui-kit'
 
 export const welcomeView = { open: true }
 export function closeWelcome(): void { welcomeView.open = false }
@@ -47,9 +48,9 @@ export const WelcomePanel = () => {
           </UiEntity>
         ))}
 
-        <Button
-          uiTransform={{ width: 320, height: TAP.height, alignSelf: 'center' }}
-          value="START" variant="primary" uiBackground={SKIN.primary} color={C.ink} fontSize={TYPE.body} onMouseDown={closeWelcome} />
+        <UiEntity uiTransform={{ width: 320, height: TAP.height, alignSelf: 'center' }}>
+          <Btn label="START" width={320} primary onClick={closeWelcome} />
+        </UiEntity>
       </UiEntity>
     </UiEntity>
   )

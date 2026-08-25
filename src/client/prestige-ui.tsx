@@ -2,6 +2,7 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs } from './glyphs'
+import { Btn } from './ui-kit'
 import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES } from '../shared/loot-table'
 
@@ -72,8 +73,8 @@ export const PrestigePanel = () => {
           uiTransform={{ width: 560, height: 92, justifyContent: 'center', alignItems: 'center' }}
           uiBackground={SKIN.inset}
         >
-          <Label value={formatIncome(cost)} fontSize={TYPE.title}
-            color={affordable ? C.money : C.danger} />
+          <Glyphs value={formatIncome(cost)} size={TYPE.title} align="center" box={560}
+            top={(92 - TYPE.title) / 2} color={affordable ? C.money : C.danger} />
         </UiEntity>
 
         <Label value="this resets your coins and everything on your base"
@@ -81,18 +82,9 @@ export const PrestigePanel = () => {
           uiTransform={{ width: '100%', height: 62, margin: { top: 12 } }} textAlign="middle-center" />
 
         <UiEntity uiTransform={{ width: 640, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
-          <Button
-            uiTransform={{ width: 300, height: TAP.height, margin: { right: TAP.gap } }}
-            value={affordable ? 'PRESTIGE' : 'NOT YET'}
-            variant={affordable ? 'primary' : 'secondary'}
-            uiBackground={affordable ? SKIN.primary : SKIN.secondary}
-            color={affordable ? C.ink : C.dim}
-            fontSize={TYPE.body}
-            onMouseDown={() => { if (affordable) { doPrestige(); closePrestige() } }} />
-          <Button
-            uiTransform={{ width: 220, height: TAP.height }}
-            value="BACK" variant="secondary" uiBackground={SKIN.secondary} color={C.name}
-            fontSize={TYPE.body} onMouseDown={closePrestige} />
+          <Btn label={affordable ? 'PRESTIGE' : 'NOT YET'} width={300} primary={affordable}
+            right={TAP.gap} onClick={() => { if (affordable) { doPrestige(); closePrestige() } }} />
+          <Btn label="BACK" width={220} onClick={closePrestige} />
         </UiEntity>
       </UiEntity>
     </UiEntity>

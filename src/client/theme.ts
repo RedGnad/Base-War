@@ -15,6 +15,24 @@ import { Color4 } from '@dcl/sdk/math'
  * Nothing in the interface is allowed below CAPTION. Measured before this file existed,
  * 43 of the 47 labels in the game sat under that floor and the median landed at 7 pt.
  */
+/**
+ * Two families, and which one a string belongs to.
+ *
+ * DISPLAY is the atlas in src/client/glyphs.tsx, a rounded heavy face the platform does
+ * not carry. It takes anything short that is recognised rather than read: the money, panel
+ * titles, control labels, a headline figure in a decision panel.
+ *
+ * BODY is the platform's own 'sans-serif'. It takes every sentence: hints, help, item
+ * descriptions, tutorial lines.
+ *
+ * The split is the standard one, a characterful display face for branding against a clean
+ * neutral sans for copy so the two do not compete, and two families is the ceiling: a
+ * third only earns its place if it is functional. It is also where the costs agree, since
+ * the atlas spends one element per character, which is nothing over a dozen short labels
+ * and unreasonable over a paragraph.
+ *
+ * The sizes below serve both.
+ */
 export const TYPE = {
   hero: 52,     // 27 pt: the coin counter, and nothing else
   title: 42,    // 22 pt: modal titles, the reveal
