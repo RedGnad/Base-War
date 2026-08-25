@@ -26,6 +26,8 @@ export const Btn = (props: {
   right?: number
   onClick?: () => void
   bind?: InputAction[]
+  /** A red pip in the corner: something behind this control is waiting to be collected. */
+  badge?: boolean
 }) => {
   const size = props.size ?? TYPE.body
   return (
@@ -43,6 +45,18 @@ export const Btn = (props: {
         value={props.label} size={size} align="center" box={props.width}
         top={(TAP.height - size) / 2}
         role={props.primary === true ? 'ink' : 'name'} />
+      {/*
+        The oldest signal there is, and the reason it works is that it needs no reading:
+        a player who has never seen this interface knows a red pip means go and look.
+      */}
+      {props.badge === true && (
+        <UiEntity
+          uiTransform={{
+            width: 18, height: 18, positionType: 'absolute',
+            position: { top: 10, right: 10 }, borderRadius: 9
+          }}
+          uiBackground={{ color: C.danger }} />
+      )}
     </UiEntity>
   )
 }

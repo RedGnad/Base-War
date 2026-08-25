@@ -12,7 +12,7 @@ import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalag
 import { forceDuTir } from './shared/schemas'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
-import { setIconePrimaire, setReticuleClient } from './client/locomotion'
+import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
@@ -64,6 +64,7 @@ export function setupUi() {
     */
     setIconePrimaire(combatView.aiming ? 'icon-fire' : (nextAction()?.icon ?? null))
     setReticuleClient(!combatView.aiming && !modale() && !menuView.open)
+    setMenuIcone(questsToClaim() > 0)
 
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
     if (inputSystem.isTriggered(InputAction.IA_ACTION_3, PointerEventType.PET_DOWN)) basculerMenu()
@@ -210,7 +211,8 @@ const MenuWindow = () => {
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
           <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}
             onClick={() => chooseTab(o)}
-            label={o === 'index' ? `INDEX ${indexView.vus.length}` : o.toUpperCase()} />
+            badge={o === 'goals' && questsToClaim() > 0}
+            label={o.toUpperCase()} />
         ))}
         <Btn label="CLOSE" width={fermer} onClick={closeMenu} />
       </UiEntity>
@@ -253,7 +255,7 @@ const DesktopControls = () => {
         flexDirection: 'row', alignItems: 'center'
       }}
     >
-      <Btn label="1  MENU" width={190} right={TAP.gap}
+      <Btn label="1  MENU" width={190} right={TAP.gap} badge={questsToClaim() > 0}
         primary={questsToClaim() > 0} onClick={basculerMenu} />
       <Btn label={combatView.aiming ? 'F  HOLSTER' : 'F  DRAW'} width={210} right={TAP.gap}
         primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
@@ -554,8 +556,7 @@ const uiComponent = () => {
   */
   const band = topBand([
     ['money', true, TYPE.hero + 6 + 34],
-    ['belt', beltView.annonce !== '', 58],
-    ['feed', theftView.fil.length > 0, 62]
+    ['belt', beltView.annonce !== '', 58]
   ])
   /*
     What the game is waiting for, stacked above the controls, most urgent first.
@@ -685,11 +686,19 @@ const uiComponent = () => {
     </UiEntity>
     )}
 
-    {hud() && theftView.fil.length > 0 && band.feed >= 0 && (
+    {/*
+      The event feed lives in a corner, not across the middle of the play area.
+
+      It was centred at the top, which is where the player is looking, for a stream of things
+      that happened to other people somewhere else: the definition of what belongs in the
+      periphery. It stacks under the tutorial step in the same right-hand corner, and takes
+      that corner over once the tutorial is done with it.
+    */}
+    {hud() && theftView.fil.length > 0 && (
       <UiEntity
         uiTransform={{
-          width: strip(400).width, height: 62, positionType: 'absolute',
-          position: { top: band.feed, left: '50%' }, margin: strip(400).margin,
+          width: 400, height: 62, positionType: 'absolute',
+          position: { top: BAND.top + (tutoView.etape < tutoView.total ? 60 : 0), right: COIN_HAUT_DROIT },
           padding: 8, flexDirection: 'column', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}

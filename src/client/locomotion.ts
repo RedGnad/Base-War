@@ -153,6 +153,21 @@ function poserIcone(action: InputAction, nom: string | null): void {
       ]
 }
 
+let menuAlerte: boolean | null = null
+
+/**
+ * The menu button wears a pip when something behind it is waiting.
+ *
+ * On a phone the menu lives on one of the client's own buttons, which cannot carry a badge of
+ * ours. Swapping the picture is the only way to say "there is something in here", and it is
+ * the oldest signal in interface design for exactly that reason: nobody has to read it.
+ */
+export function setMenuIcone(alerte: boolean): void {
+  if (menuAlerte === alerte) return
+  menuAlerte = alerte
+  poserIcone(InputAction.IA_ACTION_3, alerte ? 'icon-menu-alert' : 'icon-menu')
+}
+
 let iconePrimaire: string | null = null
 
 /**
