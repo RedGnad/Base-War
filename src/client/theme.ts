@@ -87,7 +87,7 @@ export const TAP = { height: 96, gap: 20 } as const
  * HUD, not the mobile client at all. Those still need a device or an emulator. Ship it
  * false.
  */
-export const FORCE_MOBILE_LAYOUT = true
+export const FORCE_MOBILE_LAYOUT = false
 
 /**
  * The skins, and why they exist at all.

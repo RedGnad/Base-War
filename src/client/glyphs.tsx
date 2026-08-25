@@ -25,14 +25,24 @@ const ROW = 1 / ATLAS.rows
 /** Extra air between letters, as a fraction of the size. The face is heavy; it needs some. */
 const TRACKING = 0.02
 
+/**
+ * Half a texel of margin, taken off every side of the cell.
+ *
+ * A cell's edge is also its neighbour's edge, and sampling exactly on that line lets the
+ * filter mix in the glyph next door: the bottoms of the row above appeared as fragments
+ * floating over the title. Pulling the rectangle inside its own cell removes the seam.
+ * The atlas is 1024 pixels across eight cells, so a texel is one part in 1024.
+ */
+const BLEED = 1.5 / 1024
+
 function uvsFor(index: number): number[] {
   const col = index % ATLAS.cols
   const row = Math.floor(index / ATLAS.cols)
-  const u0 = col * CELL
-  const u1 = u0 + CELL
+  const u0 = col * CELL + BLEED
+  const u1 = col * CELL + CELL - BLEED
   // Image rows run down from the top while v runs up from the bottom, so the row is flipped.
-  const v1 = 1 - row * ROW
-  const v0 = v1 - ROW
+  const v1 = 1 - row * ROW - BLEED
+  const v0 = 1 - (row + 1) * ROW + BLEED
   return [u0, v0, u0, v1, u1, v1, u1, v0]
 }
 

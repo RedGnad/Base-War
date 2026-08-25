@@ -8,6 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn, FORCE_MOBILE_LAYOUT } from './client/them
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView, openPrestige } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
+import { strip, row } from './client/layout'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { theftView, lockBase, recover, doPrestige, buyFloorFor, collectPending, armSentry, cancelSteal } from './client/theft'
@@ -197,8 +198,8 @@ const uiComponent = () => (
     {!modale() && (
     <UiEntity
       uiTransform={{
-        width: 430, height: TAP.height, positionType: 'absolute',
-        position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -450 },
+        width: strip(760).width, height: TAP.height, positionType: 'absolute',
+        position: { bottom: row(1), left: '50%' }, margin: strip(760).margin,
         flexDirection: 'row', justifyContent: 'flex-start'
       }}
     >
@@ -276,8 +277,8 @@ const uiComponent = () => (
     {!modale() && !combatView.aiming && (
       <UiEntity
         uiTransform={{
-          width: 880, height: TAP.height, positionType: 'absolute',
-          position: { bottom: 26 + TAP.height + 14, left: '50%' }, margin: { left: -430 },
+          width: strip(760).width, height: TAP.height, positionType: 'absolute',
+          position: { bottom: row(1), left: '50%' }, margin: strip(760).margin,
           flexDirection: 'row', justifyContent: 'flex-end'
         }}
       >
@@ -298,6 +299,7 @@ const uiComponent = () => (
       </UiEntity>
     )}
 
+    {!modale() && (
     <UiEntity
       uiTransform={{
         width: 520, height: 104, positionType: 'absolute',
@@ -338,6 +340,7 @@ const uiComponent = () => (
           : C.money
         } />
     </UiEntity>
+    )}
 
     {!modale() && theftView.fil.length > 0 && (
       <UiEntity
@@ -541,8 +544,8 @@ const uiComponent = () => (
     {hint() !== '' && !combatView.aiming && !modale() && (
       <UiEntity
         uiTransform={{
-          width: 900, height: 34, positionType: 'absolute',
-          position: { bottom: 26 + (TAP.height + 14) * 2, left: '50%' }, margin: { left: -450 },
+          width: strip(760).width, height: 34, positionType: 'absolute',
+          position: { bottom: row(2), left: '50%' }, margin: strip(760).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
       >
@@ -558,8 +561,8 @@ const uiComponent = () => (
     {!modale() && !slotView.active && (
       <UiEntity
         uiTransform={{
-          width: 760, height: 52, positionType: 'absolute',
-          position: { bottom: 26, left: '50%' }, margin: { left: -540 },
+          width: strip(760).width, height: 52, positionType: 'absolute',
+          position: { bottom: row(0), left: '50%' }, margin: strip(760).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
