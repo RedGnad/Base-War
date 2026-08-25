@@ -55,8 +55,17 @@ function lacher(address: string): { code: number; origin: string } | null {
 }
 
 /** Send it back where it came from, or to the carrier if that base is gone or full. */
+/**
+ * Send it back where it came from, or to the carrier if that base is gone or full.
+ *
+ * `addItem` answers with a word, not a boolean: 'expose', 'en-stock' or 'plein'. All three
+ * are truthy, so `!addItem(...)` was false whatever happened, the fallback never ran, and a
+ * refusal was reported to the player as a successful return. Combined with the older bug
+ * where an absent owner's base refused everything, an item handed back to somebody who had
+ * logged off was silently deleted from the game.
+ */
 function rentrer(address: string, quoi: { code: number; origin: string }, pourquoi: string): void {
-  if (!addItem(quoi.origin, quoi.code) && !addItem(address, quoi.code)) {
+  if (addItem(quoi.origin, quoi.code) === 'plein' && addItem(address, quoi.code) === 'plein') {
     log(`carry: ${displayName(address)} lost a ${rarityOf(quoi.code)}, nowhere to put it (${pourquoi})`)
     return
   }
@@ -164,7 +173,8 @@ export function startCarry(): void {
       void room.send('carryResult', { ok: false, reason: 'get closer to that base', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
-    if (!addItem(vise, c.code)) {
+    // Same word-not-a-boolean trap: a full base used to accept the item and lose it.
+    if (addItem(vise, c.code) === 'plein') {
       void room.send('carryResult', { ok: false, reason: 'that base is full', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
@@ -237,7 +247,12 @@ export function startCarry(): void {
       const t = Transform.getOrNull(e)
       if (t === null) continue
       if (d.untilMs < now) {
-        addItem(d.origin, d.code)
+        // If home cannot take it back it stays on the floor rather than evaporating.
+        if (addItem(d.origin, d.code) === 'plein') {
+          const m = DroppedItem.getMutableOrNull(e)
+          if (m !== null) m.untilMs = now + LOOT_ITEM_LIFETIME_MS
+          continue
+        }
         engine.removeEntity(e)
         continue
       }

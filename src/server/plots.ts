@@ -286,8 +286,15 @@ export async function accueillir(address: string): Promise<void> {
   }
   const existing = bases.get(address)
   if (existing) {
+    /*
+      The base wins on items, not the stored profile.
+
+      While the owner was away their shelves may have been robbed, or something may have been
+      left on them. Overwriting from the profile read out of storage would undo all of it the
+      moment they walked back in, which is the one thing a player would never forgive.
+    */
     existing.name = name
-    existing.items = [...items]
+    profile.items = [...existing.items]
     existing.lastSeen = Date.now()
     dirtyBases.add(address)
     publish(existing)
@@ -420,22 +427,43 @@ export function etatPrevisible(address: string): RangementResultat {
   return bases.has(address) ? 'expose' : 'en-stock'
 }
 
+/**
+ * Put something on a base's shelves. The base is the truth; the profile mirrors it.
+ *
+ * This used to begin `if (!prof) return 'plein'`, and a profile only exists for a player who
+ * is connected. Its twin `removeItem` works off the base and mirrors afterwards, so the pair
+ * was asymmetric in the worst possible way: an absent player's base could be robbed and could
+ * receive nothing back. A thief who ran out of time returned their loot to a base that
+ * refused it, and since the caller read the result wrongly (see below) the item simply ceased
+ * to exist. Written the same way round as its twin now.
+ *
+ * Capacity comes from whoever knows it: the profile when the owner is here, the base's own
+ * shopfront when they are not.
+ */
 export function addItem(address: string, rarity: number): RangementResultat {
   const prof = profiles.get(address)
-  if (!prof) return 'plein'
-  if (!(prof.vus ?? []).includes(rarity)) {
+  const b = bases.get(address)
+
+  if (prof !== undefined && !(prof.vus ?? []).includes(rarity)) {
     prof.vus = [...(prof.vus ?? []), rarity]
     dirtyProfiles.add(address)
   }
+
+  if (b !== undefined) {
+    if (b.items.length >= openSlots(prof?.floorsBought ?? b.floorsBought)) return 'plein'
+    b.items = [...b.items, rarity]
+    dirtyBases.add(address)
+    if (prof !== undefined) { prof.items = [...b.items]; dirtyProfiles.add(address) }
+    publish(b)
+    return 'expose'
+  }
+
+  // No building yet: it can only wait in their stock, and only if we know who they are.
+  if (prof === undefined) return 'plein'
   if (prof.items.length >= openSlots(prof.floorsBought ?? 0)) return 'plein'
   prof.items.push(rarity)
   dirtyProfiles.add(address)
-  const b = bases.get(address)
-  if (!b) return 'en-stock'
-  b.items = [...prof.items]
-  dirtyBases.add(address)
-  publish(b)
-  return 'expose'
+  return 'en-stock'
 }
 
 function todayKey(): number {

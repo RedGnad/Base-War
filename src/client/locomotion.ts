@@ -2,11 +2,25 @@ import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, tim
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE } from '../shared/schemas'
 
+/**
+ * All three gaits, because the player uses all three.
+ *
+ * Every slowdown in this game wrote `jogSpeed` and nothing else. The component also carries
+ * `walkSpeed` and `runSpeed`, and a joystick pushed to its limit on a phone puts the avatar
+ * in a RUN: the thief penalty, the aiming penalty and the weight of stolen goods have
+ * therefore all been doing precisely nothing whenever the player was actually moving fast,
+ * which is whenever any of it mattered. A player reported not being slowed at all while
+ * carrying, and they were describing the truth.
+ *
+ * The three are ours now so that one multiplier reaches all of them.
+ */
+export const WALK_NORMAL = 4.5
 export const JOG_NORMAL = 11
-export const THIEF_JOG = 6.5   // -41 %
+export const RUN_NORMAL = 15
+export const THIEF_SHARE = 0.59      // the old 6.5 out of 11
 export const SAUT_NORMAL = 1.15
-export const THIEF_JUMP = 0.69 // -40 %
-const FREEZE_JOG = 0.6
+export const THIEF_JUMP_SHARE = 0.6
+const FREEZE_SHARE = 0.055
 const FREEZE_JUMP = 0.2
 
 /**
@@ -37,10 +51,19 @@ function appliquer(): void {
   const charge = etat.carrying === 'vole' ? CARRY_STOLEN_SHARE
     : etat.carrying === 'sien' ? CARRY_OWN_SHARE
     : 1
-  const base = (etat.thief && etat.carrying !== 'vole') ? THIEF_JOG : JOG_NORMAL
+  const vol = (etat.thief && etat.carrying !== 'vole') ? THIEF_SHARE : 1
+  const facteur = frozen
+    ? FREEZE_SHARE
+    : vol * charge * (etat.aiming ? AIM_SPEED_SHARE : 1)
+  const saut = frozen ? FREEZE_JUMP : SAUT_NORMAL * (etat.thief ? THIEF_JUMP_SHARE : 1)
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
-    jogSpeed: frozen ? FREEZE_JOG : base * charge * (etat.aiming ? AIM_SPEED_SHARE : 1),
-    jumpHeight: frozen ? FREEZE_JUMP : etat.thief ? THIEF_JUMP : SAUT_NORMAL
+    walkSpeed: WALK_NORMAL * facteur,
+    jogSpeed: JOG_NORMAL * facteur,
+    runSpeed: RUN_NORMAL * facteur,
+    jumpHeight: saut,
+    // A slowed thief who can still double-jump over a wall was not slowed.
+    runJumpHeight: saut,
+    doubleJumpHeight: saut
   })
 }
 

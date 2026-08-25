@@ -310,15 +310,20 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     Where you are standing is what the verb turns out to be. Inside your own building it is
     putting something on a shelf; inside somebody else's it is a gift, which used to be a
     click on a plinth that no player ever found; anywhere else it is letting go, and it goes
-    back where it came from. One button, three sentences, none of which needs explaining
-    because the player is holding the thing while they read it.
+    back where it came from.
+
+    All three carry a picture, which they did not at first: they were left as words on the
+    grounds that three arrows would blur, and that dropping an item by mistake is expensive.
+    The worry was right and the conclusion wrong. What separates them is the DIRECTION plus
+    whether anything waits underneath, two independent differences rather than one, and a
+    picture on the button beats a plate on the screen every time.
   */
   if (carryView.code >= 0) {
     const ou = baseIci()
-    if (ou === null) return { label: 'DROP', action: dropCarried }
+    if (ou === null) return { label: 'DROP', icon: 'icon-drop', action: dropCarried }
     return ou.mienne
-      ? { label: 'PUT IT DOWN', action: () => placeDown(ou.ownerId) }
-      : { label: 'GIVE IT', action: () => placeDown(ou.ownerId) }
+      ? { label: 'PUT IT DOWN', icon: 'icon-place', action: () => placeDown(ou.ownerId) }
+      : { label: 'GIVE IT', icon: 'icon-give', action: () => placeDown(ou.ownerId) }
   }
   if (theftView.canRecover) return { label: 'RECOVER', icon: 'icon-recover', action: recover }
   if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
@@ -558,7 +563,7 @@ const uiComponent = () => {
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
     ['opening', boxView.opening, 54],
-    ['carrying', carryView.code >= 0, 76]
+    ['carrying', carryView.code >= 0 && !carryView.vole, 76]
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
@@ -795,13 +800,16 @@ const uiComponent = () => {
 
 
     {/*
-      What you are holding, and the one thing the action button is not offering.
+      Shown only while the thing in your hands is yours to sell.
 
-      E already reads PUT IT DOWN, GIVE IT or DROP depending on where the player stands, so
-      the only decision left is whether to keep the thing at all. Selling used to hang off the
-      two-step selection that carrying replaced; it belongs beside the item in your hands.
+      It used to appear for anything at all, announcing "CARRYING RARE" beside a SELL button,
+      which told the player what they could already see in their own hand and offered an
+      action that stolen goods are not allowed anyway. A plate that says the obvious next to a
+      button that refuses is worse than no plate: it takes the screen and returns nothing.
+      Carrying somebody else's trophy now shows nothing at all, which is correct, because the
+      only thing to do with it is on the action button already.
     */}
-    {hud() && carryView.code >= 0 && (
+    {hud() && carryView.code >= 0 && !carryView.vole && (
       <Centre bottom={notice.carrying}>
         <UiEntity
           uiTransform={{
