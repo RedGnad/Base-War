@@ -133,6 +133,35 @@ function nextAction(): { label: string; action: () => void } | null {
  * existed on some blocks and not others, added one at a time. It lives here now, and
  * every block reads the same function.
  */
+/**
+ * The wait, as a bar rather than a sentence.
+ *
+ * The scene's server only runs while somebody is inside it, so the first visitor to an
+ * empty venue waits on a cold start, documented at about fifteen seconds. A word for that
+ * wait is not enough: a line of static text is exactly what a broken game also shows, and
+ * the player cannot tell the two apart. Something that visibly advances can only mean work
+ * is happening, and where the duration is roughly known a bar beats a spinner, because it
+ * answers "how much longer" instead of only "is it alive".
+ *
+ * It fills fast and then slows, and it stops short of the end. The curve is honest about
+ * what we know: the fifteen seconds is a documented figure, not a measurement of our own
+ * server, so a bar that marched to the end on a timer would be inventing a certainty we do
+ * not have, and would sit full and lying whenever the wait ran long. This one reaches
+ * about seven eighths at fifteen seconds and never quite arrives. The last part of the
+ * journey belongs to the heartbeat: the bar disappears because the server answered, which
+ * is the only thing that was ever worth reporting.
+ */
+const WaitBar = () => {
+  const attente = view.waitingSince === 0 ? 0 : Date.now() - view.waitingSince
+  const part = 0.9 * (1 - Math.exp(-attente / 5000))
+  return (
+    <UiEntity uiTransform={{ width: '100%', height: 6 }} uiBackground={{ color: C.inset }}>
+      <UiEntity uiTransform={{ width: `${Math.round(part * 100)}%`, height: 6 }}
+        uiBackground={{ color: C.bonus }} />
+    </UiEntity>
+  )
+}
+
 function modale(): boolean {
   return welcomeView.open || prestigeView.open
 }
@@ -337,18 +366,19 @@ const uiComponent = () => (
         value={
           !view.serverAlive
             ? (view.serverBooting
-                ? (intentEnAttente() ? 'waking the server up, your action is queued' : 'waking the server up')
-                : 'SERVER OFFLINE')
+                ? (intentEnAttente() ? 'starting up, your action is queued' : 'starting up')
+                : (intentEnAttente() ? 'reconnecting, your action is queued' : 'reconnecting'))
           : !theftView.basePosee ? 'place your base so your loot earns'
           : theftView.income === 0 ? 'open a crate to start earning'
           : `+${formatIncome(theftView.income)}/s${theftView.sentries > 0 ? '   sentry ' + theftView.sentries : ''}`
         }
         fontSize={TYPE.label}
         color={
-          !view.serverAlive ? (view.serverBooting ? C.bonus : C.danger)
+          !view.serverAlive ? C.bonus
           : (!theftView.basePosee || theftView.income === 0) ? C.bonus
           : C.money
         } />
+      {!view.serverAlive && <WaitBar />}
     </UiEntity>
     )}
 
@@ -583,6 +613,14 @@ const uiComponent = () => (
               ? (combatView.targetName !== ''
                   ? `FIRE on ${combatView.targetName}   ·   F to holster`
                   : 'aim at someone   ·   F to holster')
+              /*
+                A press that cannot reach the server yet answers here, where the player
+                was looking when they pressed, and not only in the counter at the top of
+                the screen. Feedback that appears somewhere else is feedback the player
+                does not connect to what they did, which is the whole complaint against a
+                held action: it reads as a dead button.
+              */
+              : intentEnAttente() ? 'queued, the game is still starting up'
               : (() => { const a = nextAction(); return a === null ? 'F to draw' : `E   ${a.label}   ·   F to draw` })()
           }
           fontSize={TYPE.label} color={combatView.aiming ? C.danger : C.name} textAlign="middle-center" />

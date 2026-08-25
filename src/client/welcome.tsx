@@ -22,6 +22,17 @@ const LIGNES: Array<[string, string]> = [
   ['5', 'STEAL from other bases. LOCK yours']
 ]
 
+/**
+ * The way in, and it never holds the player back.
+ *
+ * The server takes about fifteen seconds to cold-start, and it was tempting to keep this
+ * panel shut until it answered. That is the wrong trade: dismissing the first screen the
+ * instant you have read it is what makes a game feel like it belongs to you, and a START
+ * that refuses to start is worse than a game that is still loading. The world itself needs
+ * no server, so the player leaves here into something that works: they walk, they look,
+ * they find the belt. Only an action that changes the world has to wait, and that wait is
+ * shown where it happens rather than in front of the door.
+ */
 export const WelcomePanel = () => {
   if (!welcomeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   return (

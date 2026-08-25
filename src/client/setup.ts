@@ -37,6 +37,14 @@ export const view = {
    * broken when it is merely starting.
    */
   serverBooting: true,
+  /**
+   * Client-side instant the current wait began, or 0 while the server is answering.
+   *
+   * The interface draws the wait as a bar rather than a sentence, and a bar needs a start.
+   * It is our own clock on purpose: the server's timestamps mean nothing here, and this
+   * has to be right on the very first visit, when no server has ever spoken.
+   */
+  waitingSince: Date.now(),
   floors: 1
 }
 
@@ -94,6 +102,8 @@ export function startClient(): void {
     }
     view.serverBooting = view.lastBeatSeenAt === 0
     const alive = view.lastBeatSeenAt !== 0 && now - view.lastBeatSeenAt < BEAT_DEAD_AFTER_MS
+    if (alive) view.waitingSince = 0
+    else if (view.waitingSince === 0) view.waitingSince = now
     if (alive !== view.serverAlive) {
       console.log(`[CLIENT] server ${alive ? 'ALIVE' : 'SILENT'} (last beat ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)
     }
