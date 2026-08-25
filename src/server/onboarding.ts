@@ -13,7 +13,14 @@ export const ETAPES = [
   'Leave a gift on another base'
 ] as const
 
-export const CADEAU_MS = 15 * 60_000
+/**
+ * Ten minutes, not fifteen.
+ *
+ * The bar showing it is what changed the calculation: a wait nobody could see had to be long
+ * enough to be worth the surprise, and a wait somebody watches fill is doing its work the
+ * whole time. Ten puts the payoff inside a first real session rather than just beyond it.
+ */
+export const CADEAU_MS = 10 * 60_000
 export const GIFT_CRATE = 2
 
 /**

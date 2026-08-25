@@ -191,12 +191,9 @@ export function steal(ownerId = '', slot = -1): void {
 export function lockBase(): void { envoyerOuAttendre(() => { void room.send('activateLock', {}) }) }
 export function recover(): void { void room.send('reclaim', {}) }
 export function doPrestige(): void { void room.send('rebirth', {}) }
-export function sell(slot: number): void { void room.send('sellItem', { slot }) }
-export function gift(ownerId: string, slot: number): void { void room.send('giveItem', { ownerId, slot }) }
 export function buyFloorFor(): void { envoyerOuAttendre(() => { void room.send('buyFloor', {}) }) }
 export function armSentry(tier = 0): void { envoyerOuAttendre(() => { void room.send('buySentry', { tier }) }) }
 export function collectPending(): void { envoyerOuAttendre(() => { void room.send('collect', {}) }) }
-export function moveItemBetweenSlots(de: number, to: number): void { void room.send('moveItem', { de, to }) }
 
 let _adresse = ''
 export function monAdresseClient(): string { return _adresse }

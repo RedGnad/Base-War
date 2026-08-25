@@ -20,7 +20,7 @@ function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
   return Vector3.distance(joueur, objet) <= rayon
 }
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, giftItem, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet } from './plots'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
@@ -28,7 +28,7 @@ import { log } from './log'
 import {
   basesProches, lockOf, setLock, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
-  placeBase, basePoints, sellItemFromBase, buyFloorFor, lockCooldown, collectPending, moveItemTo
+  placeBase, basePoints, buyFloorFor, lockCooldown, collectPending
 } from './plots'
 
 type Larcin = { thief: string; victim: string; rarity: number; quand: number }
@@ -112,6 +112,14 @@ export function volEnCoursSur(address: string): boolean {
   return false
 }
 
+/*
+  Three handlers were deleted here on 25 Aug: giveItem, sellItem and moveItem.
+
+  Carrying replaced all three, and their client senders had already stopped being called.
+  Leaving them behind is what made two quests unwinnable: the hooks that credit them sat in
+  code nothing could reach, so the game asked for something it could not notice being done.
+  A handler with no caller is not harmless, it is a place for logic to hide.
+*/
 export function startTheft(): void {
   // RESOLUTION DES VOLS EN COURS. Un seul systeme, cadence a la seconde.
   let acc = 0
@@ -272,11 +280,6 @@ export function startTheft(): void {
     void room.send('basePositions', { xs: ps.map((q) => q.x), zs: ps.map((q) => q.z) })
   }, 2500)
 
-  room.onMessage('moveItem', (d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    if (!moveItemTo(a, d.de, d.to)) refus(a, 'move', 'cannot move there')
-  })
 
   room.onMessage('buySentry', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
@@ -286,30 +289,6 @@ export function startTheft(): void {
     void room.send('sentryBought', { charges: r.charges ?? 0, cost: r.cost ?? 0 }, { to: [a] })
   })
 
-  room.onMessage('giveItem', (d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    const cible = d.ownerId.toLowerCase()
-
-    const p = positionOf(a)
-    const bc = baseDe(cible)
-    if (p === null || bc === undefined) { refus(a, 'gift', 'position unknown'); return }
-    const dist = Vector3.distance(p, Vector3.create(bc.x, p.y, bc.z))
-    if (dist > GIFT_RANGE) { refus(a, 'gift', `too far (${dist.toFixed(1)}m)`, true); return }
-
-    const r = giftItem(a, cible, d.slot)
-    if (!r.ok) { refus(a, 'gift', r.reason ?? 'refused'); return }
-
-    const code = r.code ?? 0
-    const rar = rarityOf(code)
-    const mut = mutationDe(code)
-    void room.send('gaveItem', { toName: displayName(cible), rarity: rar, mutation: mut }, { to: [a] })
-    void room.send('wasGifted', { byName: displayName(a), rarity: rar, mutation: mut }, { to: [cible] })
-    void room.send('gifted', { byName: displayName(a), toName: displayName(cible), rarity: rar })
-    tutoFait(a, 4)
-    advanceQuest(a, 'gift')
-    pushQuests(a)
-  })
 
   room.onMessage('claimQuest', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
@@ -341,15 +320,6 @@ export function startTheft(): void {
     void room.send('floorBought', { floors: r.floors ?? 1, cost: r.cost ?? 0 }, { to: [a] })
   })
 
-  room.onMessage('sellItem', (d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    const r = sellItemFromBase(a, d.slot)
-    if (!r.ok) { refus(a, 'sell', r.reason ?? 'refused'); return }
-    void room.send('sold', { gain: r.gain ?? 0, rarity: 0 }, { to: [a] })
-    advanceQuest(a, 'vendre')
-    pushQuests(a)
-  })
 
   room.onMessage('rebirth', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()

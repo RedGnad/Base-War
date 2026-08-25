@@ -28,7 +28,6 @@ export const MESSAGES = {
   rebirth: Schemas.Map({}),
   rebirthDone: Schemas.Map({ prestige: Schemas.Int, floors: Schemas.Int }),
 
-  moveItem: Schemas.Map({ de: Schemas.Int, to: Schemas.Int }),
 
   index: Schemas.Map({ vus: Schemas.Array(Schemas.Int) }),
 
@@ -76,7 +75,6 @@ export const MESSAGES = {
   sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int }),
   sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int }),
 
-  giveItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
   pickUp: Schemas.Map({ slot: Schemas.Int }),
   placeDown: Schemas.Map({ ownerId: Schemas.String }),
@@ -98,7 +96,6 @@ export const MESSAGES = {
   buyFloor: Schemas.Map({}),
   floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int }),
 
-  sellItem: Schemas.Map({ slot: Schemas.Int }),
   sold: Schemas.Map({ gain: Schemas.Int, rarity: Schemas.Int }),
 
   activateLock: Schemas.Map({}),

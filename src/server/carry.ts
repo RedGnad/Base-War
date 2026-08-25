@@ -9,7 +9,8 @@ import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
 import { log } from './log'
 import {
-  baseDe, removeItem, addItem, displayName, presents, positionOf, crediterVente
+  baseDe, removeItem, addItem, displayName, presents, positionOf, crediterVente,
+  advanceQuest, pushQuests
 } from './plots'
 
 /**
@@ -180,6 +181,16 @@ export function startCarry(): void {
     }
     lacher(a)
     void room.send('carryResult', { ok: true, reason: vise === a ? 'placed' : 'given', rarity: rarityOf(c.code), mutation: mutationDe(c.code) }, { to: [a] })
+    /*
+      The quest is credited HERE, because this is where the act happens now.
+
+      Leaving something on somebody else's base used to be its own message, and the hook that
+      credits the quest went with it. Carrying replaced that message and the hook stayed
+      behind on a handler no client calls any more: the quest was unwinnable, which a player
+      discovered by doing exactly what it asked. Same story for selling.
+    */
+    advanceQuest(a, vise === a ? 'poser' : 'gift')
+    pushQuests(a)
     if (vise !== a) {
       void room.send('gifted', { byName: displayName(a), toName: b.name, rarity: rarityOf(c.code) })
     }
@@ -214,6 +225,8 @@ export function startCarry(): void {
     const quoi = lacher(a)
     if (quoi === null) return
     const gain = crediterVente(a, quoi.code)
+    advanceQuest(a, 'vendre')
+    pushQuests(a)
     void room.send('sold', { gain, rarity: rarityOf(quoi.code) }, { to: [a] })
     log(`carry: ${displayName(a)} sold a ${rarityOf(quoi.code)} out of hand for ${gain}`)
   })

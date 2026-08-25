@@ -24,7 +24,6 @@ import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { sell } from './client/theft'
 import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
@@ -147,6 +146,27 @@ const Centre = (props: { top?: number; bottom?: number; children?: unknown }) =>
 )
 
 const MENU_W = 1088
+
+/**
+ * The right-hand corner, as a stack with air between its tenants.
+ *
+ * Three things want that corner: the tutorial step, the crate being earned, and the event
+ * feed. They were each adding their own guess at an offset, and two of them landed eight
+ * pixels apart, which reads as one panel that has split rather than two panels. One place
+ * decides, and it leaves a real gap.
+ */
+const COIN_H = [52, 52, 62]
+const COIN_GAP = 14
+
+function coinDroit(rang: number): number {
+  const present = [
+    tutoView.etape < tutoView.total,
+    cadeauView.leftS > 0
+  ]
+  let y = BAND.top
+  for (let i = 0; i < rang; i++) if (present[i] === true) y += COIN_H[i] + COIN_GAP
+  return y
+}
 
 const MENU_PAD = 18
 const MENU_ENTETE = TAP.height + 14
@@ -604,7 +624,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           height: 52, positionType: 'absolute', padding: { left: 20, right: 20 },
-          position: { top: BAND.top, right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(0), right: COIN_HAUT_DROIT },
           flexDirection: 'row', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -713,7 +733,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           width: 320, height: 52, positionType: 'absolute',
-          position: { top: BAND.top + (tutoView.etape < tutoView.total ? 60 : 0), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(1), right: COIN_HAUT_DROIT },
           flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
         }}
         uiBackground={SKIN.panel}
@@ -745,12 +765,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           width: 400, height: 62, positionType: 'absolute',
-          position: {
-            top: BAND.top
-              + (tutoView.etape < tutoView.total ? 60 : 0)
-              + (cadeauView.leftS > 0 ? 60 : 0),
-            right: COIN_HAUT_DROIT
-          },
+          position: { top: coinDroit(2), right: COIN_HAUT_DROIT },
           padding: 8, flexDirection: 'column', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
