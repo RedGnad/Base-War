@@ -1,6 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP , SKIN } from './theme'
+import { TYPE, C, TAP, SKIN } from './theme'
+import { Glyphs } from './glyphs'
 
 export const welcomeView = { open: true }
 export function closeWelcome(): void { welcomeView.open = false }
