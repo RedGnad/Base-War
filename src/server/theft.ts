@@ -312,7 +312,7 @@ export function startTheft(): void {
     if (!a) return
     const r = tenterRebirth(a)
     if (!r.ok) { refus(a, 'prestige', r.reason ?? 'refused'); return }
-    void room.send('rebirthDone', { prestige: r.prestige ?? 0, floors: r.floors ?? 1 }, { to: [a] })
+    void room.send('rebirthDone', { prestige: r.prestige ?? 0, multiplier: r.multiplier ?? 1 }, { to: [a] })
   })
 
   room.onMessage('activateLock', (_d, ctx) => {

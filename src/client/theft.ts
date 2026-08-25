@@ -20,6 +20,7 @@ export const theftView = {
   prestige: 0,
   nextPrestige: 0,
   minRarity: 0,
+  bestRarity: -1,
   multiplier: 1,
   income: 0,
   basePosee: false,
@@ -128,6 +129,7 @@ export function setupTheft(): void {
     theftView.prestige = d.prestige
     theftView.nextPrestige = d.nextPrestige
     theftView.minRarity = d.minRarity
+    theftView.bestRarity = d.bestRarity
     theftView.multiplier = d.multiplier
     theftView.income = d.income
     theftView.basePosee = d.basePosee
@@ -139,8 +141,13 @@ export function setupTheft(): void {
   })
 
   room.onMessage('rebirthDone', (d) => {
-    alerter(`PRESTIGE ${d.prestige}  ·  ${d.floors} floors`, '#f5a524', 6000)
-    console.log(`[CLIENT] prestige ${d.prestige}, ${d.floors} floors`)
+    /*
+      Say what changed. It used to report the floor count, which prestige does not touch:
+      the player was handed a number about the one thing that had stayed the same, at the
+      exact moment they were trying to work out what they had just paid for.
+    */
+    alerter(`PRESTIGE ${d.prestige}  ·  INCOME x${d.multiplier} FOR GOOD`, '#f5a524', 6000)
+    console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
 
   room.onMessage('index', (d) => { indexView.vus = [...d.vus] })

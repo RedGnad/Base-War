@@ -671,7 +671,15 @@ export function sentriesOf(address: string): number { return profiles.get(addres
 
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 export function toutesLesBases(): Base[] { return [...bases.values()] }
-export function tenterRebirth(address: string): { ok: boolean; reason?: string; prestige?: number; floors?: number } {
+/*
+  What prestige actually does, because three screens said otherwise.
+
+  It does NOT wipe the coins: it charges a price and leaves the remainder. It does NOT clear
+  the base: it keeps the best `guard` items. Floors, sentries and crates are untouched. The
+  panel described a far more destructive act than this, which is the wrong way to be wrong
+  about the one decision that drives the whole late game.
+*/
+export function tenterRebirth(address: string): { ok: boolean; reason?: string; prestige?: number; multiplier?: number } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
   const prestige = p.rebirths ?? 0
@@ -693,7 +701,7 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   if (b) { b.items = [...p.items]; dirtyBases.add(address); publish(b) }
   const et = openFloors(p.floorsBought ?? 0)
   log(`${b?.name ?? address.slice(0, 8)} reached prestige ${p.rebirths}: -${exige.cost} coins, kept ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
-  return { ok: true, prestige: p.rebirths, floors: et }
+  return { ok: true, prestige: p.rebirths, multiplier: incomeMultiplier(p.rebirths) }
 }
 
 export function prestigeOf(address: string): number { return profiles.get(address)?.rebirths ?? 0 }
@@ -978,6 +986,9 @@ export function startPlots(): void {
         nextPrestige: next ? next.cost : 0,
         prestige,
         minRarity: next ? next.minRarity : 0,
+        // Sent so the button can know what the server already knows: prestige needs an item
+        // of a given rarity, and a button that offers what will be refused is a broken button.
+        bestRarity: p.items.length === 0 ? -1 : Math.max(...p.items.map(rarityOf)),
         multiplier: incomeMultiplier(prestige),
         tutoEtape: etapeTuto(address),
         sentries: p.sentries ?? 0,

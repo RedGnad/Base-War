@@ -9,7 +9,7 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int, rechargeSec: Schemas.Int, pending: Schemas.Int, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int, rechargeSec: Schemas.Int, pending: Schemas.Int, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
@@ -23,7 +23,7 @@ export const MESSAGES = {
   inventory: Schemas.Map({ crates: Schemas.Array(Schemas.Int) }),
 
   rebirth: Schemas.Map({}),
-  rebirthDone: Schemas.Map({ prestige: Schemas.Int, floors: Schemas.Int }),
+  rebirthDone: Schemas.Map({ prestige: Schemas.Int, multiplier: Schemas.Int }),
 
 
   index: Schemas.Map({ vus: Schemas.Array(Schemas.Int) }),

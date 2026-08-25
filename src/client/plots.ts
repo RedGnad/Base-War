@@ -433,7 +433,20 @@ export function setupPlots(): void {
           const k = p.sentries === 0 ? 0 : 0.6 + p.sentries * 0.18
           ts.scale = Vector3.create(k, k, k)
         }
-        txt.text = `${p.ownerName}${state}${guard}${ledger}`
+        /*
+          The rank goes on the nameplate, because that is the only place it does its job.
+
+          `rebirths` is stored, persisted, and synced to every client in the Plot component,
+          and it was drawn nowhere. The one thing this mechanic is for, according to the
+          practitioner of the same format we studied, is being seen by the other players on
+          your server: his own words for why he built it were to be able to flex on them.
+          Meanwhile the multiplier it buys, which is private information for the owner, was
+          the part we were printing, on the owner's own coin counter. Exactly the wrong way
+          round on both counts. It joins the name line rather than taking one of its own,
+          since a plate read from a few metres away can carry a rank but not a fourth row.
+        */
+        const rang = p.rebirths > 0 ? `  ·  PRESTIGE ${p.rebirths}` : ''
+        txt.text = `${p.ownerName}${rang}${state}${guard}${ledger}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
 
         // What the base earns, read off its own items, so a passer-by can price a target

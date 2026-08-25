@@ -713,12 +713,18 @@ const uiComponent = () => {
       behind, which costs one element per character and no screen at all. Freed of the plate
       the number can also be bigger, which is what a counter read from the corner of the eye
       needs anyway.
+
+      And with the plate gone the width stopped being a surface and became a measuring frame:
+      it obstructs nothing, so it costs nothing to be wide enough for the line underneath.
+      Five hundred and sixty was inherited from the plate it replaced, and it was the reason
+      the subtitle could not say what the multiplier was for. Measured against the atlas, the
+      busiest line this can hold is 597 px; the frame is 760.
     */}
     {hud() && (
     <UiEntity
       uiTransform={{
-        width: strip(560).width, height: TYPE.hero + 6 + 34, positionType: 'absolute',
-        position: { top: band.money, left: '50%' }, margin: strip(560).margin,
+        width: strip(760).width, height: TYPE.hero + 6 + 34, positionType: 'absolute',
+        position: { top: band.money, left: '50%' }, margin: strip(760).margin,
         flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center'
       }}
     >
@@ -735,8 +741,8 @@ const uiComponent = () => {
       */}
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
-          value={`${formatIncome(theftView.coins)}${theftView.multiplier > 1 ? '  x' + theftView.multiplier : ''}`}
-          size={TYPE.hero} role="money" align="center" box={strip(560).width} shadow />
+          value={formatIncome(theftView.coins)}
+          size={TYPE.hero} role="money" align="center" box={strip(760).width} shadow />
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
@@ -744,7 +750,7 @@ const uiComponent = () => {
       */}
       <UiEntity uiTransform={{ width: '100%', height: 34 }}>
         <Glyphs
-          size={TYPE.label} align="center" box={strip(560).width} shadow
+          size={TYPE.label} align="center" box={strip(760).width} shadow
           role={
             (!view.serverAlive || !theftView.basePosee || theftView.income === 0)
               ? 'bonus'
@@ -768,9 +774,23 @@ const uiComponent = () => {
                   : (intentEnAttente() ? 'RECONNECTING, ACTION QUEUED' : 'RECONNECTING'))
             : !theftView.basePosee ? 'PLACE YOUR BASE'
             : theftView.income === 0 ? 'OPEN A CRATE TO EARN'
-            : `+${formatIncome(theftView.income)}/S`
-              + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} BANKED` : '')
+            /*
+                The rate, then the two things that multiply it, then the pool to be collected.
+
+                The prestige multiplier used to sit on the BALANCE, glued to the coin total
+                with no word beside it: `1.2M  x4`. It multiplies neither the balance nor
+                anything else the player owns, it multiplies what comes in, and what comes in
+                was on the line below. So the one number it acts on and the multiplier itself
+                were on two different lines, in the wrong order, and the multiplier had no
+                noun. Here it sits next to the rate it produced, in the same shape as the
+                crowd bonus, which is the same kind of thing and was already written this way.
+                `+340/S` already includes both, so the line reads as an explanation of the
+                rate rather than a sum to be done.
+              */
+              : `+${formatIncome(theftView.income)}/S`
+              + (theftView.multiplier > 1 ? `   x${theftView.multiplier} PRESTIGE` : '')
               + (theftView.prime > 0 ? `   +${Math.round(theftView.prime * 100)}% CROWD` : '')
+              + (theftView.pending >= 1 ? `   ${formatIncome(theftView.pending)} BANKED` : '')
           } />
       </UiEntity>
       {!view.serverAlive && <WaitBar />}
