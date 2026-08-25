@@ -429,17 +429,30 @@ function barre(): string {
   return `E   ${a.label}`
 }
 
+/**
+ * The one ambient line, and the test every candidate for it has to pass.
+ *
+ * Two questions decide whether something belongs here. Is it time-critical, meaning it
+ * changes on its own and the player loses something by not seeing it? And is it unavailable
+ * anywhere else? A line that fails either is furniture, because permanent screen on a phone
+ * is paid for out of the game.
+ *
+ * Two were removed on those grounds. "next floor at X" and "prestige at X" are prices that do
+ * not move and now sit in the shop tab, where the player goes precisely to compare them.
+ * A third, "place your base first", was a whole plate of its own saying what the tutorial says
+ * in the top right corner and what the action button says under their thumb, with an icon, at
+ * that very moment: the same instruction three times over, which is worse than not saying it.
+ */
 function hint(): string {
   if (slotView.active && !slotView.valid) return slotView.reason
+  // Actionable: it says go home, and the crates are not doing anything until you do.
   if (boxView.stock.length > 0 && !peutOuvrirIci()) {
     return `${boxView.stock.length} crate${boxView.stock.length > 1 ? 's' : ''} waiting at your base`
   }
-  // Said from the owner's side. "base locked" and "lock recharges" describe the mechanism,
-  // and read like a fault on your own screen; what the player owns here is a protection.
+  // Time-critical, and said from the owner's side: what they own here is a protection, and
+  // "base locked" describes the mechanism while reading like a fault on your own screen.
   if (theftView.lockSec > 0) return `your base is shielded for ${theftView.lockSec}s`
   if (theftView.rechargeSec > 0) return `shield ready in ${theftView.rechargeSec}s`
-  if (theftView.floorPrice > 0) return `next floor at ${formatIncome(theftView.floorPrice)}`
-  if (theftView.nextPrestige > 0) return `prestige at ${formatIncome(theftView.nextPrestige)}`
   return ''
 }
 
@@ -529,8 +542,7 @@ const uiComponent = () => {
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
     ['opening', boxView.opening, 54],
-    ['carrying', carryView.code >= 0, 76],
-    ['baseFirst', !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule, 40]
+    ['carrying', carryView.code >= 0, 76]
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
@@ -754,18 +766,6 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {hud() && !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule && (
-      <UiEntity
-        uiTransform={{
-          width: strip(400).width, height: 40, positionType: 'absolute',
-          position: { bottom: notice.baseFirst, left: '50%' }, margin: strip(400).margin,
-          justifyContent: 'center', alignItems: 'center'
-        }}
-        uiBackground={SKIN.panel}
-      >
-        <Label uiTransform={{ width: '100%' }} value="place your base first: crates are opened at your base" fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')} />
-      </UiEntity>
-    )}
 
     {/*
       What you are holding, and the one thing the action button is not offering.
