@@ -30,9 +30,16 @@ import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/
 const INCOME_UI = PRODUCTION_PER_RARITY
 
 /** Card geometry for the reel, in virtual pixels. */
-const REEL_W = 210
-/** The strip's own width, so the cards can be centred against something we actually know. */
-const REEL_STRIP = 1400
+/**
+ * The reel is as wide as the room allows, because seeing the near misses IS the mechanic.
+ *
+ * A first pass gave it a fixed 1400 to have a width to centre against, and that made it
+ * shorter than the screen on both sides. A reel exists so a player watches an Epic slide past
+ * on its way to stopping on a Good: cut the ends off and it stops being a wheel and becomes an
+ * announcement. It now takes whatever `strip` leaves between the client's own furniture, and
+ * the cards came down from 210 so more of the strip fits into it.
+ */
+const REEL_W = 178
 const REEL_H = 172
 const REEL_GAP = 12
 
@@ -795,11 +802,11 @@ const uiComponent = () => {
     {hud() && (boxView.roule || boxView.resultat >= 0) && (
       <Centre bottom={250}>
       <UiEntity
-        uiTransform={{ width: strip(REEL_STRIP).width, height: REEL_H + 8 }}
+        uiTransform={{ width: strip(active.w).width, height: REEL_H + 8 }}
         uiBackground={SKIN.panel}
       >
         {boxView.reel.map((r, i) => {
-          const large = strip(REEL_STRIP).width
+          const large = strip(active.w).width
           const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
           if (x < -REEL_W || x > large) return null
           const gagnant = !boxView.roule && i === REEL_WIN
@@ -830,7 +837,7 @@ const uiComponent = () => {
         <UiEntity
           uiTransform={{
             width: 5, height: REEL_H + 8, positionType: 'absolute',
-            position: { left: strip(REEL_STRIP).width / 2 - 2.5, top: 0 }
+            position: { left: strip(active.w).width / 2 - 2.5, top: 0 }
           }}
           uiBackground={{ color: C.name }} />
       </UiEntity>
