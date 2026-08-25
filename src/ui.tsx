@@ -15,7 +15,7 @@ import { setIconePrimaire, setReticuleClient } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal } from './client/theft'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
-import { placementView } from './client/plots'
+
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
 import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
@@ -39,6 +39,8 @@ const ETATS: Record<string, (r: number) => string> = {
   plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
+import { carryView, placeDown, dropCarried, sellCarried } from './client/carry'
+import { baseIci } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -276,6 +278,22 @@ function announceBackdrop(): Color4 {
  */
 function nextAction(): { label: string; action: () => void; icon?: string } | null {
   if (slotView.active) return slotView.valid ? { label: 'PLACE HERE', action: placeHere } : null
+  /*
+    Hands first, because full hands are the loudest fact about your situation.
+
+    Where you are standing is what the verb turns out to be. Inside your own building it is
+    putting something on a shelf; inside somebody else's it is a gift, which used to be a
+    click on a plinth that no player ever found; anywhere else it is letting go, and it goes
+    back where it came from. One button, three sentences, none of which needs explaining
+    because the player is holding the thing while they read it.
+  */
+  if (carryView.code >= 0) {
+    const ou = baseIci()
+    if (ou === null) return { label: 'DROP', action: dropCarried }
+    return ou.mienne
+      ? { label: 'PUT IT DOWN', action: () => placeDown(ou.ownerId) }
+      : { label: 'GIVE IT', action: () => placeDown(ou.ownerId) }
+  }
   if (theftView.canRecover) return { label: 'RECOVER', action: recover }
   if (!theftView.basePosee) return { label: 'BUILD BASE', action: basculerPose }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
@@ -479,7 +497,7 @@ const uiComponent = () => {
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
     ['opening', boxView.opening, 54],
-    ['placement', placementView.selection >= 0, 46],
+    ['carrying', carryView.code >= 0, 76],
     ['baseFirst', !theftView.basePosee && boxView.stock.length > 0 && !boxView.opening && !boxView.roule, 40]
   ])
   return (
@@ -717,22 +735,28 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {hud() && placementView.selection >= 0 && (
-      <UiEntity
-        uiTransform={{
-          width: strip(560).width, height: 46, positionType: 'absolute',
-          position: { bottom: notice.placement, left: '50%' }, margin: strip(560).margin,
-          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          padding: 6
-        }}
-        uiBackground={{ color: Color4.create(0.05, 0.12, 0.05, 0.85) }}
-      >
-        <Label uiTransform={{ width: 400 }} value="tap a slot to move it  ·  tap ANOTHER BASE to gift it" fontSize={TYPE.label} color={Color4.fromHexString('#8fe08fff')} />
-        <Button
-          uiTransform={{ width: 110, height: 34 }}
-          value="SELL IT" variant="secondary" uiBackground={SKIN.secondary} color={C.name} fontSize={TYPE.caption}
-          onMouseDown={() => { sell(placementView.selection); placementView.selection = -1 }} />
-      </UiEntity>
+    {/*
+      What you are holding, and the one thing the action button is not offering.
+
+      E already reads PUT IT DOWN, GIVE IT or DROP depending on where the player stands, so
+      the only decision left is whether to keep the thing at all. Selling used to hang off the
+      two-step selection that carrying replaced; it belongs beside the item in your hands.
+    */}
+    {hud() && carryView.code >= 0 && (
+      <Centre bottom={notice.carrying}>
+        <UiEntity
+          uiTransform={{
+            height: 76, padding: { left: 22, right: 22 },
+            flexDirection: 'row', alignItems: 'center'
+          }}
+          uiBackground={SKIN.panel}
+        >
+          <Label uiTransform={{ width: 420, height: 40 }} textWrap="nowrap"
+            value={`CARRYING  ${carryView.name.toUpperCase()}`}
+            fontSize={TYPE.label} color={C.bonus} textAlign="middle-left" />
+          <Btn label="SELL" width={170} onClick={sellCarried} />
+        </UiEntity>
+      </Centre>
     )}
 
     {hud() && boxView.opening && (

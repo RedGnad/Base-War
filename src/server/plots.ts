@@ -654,6 +654,21 @@ export function sellItemFromBase(address: string, index: number): { ok: boolean;
   return { ok: true, gain }
 }
 
+/** What one item is worth if sold, without needing it to be on a shelf first. */
+export function valeurRevente(address: string, code: number): number {
+  const p = profiles.get(address)
+  return Math.round(itemIncome(code, INCOME_PER_RARITY) * RESELL_SECONDS * incomeMultiplier(p?.rebirths ?? 0))
+}
+
+export function crediterVente(address: string, code: number): number {
+  const p = profiles.get(address)
+  if (!p) return 0
+  const gain = valeurRevente(address, code)
+  p.coins += gain
+  dirtyProfiles.add(address)
+  return gain
+}
+
 export function buyFloorFor(address: string): { ok: boolean; reason?: string; floors?: number; cost?: number } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'no profile' }

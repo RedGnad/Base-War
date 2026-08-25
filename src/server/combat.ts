@@ -7,6 +7,7 @@ import {
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
+import { forcerLacher } from './carry'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents } from './plots'
 
 /**
@@ -87,6 +88,16 @@ export function startCombat(): void {
       return
     }
 
+    /*
+      A hit knocks loose whatever they were carrying, as well as coins.
+
+      This is what makes the walk home the risky half of a theft: the thief is out in the
+      open with something that is not theirs, and one shot sends it back where it came from.
+      It is also the only counterplay an owner has once the prying is done.
+    */
+    if (forcerLacher(best.addr, 'shot, you dropped it')) {
+      void room.send('shotResult', { hitName: displayName(best.addr), dropped: 0, reason: 'knocked it loose' }, { to: [a] })
+    }
     dropAt(best.addr, amount, best.pos)
     void room.send('shotResult', { hitName: displayName(best.addr), dropped: amount, reason: 'hit' }, { to: [a] })
     void room.send('wasShot', { byName: displayName(a), lost: amount }, { to: [best.addr] })

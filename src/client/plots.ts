@@ -6,7 +6,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, slotPosition,
+  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, PLACE_RANGE, slotPosition,
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
 } from '../shared/schemas'
 import {
@@ -15,7 +15,6 @@ import {
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
-export const placementView = { selection: -1 }
 
 function goUpOneFloor(v: View): void {
   const t = Transform.getOrNull(v.plinth)
@@ -35,7 +34,8 @@ function goUpOneFloor(v: View): void {
     cameraTarget: Vector3.create(t.position.x - 1.2, y + 0.8, t.position.z - 2.2)
   })
 }
-import { steal, sell, monAdresseClient, moveItemBetweenSlots, gift, alerter } from './theft'
+import { steal, monAdresseClient, alerter } from './theft'
+import { pickUp } from './carry'
 import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
 
@@ -295,6 +295,26 @@ function destroyView(v: View): void {
   for (const o of v.items) engine.removeEntity(o)
 }
 
+/**
+ * Which base the player is standing in, if any, for the client to offer the right verb.
+ *
+ * The server checks this again before it moves anything; this is only so the button can read
+ * PLACE rather than the player pressing it and being told no.
+ */
+export function baseIci(): { ownerId: string; mienne: boolean } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  const moi = monAdresseClient()
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    const bt = Transform.getOrNull(e)
+    if (bt === null) continue
+    const dx = t.position.x - bt.position.x, dz = t.position.z - bt.position.z
+    if (Math.sqrt(dx * dx + dz * dz) > PLACE_RANGE) continue
+    return { ownerId: p.ownerId, mienne: p.ownerId.toLowerCase() === moi }
+  }
+  return null
+}
+
 export function setupPlots(): void {
   engine.addSystem(() => {
     for (const v of views.values()) {
@@ -302,18 +322,16 @@ export function setupPlots(): void {
         if (
           inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.items[k])
         ) {
-          if (v.ownerId.toLowerCase() === monAdresseClient()) {
-            if (placementView.selection === -1) {
-              placementView.selection = k
-            } else if (placementView.selection === k) {
-              placementView.selection = -1          // same item: on relache
-            } else {
-              moveItemBetweenSlots(placementView.selection, k)  // echange des deux places
-              placementView.selection = -1
-            }
-          } else {
-            steal(v.ownerId, k)
-          }
+          /*
+            One click, one meaning: take it.
+
+            Clicking your own shelf used to arm a two-step swap, where the first click chose a
+            slot, the second chose another, and a caption explained the pairing. That is a menu
+            wearing the clothes of a world object. Now it simply lifts the thing, and where you
+            walk with it is the rest of the sentence.
+          */
+          if (v.ownerId.toLowerCase() === monAdresseClient()) pickUp(k)
+          else steal(v.ownerId, k)
           return
         }
       }
@@ -329,18 +347,6 @@ export function setupPlots(): void {
         return
       }
 
-      if (
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.plinth)
-      ) {
-        if (v.ownerId === '' || v.ownerId.toLowerCase() === monAdresseClient()) return
-        if (placementView.selection === -1) {
-          alerter('PICK ONE OF YOUR ITEMS FIRST, THEN TAP THEIR BASE', '#ffd166', 3500)
-          return
-        }
-        gift(v.ownerId, placementView.selection)
-        placementView.selection = -1
-        return
-      }
     }
   })
 
@@ -445,14 +451,14 @@ export function setupPlots(): void {
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces
       // a full rebuild each second, which restarts item rotation tweens from identity.
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentries}|${monBase ? placementView.selection : -1}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentries}`
       if (sig === v.signature) continue
       v.signature = sig
       v.ownerId = p.ownerId
 
       const mine = monBase
       const verbe = mine
-        ? (placementView.selection === -1 ? 'Move' : 'Swap here')
+        ? 'Pick up'
         : 'Steal'
       for (let k = 0; k < v.items.length; k++) {
         const code = p.items[k]
@@ -474,7 +480,7 @@ export function setupPlots(): void {
           const code = p.items[k]
           const r = rarity(rarityOf(code))
           const m = mutation(mutationDe(code))
-          const selected = mine && placementView.selection === k
+          const selected = false
           tr.position = Vector3.create(t.position.x + d.dx, d.dy + (selected ? 0.55 : 0), t.position.z + d.dz)
           const size = r.size * (m.mult > 1 ? 1.12 : 1) * (selected ? 1.25 : 1)
           tr.scale = Vector3.create(size, size, size)

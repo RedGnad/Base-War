@@ -151,6 +151,33 @@ export const LOOT_LIFETIME_MS = 45_000
  */
 export const LOOT_OWNER_LOCK_MS = 6_000
 
+/**
+ * An item that belongs to no base right now, because somebody is holding it.
+ *
+ * Three separate actions in this game were the same act wearing different clothes: taking
+ * something off a rival's shelf, putting something on a friend's, and rearranging your own.
+ * Each had its own message, its own menu and its own explanation, and the gift in particular
+ * was a click on a building that nobody guessed. They are all one verb: pick it up, walk, put
+ * it down. Where you put it down is what the act turns out to have been.
+ *
+ * This is the middle of that sentence, and it is a real place rather than a bookkeeping
+ * detail. While an item is here it is on somebody's person, visible to every other player,
+ * and it is not earning for anyone. That gap is the whole point: a thief who has pried
+ * something loose still has to carry it home past the person they took it from.
+ *
+ * `origin` is where it goes back to if the carry ends badly, which is the base it came from,
+ * not the carrier's. Dropping it, being shot, or leaving all send it home.
+ */
+export const Carried = engine.defineComponent('basetycoon::carried', {
+  holder: Schemas.String,
+  code: Schemas.Int,
+  origin: Schemas.String,
+  sinceMs: Schemas.Int64
+})
+
+/** How long a carried item waits for its carrier before taking itself home. */
+export const CARRY_TIMEOUT_MS = 90_000
+
 export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
   amount: Schemas.Int,
   droppedBy: Schemas.String,
@@ -285,6 +312,9 @@ export const BASE_SIDE = 14.0
  * directly above the base's origin and metres away from it in a straight line.
  */
 export const STEAL_RANGE = BASE_SIDE / 2 + 2
+
+/** How close you have to be to a base to put something down in it. */
+export const PLACE_RANGE = BASE_SIDE / 2 + 2
 
 /**
  * How far a thief can be from the ITEM, mirroring what the client already allows.

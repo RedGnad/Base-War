@@ -22,6 +22,7 @@ function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
 import { room } from '../shared/messages'
 import { advanceQuest, claimQuestReward, cratesOf, pushQuests, giftItem, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet } from './plots'
 import { tutoFait } from './onboarding'
+import { remettreEnMain, portePour, forcerLacher } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
@@ -150,11 +151,16 @@ export function startTheft(): void {
       if (idx < 0) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
       const r = removeItem(v.victim, idx)
       if (r === null) { void room.send('stealFailed', { reason: 'it is gone' }, { to: [thief] }); continue }
-      if (!addItem(thief, r)) {
-        addItem(v.victim, r)
-        void room.send('stealFailed', { reason: 'your base is full' }, { to: [thief] })
-        continue
-      }
+      /*
+        It lands in their hands, not in their base.
+
+        Prying it loose used to be the whole theft: the item vanished from one building and
+        appeared in another, and the two players never shared a moment. Now the thief has to
+        walk it home holding it, in the open, in front of the person they took it from. That
+        walk is where being shot means something, where the owner's recovery window means
+        something, and where anybody watching can see what this game is about.
+      */
+      remettreEnMain(thief, r, v.victim)
       larcins.push({ thief, victim: v.victim, rarity: r, quand: maintenant })
       const nomV = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
@@ -214,6 +220,7 @@ export function startTheft(): void {
         continue
       }
       if (enCours.has(thief)) { refus(thief, 'steal', 'you are already taking something'); return }
+      if (portePour(thief)) { refus(thief, 'steal', 'your hands are full, put it down first'); return }
 
       // ON NE TRANSFERE RIEN ICI. On ouvre une tentative minutee: c'est pendant celle-ci
       // que la defense agit et que le voleur est vulnerable.

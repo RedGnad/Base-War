@@ -77,6 +77,12 @@ export const MESSAGES = {
   sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int }),
 
   giveItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
+  /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
+  pickUp: Schemas.Map({ slot: Schemas.Int }),
+  placeDown: Schemas.Map({ ownerId: Schemas.String }),
+  dropCarried: Schemas.Map({}),
+  sellCarried: Schemas.Map({}),
+  carryResult: Schemas.Map({ ok: Schemas.Boolean, reason: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   gaveItem: Schemas.Map({ toName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   wasGifted: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   gifted: Schemas.Map({ byName: Schemas.String, toName: Schemas.String, rarity: Schemas.Int }),
