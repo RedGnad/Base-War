@@ -396,13 +396,35 @@ export function shieldFor(absenceMs: number): number {
 */
 export const GEARS = [
   {
-    id: 0, name: 'TRAP', prestige: 0, itemSeconds: 240, max: 5,
-    verb: 'freezes the first thief who steps on it, 7 s',
-    freezeMs: 7_000
+    id: 0, name: 'TRAP', prestige: 0, itemSeconds: 240, max: 5, kind: 'place',
+    verb: 'freezes the first thief who steps on it, 7 s'
+  },
+  {
+    id: 1, name: 'SPEED COIL', prestige: 0, itemSeconds: 600, max: 1, kind: 'wear',
+    verb: 'run 50% faster, always on, off while carrying'
+  },
+  {
+    id: 2, name: 'SLAP', prestige: 1, itemSeconds: 900, max: 1, kind: 'wear',
+    verb: 'replaces the gun: short reach, full force every hit'
   }
 ] as const
 export type GearId = typeof GEARS[number]['id']
 
+export const TRAP_FREEZE_MS = 7_000
+/*
+  The coil's share, from the reference: "increases your move speed by 50% (from 34 to 51)".
+  It is a passive that is OFF while carrying, the genre's rule that gear never helps the walk
+  home, and it multiplies with the aim and thief penalties rather than replacing them.
+*/
+export const COIL_SHARE = 1.5
+/*
+  A slap is a gun with the range of an arm. Full force at every hit, so five slaps disarm a
+  carrier where five shots from across the plaza would not, and a reach of two and a half
+  metres, so getting there is the whole skill. Melee is the genre's FIRST weapon, the one every
+  player spawns with; here it is the one a judge understands without being told what a gun does.
+*/
+export const SLAP_RANGE = 2.5
+export const SLAP_COOLDOWN_MS = 420
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
 export const Trap = engine.defineComponent('basetycoon::trap', {
   owner: Schemas.String,

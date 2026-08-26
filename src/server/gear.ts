@@ -1,7 +1,7 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
-import { GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, SENTRY_MIN_PRICE } from '../shared/schemas'
+import { GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, SENTRY_MIN_PRICE } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
@@ -69,7 +69,7 @@ export function startGear(): void {
     if (!a) return
     const gear = Number.isInteger(d?.gear) ? d.gear : -1
     const g = GEARS[gear]
-    if (g === undefined) return
+    if (g === undefined || g.kind !== 'place') return
     if (portePour(a)) {
       void room.send('actionRejected', { action: 'gear', reason: 'not while carrying something', antiCheat: false }, { to: [a] })
       return
@@ -114,7 +114,7 @@ export function startGear(): void {
         if (p === null) continue
         const d = Math.sqrt((p.x - tr.position.x) ** 2 + (p.z - tr.position.z) ** 2)
         if (d > TRAP_TRIGGER_RANGE || Math.abs(p.y - tr.position.y) > 2) continue
-        const gel = GEARS[0].freezeMs
+        const gel = TRAP_FREEZE_MS
         engine.removeEntity(e)
         const proprio = baseDe(t.owner)?.name ?? displayName(t.owner)
         void room.send('trapped', { ownerName: proprio, gelMs: gel }, { to: [addr] })

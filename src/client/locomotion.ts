@@ -1,6 +1,6 @@
 import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
-import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE } from '../shared/schemas'
+import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE, COIL_SHARE } from '../shared/schemas'
 
 /**
  * All three gaits, because the player uses all three.
@@ -34,7 +34,7 @@ const FREEZE_JUMP = 0.2
  * Uses AvatarLocomotionSettings rather than InputModifier: the latter is documented as
  * having no effect outside the DCL 2.0 desktop client, and most of the score is mobile.
  */
-const etat = { thief: false, aiming: false, carrying: 'non' as Charge, frozenUntil: 0 }
+const etat = { thief: false, aiming: false, carrying: 'non' as Charge, frozenUntil: 0, coil: false }
 
 export type Charge = 'non' | 'sien' | 'vole'
 
@@ -52,9 +52,12 @@ function appliquer(): void {
     : etat.carrying === 'sien' ? CARRY_OWN_SHARE
     : 1
   const vol = (etat.thief && etat.carrying !== 'vole') ? THIEF_SHARE : 1
+  // The coil is off while carrying: gear never helps the walk home, which is the genre's rule
+  // and the only one that keeps a thief catchable.
+  const coil = (etat.coil && etat.carrying === 'non') ? COIL_SHARE : 1
   const facteur = frozen
     ? FREEZE_SHARE
-    : vol * charge * (etat.aiming ? AIM_SPEED_SHARE : 1)
+    : vol * charge * coil * (etat.aiming ? AIM_SPEED_SHARE : 1)
   const saut = frozen ? FREEZE_JUMP : SAUT_NORMAL * (etat.thief ? THIEF_JUMP_SHARE : 1)
   AvatarLocomotionSettings.createOrReplace(engine.PlayerEntity, {
     walkSpeed: WALK_NORMAL * facteur,
@@ -94,6 +97,12 @@ export function applyThiefPenalty(active: boolean): void {
 }
 
 /** Aiming halves the jog. Stacks with the thief penalty instead of replacing it. */
+export function setCoil(active: boolean): void {
+  if (etat.coil === active) return
+  etat.coil = active
+  appliquer()
+}
+
 export function setAiming(active: boolean): void {
   if (etat.aiming === active) return
   etat.aiming = active

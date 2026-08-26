@@ -4,7 +4,7 @@ import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, SENTRY_MIN_PRICE } from '../shared/schemas'
-import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoserPiege } from './gear'
+import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoserPiege, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -106,8 +106,8 @@ function prixGear(gear: number): number {
   return Math.max(SENTRY_MIN_PRICE, Math.floor(parObjet * GEARS[gear].itemSeconds))
 }
 
-/** Four family headers and six rows. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 4) + 6 * (RANG + 8)
+/** Four family headers and eight rows. The window scrolls past the dialog cap. */
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 4) + (5 + GEARS.length) * (RANG + 8)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
@@ -167,16 +167,20 @@ export const ShopContent = () => {
         const prix = prixGear(g.id)
         const debloque = theftView.prestige >= g.prestige
         const held = gearView.held[g.id] ?? 0
+        const posable = estPosable(g.id)
+        // Worn gear is bought once and then simply held: the row says so instead of offering it again.
+        const porte = !posable && held > 0
+        const peutPoser = posable && held > 0 && peutPoserPiege()
         return (
           <Rang key={g.name}
-            titre={held > 0 ? `${g.name}  x${held}` : g.name}
+            titre={porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
             detail={debloque ? g.verb : `unlocks at prestige ${g.prestige}  ·  ${g.verb}`}
-            bouton={held > 0 && peutPoserPiege() ? 'SET' : 'BUY'}
-            prix={held > 0 && peutPoserPiege() ? 0 : prix}
-            possible={debloque && (held > 0 ? peutPoserPiege() : argent >= prix)}
+            bouton={porte ? 'OWNED' : peutPoser ? 'SET' : 'BUY'}
+            prix={porte || peutPoser ? 0 : prix}
+            possible={debloque && !porte && (posable && held > 0 ? peutPoser : argent >= prix)}
             onClick={() => {
-              if (held > 0 && peutPoserPiege()) { basculerPosePiege(); closeMenu() }
-              else acheterGear(g.id)
+              if (peutPoser) { basculerPosePiege(); closeMenu() }
+              else if (!porte) acheterGear(g.id)
             }} />
         )
       })}

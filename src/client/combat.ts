@@ -8,7 +8,8 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS } from '../shared/schemas'
+import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS } from '../shared/schemas'
+import { gearView } from './gear'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
@@ -476,7 +477,7 @@ function viser(): void {
     const dx = t.position.x - moiT.position.x
     const dz = t.position.z - moiT.position.z
     const d = Math.sqrt(dx * dx + dz * dz)
-    if (d > SHOT_RANGE || d < 0.5) continue
+    if (d > porteeArme() || d < 0.5) continue
     if ((dx * ax + dz * az) / d < SHOT_CONE_DOT) continue
     if (best === null || d < best.d) best = { addr: a, d }
   }
@@ -498,8 +499,12 @@ function viser(): void {
  * Reading it from the camera position instead would tilt the shot by the third-person
  * offset, and the reticle would stop telling the truth as soon as the player switched view.
  */
+/** Reach and rhythm of whatever is in hand, read in one place so reticle and shot agree. */
+function porteeArme(): number { return gearView.held[2] > 0 ? SLAP_RANGE : SHOT_RANGE }
+function cadenceArme(): number { return gearView.held[2] > 0 ? SLAP_COOLDOWN_MS : SHOT_COOLDOWN_MS }
+
 function tirer(now: number): boolean {
-  if (dernierTir + SHOT_COOLDOWN_MS > now) return false
+  if (dernierTir + cadenceArme() > now) return false
   const cam = Transform.getOrNull(engine.CameraEntity)
   const moiT = Transform.getOrNull(engine.PlayerEntity)
   if (cam === null || moiT === null) return false
@@ -508,10 +513,16 @@ function tirer(now: number): boolean {
   const f = Vector3.rotate(Vector3.create(0, 0, 1), cam.rotation)
   const plat = Math.sqrt(f.x * f.x + f.z * f.z)
   if (plat < 0.0001) return false
-  void room.send('shoot', {
-    x: moiT.position.x + (f.x / plat) * SHOT_RANGE,
+  /*
+    The weapon in hand decides which message leaves. A slap is the gun with an arm's reach and
+    full force at every hit; the server checks the pocket before honouring it, so the client
+    asking is only ever a preference.
+  */
+  const portee = porteeArme()
+  void room.send(gearView.held[2] > 0 ? 'slap' : 'shoot', {
+    x: moiT.position.x + (f.x / plat) * portee,
     y: moiT.position.y,
-    z: moiT.position.z + (f.z / plat) * SHOT_RANGE
+    z: moiT.position.z + (f.z / plat) * portee
   })
 
   flashScale = 0.5

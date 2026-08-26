@@ -4,7 +4,7 @@ import { Trap, GEARS } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { monAdresseClient, alerter, pushToFeed } from './theft'
-import { applyFreeze } from './locomotion'
+import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
 
 /**
@@ -33,6 +33,9 @@ export function peutPoserPiege(): boolean {
   return gearView.held[0] > 0 && carryView.code < 0
 }
 
+/** Only placeable gear goes to the floor; worn gear is used by being held. */
+export function estPosable(gear: number): boolean { return GEARS[gear]?.kind === 'place' }
+
 export function basculerPose(): void {
   gearView.placing = !gearView.placing
 }
@@ -54,6 +57,8 @@ export function setupGear(): void {
 
   room.onMessage('gearHeld', (d) => {
     for (let i = 0; i < GEARS.length; i++) gearView.held[i] = d.counts[i] ?? 0
+    // Worn gear is passive: holding it is using it.
+    setCoil(gearView.held[1] > 0)
   })
   room.onMessage('gearBought', (d) => {
     alerter(`${GEARS[d.gear].name} IN YOUR POCKET  ·  you hold ${d.held}  ·  -${formatIncome(d.cost)}`, '#4dd2ff', 4000)

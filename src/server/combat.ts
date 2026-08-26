@@ -2,13 +2,13 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
-  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
+  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { frapperPorteur } from './carry'
 import { interrompreVol } from './theft'
-import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents } from './plots'
+import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf } from './plots'
 import { dropAt } from './coins'
 
 /**
@@ -38,16 +38,15 @@ export function startCombat(): void {
     void room.send('aiming', { addr: a, on: d.on })
   })
 
-  room.onMessage('shoot', (d, ctx) => {
-    const a = ctx?.from?.toLowerCase()
-    if (!a) return
-    const now = Date.now()
-    if ((lastShot.get(a) ?? 0) + SHOT_COOLDOWN_MS > now) return
-    lastShot.set(a, now)
+  /*
+    One resolution for two weapons.
 
-    const from = positionOf(a)
-    if (from === null) return
-
+    A slap is a shot with the reach of an arm, and nothing else differs on the server: the
+    same cone, the same nearest-target rule, the same disarm and coin logic afterwards. So the
+    lookup is one function with a range parameter, and the two handlers below differ only in
+    what reach they ask for, what cooldown they keep, and what force they land with.
+  */
+  function cible(a: string, from: Vector3, d: { x: number; z: number }, portee: number): { addr: string; pos: Vector3; d: number } | null {
     // Nearest player along the aim, within range. The server owns every position here.
     const aim = Vector3.normalize(Vector3.create(d.x - from.x, 0, d.z - from.z))
     let best: { addr: string; pos: Vector3; d: number } | null = null
@@ -58,7 +57,7 @@ export function startCombat(): void {
       if (t === null) continue
       const to = Vector3.create(t.position.x - from.x, 0, t.position.z - from.z)
       const dist = Vector3.length(to)
-      if (dist > SHOT_RANGE || dist < 0.5) continue
+      if (dist > portee || dist < 0.5) continue
       // Same cone the client draws its reticle from, so both agree on what is a target.
       const dot = (to.x * aim.x + to.z * aim.z) / dist
       if (dot < SHOT_CONE_DOT) continue
@@ -66,6 +65,17 @@ export function startCombat(): void {
         best = { addr: other, pos: Vector3.create(t.position.x, t.position.y, t.position.z), d: dist }
       }
     }
+    return best
+  }
+
+  function frapper(a: string, d: { x: number; z: number }, portee: number, cooldown: number, pleineForce: boolean): void {
+    const now = Date.now()
+    if ((lastShot.get(a) ?? 0) + cooldown > now) return
+    lastShot.set(a, now)
+
+    const from = positionOf(a)
+    if (from === null) return
+    const best = cible(a, from, d, portee)
 
     if (best === null) {
       void room.send('shotResult', { hitName: '', dropped: 0, reason: 'missed', loot: 0 }, { to: [a] })
@@ -92,7 +102,8 @@ export function startCombat(): void {
       side and nothing on the other, which balanced the chase and asked the player to discover
       an invisible wall.
     */
-    const force = forceDuTir(best.d)
+    // An arm at full reach lands with everything; a bullet fades with the square of the range.
+    const force = pleineForce ? 1 : forceDuTir(best.d)
     const butin = frapperPorteur(best.addr, force)
     // A shot lands on the prying too, which is the one window a gun used to do nothing about.
     const coupe = interrompreVol(best.addr, force)
@@ -141,6 +152,19 @@ export function startCombat(): void {
     }, { to: [a] })
     void room.send('wasShot', { byName: displayName(a), lost: amount }, { to: [best.addr] })
     log(`${displayName(a)} hit ${displayName(best.addr)} for ${amount} dropped, loot ${butin}`)
+  }
+
+  room.onMessage('shoot', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (a) frapper(a, d, SHOT_RANGE, SHOT_COOLDOWN_MS, false)
+  })
+
+  // The slap is only honoured for a player who holds one; the client asking is not proof.
+  room.onMessage('slap', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    if (gearsOf(a)[2] <= 0) return
+    frapper(a, d, SLAP_RANGE, SLAP_COOLDOWN_MS, true)
   })
 
   // Pickup and decay.
