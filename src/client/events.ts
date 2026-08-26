@@ -1,9 +1,9 @@
-import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
-import { Color4 } from '@dcl/sdk/math'
-import { Event, EVENT_THEMES } from '../shared/schemas'
+import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
+import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
+import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation } from '../shared/loot-table'
 import { alerter } from './theft'
+import { plastic } from './toy'
 
 /**
  * What an event looks like, which is the part that makes it one.
@@ -27,6 +27,20 @@ let dernierTheme = -1
 let cloche: Entity | null = null
 
 export function setEventFloor(entity: Entity, base: string): void { sol = entity; solCouleur = base }
+
+/** The floor at rest: a matte play mat. Defined once, for the venue that builds it and the event that hands it back. */
+export function materiauDuSol(hex: string): PBMaterial_PbrMaterial { return { ...plastic(hex), roughness: 0.9 } }
+
+/*
+  The floor does not change colour, it starts to flow.
+
+  A tint is a change the eye adapts to in seconds; motion is not. During an event the floor
+  takes a cracked-crust texture that slides slowly, tinted by the theme (the albedo colour
+  multiplies the image), so one grey image is molten gold in Gold Hour and lava in Lava Hour.
+  Eight-metre cells across the venue. Both states write both facts, material and tween, so an
+  event that ended leaves neither behind.
+*/
+const MAILLE_SOL = 8
 
 export function setupEvents(): void {
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
@@ -56,10 +70,25 @@ export function setupEvents(): void {
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
       SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: DUSK, transitionMode: TransitionMode.TM_FORWARD })
-      if (sol !== null) Material.setPbrMaterial(sol, { albedoColor: Color4.fromHexString(t.sol), metallic: 0, roughness: 0.95 })
+      if (sol !== null) {
+        Material.setPbrMaterial(sol, {
+          texture: Material.Texture.Common({
+            src: 'assets/textures/flow.png',
+            wrapMode: TextureWrapMode.TWM_REPEAT,
+            tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
+          }),
+          albedoColor: Color4.fromHexString(t.sol),
+          metallic: 0,
+          roughness: 0.95
+        })
+        Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.04, TextureMovementType.TMT_OFFSET)
+      }
     } else {
       SkyboxTime.deleteFrom(engine.RootEntity)
-      if (sol !== null && solCouleur !== '') Material.setPbrMaterial(sol, { albedoColor: Color4.fromHexString(solCouleur), metallic: 0, roughness: 0.95 })
+      if (sol !== null && solCouleur !== '') {
+        Material.setPbrMaterial(sol, materiauDuSol(solCouleur))
+        Tween.deleteFrom(sol)
+      }
     }
   })
 }

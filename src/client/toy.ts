@@ -1,4 +1,4 @@
-import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
+import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
 
@@ -246,6 +246,69 @@ export function haloDeMutation(parent: Entity, hex: string | null): void {
 }
 
 export function effacerHalo(parent: Entity): void { haloDeMutation(parent, null) }
+
+/*
+ * Light, for the toys worth crossing the room for.
+ *
+ * Emissive is a surface property: a lit toy glows and nothing around it knows. The mobile
+ * renderer has no bloom to spill that glow onto the slab, so from the doorway a Legendary was
+ * a bright shape standing on the same cream as a Common. A point light in the toy's colour is
+ * the platform's own way to make an object light its room, and it renders on mobile: of the
+ * whole rendering surface, only particles and audio analysis do not. One entity, a child at
+ * the toy's base, so the pool lands on the slab and follows the toy's size.
+ *
+ * The renderer draws the four to ten lights nearest the player and drops the rest, which is
+ * the right rule here: the lights that render are the ones in the base the judge is standing
+ * in. Hue comes from the item, normalised to full brightness so a dark mutation (Cursed,
+ * Blood) still throws a coloured light; brightness comes from the glow; the range is explicit
+ * so a light stays a pool under its own toy rather than a wash over the floor. The two knobs
+ * below are the whole calibration, and they are set on a device, not on a desktop.
+ */
+export const LUMIERE_MIN_GLOW = 0.8     // Rare and above; a mutation adds 1 and lights anything
+const CANDELA_PAR_GLOW = 160
+const lumieres = new Map<Entity, Entity>()
+
+export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {
+  const cur = lumieres.get(parent)
+  if (hex === null) {
+    if (cur !== undefined) { engine.removeEntity(cur); lumieres.delete(parent) }
+    return
+  }
+  let e = cur
+  if (e === undefined) {
+    e = engine.addEntity()
+    Transform.create(e, { parent, position: Vector3.create(0, -0.5, 0) })
+    lumieres.set(parent, e)
+  }
+  const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
+  const k = 1 / Math.max(c.r, c.g, c.b, 0.05)
+  LightSource.createOrReplace(e, {
+    type: LightSource.Type.Point({}),
+    color: Color3.create(Math.min(1, c.r * k), Math.min(1, c.g * k), Math.min(1, c.b * k)),
+    intensity: CANDELA_PAR_GLOW * (0.5 + glow),
+    range: 1.5 + glow,
+    shadow: false
+  })
+}
+
+export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, null, 0) }
+
+/**
+ * Remove an entity and everything this module hung under it.
+ *
+ * `removeEntity` does not take children, and the silhouette, the halo, the light and the
+ * mounted model are all children, held in maps keyed by the parent. A view torn down with a
+ * bare `removeEntity` left them behind twice: as orphans in the world, drawn at their local
+ * offsets from a parent that no longer exists, and as map entries nothing would ever clear.
+ * The ramp's handrails had the same bug, and the same fix.
+ */
+export function demolir(parent: Entity): void {
+  effacerForme(parent)
+  effacerHalo(parent)
+  effacerLumiere(parent)
+  demonter(parent)
+  engine.removeEntity(parent)
+}
 
 export function effacerForme(parent: Entity): void {
   const cur = formes.get(parent)

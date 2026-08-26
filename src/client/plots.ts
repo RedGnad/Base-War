@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, accentDe } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -303,12 +303,14 @@ function destroyView(v: View): void {
     */
     taille.delete(e.ramp)
     engine.removeEntityWithChildren(e.ramp)
-    for (const ent of [e.floorSlab, e.landing, e.sentry, ...e.walls]) {
+    for (const ent of [e.floorSlab, e.landing, ...e.walls]) {
       taille.delete(ent)
       engine.removeEntity(ent)
     }
+    // The sentry and the pedestals carry children of their own: model, silhouette, halo, light.
+    demolir(e.sentry)
   }
-  for (const o of v.items) engine.removeEntity(o)
+  for (const o of v.items) demolir(o)
 }
 
 /**
@@ -517,6 +519,8 @@ export function setupPlots(): void {
             const n = p.sentryFloors[e] ?? 0
             const k = n === 0 ? 0 : 0.6 + n * 0.18
             ts.scale = Vector3.create(k, k, k)
+            // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
+            lumiereDuJouet(v.floors[e].sentry, n > 0 ? TOY.sentry : null, 1.6)
           }
         }
         /*
@@ -626,9 +630,9 @@ export function setupPlots(): void {
         never restored the scale the empty branch had zeroed, so a pedestal that had been empty
         once stayed invisible for ever; the empty branch never removed the tween the occupied
         one had started, so a sold item kept turning on its plinth. Every fix moved the bug to
-        the other branch. Position, scale, material, tween and mounted model are five facts;
-        both states write all five, in the one order that survives the engine: tweens off,
-        transform written whole, tweens back on. A tween that is still alive rewrites the
+        the other branch. Position, scale, material, silhouette, halo, light, tween and
+        mounted model are the facts of a pedestal; both states write all of them, in the one
+        order that survives the engine: tweens off, transform written whole, tweens back on. A tween that is still alive rewrites the
         Transform next frame, so anything set before deleting it is lost.
       */
       for (let k = 0; k < v.items.length; k++) {
@@ -649,6 +653,7 @@ export function setupPlots(): void {
           demonter(ent)
           effacerForme(ent)
           effacerHalo(ent)
+          effacerLumiere(ent)
           continue
         }
 
@@ -661,13 +666,17 @@ export function setupPlots(): void {
         tr.position = Vector3.create(t.position.x + d.dx, d.dy - 0.45 + 0.12 + size / 2, t.position.z + d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
-        const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
+        const hex = itemColor(rarityOf(code), mutationDe(code))
+        const c = Color4.fromHexString(hex + 'ff')
         const mat = plasticDe(c, r.glow)
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
         // A mutation shows as a halo under the toy, in its own colour; none shows nothing.
         haloDeMutation(ent, m.mult > 1 ? m.color : null)
+        // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
+        const eclat = r.glow + (m.mult > 1 ? 1 : 0)
+        lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 

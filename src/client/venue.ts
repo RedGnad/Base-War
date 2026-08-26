@@ -1,8 +1,8 @@
 import { engine, Transform, MeshRenderer, MeshCollider, Material } from '@dcl/sdk/ecs'
 import { Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE } from '../shared/schemas'
-import { setEventFloor } from './events'
-import { TOY, plastic } from './toy'
+import { setEventFloor, materiauDuSol } from './events'
+import { TOY } from './toy'
 
 /**
  * A ground plane. Without one the scene inherits the host terrain.
@@ -19,6 +19,6 @@ export function setupVenue(): void {
   MeshRenderer.setPlane(sol)
   MeshCollider.setPlane(sol)
   // A play mat: matte green, the table every toy stands on.
-  Material.setPbrMaterial(sol, { ...plastic(TOY.ground), roughness: 0.9 })
+  Material.setPbrMaterial(sol, materiauDuSol(TOY.ground))
   setEventFloor(sol, TOY.ground)
 }

@@ -1,9 +1,9 @@
 import { TOY, plastic, plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem
+  PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType
 } from '@dcl/sdk/ecs'
-import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
+import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome, ligneDeCaisse } from '../shared/loot-table'
@@ -32,6 +32,16 @@ export const beltView = {
 const NOIR = Color3.create(0, 0, 0)
 const VERT = Color4.fromHexString(HUE.money + 'ff')
 
+/** One tread cell per belt width, so the pattern is square and tiles without a seam. */
+const MAILLE = 2.6
+/**
+ * Which way the UV offset runs for the tread to travel WITH the crates (+x). The renderer
+ * shows the texel at `offset + uv`, so a growing offset moves the picture the other way;
+ * -1 is the sign that follows. If a device shows the tread running against the crates, this
+ * one number is the fix.
+ */
+const SENS_DU_TAPIS = -1
+
 type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number }
 const views = new Map<number, View>()
 
@@ -44,6 +54,35 @@ export function setupBelt(): void {
   MeshRenderer.setBox(bande)
   MeshCollider.setBox(bande)
   Material.setPbrMaterial(bande, plastic(TOY.belt))
+
+  /*
+    The belt moves, because a belt that does not is a table.
+
+    The crates glided and the surface under them stood still, which is the one thing a
+    conveyor cannot do. The platform slides a texture's UV offset at a constant speed, and
+    that is the whole effect: a tread pattern on a plane laid over the band, scrolling at the
+    crates' own speed. It is a plane and not the band's own texture because a box stretches
+    its texture onto its sides too; the plane has one clean face, squared by the tiling.
+  */
+  const tapis = engine.addEntity()
+  Transform.create(tapis, {
+    position: Vector3.create(CENTER.x, BELT_HEIGHT + 0.18, CENTER.z),
+    scale: Vector3.create(BELT_LENGTH + 2, MAILLE, 1),
+    rotation: Quaternion.fromEulerDegrees(-90, 0, 0)
+  })
+  MeshRenderer.setPlane(tapis)
+  Material.setPbrMaterial(tapis, {
+    texture: Material.Texture.Common({
+      src: 'assets/textures/belt.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create((BELT_LENGTH + 2) / MAILLE, 1)
+    }),
+    albedoColor: Color4.White(),
+    metallic: 0,
+    roughness: 0.55
+  })
+  // Offset units are tread cells: the crates' metres per second, divided by the cell's width.
+  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), BELT_LENGTH / BELT_DURATION_S / MAILLE, TextureMovementType.TMT_OFFSET)
 
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()
