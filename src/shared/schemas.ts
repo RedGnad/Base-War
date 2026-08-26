@@ -406,6 +406,14 @@ export const GEARS = [
   {
     id: 2, name: 'SLAP', prestige: 1, itemSeconds: 900, max: 1, kind: 'wear',
     verb: 'replaces the gun: short reach, full force every hit'
+  },
+  {
+    id: 3, name: 'CLOAK', prestige: 4, itemSeconds: 1800, max: 1, kind: 'toggle',
+    verb: 'invisible for 20 s, breaks the moment you touch loot'
+  },
+  {
+    id: 4, name: 'BOOGIE BOMB', prestige: 4, itemSeconds: 1200, max: 3, kind: 'place',
+    verb: 'everyone nearby drops what they carry, 3 s later'
   }
 ] as const
 export type GearId = typeof GEARS[number]['id']
@@ -425,6 +433,34 @@ export const COIL_SHARE = 1.5
 */
 export const SLAP_RANGE = 2.5
 export const SLAP_COOLDOWN_MS = 420
+
+/*
+  The cloak is a timed state, and the server owns it.
+
+  Who is invisible is a fact every client has to agree on, so it lives in a synced component
+  the server writes. It ends on a timer, and it ends EARLY the moment the wearer takes hold of
+  anything: the genre's rule again, gear never covers the walk home. Twenty seconds is enough
+  to cross a plaza and reach a doorway unseen; it is not enough to walk a trophy back.
+*/
+export const Cloaked = engine.defineComponent('basetycoon::cloaked', {
+  who: Schemas.String,
+  untilMs: Schemas.Int64
+})
+export const CLOAK_MS = 20_000
+export const CLOAK_COOLDOWN_MS = 90_000
+
+/*
+  A bomb is a trap with a fuse and a radius. It goes off three seconds after it is set, for
+  everyone within four metres who is holding something, and it makes them drop it where they
+  stand. Three seconds is long enough that setting it at a carrier's feet is a play and not
+  an instant win; four metres is a doorway, not a plaza.
+*/
+export const Bomb = engine.defineComponent('basetycoon::bomb', {
+  owner: Schemas.String,
+  atMs: Schemas.Int64
+})
+export const BOMB_FUSE_MS = 3_000
+export const BOMB_RADIUS = 4
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
 export const Trap = engine.defineComponent('basetycoon::trap', {
   owner: Schemas.String,
@@ -786,6 +822,8 @@ export function registerValidators(): void {
 
   ServerBeat.validateBeforeChange(serverOnly)
   Trap.validateBeforeChange(serverOnly)
+  Cloaked.validateBeforeChange(serverOnly)
+  Bomb.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
   Convoy.validateBeforeChange(serverOnly)

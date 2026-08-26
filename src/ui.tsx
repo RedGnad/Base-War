@@ -9,7 +9,7 @@ import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
-import { forceDuTir } from './shared/schemas'
+import { forceDuTir, GEARS } from './shared/schemas'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
@@ -366,7 +366,7 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     above building because a pocket with a trap in it is a state the player created on purpose
     a moment ago, which is exactly what this button is for.
   */
-  if (gearView.placing) return { label: 'SET TRAP HERE', icon: 'icon-build', action: poserPiege }
+  if (gearView.placing >= 0) return { label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'icon-build', action: poserPiege }
   if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
     return { label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }

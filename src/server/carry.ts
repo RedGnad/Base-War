@@ -14,6 +14,7 @@ import {
   advanceQuest, pushQuests, aPortee, positionObjet, enregistrerDon, storeAlert
 } from './plots'
 import { tutoFait } from './onboarding'
+import { rompreCape } from './gear'
 
 /**
  * Carrying, which is the one verb the rest of this game turned out to be made of.
@@ -53,6 +54,8 @@ function poser(address: string, code: number, origin: string): void {
     comparison. Whatever was held goes home rather than nowhere.
   */
   forcerLacher(address, 'you cannot hold two things')
+  // A closed hand ends a cloak, whatever its timer said: gear never covers the walk home.
+  rompreCape(address)
   const e = engine.addEntity()
   Carried.create(e, { holder: address, code, origin, sinceMs: Date.now(), grip: CARRY_GRIP })
   syncEntity(e, [Carried.componentId])

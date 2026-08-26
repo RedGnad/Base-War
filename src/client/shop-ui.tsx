@@ -4,7 +4,7 @@ import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, SENTRY_MIN_PRICE } from '../shared/schemas'
-import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoserPiege, estPosable } from './gear'
+import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -170,16 +170,16 @@ export const ShopContent = () => {
         const posable = estPosable(g.id)
         // Worn gear is bought once and then simply held: the row says so instead of offering it again.
         const porte = !posable && held > 0
-        const peutPoser = posable && held > 0 && peutPoserPiege()
+        const peutPoserCe = peutPoser(g.id)
         return (
           <Rang key={g.name}
             titre={porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
             detail={debloque ? g.verb : `unlocks at prestige ${g.prestige}  ·  ${g.verb}`}
-            bouton={porte ? 'OWNED' : peutPoser ? 'SET' : 'BUY'}
-            prix={porte || peutPoser ? 0 : prix}
-            possible={debloque && !porte && (posable && held > 0 ? peutPoser : argent >= prix)}
+            bouton={porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
+            prix={porte || peutPoserCe ? 0 : prix}
+            possible={debloque && !porte && (posable && held > 0 ? peutPoserCe : argent >= prix)}
             onClick={() => {
-              if (peutPoser) { basculerPosePiege(); closeMenu() }
+              if (peutPoserCe) { basculerPosePiege(g.id); closeMenu() }
               else if (!porte) acheterGear(g.id)
             }} />
         )

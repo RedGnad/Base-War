@@ -95,6 +95,10 @@ export const MESSAGES = {
   trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int }),
   /** server -> the owner, live or deferred. */
   trapSprung: Schemas.Map({ byName: Schemas.String }),
+  /** client -> server: pull the cloak on. Server answers by writing the Cloaked component. */
+  cloak: Schemas.Map({}),
+  /** server -> everyone near a bomb that went off, with what it did to them. */
+  bombed: Schemas.Map({ ownerName: Schemas.String, dropped: Schemas.Boolean }),
   /** Pockets, sent with the wallet: how many of each gear the player holds. */
   gearHeld: Schemas.Map({ counts: Schemas.Array(Schemas.Int) }),
 

@@ -1,6 +1,6 @@
-import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Trap, GEARS } from '../shared/schemas'
+import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { monAdresseClient, alerter, pushToFeed } from './theft'
@@ -19,8 +19,10 @@ import { carryView } from './carry'
 export const gearView = {
   /** Pocket counts by gear id, mirrored from the server on every wallet tick. */
   held: new Array<number>(GEARS.length).fill(0),
-  /** True while the player is choosing where a trap goes: the marker is up. */
-  placing: false
+  /** Which placeable gear is being set right now, or -1: the marker is up while it is not -1. */
+  placing: -1,
+  /** True while my own cloak is on, so the HUD can say so. */
+  cloaked: false
 }
 
 const PLAQUE = Color4.create(0.55, 0.55, 0.6, 0.85)
@@ -29,25 +31,46 @@ const vues = new Map<number, Entity>()
 
 let marqueur: Entity
 
-export function peutPoserPiege(): boolean {
-  return gearView.held[0] > 0 && carryView.code < 0
+export function peutPoser(gear: number): boolean {
+  return estPosable(gear) && gearView.held[gear] > 0 && carryView.code < 0
 }
+export function peutPoserPiege(): boolean { return peutPoser(0) }
 
 /** Only placeable gear goes to the floor; worn gear is used by being held. */
 export function estPosable(gear: number): boolean { return GEARS[gear]?.kind === 'place' }
 
-export function basculerPose(): void {
-  gearView.placing = !gearView.placing
+export function basculerPose(gear = 0): void {
+  gearView.placing = gearView.placing === gear ? -1 : gear
 }
 
 export function poserPiege(): void {
-  gearView.placing = false
-  void room.send('placeGear', { gear: 0 })
+  const gear = gearView.placing
+  gearView.placing = -1
+  if (gear < 0) return
+  void room.send('placeGear', { gear })
 }
 
 export function acheterGear(gear: number): void {
   void room.send('buyGear', { gear })
 }
+
+/** F, when nothing is drawn and a cloak is in the pocket. The server decides if it takes. */
+export function tirerLaCape(): boolean {
+  if (gearView.held[3] <= 0 || carryView.code >= 0) return false
+  void room.send('cloak', {})
+  return true
+}
+
+/*
+  Invisibility, built from the one primitive the platform offers for it.
+
+  `AvatarModifierArea` hides every avatar inside its volume except the ids it is told to
+  exclude. So a small volume that follows the cloaked player, excluding EVERYONE ELSE present,
+  hides exactly one person: them. Verified in the component's own definition, "user IDs that
+  can enter and remain unaffected". One area per cloak, rebuilt each frame from who is here,
+  because the exclusion list is what makes the trick work and the room changes.
+*/
+const capes = new Map<number, Entity>()
 
 export function setupGear(): void {
   marqueur = engine.addEntity()
@@ -69,6 +92,11 @@ export function setupGear(): void {
   room.onMessage('trapped', (d) => {
     applyFreeze(d.gelMs)
     alerter(`${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 5000)
+  })
+  room.onMessage('bombed', (d) => {
+    alerter(d.dropped
+      ? `${d.ownerName.toUpperCase()}'S BOMB  ·  you dropped what you carried`
+      : `${d.ownerName.toUpperCase()}'S BOMB went off next to you`, '#ff6b6b', 4000)
   })
   room.onMessage('trapSprung', (d) => {
     alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', 6000)
@@ -94,17 +122,68 @@ export function setupGear(): void {
       Material.setPbrMaterial(plaque, { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 0.4, metallic: 0.6, roughness: 0.4 })
       vues.set(id, plaque)
     }
+    // Bombs: a dark plate with a short life, everyone sees it coming for three seconds.
+    for (const [e, b] of engine.getEntitiesWith(Bomb)) {
+      const id = e as unknown as number
+      vivants.add(id)
+      if (vues.has(id)) continue
+      const tr = Transform.getOrNull(e)
+      if (tr === null) continue
+      const plaque = engine.addEntity()
+      Transform.create(plaque, { position: Vector3.create(tr.position.x, tr.position.y + 0.15, tr.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+      MeshRenderer.setSphere(plaque)
+      const teinte = b.owner.toLowerCase() === moi ? MIENNE : Color4.create(0.9, 0.3, 0.2, 1)
+      Material.setPbrMaterial(plaque, { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.2 })
+      vues.set(id, plaque)
+    }
     for (const [id, p] of [...vues]) {
       if (vivants.has(id)) continue
       engine.removeEntity(p)
       vues.delete(id)
     }
 
+    // Cloaks: one hiding volume per cloaked player, excluding everyone but them.
+    const presentsIci: string[] = []
+    for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
+      const a = id.address?.toLowerCase()
+      if (a) presentsIci.push(a)
+    }
+    const capesVivantes = new Set<number>()
+    gearView.cloaked = false
+    for (const [e, c] of engine.getEntitiesWith(Cloaked)) {
+      const id = e as unknown as number
+      capesVivantes.add(id)
+      const qui = c.who.toLowerCase()
+      if (qui === moi) gearView.cloaked = true
+      let zone = capes.get(id)
+      if (zone === undefined) {
+        zone = engine.addEntity()
+        Transform.create(zone, { position: Vector3.create(0, -50, 0), scale: Vector3.create(2, 3, 2) })
+        AvatarModifierArea.create(zone, { area: Vector3.create(2, 3, 2), modifiers: [AvatarModifierType.AMT_HIDE_AVATARS], excludeIds: [] })
+        capes.set(id, zone)
+      }
+      // Follow the wearer. Their entity is found by address among the identities present.
+      for (const [ent, pid] of engine.getEntitiesWith(PlayerIdentityData)) {
+        if (pid.address?.toLowerCase() !== qui) continue
+        const pt = Transform.getOrNull(ent)
+        const zt = Transform.getMutableOrNull(zone)
+        if (pt !== null && zt !== null) zt.position = Vector3.create(pt.position.x, pt.position.y + 1, pt.position.z)
+        break
+      }
+      const am = AvatarModifierArea.getMutableOrNull(zone)
+      if (am !== null) am.excludeIds = presentsIci.filter((a) => a !== qui)
+    }
+    for (const [id, z] of [...capes]) {
+      if (capesVivantes.has(id)) continue
+      engine.removeEntity(z)
+      capes.delete(id)
+    }
+
     // The marker sits at the player's feet while they are choosing, and nowhere otherwise.
     const m = Transform.getMutableOrNull(marqueur)
     if (m === null) return
-    if (!gearView.placing || !peutPoserPiege()) {
-      gearView.placing = false
+    if (gearView.placing < 0 || !peutPoser(gearView.placing)) {
+      gearView.placing = -1
       if (m.scale.x !== 0) m.scale = Vector3.Zero()
       return
     }

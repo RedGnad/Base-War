@@ -9,7 +9,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS } from '../shared/schemas'
-import { gearView } from './gear'
+import { gearView, tirerLaCape } from './gear'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
@@ -327,6 +327,9 @@ function gunSystem(dt: number): void {
   // fire mode Fortnite recommends to players new to mobile, and a judge here has five
   // minutes: a second button for the trigger would buy nothing and cost a thumb.
   if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
+    // With a cloak in the pocket and nothing drawn, F pulls the cloak on instead of the gun.
+    // Drawing while cloaked is still allowed and still F: the cloak simply does not stop it.
+    if (!combatView.aiming && tirerLaCape()) return
     degainer(!combatView.aiming)
   }
 
