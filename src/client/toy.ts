@@ -75,12 +75,16 @@ export function acrylic(c: Color4): PBMaterial_PbrMaterial {
  * the artist exports at the primitive's size lands exactly where the primitive was.
  */
 export const TOY_DIR = 'assets/toy/'
-const montages = new Map<Entity, { modele: Entity; fichier: string }>()
+const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boolean }>()
 
+/*
+  The mount owns ONE fact about its primitive: whether the GLB has loaded. It never draws the
+  stand-in itself. That is the silhouette's job (`formeDeRarete`), or the caller's, and two
+  functions each "guaranteeing" a renderer on the same entity is how a pedestal ended up with
+  a cube drawn back over its toy every time the rarity was mounted (invariant 184: one owner
+  per fact).
+*/
 export function montable(primitive: Entity, fichier: string): void {
-  // The stand-in is guaranteed drawable on every mount, not only on remount: a pedestal that
-  // was emptied and refilled comes back through here, and it must come back visible.
-  if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
   const modele = engine.addEntity()
   // Child at identity: the model inherits the primitive's position, rotation and scale.
   Transform.create(modele, { parent: primitive })
@@ -100,8 +104,6 @@ export function remonter(primitive: Entity, fichier: string): void {
   m.fichier = fichier
   const g = GltfContainer.getMutableOrNull(m.modele)
   if (g !== null) g.src = TOY_DIR + fichier
-  // A new file may not exist: put the stand-in back until the loader says otherwise.
-  if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
 }
 
 /** Take the model off a mount and bring the stand-in back, for a pedestal that emptied. */
@@ -110,7 +112,6 @@ export function demonter(primitive: Entity): void {
   if (m === undefined) return
   montages.delete(primitive)
   engine.removeEntity(m.modele)
-  if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
 }
 
 /**
@@ -161,6 +162,8 @@ function silhouette(parent: Entity, rarete: number): Entity[] {
 
 /** Give a pedestal (or a hand, or a belt crate) the toy of a rarity, rebuilt only if it changed. */
 export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
+  // A loaded model is the body; the silhouette only stands in while there is none.
+  if (montages.get(parent)?.charge === true) { effacerForme(parent); return }
   const cur = formes.get(parent)
   if (cur !== undefined && cur.rarete === rarete) {
     for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
@@ -190,6 +193,7 @@ export function setupToy(): void {
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
         effacerForme(primitive)
+        montages.set(primitive, { ...m, charge: true })
       }
     }
   })

@@ -87,7 +87,8 @@ export function setupCarry(): void {
         const corps = engine.addEntity()
         Transform.create(corps, {
           position: Vector3.create(0, 0.12, 0.16),
-          scale: Vector3.create(0.34, 0.34, 0.34)
+          // A toy in a hand reads at about a fifth of a metre; a third looked like a suitcase.
+          scale: Vector3.create(0.2, 0.2, 0.2)
         })
         const mat = { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.45, metallic: 0 }
         Material.setPbrMaterial(corps, mat)
