@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE, STEAL_REACH,
   LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS,
-  FLOOR_HEIGHT, SLOTS_PER_FLOOR
+  FLOOR_HEIGHT, SLOTS_PER_FLOOR, VIDE
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
@@ -200,7 +200,7 @@ export function startCarry(): void {
     const b = baseDe(a)
     if (b === undefined) { void room.send('carryResult', { ok: false, reason: 'you have no base', rarity: 0, mutation: 0 }, { to: [a] }); return }
     const slot = d?.slot
-    if (!Number.isInteger(slot) || slot < 0 || slot >= b.items.length) { void room.send('carryResult', { ok: false, reason: 'no such item', rarity: 0, mutation: 0 }, { to: [a] }); return }
+    if (!Number.isInteger(slot) || slot < 0 || slot >= b.items.length || b.items[slot] === VIDE) { void room.send('carryResult', { ok: false, reason: 'no such item', rarity: 0, mutation: 0 }, { to: [a] }); return }
     /*
       Reaching your own shelf is reaching a shelf, and it was the one the server never checked.
 
@@ -264,10 +264,8 @@ export function startCarry(): void {
     const etageVise = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
     const bas = etageVise * SLOTS_PER_FLOOR
     const propose = Number.isInteger(d?.slot) ? d.slot : bas
-    const ou = Math.min(
-      Math.max(bas, Math.min(propose, bas + SLOTS_PER_FLOOR - 1)),
-      b.items.length
-    )
+    // The storey is the server's, the pedestal within it is the client's wish; capacity bounds both.
+    const ou = Math.max(bas, Math.min(propose, bas + SLOTS_PER_FLOOR - 1))
     const etageReel = Math.floor(ou / SLOTS_PER_FLOOR)
 
     // Same word-not-a-boolean trap: a full base used to accept the item and lose it.

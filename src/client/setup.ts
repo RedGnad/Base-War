@@ -4,7 +4,7 @@ import {
 } from '@dcl/sdk/ecs'
 
 import { getPlayer } from '@dcl/sdk/players'
-import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTER } from '../shared/schemas'
+import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTER, occupe } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
@@ -87,8 +87,8 @@ export function startClient(): void {
     }
     for (const [, p] of engine.getEntitiesWith(Plot)) {
       if (p.ownerId.toLowerCase() !== myAddress) continue
-      if (p.items.length !== view.items || p.floors !== view.floors) {
-        view.items = p.items.length
+      if (occupe(p.items) !== view.items || p.floors !== view.floors) {
+        view.items = occupe(p.items)
         view.floors = p.floors
         console.log(`[CLIENT] my base: ${view.items} items, ${view.floors} floor(s)`)
       }

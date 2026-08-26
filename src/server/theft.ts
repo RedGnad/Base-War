@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS, SLOTS_PER_FLOOR
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS, SLOTS_PER_FLOOR, VIDE, occupe
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
@@ -283,11 +283,11 @@ export function startTheft(): void {
         refus(thief, 'steal', `${c.name} is shielded for ${Math.ceil((lock - maintenant) / 1000)}s`)
         continue
       }
-      if (c.items.length === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
+      if (occupe(c.items) === 0) { refus(thief, 'steal', `${c.name} has nothing to take`); continue }
 
 
       const slot = d.slot
-      if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length) {
+      if (!Number.isInteger(slot) || slot < 0 || slot >= c.items.length || c.items[slot] === VIDE) {
         refus(thief, 'steal', 'that item is gone'); continue
       }
       // Say server-side what the building already says: that item is on another storey.

@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS
+  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -447,7 +447,11 @@ export function lockCooldown(address: string): number {
 export function removeItem(address: string, index: number): number | null {
   const b = bases.get(address)
   if (!b || index < 0 || index >= b.items.length) return null
-  const [r] = b.items.splice(index, 1)
+  const r = b.items[index]
+  if (r === VIDE) return null
+  // Leave a hole where it stood, so nothing above it shifts down a pedestal; trim the tail.
+  b.items[index] = VIDE
+  while (b.items.length > 0 && b.items[b.items.length - 1] === VIDE) b.items.pop()
   const prof = profiles.get(address)
   if (prof) { prof.items = [...b.items]; dirtyProfiles.add(address) }
   dirtyBases.add(address)
@@ -460,7 +464,7 @@ export type RangementResultat = 'expose' | 'en-stock' | 'plein'
 export function etatPrevisible(address: string): RangementResultat {
   const prof = profiles.get(address)
   if (!prof) return 'plein'
-  if (prof.items.length >= openSlots(prof.floorsBought ?? 0)) return 'plein'
+  if (occupe(prof.items) >= openSlots(prof.floorsBought ?? 0)) return 'plein'
   return bases.has(address) ? 'expose' : 'en-stock'
 }
 
@@ -504,10 +508,31 @@ export function addItem(address: string, rarity: number, ou?: number): Rangement
   }
 
   if (b !== undefined) {
-    if (b.items.length >= openSlots(prof?.floorsBought ?? b.floorsBought)) return 'plein'
-    const at = ou === undefined ? b.items.length : Math.max(0, Math.min(Math.floor(ou), b.items.length))
+    const places = openSlots(prof?.floorsBought ?? b.floorsBought)
+    if (occupe(b.items) >= places) return 'plein'
+    /*
+      The shelf has holes now, and an index means a pedestal.
+
+      Dense insertion could only ever put a thing at the end of what you owned, so with four
+      items the third storey was unreachable however far you climbed: the server clamped the
+      wish back to slot four and the building said no without saying why. A tester read it as
+      a bug, and it was one. A hole is a real place, so you can put your one trophy on the top
+      floor and leave the ground floor bare, which is the whole point of choosing.
+
+      No target: the first hole, then the end. A target past the end: the shelf grows to reach
+      it, holes in between. A target that is taken: the nearest free pedestal after it.
+    */
     const suite = [...b.items]
-    suite.splice(at, 0, rarity)
+    let at = ou === undefined ? suite.indexOf(VIDE) : Math.max(0, Math.min(Math.floor(ou), places - 1))
+    if (at < 0) at = suite.length
+    while (suite.length <= at) suite.push(VIDE)
+    if (suite[at] !== VIDE) {
+      let k = suite.indexOf(VIDE, at + 1)
+      if (k < 0) { k = suite.length; if (k >= places) k = suite.indexOf(VIDE) }
+      at = k
+      while (suite.length <= at) suite.push(VIDE)
+    }
+    suite[at] = rarity
     b.items = suite
     dirtyBases.add(address)
     if (prof !== undefined) { prof.items = [...b.items]; dirtyProfiles.add(address) }
@@ -517,7 +542,7 @@ export function addItem(address: string, rarity: number, ou?: number): Rangement
 
   // No building yet: it can only wait in their stock, and only if we know who they are.
   if (prof === undefined) return 'plein'
-  if (prof.items.length >= openSlots(prof.floorsBought ?? 0)) return 'plein'
+  if (occupe(prof.items) >= openSlots(prof.floorsBought ?? 0)) return 'plein'
   prof.items.push(rarity)
   dirtyProfiles.add(address)
   return 'en-stock'
@@ -690,7 +715,7 @@ export function absenceDe(address: string): number {
 
 /** What one item on this base produces, which is what a charge is priced against. */
 export function revenuParObjet(address: string): number {
-  const n = bases.get(address)?.items.length ?? 0
+  const n = occupe(bases.get(address)?.items ?? [])
   return n === 0 ? 0 : incomePerSecond(address) / n
 }
 
@@ -824,13 +849,14 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   const exige = prestigeTier(prestige)
   if (p.coins < exige.cost) return { ok: false, reason: `you need ${Math.ceil(exige.cost - p.coins)} more coins` }
 
-  const meilleur = p.items.length === 0 ? -1 : Math.max(...p.items.map(rarityOf))
+  const pleins = p.items.filter((c) => c !== VIDE)
+  const meilleur = pleins.length === 0 ? -1 : Math.max(...pleins.map(rarityOf))
   if (meilleur < exige.minRarity) {
     return { ok: false, reason: `you need an item of rarity ${exige.minRarity} or better` }
   }
 
   p.coins -= exige.cost
-  const tries = [...p.items].sort((a, b) => b - a)
+  const tries = pleins.sort((a, b) => b - a)
   p.items = tries.slice(0, exige.guard)
   p.rebirths = prestige + 1
   dirtyProfiles.add(address)
@@ -980,7 +1006,7 @@ export function cashOfflineEarnings(address: string): { gain: number; seconds: n
   if (elapsed < 60_000) return null          // least d'une minute: rien a annoncer
 
   let perSecond = 0
-  for (const code of p.items) perSecond += itemIncome(code, INCOME_PER_RARITY)
+  for (const code of p.items) if (code !== VIDE) perSecond += itemIncome(code, INCOME_PER_RARITY)
   perSecond *= incomeMultiplier(p.rebirths ?? 0) * OFFLINE_RATE
   if (perSecond <= 0) return null
 
@@ -1021,7 +1047,7 @@ export function incomePerSecond(address: string): number {
   const b = bases.get(address)
   if (!p || !b) return 0
   let gain = 0
-  for (const code of b.items) gain += itemIncome(code, INCOME_PER_RARITY)
+  for (const code of b.items) if (code !== VIDE) gain += itemIncome(code, INCOME_PER_RARITY)
   return gain * incomeMultiplier(p.rebirths ?? 0)
 }
 
@@ -1103,7 +1129,7 @@ export function startPlots(): void {
       if (!base) continue
 
       let gain = 0
-      for (const code of base.items) gain += itemIncome(code, INCOME_PER_RARITY)
+      for (const code of base.items) if (code !== VIDE) gain += itemIncome(code, INCOME_PER_RARITY)
       if (gain === 0) continue
       const perSecond = gain * incomeMultiplier(profile.rebirths ?? 0) * (1 + crowdBonus(ici.size))
       const cap = perSecond * PENDING_CAP_S
@@ -1122,7 +1148,7 @@ export function startPlots(): void {
       const next = prestige >= REBIRTH_MAX ? null : prestigeTier(prestige)
       const b = bases.get(address)
       let income = 0
-      if (b) for (const code of b.items) income += itemIncome(code, INCOME_PER_RARITY)
+      if (b) for (const code of b.items) if (code !== VIDE) income += itemIncome(code, INCOME_PER_RARITY)
       income = income * incomeMultiplier(prestige)
       const lock = b ? (Plot.getOrNull(b.entity)?.lockedUntil ?? 0) : 0
       void room.send('wallet', {
@@ -1139,7 +1165,7 @@ export function startPlots(): void {
         minRarity: next ? next.minRarity : 0,
         // Sent so the button can know what the server already knows: prestige needs an item
         // of a given rarity, and a button that offers what will be refused is a broken button.
-        bestRarity: p.items.length === 0 ? -1 : Math.max(...p.items.map(rarityOf)),
+        bestRarity: occupe(p.items) === 0 ? -1 : Math.max(...p.items.filter((c) => c !== VIDE).map(rarityOf)),
         multiplier: incomeMultiplier(prestige),
         tutoEtape: etapeTuto(address),
         sentries: p.sentries ?? 0,

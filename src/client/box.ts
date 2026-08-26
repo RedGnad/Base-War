@@ -5,7 +5,7 @@ import {
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
-import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE } from '../shared/schemas'
+import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
 import { rarity, crate, RARITIES, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
 import { envoyerOuAttendre } from './intent'
@@ -288,7 +288,7 @@ function maBasePleine(): boolean {
   const a = me.userId.toLowerCase()
   for (const [, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== a) continue
-    return p.items.length >= SLOTS_PER_FLOOR * p.floors
+    return occupe(p.items) >= SLOTS_PER_FLOOR * p.floors
   }
   return false
 }

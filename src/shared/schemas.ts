@@ -273,7 +273,7 @@ export const DroppedItem = engine.defineComponent('basetycoon::dropped-item', {
  * balance was tuned for once the grip is raised to match: the owner wins at point blank in
  * about a second, struggles at ten metres, and cannot land enough past fifteen.
  */
-export const CARRY_STOLEN_SHARE = 0.62
+export const CARRY_STOLEN_SHARE = 0.45
 export const CARRY_OWN_SHARE = 0.85
 
 /** How long a carried item waits for its carrier before taking itself home. */
@@ -556,6 +556,18 @@ export function beltPosition(progres: number): { x: number; y: number; z: number
   if (progres <= 1) return { x, y: BELT_HEIGHT + 0.45, z: CENTER.z }
   const t = Math.min((progres - 1) / CHUTE_FIN, 1)
   return { x, y: BELT_HEIGHT + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTER.z }
+}
+
+/*
+  A hole in a shelf. Zero is a real item (a Common with no mutation encodes to 0), so the
+  sentinel has to be something no `encoder()` can produce. Every loop that sums, counts or
+  draws items skips it; every index that names a pedestal keeps meaning that pedestal.
+*/
+export const VIDE = -1
+export function occupe(items: readonly number[]): number {
+  let n = 0
+  for (const c of items) if (c !== VIDE) n += 1
+  return n
 }
 
 export const RARITY_PRICE = [40, 150, 600, 2600, 11000]

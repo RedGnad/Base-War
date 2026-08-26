@@ -42,6 +42,8 @@ export const shopView = { open: false }
 */
 const RANG = 64
 const TITRE_FAMILLE = 34
+/** Between rows. Eight read as one block on a phone; a row needs its own air. */
+const ENTRE = 18
 
 /** What a defence tier costs this base, mirroring the server's own formula for display. */
 function prixTourelle(tier: number): number {
@@ -51,7 +53,7 @@ function prixTourelle(tier: number): number {
 }
 
 const Famille = (props: { titre: string; note: string }) => (
-  <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 4 } }}>
+  <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 10, bottom: 6 } }}>
     {/* Fixed widths, because a Label given none resolves to nothing in this layout engine. */}
     <Label value={props.titre} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
       uiTransform={{ width: 150, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
@@ -72,7 +74,7 @@ const Rang = (props: {
   <UiEntity
     uiTransform={{
       width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center',
-      margin: { bottom: 8 }
+      margin: { bottom: ENTRE }
     }}
   >
     {/*
@@ -107,7 +109,7 @@ function prixGear(gear: number): number {
 }
 
 /** Four family headers and eight rows. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 4) + (5 + GEARS.length) * (RANG + 8)
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (5 + GEARS.length) * (RANG + ENTRE)
 
 export const ShopContent = () => {
   if (!shopView.open) return null

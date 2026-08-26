@@ -6,7 +6,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, PLACE_RANGE, slotPosition,
+  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, PLACE_RANGE, slotPosition, VIDE, occupe,
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
 } from '../shared/schemas'
 import {
@@ -405,16 +405,18 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
   }
   if (base === null) return null
 
-  const fin = base.p.items.length
+  /*
+    The nearest FREE pedestal on this storey. A taken one is not a candidate, and a storey
+    with none free returns nothing, so the marker vanishes instead of promising a place that
+    the server will then route elsewhere.
+  */
   const etage = Math.max(0, Math.round(t.position.y / FLOOR_HEIGHT))
+  if (etage >= base.p.floors) return null
   const bas = etage * SLOTS_PER_FLOOR
-  if (bas > fin) {
-    const s = slotPosition(fin)
-    return { ownerId: base.p.ownerId, index: fin, pos: Vector3.create(base.x + s.dx, s.dy, base.z + s.dz) }
-  }
-  let choisi = bas
+  let choisi = -1
   let meilleur = Infinity
-  for (let k = bas; k <= Math.min(bas + SLOTS_PER_FLOOR - 1, fin); k++) {
+  for (let k = bas; k < bas + SLOTS_PER_FLOOR; k++) {
+    if (k < base.p.items.length && base.p.items[k] !== VIDE) continue
     const s = slotPosition(k)
     const dx = t.position.x - (base.x + s.dx), dz = t.position.z - (base.z + s.dz)
     const d = dx * dx + dz * dz
@@ -422,6 +424,7 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
     meilleur = d
     choisi = k
   }
+  if (choisi < 0) return null
   const s = slotPosition(choisi)
   return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + s.dx, s.dy, base.z + s.dz) }
 }
@@ -543,7 +546,7 @@ export function setupPlots(): void {
         const tg = structurel ? TextShape.getMutableOrNull(v.gain) : null
         if (tg !== null) {
           let perSecond = 0
-          for (const code of p.items) perSecond += itemIncome(code, PRODUCTION_PER_RARITY)
+          for (const code of p.items) if (code !== VIDE) perSecond += itemIncome(code, PRODUCTION_PER_RARITY)
           tg.text = perSecond > 0 ? `+${formatIncome(perSecond)}/s` : ''
         }
       }
@@ -614,7 +617,7 @@ export function setupPlots(): void {
         : 'Steal'
       for (let k = 0; k < v.items.length; k++) {
         const code = p.items[k]
-        const label = code === undefined
+        const label = code === undefined || code === VIDE
           ? verbe
           : `${verbe} ${itemName(rarityOf(code), mutationDe(code))} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
@@ -628,7 +631,7 @@ export function setupPlots(): void {
         const tr = Transform.getMutableOrNull(v.items[k])
         if (tr === null) continue
         const d = slotPosition(k)
-        if (k < p.items.length) {
+        if (k < p.items.length && p.items[k] !== VIDE) {
           const code = p.items[k]
           const r = rarity(rarityOf(code))
           const m = mutation(mutationDe(code))
