@@ -1,6 +1,5 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { syncEntity } from '@dcl/sdk/network'
 import {
   DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS
@@ -10,6 +9,7 @@ import { log } from './log'
 import { frapperPorteur } from './carry'
 import { interrompreVol } from './theft'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents } from './plots'
+import { dropAt } from './coins'
 
 /**
  * Combat, server side.
@@ -20,58 +20,6 @@ import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, pre
  */
 
 const lastShot = new Map<string, number>()
-
-/** How far a piece can land from the shot, and how close counts as the same pile. */
-const EPARPILLEMENT = 1.4
-const FUSION = 1.6
-
-/**
- * Coins burst out and land around them, rather than appearing under their feet.
- *
- * A single stack materialising at the target's position is correct and reads as nothing: a
- * hit is meant to feel like something came off, and something coming off scatters. Two or
- * three pieces around the impact is the oldest trick in the genre and it costs a loop.
- *
- * They merge back together on the way in. The weapon fires five times a second, so scattering
- * every hit without merging would carpet the plaza in entities and keep them alive for
- * forty-five seconds each; a piece that lands near an existing one from the same victim tops
- * it up instead. The first hit therefore scatters, and sustained fire feeds the scatter it
- * already made, which is both cheaper and better: the pile grows where you are shooting.
- */
-function dropAt(from: string, amount: number, at: { x: number; y: number; z: number }): void {
-  const morceaux = amount >= 3 ? (amount >= 30 ? 3 : 2) : 1
-  const part = Math.floor(amount / morceaux)
-  const now = Date.now()
-
-  for (let i = 0; i < morceaux; i++) {
-    // The last piece carries the remainder, so nothing is lost to rounding.
-    const valeur = i === morceaux - 1 ? amount - part * (morceaux - 1) : part
-    const angle = (i / morceaux) * Math.PI * 2 + Math.random() * 1.2
-    const rayon = morceaux === 1 ? 0 : EPARPILLEMENT * (0.45 + Math.random() * 0.55)
-    const x = at.x + Math.cos(angle) * rayon
-    const z = at.z + Math.sin(angle) * rayon
-
-    let fusionne = false
-    for (const [e, c] of engine.getEntitiesWith(DroppedCoins)) {
-      if (c.droppedBy !== from) continue
-      const t = Transform.getOrNull(e)
-      if (t === null) continue
-      if (Math.sqrt((t.position.x - x) ** 2 + (t.position.z - z) ** 2) > FUSION) continue
-      const m = DroppedCoins.getMutableOrNull(e)
-      if (m === null) continue
-      m.amount += valeur
-      m.untilMs = now + LOOT_LIFETIME_MS
-      fusionne = true
-      break
-    }
-    if (fusionne) continue
-
-    const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.create(x, 0.6, z) })
-    DroppedCoins.create(e, { amount: valeur, droppedBy: from, untilMs: now + LOOT_LIFETIME_MS })
-    syncEntity(e, [DroppedCoins.componentId, Transform.componentId])
-  }
-}
 
 export function startCombat(): void {
   // Same trail as the belt: coins dropped by a server that no longer exists would sit on
