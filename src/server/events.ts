@@ -33,14 +33,16 @@ export function startEvents(): void {
     if (acc < 1) return
     acc = 0
     const now = Date.now()
-    const ev = Event.getMutableOrNull(clock)
-    if (ev === null) return
+    // Read every second, WRITE only on a transition: a mutable handle is a serialise-and-compare
+    // whether or not anything changed, and this changes twice in fifteen minutes.
+    const lu = Event.getOrNull(clock)
+    if (lu === null) return
 
-    if (ev.theme >= 0) {
-      if (ev.untilMs > now) return
-      log(`event over: ${EVENT_THEMES.find((t) => t.theme === ev.theme)?.name ?? ev.theme}`)
-      ev.theme = -1
-      ev.untilMs = 0
+    if (lu.theme >= 0) {
+      if (lu.untilMs > now) return
+      log(`event over: ${EVENT_THEMES.find((t) => t.theme === lu.theme)?.name ?? lu.theme}`)
+      const ev = Event.getMutableOrNull(clock)
+      if (ev !== null) { ev.theme = -1; ev.untilMs = 0 }
       setEventTheme(-1)
       prochain = now + prochainDelai()
       return
@@ -49,6 +51,8 @@ export function startEvents(): void {
     if (now < prochain) return
     if (presents().size === 0) { prochain = now + 30_000; return }
     const choix = EVENT_THEMES[Math.floor(Math.random() * EVENT_THEMES.length)]
+    const ev = Event.getMutableOrNull(clock)
+    if (ev === null) return
     ev.theme = choix.theme
     ev.untilMs = now + EVENT_MS
     setEventTheme(choix.theme)
