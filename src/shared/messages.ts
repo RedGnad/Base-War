@@ -84,6 +84,18 @@ export const MESSAGES = {
   wasGifted: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   gifted: Schemas.Map({ byName: Schemas.String, toName: Schemas.String, rarity: Schemas.Int }),
 
+  /* Gear: buy one into your pocket, put one down where you stand. */
+  buyGear: Schemas.Map({ gear: Schemas.Int }),
+  placeGear: Schemas.Map({ gear: Schemas.Int }),
+  gearBought: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int, cost: Schemas.Int }),
+  gearPlaced: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int }),
+  /** server -> the one who stepped on it. */
+  trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int }),
+  /** server -> the owner, live or deferred. */
+  trapSprung: Schemas.Map({ byName: Schemas.String }),
+  /** Pockets, sent with the wallet: how many of each gear the player holds. */
+  gearHeld: Schemas.Map({ counts: Schemas.Array(Schemas.Int) }),
+
   claimQuest: Schemas.Map({ slot: Schemas.Int }),
 
   dailyReward: Schemas.Map({ log: Schemas.Int, crate: Schemas.Int }),

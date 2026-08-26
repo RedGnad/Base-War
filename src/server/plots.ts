@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR
+  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -58,6 +58,7 @@ type Profil = {
   sentries?: number
   sentryFloors?: number[]
   sentryTier?: number
+  gears?: number[]
   given?: number
   received?: number
   tuto?: number
@@ -771,6 +772,40 @@ export function sentriesSurEtage(address: string, etage: number): number {
 
 export function sentriesOf(address: string): number { return profiles.get(address)?.sentries ?? 0 }
 
+/*
+  Pockets: how many of each gear a player holds, indexed by gear id.
+
+  A flat count per id rather than a list of instances, because a gear has no identity of its
+  own: two traps are two traps. Kept on the profile so a pocket survives the server, and read
+  back at every wallet tick so the shop and the action button never disagree with it.
+*/
+export function gearsOf(address: string): number[] {
+  const p = profiles.get(address)
+  const out = new Array<number>(GEARS.length).fill(0)
+  for (let i = 0; i < GEARS.length; i++) out[i] = p?.gears?.[i] ?? 0
+  return out
+}
+
+export function addGear(address: string, gear: number): void {
+  const p = profiles.get(address)
+  if (!p) return
+  const g = gearsOf(address)
+  g[gear] += 1
+  p.gears = g
+  dirtyProfiles.add(address)
+}
+
+export function removeGear(address: string, gear: number): boolean {
+  const p = profiles.get(address)
+  if (!p) return false
+  const g = gearsOf(address)
+  if (g[gear] <= 0) return false
+  g[gear] -= 1
+  p.gears = g
+  dirtyProfiles.add(address)
+  return true
+}
+
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 export function toutesLesBases(): Base[] { return [...bases.values()] }
 /*
@@ -1113,6 +1148,7 @@ export function startPlots(): void {
         prime: crowdBonus(ici.size)
       }, { to: [address] })
       void room.send('inventory', { crates: [...(p.crates ?? [])] }, { to: [address] })
+      void room.send('gearHeld', { counts: gearsOf(address) }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })
       pushQuests(address)
     }

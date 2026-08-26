@@ -3,7 +3,8 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
-import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge } from '../shared/schemas'
+import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, SENTRY_MIN_PRICE } from '../shared/schemas'
+import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoserPiege } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -99,8 +100,14 @@ const Rang = (props: {
   </UiEntity>
 )
 
-/** Three family headers and five rows: 3 x 38 + 5 x 72 = 474, which is the whole budget. */
-export const HAUTEUR_SHOP = 3 * (TITRE_FAMILLE + 4) + 5 * (RANG + 8)
+/** What a gear costs this base, mirroring the server: seconds of one item's output. */
+function prixGear(gear: number): number {
+  const parObjet = view.items === 0 ? 0 : theftView.income / view.items
+  return Math.max(SENTRY_MIN_PRICE, Math.floor(parObjet * GEARS[gear].itemSeconds))
+}
+
+/** Four family headers and six rows. The window scrolls past the dialog cap. */
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 4) + 6 * (RANG + 8)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
@@ -146,6 +153,31 @@ export const ShopContent = () => {
             bouton="ARM" prix={prix}
             possible={ici !== null && !plein && theftView.basePosee && argent >= prix}
             onClick={() => { armSentry(i); closeMenu() }} />
+        )
+      })}
+
+      {/*
+        Gear: the family prestige unlocks. Locked rows stay visible, dimmed, with the prestige
+        they need on the line, which is the genre's own reveal rule: show the next rung, not
+        the whole ladder. The pocket count is on the row, and the SET button hands the act to
+        the E button at the player's feet rather than doing it from here.
+      */}
+      <Famille titre="GEAR" note="tools to steal with, or to catch thieves" />
+      {GEARS.map((g) => {
+        const prix = prixGear(g.id)
+        const debloque = theftView.prestige >= g.prestige
+        const held = gearView.held[g.id] ?? 0
+        return (
+          <Rang key={g.name}
+            titre={held > 0 ? `${g.name}  x${held}` : g.name}
+            detail={debloque ? g.verb : `unlocks at prestige ${g.prestige}  ·  ${g.verb}`}
+            bouton={held > 0 && peutPoserPiege() ? 'SET' : 'BUY'}
+            prix={held > 0 && peutPoserPiege() ? 0 : prix}
+            possible={debloque && (held > 0 ? peutPoserPiege() : argent >= prix)}
+            onClick={() => {
+              if (held > 0 && peutPoserPiege()) { basculerPosePiege(); closeMenu() }
+              else acheterGear(g.id)
+            }} />
         )
       })}
 

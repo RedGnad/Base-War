@@ -14,6 +14,7 @@ import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
+import { gearView, poserPiege } from './client/gear'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 
@@ -359,6 +360,13 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
       : { label: 'GIVE IT', icon: 'icon-give', action: () => placeDown(ou.ownerId) }
   }
   if (theftView.canRecover) return { label: 'RECOVER', icon: 'icon-recover', action: recover }
+  /*
+    Setting a trap is a two-tap act, like placing the base: the first shows where, the second
+    commits. It sits below the carry verbs because the genre forbids gear while carrying, and
+    above building because a pocket with a trap in it is a state the player created on purpose
+    a moment ago, which is exactly what this button is for.
+  */
+  if (gearView.placing) return { label: 'SET TRAP HERE', icon: 'icon-build', action: poserPiege }
   if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
     return { label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }

@@ -53,7 +53,7 @@ export function alerter(texte: string, color: string, durationMs = 6000): void {
 */
 const FIL_MS = 12_000
 
-function pushToFeed(ligne: string): void {
+export function pushToFeed(ligne: string): void {
   theftView.fil.unshift({ t: ligne, jusqua: Date.now() + FIL_MS })
   if (theftView.fil.length > 4) theftView.fil.pop()
 }

@@ -70,6 +70,10 @@ export function delivrerAlertes(address: string): void {
       void room.send('sentryTriggered', { byName: x.byName, left: y.left ?? 0, taken: y.taken ?? 0 }, { to: [address] })
       continue
     }
+    if (x.type === 'trap') {
+      void room.send('trapSprung', { byName: x.byName }, { to: [address] })
+      continue
+    }
     if (x.type === 'gift') {
       const code = x.code ?? 0
       void room.send('wasGifted', { byName: x.byName, rarity: rarityOf(code), mutation: mutationDe(code) }, { to: [address] })

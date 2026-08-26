@@ -381,6 +381,38 @@ export function shieldFor(absenceMs: number): number {
   return Math.round(SHIELD_MIN_MS + (SHIELD_MAX_MS - SHIELD_MIN_MS) * t)
 }
 
+/*
+  Gear: what prestige unlocks, and the reason to want it beyond the multiplier.
+
+  The leading game of this family ships forty of them, and the structural facts are these
+  (wiki `Gears`, read at source): a gear helps you STEAL or DEFEND and never produces; it
+  cannot be used while carrying loot, so it never makes a thief untouchable during the one
+  walk where they are exposed; and every one of them unlocks at a rebirth. That last rule is
+  what turns prestige from a number into a door. Ours opens the same way.
+
+  Each entry has one verb and one number, which is also the genre's rule: freeze 7 seconds, at
+  most five out at once, nothing permanent and nothing global. Prices are seconds of one item's
+  output, the same unit the defences use, so they scale with the shelves and not with a guess.
+*/
+export const GEARS = [
+  {
+    id: 0, name: 'TRAP', prestige: 0, itemSeconds: 240, max: 5,
+    verb: 'freezes the first thief who steps on it, 7 s',
+    freezeMs: 7_000
+  }
+] as const
+export type GearId = typeof GEARS[number]['id']
+
+/** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
+export const Trap = engine.defineComponent('basetycoon::trap', {
+  owner: Schemas.String,
+  untilMs: Schemas.Int64
+})
+
+/** Traps expire, because a floor that fills with old plates is a floor nobody can cross. */
+export const TRAP_LIFETIME_MS = 30 * 60_000
+export const TRAP_TRIGGER_RANGE = 1.1
+
 export const SENTRY_TIERS = [
   { name: 'GUARD', charges: 3, itemSecondsPerCharge: 480, tithe: 0, retour: 0 },
   { name: 'TURRET', charges: 8, itemSecondsPerCharge: 400, tithe: 0.15, retour: 2 },
@@ -731,6 +763,7 @@ export function registerValidators(): void {
     value.senderAddress.toLowerCase() === AUTH_SERVER_PEER_ID.toLowerCase()
 
   ServerBeat.validateBeforeChange(serverOnly)
+  Trap.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)
   Plot.validateBeforeChange(serverOnly)
   Convoy.validateBeforeChange(serverOnly)
