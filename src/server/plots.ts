@@ -459,7 +459,24 @@ export function etatPrevisible(address: string): RangementResultat {
  * Capacity comes from whoever knows it: the profile when the owner is here, the base's own
  * shopfront when they are not.
  */
-export function addItem(address: string, rarity: number): RangementResultat {
+/*
+  `ou` is the position on the shelf, and it is the only strategic choice a base offers.
+
+  `slotPosition(k)` computes the storey as `floor(k / SLOTS_PER_FLOOR)`, and a thief has to
+  stand on the same storey and within reach to touch anything. So the INDEX of an item decides
+  how hard it is to steal, and until now nothing chose it: every arrival was appended, so the
+  shelf filled bottom up and the ground floor, the one a thief reaches without climbing, always
+  held whatever you happened to own first.
+
+  Inserting rather than appending is what turns that into a decision. Put the junk on the
+  ground floor as bait and walk the Legendary up three flights, and the building starts saying
+  something about how you play. It stays a DENSE array on purpose: an index that means a
+  position in a queue needs no holes, and holes would have meant touching capacity, income,
+  persistence and the client's rendering in twenty-five places for a choice that is really
+  about order. Beyond the end it clamps, so aiming at a storey your shelf does not reach yet
+  simply puts the thing on top.
+*/
+export function addItem(address: string, rarity: number, ou?: number): RangementResultat {
   const prof = profiles.get(address)
   const b = bases.get(address)
 
@@ -470,7 +487,10 @@ export function addItem(address: string, rarity: number): RangementResultat {
 
   if (b !== undefined) {
     if (b.items.length >= openSlots(prof?.floorsBought ?? b.floorsBought)) return 'plein'
-    b.items = [...b.items, rarity]
+    const at = ou === undefined ? b.items.length : Math.max(0, Math.min(Math.floor(ou), b.items.length))
+    const suite = [...b.items]
+    suite.splice(at, 0, rarity)
+    b.items = suite
     dirtyBases.add(address)
     if (prof !== undefined) { prof.items = [...b.items]; dirtyProfiles.add(address) }
     publish(b)

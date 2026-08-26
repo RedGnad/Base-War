@@ -3,7 +3,8 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
   Carried, DroppedItem, CARRY_TIMEOUT_MS, CARRY_GRIP, PLACE_RANGE, STEAL_REACH,
-  LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS
+  LOOT_ITEM_LIFETIME_MS, LOOT_ITEM_PICKUP_RANGE, LOOT_ITEM_OWNER_LOCK_MS,
+  FLOOR_HEIGHT, SLOTS_PER_FLOOR
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { rarityOf, mutationDe } from '../shared/loot-table'
@@ -244,8 +245,20 @@ export function startCarry(): void {
       void room.send('carryResult', { ok: false, reason: 'get closer to that base', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
+    /*
+      The storey you are standing on is where it goes, and that is the whole interface.
+
+      An item's index decides its storey, and its storey decides whether a thief can reach it
+      without climbing. So carrying something upstairs before setting it down is a real
+      decision, and it needs no menu: you already walked there. Beyond the top of the shelf it
+      clamps, so aiming higher than you own puts it on top rather than refusing.
+    */
+    const etageVise = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
+    const ou = Math.min(etageVise * SLOTS_PER_FLOOR, b.items.length)
+    const etageReel = Math.floor(ou / SLOTS_PER_FLOOR)
+
     // Same word-not-a-boolean trap: a full base used to accept the item and lose it.
-    if (addItem(vise, c.code) === 'plein') {
+    if (addItem(vise, c.code, ou) === 'plein') {
       void room.send('carryResult', { ok: false, reason: 'that base is full', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
@@ -253,7 +266,9 @@ export function startCarry(): void {
     const rar = rarityOf(c.code), mut = mutationDe(c.code)
     const code = c.code, origine = c.origin
     lacher(a)
-    void room.send('carryResult', { ok: true, reason: vise === a ? 'placed' : 'given', rarity: rar, mutation: mut }, { to: [a] })
+    void room.send('carryResult', {
+      ok: true, reason: vise === a ? `placed on floor ${etageReel + 1}` : 'given', rarity: rar, mutation: mut
+    }, { to: [a] })
 
     /*
       Everything below is credited HERE, because this is where the act happens now.
@@ -278,7 +293,7 @@ export function startCarry(): void {
         counts. Denying that is cheap; allowing the farm is not.
       */
       if (origine !== a) { advanceQuest(a, 'poser'); pushQuests(a) }
-      log(`carry: ${displayName(a)} placed a ${rar} in their own base`)
+      log(`carry: ${displayName(a)} placed a ${rar} on floor ${etageReel + 1} of their own base`)
       return
     }
 
