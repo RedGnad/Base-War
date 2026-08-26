@@ -184,7 +184,9 @@ export const Carried = engine.defineComponent('basetycoon::carried', {
   code: Schemas.Int,
   origin: Schemas.String,
   sinceMs: Schemas.Int64,
-  grip: Schemas.Float
+  grip: Schemas.Float,
+  /** True only when it was lifted off the holder's OWN shelf: putting it back is tidying, not placing. */
+  repris: Schemas.Boolean
 })
 
 /**

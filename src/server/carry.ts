@@ -42,7 +42,7 @@ export function portePour(address: string): boolean {
   return porteQuoi(address) !== null
 }
 
-function poser(address: string, code: number, origin: string): void {
+function poser(address: string, code: number, origin: string, repris = false): void {
   /*
     Nobody holds two things, and the map used to let them.
 
@@ -57,7 +57,7 @@ function poser(address: string, code: number, origin: string): void {
   // A closed hand ends a cloak, whatever its timer said: gear never covers the walk home.
   rompreCape(address)
   const e = engine.addEntity()
-  Carried.create(e, { holder: address, code, origin, sinceMs: Date.now(), grip: CARRY_GRIP })
+  Carried.create(e, { holder: address, code, origin, sinceMs: Date.now(), grip: CARRY_GRIP, repris })
   syncEntity(e, [Carried.componentId])
   portes.set(address, e)
 }
@@ -219,7 +219,7 @@ export function startCarry(): void {
     }
     const code = removeItem(a, slot)
     if (code === null) { void room.send('carryResult', { ok: false, reason: 'it is gone', rarity: 0, mutation: 0 }, { to: [a] }); return }
-    poser(a, code, a)
+    poser(a, code, a, true)
     void room.send('carryResult', { ok: true, reason: 'carrying', rarity: rarityOf(code), mutation: mutationDe(code) }, { to: [a] })
     log(`carry: ${displayName(a)} picked up a ${rarityOf(code)} from their own base`)
   })
@@ -275,7 +275,7 @@ export function startCarry(): void {
     }
     // Read before releasing: `c` is the component's own value and `lacher` destroys the entity.
     const rar = rarityOf(c.code), mut = mutationDe(c.code)
-    const code = c.code, origine = c.origin
+    const code = c.code, origine = c.origin, repris = c.repris
     lacher(a)
     void room.send('carryResult', {
       ok: true, reason: vise === a ? `placed on floor ${etageReel + 1}` : 'given', rarity: rar, mutation: mut
@@ -295,15 +295,15 @@ export function startCarry(): void {
         Putting back what was already yours is not placing an item.
 
         The credit used to be unconditional, so lifting your own trophy off its plinth and
-        setting it down again advanced the quest. Six of those is about twenty seconds of
-        standing still for a free crate, which is not the shape of anything anybody meant to
-        build. `origin` is the base the item belongs to, so `origin !== a` is exactly "this
-        came from somewhere else and I walked it home", and that is the act being rewarded.
-        It costs one honest case: your own item, shot out of your hands by somebody and
-        picked back up off the floor, still carries your address as its origin and no longer
-        counts. Denying that is cheap; allowing the farm is not.
+        setting it down again advanced the quest: six of those is twenty seconds for a free
+        crate. The first fix tested `origin !== a`, and that broke the moment crates started
+        landing in the hand: a freshly opened item carries your own address as its origin, so
+        placing it no longer counted, which is the one act the quest is named after. `repris`
+        is set only when the item was lifted off your OWN shelf. Everything else you put down
+        at home, opened, stolen or picked up off the floor, is a placement.
       */
-      if (origine !== a) { advanceQuest(a, 'poser'); pushQuests(a) }
+      if (!repris) { advanceQuest(a, 'poser'); pushQuests(a) }
+      void origine
       log(`carry: ${displayName(a)} placed a ${rar} on floor ${etageReel + 1} of their own base`)
       return
     }
