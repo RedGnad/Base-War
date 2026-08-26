@@ -619,58 +619,67 @@ export function setupPlots(): void {
         })
       }
 
+      /*
+        A pedestal has exactly two states, and each state sets EVERYTHING that describes it.
+
+        The old block set what it happened to think of in each branch: the occupied branch
+        never restored the scale the empty branch had zeroed, so a pedestal that had been empty
+        once stayed invisible for ever; the empty branch never removed the tween the occupied
+        one had started, so a sold item kept turning on its plinth. Every fix moved the bug to
+        the other branch. Position, scale, material, tween and mounted model are five facts;
+        both states write all five, in the one order that survives the engine: tweens off,
+        transform written whole, tweens back on. A tween that is still alive rewrites the
+        Transform next frame, so anything set before deleting it is lost.
+      */
       for (let k = 0; k < v.items.length; k++) {
-        const tr = Transform.getMutableOrNull(v.items[k])
+        const ent = v.items[k]
+        const tr = Transform.getMutableOrNull(ent)
         if (tr === null) continue
         const d = slotPosition(k)
-        if (k < p.items.length && p.items[k] !== VIDE) {
-          const code = p.items[k]
-          const r = rarity(rarityOf(code))
-          const m = mutation(mutationDe(code))
-          const selected = false
-          tr.position = Vector3.create(t.position.x + d.dx, d.dy + (selected ? 0.55 : 0), t.position.z + d.dz)
-          const size = r.size * (m.mult > 1 ? 1.12 : 1) * (selected ? 1.25 : 1)
-          tr.scale = Vector3.create(size, size, size)
-          const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
-          Material.setPbrMaterial(v.items[k], {
-            albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0
-          })
-          /*
-            One shared model per rarity, and the artist decides the silhouette.
+        const occupe = k < p.items.length && p.items[k] !== VIDE
 
-            `assets/toy/item-<rarity>.glb`, authored to a unit cube: the entity keeps being
-            scaled by rarity and mutation exactly as the box is, so a model exported at one
-            metre lands at the right size on every pedestal. Seven files for seven rarities is
-            the whole item budget; sixty bases share them and the engine keeps one copy each.
-            Only reloaded when the rarity on this pedestal changes.
-          */
-          remonter(v.items[k], `item-${rarityOf(code)}.glb`)
-          if (r.tours > 0 || m.mult > 1) {
-            Tween.createOrReplace(v.items[k], {
-              mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
-              duration: Math.round(360000 / Math.max(1, r.tours + (m.mult > 1 ? 30 : 0))),
-              easingFunction: EasingFunction.EF_LINEAR
-            })
-            TweenSequence.createOrReplace(v.items[k], { sequence: [], loop: TweenLoop.TL_RESTART })
-          } else {
-            Tween.deleteFrom(v.items[k])
-            TweenSequence.deleteFrom(v.items[k])
-          }
-        } else {
-          /*
-            Empty the pedestal PROPERLY, which means stopping its spin first.
+        // 1. Tweens off, whatever the state: nothing below is safe while one is running.
+        Tween.deleteFrom(ent)
+        TweenSequence.deleteFrom(ent)
 
-            A tween that is still active writes the entity's Transform back every frame, so
-            moving the box to -5 while its Rotate tween ran was overwritten a frame later: a
-            sold item stayed on its pedestal, turning, while the server had already paid for
-            it. Three sales in the log, three ghosts on the shelf. The tween goes, then the
-            stand-in goes under the floor, and any model mounted on it is dismissed too.
-          */
-          Tween.deleteFrom(v.items[k])
-          TweenSequence.deleteFrom(v.items[k])
+        if (!occupe) {
+          // 2a. Empty: under the floor, no size, no model. Material is irrelevant unseen.
           tr.position = Vector3.create(t.position.x, -5, t.position.z)
-          tr.scale = Vector3.create(0, 0, 0)
-          demonter(v.items[k])
+          tr.scale = Vector3.Zero()
+          demonter(ent)
+          continue
+        }
+
+        // 2b. Occupied: every fact written, from the code alone.
+        const code = p.items[k]
+        const r = rarity(rarityOf(code))
+        const m = mutation(mutationDe(code))
+        tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
+        tr.rotation = Quaternion.Identity()
+        const size = r.size * (m.mult > 1 ? 1.12 : 1)
+        tr.scale = Vector3.create(size, size, size)
+        const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
+        Material.setPbrMaterial(ent, {
+          albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0
+        })
+        /*
+          One shared model per rarity, and the artist decides the silhouette.
+
+          `assets/toy/item-<rarity>.glb`, authored to a unit cube: the entity keeps being
+          scaled by rarity and mutation exactly as the box is, so a model exported at one
+          metre lands at the right size on every pedestal. Seven files for seven rarities is
+          the whole item budget; sixty bases share them and the engine keeps one copy each.
+        */
+        remonter(ent, `item-${rarityOf(code)}.glb`)
+
+        // 3. Tweens back on, last, for the pieces that turn.
+        if (r.tours > 0 || m.mult > 1) {
+          Tween.create(ent, {
+            mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
+            duration: Math.round(360000 / Math.max(1, r.tours + (m.mult > 1 ? 30 : 0))),
+            easingFunction: EasingFunction.EF_LINEAR
+          })
+          TweenSequence.create(ent, { sequence: [], loop: TweenLoop.TL_RESTART })
         }
       }
     }

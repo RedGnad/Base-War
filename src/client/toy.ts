@@ -78,6 +78,9 @@ export const TOY_DIR = 'assets/toy/'
 const montages = new Map<Entity, { modele: Entity; fichier: string }>()
 
 export function montable(primitive: Entity, fichier: string): void {
+  // The stand-in is guaranteed drawable on every mount, not only on remount: a pedestal that
+  // was emptied and refilled comes back through here, and it must come back visible.
+  if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
   const modele = engine.addEntity()
   // Child at identity: the model inherits the primitive's position, rotation and scale.
   Transform.create(modele, { parent: primitive })
