@@ -7,7 +7,8 @@ import {
 import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce } from './loot'
-import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, addItem, etatPrevisible, advanceQuest, pushQuests, baseDe } from './plots'
+import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe } from './plots'
+import { remettreEnMain, portePour } from './carry'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
@@ -173,8 +174,16 @@ export function startBelt(): void {
       void room.send('actionRejected', { action: 'opening', reason: 'go to your base to open it', antiCheat: true }, { to: [a] })
       return
     }
-    if (etatPrevisible(a) === 'plein' || inFlight.get(a) !== undefined) {
-      void room.send('actionRejected', { action: 'opening', reason: 'base full: sell an item or buy a floor', antiCheat: false }, { to: [a] })
+    /*
+      Hands, not shelves, are what has to be free.
+
+      The item goes into the player's hand after the reel, the way a stolen one does, and
+      they put it down where they choose. So the only thing that can refuse an opening is a
+      hand already holding something, or a reel already spinning. A full base is not a
+      reason: they can still open, hold, and go sell or make room.
+    */
+    if (portePour(a) || inFlight.get(a) !== undefined) {
+      void room.send('actionRejected', { action: 'opening', reason: 'put down what you are carrying first', antiCheat: false }, { to: [a] })
       return
     }
     if (!removeCrate(a, d.crateTier)) {
@@ -187,19 +196,17 @@ export function startBelt(): void {
     const rarity = rollCrate(d.crateTier)
     const mut = rollMutation(d.crateTier)
     const code = encoder(rarity, mut)
-    const prevu = etatPrevisible(a)
-    log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)} (${prevu}, deferred placement)`)
-    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: prevu }, { to: [a] })
+    log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)}`)
+    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: 'main' }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 
     inFlight.set(a, code)
     pushQuests(a)
 
+    // After the reel has shown it, it is in their hand. Same landing as a theft.
     timers.setTimeout(() => {
       inFlight.delete(a)
-      const reel = addItem(a, code)
-      if (reel === 'expose') { advanceQuest(a, 'poser'); pushQuests(a) }
-      if (reel !== prevu) log(`deferred placement: expected ${prevu}, got ${reel} for ${displayName(a)}`)
+      remettreEnMain(a, code, a)
     }, POSE_DIFFEREE_MS)
   })
 

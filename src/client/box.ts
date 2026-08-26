@@ -120,8 +120,8 @@ export function setupBox(): void {
     pasCourant = 0
 
     const depart = lastPosition
-    if (depart !== null && d.state === 'expose') {
-      timers.setTimeout(() => sendToBase(depart, d.rarity, d.mutation), 2700)
+    if (depart !== null) {
+      timers.setTimeout(() => sendToHand(depart, d.rarity, d.mutation), 2700)
     }
   })
 
@@ -245,9 +245,18 @@ function storeCrate(): void {
   if (t !== null) { t.scale = Vector3.create(0, 0, 0); t.position = Vector3.create(0, -10, 0) }
 }
 
-function sendToBase(from: Vector3, rarityId: number, mut = 0): void {
-  const target = myBasePosition()
-  if (target === null) return
+/**
+ * The reveal flies to the player's hand, because that is where the server puts it.
+ *
+ * Opening used to file the item straight onto a shelf after the reel, and the flight went
+ * to the base. Since carrying became the one verb, a fresh item lands in the hand like a
+ * stolen one does, and the player walks it to whichever pedestal they choose: the same
+ * placement they already have for everything else, with the green marker.
+ */
+function sendToHand(from: Vector3, rarityId: number, mut = 0): void {
+  const me = Transform.getOrNull(engine.PlayerEntity)
+  if (me === null) return
+  const target = Vector3.create(me.position.x, me.position.y + 1.0, me.position.z)
 
   const e = engine.addEntity()
   const r = rarity(rarityId)
@@ -336,16 +345,23 @@ export function openCrate(crateTier: number): void {
   boxView.typeEnCours = crateTier
   boxView.message = ''
 
-  // Two metres out from the base, on the player's side, so it is always in front of them.
-  const dx = p.position.x - base.x
-  const dz = p.position.z - base.z
-  const d = Math.sqrt(dx * dx + dz * dz)
-  const ux = d < 0.01 ? 0 : dx / d
-  const uz = d < 0.01 ? 1 : dz / d
+  /*
+    In front of the player, at the player's height.
+
+    It used to spawn two metres from the CENTRE of the base at ground level, whichever
+    storey the player was on: open a crate on the third floor and it appeared downstairs,
+    out of reach. It now sits two metres ahead of where they stand, on their storey, so
+    smashing it is a thing you do where you are.
+  */
+  const f = Vector3.rotate(Vector3.create(0, 0, 1), p.rotation)
+  const plat = Math.sqrt(f.x * f.x + f.z * f.z)
+  const ux = plat < 0.01 ? 0 : f.x / plat
+  const uz = plat < 0.01 ? 1 : f.z / plat
+  void base
 
   const t = Transform.getMutableOrNull(crateMesh)
   if (t !== null) {
-    t.position = Vector3.create(base.x + ux * 2, 1.1, base.z + uz * 2)
+    t.position = Vector3.create(p.position.x + ux * 2, p.position.y + 0.9, p.position.z + uz * 2)
     t.scale = Vector3.create(b.size, b.size, b.size)
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }
