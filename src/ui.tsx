@@ -45,6 +45,8 @@ const REEL_H = 172
 const REEL_GAP = 12
 
 const ETATS: Record<string, (r: number) => string> = {
+  // The item lands in the hand now, so the line under the reveal says what to do with it.
+  main: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  IN YOUR HAND: put it on any pedestal`,
   expose: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  placed on your base`,
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
