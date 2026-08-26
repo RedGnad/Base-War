@@ -1,4 +1,4 @@
-import { TOY, plastic, acrylic, montable, remonter } from './toy'
+import { TOY, plastic, acrylic, montable, remonter, demonter } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -657,7 +657,20 @@ export function setupPlots(): void {
             TweenSequence.deleteFrom(v.items[k])
           }
         } else {
+          /*
+            Empty the pedestal PROPERLY, which means stopping its spin first.
+
+            A tween that is still active writes the entity's Transform back every frame, so
+            moving the box to -5 while its Rotate tween ran was overwritten a frame later: a
+            sold item stayed on its pedestal, turning, while the server had already paid for
+            it. Three sales in the log, three ghosts on the shelf. The tween goes, then the
+            stand-in goes under the floor, and any model mounted on it is dismissed too.
+          */
+          Tween.deleteFrom(v.items[k])
+          TweenSequence.deleteFrom(v.items[k])
           tr.position = Vector3.create(t.position.x, -5, t.position.z)
+          tr.scale = Vector3.create(0, 0, 0)
+          demonter(v.items[k])
         }
       }
     }

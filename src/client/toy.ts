@@ -101,6 +101,15 @@ export function remonter(primitive: Entity, fichier: string): void {
   if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
 }
 
+/** Take the model off a mount and bring the stand-in back, for a pedestal that emptied. */
+export function demonter(primitive: Entity): void {
+  const m = montages.get(primitive)
+  if (m === undefined) return
+  montages.delete(primitive)
+  engine.removeEntity(m.modele)
+  if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
+}
+
 export function setupToy(): void {
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
