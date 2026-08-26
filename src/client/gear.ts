@@ -170,8 +170,14 @@ export function setupGear(): void {
         if (pt !== null && zt !== null) zt.position = Vector3.create(pt.position.x, pt.position.y + 1, pt.position.z)
         break
       }
-      const am = AvatarModifierArea.getMutableOrNull(zone)
-      if (am !== null) am.excludeIds = presentsIci.filter((a) => a !== qui)
+      // Rewritten only when the room changed: a mutable write is a serialise-and-compare
+      // every frame otherwise, for a list that is identical almost every frame.
+      const voulu = presentsIci.filter((a) => a !== qui)
+      const actuel = AvatarModifierArea.getOrNull(zone)?.excludeIds ?? []
+      if (actuel.length !== voulu.length || actuel.some((a, i) => a !== voulu[i])) {
+        const am = AvatarModifierArea.getMutableOrNull(zone)
+        if (am !== null) am.excludeIds = voulu
+      }
     }
     for (const [id, z] of [...capes]) {
       if (capesVivantes.has(id)) continue
