@@ -13,27 +13,6 @@ export function rollRarity(): number {
 
 export { PRODUCTION_PER_RARITY as INCOME_PER_RARITY } from '../shared/economy'
 
-/**
- * Every crate can reach EVERY rarity, top included.
- *
- * The previous table capped each crate two tiers above its own, which left rarity 6
- * unreachable from any crate: a seventh of the index was dead content, and a beginner
- * never even learned the top tiers existed.
- *
- * The reference runs ONE shared table for the whole server (wiki `Red Carpet`, weights
- * "extracted from the game files"): everyone sees Legendary and Secret go by, they simply
- * cannot afford them. Aggregated over its 80 items: Common 44.9%, Rare 24.6%, Epic 10.8%,
- * Legendary 0.99%, and the top tier at 0.011%. So the tail is thin but NEVER zero.
- *
- * Here a crate tier shifts the distribution instead of truncating it. Each row still peaks
- * on its own tier, and the tail keeps a one-in-ten-thousand chance at the top.
- */
-const CRATE_WEIGHTS = [
-  [55, 22,   6,   1.2,  0.20, 0.030, 0.004],  // Basic, peaks on Common
-  [22, 55,  22,   6,    1.20, 0.200, 0.030],  // Good,  peaks on Uncommon
-  [ 6, 22,  55,  22,    6.00, 1.200, 0.200],  // Rare,  peaks on Rare
-  [ 1,  6,  22,  55,   22.00, 6.000, 1.200],  // Epic,  peaks on Epic
-]
 
 export function rollCrate(crateId: number): number {
   // Index by TIER, never by crate id: a themed crate keeps its tier's rarity odds, and
@@ -89,7 +68,7 @@ export function rollCrateTier(): number {
   return 0
 }
 
-import { crate, MUTATIONS } from '../shared/loot-table'
+import { crate, MUTATIONS, CRATE_WEIGHTS } from '../shared/loot-table'
 
 /**
  * A themed crate multiplies its own mutation's weight; every other weight is untouched,

@@ -1,4 +1,4 @@
-import { CRATE_PRICE } from './economy'
+import { CRATE_PRICE, PRODUCTION_PER_RARITY } from './economy'
 export const RARITIES = [
   { id: 0, name: 'Common',    color: '#9aa3ad', size: 0.38, glow: 0.00, tours: 0 },
   { id: 1, name: 'Uncommon',  color: '#4ec04e', size: 0.45, glow: 0.25, tours: 0 },
@@ -90,6 +90,67 @@ export function mutationDe(code: number): number { return code % 100 }
 
 export function itemIncome(code: number, incomeTable: readonly number[]): number {
   return (incomeTable[rarityOf(code)] ?? 1) * mutation(mutationDe(code)).mult
+}
+
+/**
+ * Every crate can reach EVERY rarity, top included.
+ *
+ * The previous table capped each crate two tiers above its own, which left rarity 6
+ * unreachable from any crate: a seventh of the index was dead content, and a beginner
+ * never even learned the top tiers existed.
+ *
+ * The reference runs ONE shared table for the whole server (wiki `Red Carpet`, weights
+ * "extracted from the game files"): everyone sees Legendary and Secret go by, they simply
+ * cannot afford them. Aggregated over its 80 items: Common 44.9%, Rare 24.6%, Epic 10.8%,
+ * Legendary 0.99%, and the top tier at 0.011%. So the tail is thin but NEVER zero.
+ *
+ * Here a crate tier shifts the distribution instead of truncating it. Each row still peaks
+ * on its own tier, and the tail keeps a one-in-ten-thousand chance at the top.
+ */
+export const CRATE_WEIGHTS = [
+  [55, 22,   6,   1.2,  0.20, 0.030, 0.004],  // Basic, peaks on Common
+  [22, 55,  22,   6,    1.20, 0.200, 0.030],  // Good,  peaks on Uncommon
+  [ 6, 22,  55,  22,    6.00, 1.200, 0.200],  // Rare,  peaks on Rare
+  [ 1,  6,  22,  55,   22.00, 6.000, 1.200],  // Epic,  peaks on Epic
+]
+
+/**
+ * What a crate is worth, said in the unit the player already reads everywhere: income per second.
+ *
+ * A crate on the belt showed its name and its price and nothing else, so the one question a
+ * buyer has, "is this better than the other one", had no answer on screen. Gold against Good
+ * is the case that made this necessary: nearly the same price, and a player cannot tell from
+ * two names that one trades ceiling for reliability. Computed from the tables rather than
+ * typed, because a typed figure is a lie waiting for the next rebalance. Same arithmetic as
+ * `rollCrate` and `rollMutation`, folded into an expectation.
+ */
+export function rendementAttendu(crateId: number): number {
+  const c = crate(crateId)
+  const poids = CRATE_WEIGHTS[Math.max(0, Math.min(c.tier, CRATE_WEIGHTS.length - 1))]
+  const totalR = poids.reduce((a, b) => a + b, 0)
+  let rarete = 0
+  for (let i = 0; i < poids.length; i++) rarete += (poids[i] / totalR) * PRODUCTION_PER_RARITY[i]
+  const pm = MUTATIONS.map((m) => (c.theme === m.id ? m.poids * c.weight : m.poids))
+  const totalM = pm.reduce((a, b) => a + b, 0)
+  let mult = 0
+  for (let i = 0; i < pm.length; i++) mult += (pm[i] / totalM) * MUTATIONS[i].mult
+  return rarete * mult
+}
+
+/** How often a themed crate lands its theme, or 0 for a plain one. Shown next to the yield. */
+export function chanceDuTheme(crateId: number): number {
+  const c = crate(crateId)
+  if (c.theme < 0) return 0
+  const pm = MUTATIONS.map((m) => (c.theme === m.id ? m.poids * c.weight : m.poids))
+  const totalM = pm.reduce((a, b) => a + b, 0)
+  return pm[MUTATIONS.findIndex((m) => m.id === c.theme)] / totalM
+}
+
+/** The one line a crate carries wherever it is shown: yield, and the theme odds if it has one. */
+export function ligneDeCaisse(crateId: number): string {
+  const c = crate(crateId)
+  const base = `~${formatIncome(rendementAttendu(crateId))}/s`
+  return c.theme < 0 ? base : `${base}  ${Math.round(chanceDuTheme(crateId) * 100)}% ${mutation(c.theme).name}`
 }
 
 export function formatIncome(v: number): string {

@@ -5,7 +5,7 @@ import {
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { crate, formatIncome } from '../shared/loot-table'
+import { crate, formatIncome, ligneDeCaisse } from '../shared/loot-table'
 import { HUE } from './theme'
 
 export const beltView = {
@@ -31,7 +31,7 @@ export const beltView = {
 const NOIR = Color3.create(0, 0, 0)
 const VERT = Color4.fromHexString(HUE.money + 'ff')
 
-type View = { item: Entity; label: Entity; nom: Entity }
+type View = { item: Entity; label: Entity; nom: Entity; rendement: Entity }
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
@@ -105,7 +105,7 @@ export function setupBelt(): void {
         Material.setPbrMaterial(item, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.45, metallic: 0.6, roughness: 0.35 })
         PointerEvents.create(item, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${ligneDeCaisse(b.crateTier)}` } }
           ]
         })
 
@@ -126,12 +126,27 @@ export function setupBelt(): void {
         const nom = engine.addEntity()
         Transform.create(nom, { position: Vector3.create(t.position.x, t.position.y + 0.86, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
+        /*
+          The name, and under it what the crate is worth in the unit the player already reads
+          everywhere. Two crates at almost the same price used to be told apart by nothing but
+          a colour; `~131/s  67% Gold` next to `~145/s` is the whole trade-off in one glance.
+        */
         TextShape.create(nom, {
           text: r.name, fontSize: 3, textColor: c,
           outlineWidth: 0.22, outlineColor: NOIR
         })
 
-        v = { item, label, nom }
+        // Its own entity at its own size, the same way the price is: rich-text tags inside one
+        // TextShape are not something this codebase has ever verified on the client.
+        const rendement = engine.addEntity()
+        Transform.create(rendement, { position: Vector3.create(t.position.x, t.position.y + 0.58, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
+        TextShape.create(rendement, {
+          text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT,
+          outlineWidth: 0.22, outlineColor: NOIR
+        })
+
+        v = { item, label, nom, rendement }
         views.set(b.articleId, v)
       }
 
@@ -154,6 +169,7 @@ export function setupBelt(): void {
       engine.removeEntity(v.item)
       engine.removeEntity(v.label)
       engine.removeEntity(v.nom)
+      engine.removeEntity(v.rendement)
       views.delete(id)
     }
 
@@ -162,7 +178,7 @@ export function setupBelt(): void {
 
   room.onMessage('beltAlert', (d) => {
     const r = crate(d.crateTier)
-    beltView.annonce = `${r.name} on the belt!`
+    beltView.annonce = `${r.name} on the belt!  ${ligneDeCaisse(d.crateTier)}`
     beltView.annonceColor = r.color
     beltView.annonceTier = d.crateTier
     // A rarer crate stays on screen longer: it deserves more attention, and it is also

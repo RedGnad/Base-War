@@ -3,7 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
-import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge } from '../shared/schemas'
+import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge } from '../shared/schemas'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -19,12 +19,28 @@ import { closeMenu } from './menu'
  * money is spent. So the moment a floor became affordable the button locked onto it and
  * every other action vanished behind it, which is exactly what a player reported.
  *
- * A shop is not new surface here. It is the room these three were always missing.
+ * Laid out as FAMILIES rather than as a flat list, which is the second thing this screen got
+ * wrong. Five rows in one column read as five unrelated products, three of which had the same
+ * sentence under them. A buyer's real question is "what kind of thing is this", and the answer
+ * is one of three: it makes the building bigger, it defends it, or it resets it. Each family
+ * says once what it is for, and then its rows only have to say what makes them different.
+ *
+ * Every detail line is measured against the column it sits in, 610 px at caption size. The
+ * previous sentry line was 972.
  */
 
 export const shopView = { open: false }
 
-const RANG = 76
+/*
+  Sized to the dialog, not to taste.
+
+  The window is capped at `BAND.dialogMaxHeight`, 620, and the old flat list reached 618 of it.
+  Three family headers had to come out of that same budget, so the row shrank from 76 to 64:
+  the button stays TAP.height regardless, and 34 + 26 still holds a label and a caption. What
+  got cut was air, not content. 3 x 40 + 5 x 72 + padding lands at 616.
+*/
+const RANG = 64
+const TITRE_FAMILLE = 34
 
 /** What a defence tier costs this base, mirroring the server's own formula for display. */
 function prixTourelle(tier: number): number {
@@ -32,6 +48,16 @@ function prixTourelle(tier: number): number {
   const parObjet = view.items === 0 ? 0 : theftView.income / view.items
   return prixParCharge(parObjet, tier) * t.charges
 }
+
+const Famille = (props: { titre: string; note: string }) => (
+  <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 6 } }}>
+    {/* Fixed widths, because a Label given none resolves to nothing in this layout engine. */}
+    <Label value={props.titre} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
+      uiTransform={{ width: 150, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
+    <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
+      uiTransform={{ width: 880, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
+  </UiEntity>
+)
 
 const Rang = (props: {
   key?: string
@@ -61,7 +87,7 @@ const Rang = (props: {
       <Label value={props.titre} fontSize={TYPE.label} color={C.name}
         uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
       <Label value={props.detail} fontSize={TYPE.caption} color={C.dim}
-        uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
+        uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
     </UiEntity>
     <Label value={props.prix > 0 ? formatIncome(props.prix) : ''} fontSize={TYPE.label}
       color={C.money}
@@ -73,19 +99,21 @@ const Rang = (props: {
   </UiEntity>
 )
 
-export const HAUTEUR_SHOP = 52 + 5 * (RANG + 8)
+/** Three family headers and five rows: 3 x 40 + 5 x 72 = 480. */
+export const HAUTEUR_SHOP = 3 * (TITRE_FAMILLE + 6) + 5 * (RANG + 8)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
   const argent = theftView.coins
   const etage = theftView.floorPrice
-  const palier = theftView.nextPrestige
+  const palierPrestige = theftView.nextPrestige
+  const prestige = prestigeTier(theftView.prestige)
+  const ici = maDefense()
 
   return (
     <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_SHOP, flexDirection: 'column' }}>
-      <Label value="UPGRADES" fontSize={TYPE.body} color={Color4.fromHexString('#ffd166ff')}
-        uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
 
+      <Famille titre="BUILD" note="more shelves, so more earns" />
       <Rang
         titre={etage > 0 ? '+1 FLOOR' : 'FLOORS MAXED'}
         detail={etage > 0 ? 'six more slots, you keep everything' : `${MAX_FLOORS} floors is the cap`}
@@ -93,44 +121,40 @@ export const ShopContent = () => {
         possible={etage > 0 && argent >= etage}
         onClick={() => { buyFloorFor(); closeMenu() }} />
 
+      {/*
+        The floor being armed is named ONCE, in the family line, instead of once per row.
+
+        The purchase depends on where the player's feet are, and a button whose effect depends
+        on something off-screen is the defect this project keeps finding. But saying "on FLOOR
+        3" three times in three rows is what pushed each of them to nine hundred pixels. The
+        family says where; the rows say what.
+      */}
+      <Famille
+        titre="DEFEND"
+        note={ici === null
+          ? 'stand inside your base, on the floor to defend'
+          : `floor ${ici.etage + 1} holds ${ici.charges}  ·  each charge blocks one theft there`} />
       {SENTRY_TIERS.map((t, i) => {
         const prix = prixTourelle(i)
-        /*
-          A defence belongs to a STOREY, so the row has to say which one before it is bought.
-
-          The purchase now depends on where the player's feet are, and a button whose effect
-          depends on something off-screen is the defect this project keeps finding. Standing
-          outside, the row says so instead of failing after the tap.
-        */
-        const ici = maDefense()
         const plein = ici !== null && ici.charges >= SENTRY_MAX_CHARGES
         return (
           <Rang key={t.name}
             titre={t.name}
-            /*
-              What each tier actually DOES, now that they differ.
-
-              All three read `N charges, each one blocks a theft`, which was true of all of
-              them and therefore said nothing: the choice was arithmetic, buy whichever is
-              cheapest per charge. The tithe is the difference, so the tithe is what the line
-              names, and GUARD's absence of one is stated rather than left blank.
-            */
-            detail={ici === null
-              ? 'stand inside your base, on the floor you want to defend'
-              : (t.tithe > 0
-                ? `${t.charges} charges on FLOOR ${ici.etage + 1}  ·  blocks a theft there and drops ${Math.round(t.tithe * 100)}% of their coins  ·  it holds ${ici.charges}`
-                : `${t.charges} charges on FLOOR ${ici.etage + 1}  ·  blocks a theft there, takes nothing  ·  it holds ${ici.charges}`)}
+            detail={t.tithe > 0
+              ? `${t.charges} charges  ·  blocks a theft, drops ${Math.round(t.tithe * 100)}% of their coins`
+              : `${t.charges} charges  ·  blocks a theft, takes nothing`}
             bouton="ARM" prix={prix}
             possible={ici !== null && !plein && theftView.basePosee && argent >= prix}
             onClick={() => { armSentry(i); closeMenu() }} />
         )
       })}
 
+      <Famille titre="PRESTIGE" note="start over, earn more for good" />
       <Rang
-        titre={`PRESTIGE x${theftView.multiplier + 1}`}
-        detail={`x${prestigeTier(theftView.prestige).multiplier} on everything you earn, and you keep your best ${prestigeTier(theftView.prestige).guard === 1 ? 'item' : prestigeTier(theftView.prestige).guard + ' items'}`}
-        bouton="OPEN" prix={palier}
-        possible={palier > 0 && argent >= palier}
+        titre={`PRESTIGE ${theftView.prestige + 1}`}
+        detail={`x${prestige.multiplier} on everything you earn, keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
+        bouton="OPEN" prix={palierPrestige}
+        possible={palierPrestige > 0 && argent >= palierPrestige}
         onClick={() => { closeMenu(); openPrestige() }} />
     </UiEntity>
   )
