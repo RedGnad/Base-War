@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, SHOT_DROP_CAP_S
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
@@ -154,11 +154,13 @@ export function startTheft(): void {
           caps on the shooter's. Dropped under the thief, not credited: the owner has to walk
           out and pick it up, and the thief can try to take their own money back on the way.
         */
-        const part = SENTRY_TIERS[Math.min(tier, SENTRY_TIERS.length - 1)].tithe
+        const palier = SENTRY_TIERS[Math.min(tier, SENTRY_TIERS.length - 1)]
         let pris = 0
-        if (part > 0) {
-          const plafond = Math.max(SHOT_MIN_YIELD, Math.floor(incomePerSecond(v.victim) * SHOT_DROP_CAP_S))
-          const voulu = Math.floor(coinsOf(thief) * part)
+        if (palier.tithe > 0) {
+          // The ceiling is what this charge cost, times what the tier promises back.
+          const prixCharge = incomePerSecond(v.victim) * palier.secondsPerCharge
+          const plafond = Math.max(SHOT_MIN_YIELD, Math.floor(prixCharge * palier.retour))
+          const voulu = Math.floor(coinsOf(thief) * palier.tithe)
           const montant = Math.max(0, Math.min(voulu, plafond))
           if (montant > 0 && spend(thief, montant)) { dropAt(thief, montant, p); pris = montant }
         }
@@ -171,7 +173,7 @@ export function startTheft(): void {
         const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
         if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
         else storeAlert(v.victim, info)
-        log(`${b.name} sentry (${SENTRY_TIERS[Math.min(tier, SENTRY_TIERS.length - 1)].name}) blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left`)
+        log(`${b.name} sentry (${palier.name}) blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left`)
         continue
       }
 

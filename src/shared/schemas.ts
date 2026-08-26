@@ -301,11 +301,24 @@ export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
 
   GUARD keeps a tithe of zero on purpose. It stays the pure deterrent, the cheap one that
   simply says no, so the ladder starts at a rung that costs nothing to understand.
+
+  `retour` is the ceiling, and it is expressed in charges rather than in seconds because the
+  first version of this borrowed the gun's cap and that was measurably wrong. A shot caps at
+  eight seconds of the shooter's income, which is right for a bullet since bullets are free.
+  A charge is not free: `sentryPrice` charges `secondsPerCharge` seconds of income for each
+  one, so 28 to 40 seconds. Capping its return at eight meant a defence that fired perfectly,
+  every single time, still lost its owner money. It could never pay for itself.
+
+  So the ceiling is a multiple of what the charge itself cost. A TURRET that catches a thief
+  on every charge returns twice its price, a BATTERY four times, and the number on the shop
+  row means something a tycoon player already knows how to read. It also keeps the two tiers
+  apart at every level of wealth: under the old cap a rich enough thief handed TURRET and
+  BATTERY exactly the same sum, which is precisely where the difference should matter most.
 */
 export const SENTRY_TIERS = [
-  { name: 'GUARD', charges: 3, secondsPerCharge: 40, tithe: 0 },
-  { name: 'TURRET', charges: 8, secondsPerCharge: 34, tithe: 0.06 },
-  { name: 'BATTERY', charges: 20, secondsPerCharge: 28, tithe: 0.12 }
+  { name: 'GUARD', charges: 3, secondsPerCharge: 40, tithe: 0, retour: 0 },
+  { name: 'TURRET', charges: 8, secondsPerCharge: 34, tithe: 0.15, retour: 2 },
+  { name: 'BATTERY', charges: 20, secondsPerCharge: 28, tithe: 0.30, retour: 4 }
 ] as const
 
 /** The ceiling a base can hold, whichever tiers were bought to get there. */
