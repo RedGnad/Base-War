@@ -2,15 +2,6 @@
 const POIDS = [60, 25, 10, 4, 1]
 const TOTAL = POIDS.reduce((a, b) => a + b, 0)
 
-export function rollRarity(): number {
-  let n = Math.random() * TOTAL
-  for (let i = 0; i < POIDS.length; i++) {
-    n -= POIDS[i]
-    if (n <= 0) return i
-  }
-  return 0
-}
-
 export { PRODUCTION_PER_RARITY as INCOME_PER_RARITY } from '../shared/economy'
 
 

@@ -333,23 +333,6 @@ export function auRevoir(address: string): void {
   log(`${b.name} left; base stays visible and raidable`)
 }
 
-export async function placeItem(address: string, rarity: number): Promise<boolean> {
-  const profile = profiles.get(address)
-  if (!profile) return false
-  const open = openSlots(profile.floorsBought ?? 0)
-  const b = bases.get(address)
-  if (profile.items.length >= open) {
-    log(`base de ${b?.name ?? address.slice(0, 8)} pleine (${open} places open)`)
-    return false
-  }
-  profile.items.push(rarity)
-  profile.itemsFound = (profile.itemsFound ?? 0) + 1
-  dirtyProfiles.add(address)
-  if (b) { b.items = [...profile.items]; dirtyBases.add(address); publish(b) }
-  log(`rarity ${rarity} posee par ${address.slice(0, 8)} (${profile.items.length} items)`)
-  return true
-}
-
 export function coinsOf(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
 
 /** Time already spent here, across every visit and every server this scene has had. */
@@ -685,11 +668,6 @@ export function enregistrerDon(giver: string, receiver: string): void {
   if (br) publish(br)
 }
 
-export function socialDe(address: string): { given: number; received: number } {
-  const p = profiles.get(address)
-  return { given: p?.given ?? 0, received: p?.received ?? 0 }
-}
-
 /**
  * What a tier costs this player, in what their own base earns.
  *
@@ -832,7 +810,6 @@ export function removeGear(address: string, gear: number): boolean {
 }
 
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
-export function toutesLesBases(): Base[] { return [...bases.values()] }
 /*
   What prestige actually does, because three screens said otherwise.
 
@@ -1064,7 +1041,7 @@ export function etapeTuto(address: string): number {
   if (p.tuto !== undefined) return p.tuto
   let e = 0
   if (bases.has(address)) e = 1
-  if (p.items.length > 0 || (p.itemsFound ?? 0) > 0) e = 2
+  if (occupe(p.items) > 0 || (p.itemsFound ?? 0) > 0) e = 2
   if (p.coins > 0) e = 3
   p.tuto = e
   dirtyProfiles.add(address)
@@ -1099,17 +1076,6 @@ export function reclamerQuotidienne(address: string): { log: number; crate: numb
   dirtyProfiles.add(address)
   log(`${nameOf(address)} claimed day ${p.streak} reward: crate ${crate}`)
   return { log: p.streak, crate }
-}
-
-export function vusDe(address: string): number[] {
-  return [...(profiles.get(address)?.vus ?? [])]
-}
-
-export function marquerSale(address: string): void {
-  dirtyBases.add(address)
-  const p = profiles.get(address); const b = bases.get(address)
-  if (p && b) { p.items = [...b.items]; dirtyProfiles.add(address) }
-  if (b) publish(b)
 }
 
 export function startPlots(): void {

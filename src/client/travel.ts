@@ -22,8 +22,6 @@ export const travelView = {
   open: false
 }
 
-export function basculerVoyage(): void { travelView.open = !travelView.open }
-
 export function setupTravel(): void {
   engine.addSystem(() => { travelView.peutRentrer = maBase() !== null })
 }

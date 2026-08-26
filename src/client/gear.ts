@@ -34,8 +34,6 @@ let marqueur: Entity
 export function peutPoser(gear: number): boolean {
   return estPosable(gear) && gearView.held[gear] > 0 && carryView.code < 0
 }
-export function peutPoserPiege(): boolean { return peutPoser(0) }
-
 /** Only placeable gear goes to the floor; worn gear is used by being held. */
 export function estPosable(gear: number): boolean { return GEARS[gear]?.kind === 'place' }
 

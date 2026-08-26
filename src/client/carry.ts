@@ -40,9 +40,6 @@ const VERT = Color4.create(0.35, 0.95, 0.45, 0.42)
 let marqueur: Entity
 let cibleIndex = -1
 
-/** Where the carried item would go right now, or -1 if it would go nowhere. */
-export function poseCible(): number { return cibleIndex }
-
 export function setupCarry(): void {
   marqueur = engine.addEntity()
   Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
