@@ -124,14 +124,15 @@ export function setupTheft(): void {
     // The coins are on the floor at your feet, not in their pocket: worth saying, because it
     // is the difference between a punishment and a scramble you can still win.
     const paye = d.lost > 0 ? `\ndropped ${formatIncome(d.lost)} at your feet` : ''
-    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s${paye}`, '#ff6b6b', 6500)
+    // Naming the floor is the lesson: another storey may have nothing on it.
+    alerter(`${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s${paye}`, '#ff6b6b', 6500)
   })
   room.onMessage('sentryTriggered', (d) => {
     const butin = d.taken > 0 ? `\nthey dropped ${formatIncome(d.taken)}, go and get it` : ''
     alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', 7000)
   })
   room.onMessage('sentryBought', (d) => {
-    alerter(`SENTRY ARMED  ·  ${d.charges} charges  ·  -${d.cost} coins`, '#4dd2ff', 4000)
+    alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges there  ·  -${formatIncome(d.cost)} coins`, '#4dd2ff', 4000)
   })
 
   room.onMessage('gaveItem', (d) => {

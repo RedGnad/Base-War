@@ -2,12 +2,12 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS, SLOTS_PER_FLOOR
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
@@ -153,11 +153,20 @@ export function startTheft(): void {
         continue
       }
 
-      // LA SENTINELLE AGIT PENDANT L'ACTION, pas a la place de l'action.
+      /*
+        The sentry acts DURING the attempt, and only the one on THIS storey acts at all.
+
+        A defence that covered every floor at once was a number, not a decision: the owner had
+        nothing to arbitrate and the thief had nothing to read. Now the charge is spent on the
+        floor being robbed, so guarding the trophies upstairs leaves the door soft, and finding
+        the soft floor is the attacker's counterplay. That is the base-raid genre's own answer,
+        and it costs no new item to give.
+      */
+      const etageVise = Math.floor(v.slot / SLOTS_PER_FLOOR)
       // `>= 0` et pas une verite: la fonction rend le TIER qui a tire, et le tier zero existe.
-      const tier = useSentryCharge(v.victim)
+      const tier = useSentryCharge(v.victim, etageVise)
       if (tier >= 0) {
-        const left = sentriesOf(v.victim)
+        const left = sentriesSurEtage(v.victim, etageVise)
         setLock(v.victim, maintenant + SENTRY_LOCK_MS)
         enCours.delete(thief)
 
@@ -184,13 +193,13 @@ export function startTheft(): void {
 
         void room.send('sentryBlocked', {
           ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
-          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris
+          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris, floor: etageVise + 1
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
         const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
         if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
         else storeAlert(v.victim, info)
-        log(`${b.name} sentry (${palier.name}) blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left`)
+        log(`${b.name} sentry (${palier.name}) on floor ${etageVise + 1} blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left there`)
         continue
       }
 
@@ -336,7 +345,7 @@ export function startTheft(): void {
     if (!a) return
     const r = buySentryFor(a, Number.isInteger(d?.tier) ? d.tier : 0)
     if (!r.ok) { refus(a, 'sentry', r.reason ?? 'refused'); return }
-    void room.send('sentryBought', { charges: r.charges ?? 0, cost: r.cost ?? 0 }, { to: [a] })
+    void room.send('sentryBought', { charges: r.charges ?? 0, cost: r.cost ?? 0, floor: (r.floor ?? 0) + 1 }, { to: [a] })
   })
 
 

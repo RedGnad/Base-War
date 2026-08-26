@@ -5,6 +5,7 @@ import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge } from '../shared/schemas'
 import { view } from './setup'
+import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
 import { openPrestige } from './prestige-ui'
 import { closeMenu } from './menu'
@@ -94,7 +95,15 @@ export const ShopContent = () => {
 
       {SENTRY_TIERS.map((t, i) => {
         const prix = prixTourelle(i)
-        const plein = theftView.sentries >= SENTRY_MAX_CHARGES
+        /*
+          A defence belongs to a STOREY, so the row has to say which one before it is bought.
+
+          The purchase now depends on where the player's feet are, and a button whose effect
+          depends on something off-screen is the defect this project keeps finding. Standing
+          outside, the row says so instead of failing after the tap.
+        */
+        const ici = maDefense()
+        const plein = ici !== null && ici.charges >= SENTRY_MAX_CHARGES
         return (
           <Rang key={t.name}
             titre={t.name}
@@ -106,11 +115,13 @@ export const ShopContent = () => {
               cheapest per charge. The tithe is the difference, so the tithe is what the line
               names, and GUARD's absence of one is stated rather than left blank.
             */
-            detail={t.tithe > 0
-              ? `${t.charges} charges  ·  blocks a theft and drops ${Math.round(t.tithe * 100)}% of their coins  ·  you hold ${theftView.sentries}`
-              : `${t.charges} charges  ·  blocks a theft, takes nothing  ·  you hold ${theftView.sentries}`}
+            detail={ici === null
+              ? 'stand inside your base, on the floor you want to defend'
+              : (t.tithe > 0
+                ? `${t.charges} charges on FLOOR ${ici.etage + 1}  ·  blocks a theft there and drops ${Math.round(t.tithe * 100)}% of their coins  ·  it holds ${ici.charges}`
+                : `${t.charges} charges on FLOOR ${ici.etage + 1}  ·  blocks a theft there, takes nothing  ·  it holds ${ici.charges}`)}
             bouton="ARM" prix={prix}
-            possible={!plein && theftView.basePosee && argent >= prix}
+            possible={ici !== null && !plein && theftView.basePosee && argent >= prix}
             onClick={() => { armSentry(i); closeMenu() }} />
         )
       })}

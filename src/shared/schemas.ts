@@ -21,6 +21,21 @@ export const Plot = engine.defineComponent('basetycoon::plot', {
   given: Schemas.Int,
   received: Schemas.Int,
   sentries: Schemas.Int,
+  /*
+    Charges per storey, which is what turns a defence into a decision.
+
+    A base-raid game is about WHERE the defences are; that is the whole strategy layer of the
+    genre and it is the part we did not have. Our sentry was one number that protected every
+    floor at once, so buying it was arithmetic and attacking it was blind. Per storey, the owner
+    has to choose between guarding the trophies upstairs and guarding the door, and the thief
+    finally has something to read: find the soft floor.
+    
+    Which is also the honest answer to "should we add an item that bypasses defences". The
+    genre does have one, Clash of Clans' Freeze Spell, temporary and local. But the first
+    counterplay a base-raid game gives an attacker is not an item, it is an angle, and the angle
+    here is a storey. That costs nothing to build and asks the player to look at the building.
+  */
+  sentryFloors: Schemas.Array(Schemas.Int),
   lockedUntil: Schemas.Int64
 })
 
@@ -373,6 +388,7 @@ export const SENTRY_TIERS = [
 ] as const
 
 /** The ceiling a base can hold, whichever tiers were bought to get there. */
+/** Per STOREY now, not per base: each floor can hold a full battery of its own. */
 export const SENTRY_MAX_CHARGES = SENTRY_TIERS[SENTRY_TIERS.length - 1].charges
 
 /** One charge, priced off what ONE item on the shelf produces. Both sides call this. */

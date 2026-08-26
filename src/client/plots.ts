@@ -39,10 +39,10 @@ import { pickUp } from './carry'
 import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
 
-type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity }
+type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity
-  floors: Floor[]; items: Entity[]; sentry: Entity; ascenseur: Entity; signature: string; ownerId: string
+  floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
 }
 
 /** World-label colours, built here rather than read from the shared token object: that one
@@ -172,7 +172,27 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z + c / 2 - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698')
   )
 
-  return { floorSlab, walls, ramp, landing }
+  /*
+    One turret per storey, born with the storey it defends.
+
+    A defence that is a number tells a visitor nothing. A defence that stands on the third
+    floor and not on the first tells them where to go, before anybody explains a rule, and
+    that reading IS the counterplay: find the storey nobody guarded. It is created here rather
+    than up front so an unbought floor still costs nothing.
+  */
+  const sentry = engine.addEntity()
+  Transform.create(sentry, {
+    position: Vector3.create(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1),
+    scale: Vector3.create(0, 0, 0)
+  })
+  MeshRenderer.setCylinder(sentry, 0.25, 0.45)
+  Material.setPbrMaterial(sentry, {
+    albedoColor: Color4.fromHexString('#4dd2ffff'),
+    emissiveColor: Color4.fromHexString('#4dd2ffff'),
+    emissiveIntensity: 1.6, metallic: 0.8, roughness: 0.2
+  })
+
+  return { floorSlab, walls, ramp, landing, sentry }
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
@@ -234,17 +254,6 @@ function createView(x: number, z: number): View {
     the interface is not to be trusted.
   */
 
-  const sentry = engine.addEntity()
-  Transform.create(sentry, {
-    position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 0.35, z),
-    scale: Vector3.create(0, 0, 0)
-  })
-  MeshRenderer.setCylinder(sentry, 0.25, 0.45)
-  Material.setPbrMaterial(sentry, {
-    albedoColor: Color4.fromHexString('#4dd2ffff'),
-    emissiveColor: Color4.fromHexString('#4dd2ffff'),
-    emissiveIntensity: 1.6, metallic: 0.8, roughness: 0.2
-  })
 
   // A base reads like a belt crate: what it earns in green above who owns it in white,
   // both outlined so they hold over sky, grass or a wall. One TextShape carries one colour,
@@ -280,7 +289,7 @@ function createView(x: number, z: number): View {
     })
     items.push(o)
   }
-  return { plinth, label, gain, door, sentry, ascenseur, floors, items, signature: '', ownerId: '' }
+  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '' }
 }
 
 function destroyView(v: View): void {
@@ -288,7 +297,6 @@ function destroyView(v: View): void {
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
   engine.removeEntity(v.door)
-  engine.removeEntity(v.sentry)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
     /*
@@ -301,7 +309,7 @@ function destroyView(v: View): void {
     */
     taille.delete(e.ramp)
     engine.removeEntityWithChildren(e.ramp)
-    for (const ent of [e.floorSlab, e.landing, ...e.walls]) {
+    for (const ent of [e.floorSlab, e.landing, e.sentry, ...e.walls]) {
       taille.delete(ent)
       engine.removeEntity(ent)
     }
@@ -341,6 +349,30 @@ export function baseIci(): { ownerId: string; mienne: boolean } | null {
     proche = { ownerId: p.ownerId, mienne: p.ownerId.toLowerCase() === moi }
   }
   return proche
+}
+
+/**
+ * Which storey of MY base I am standing on, and what already defends it.
+ *
+ * Arming happens where you stand, the same rule as putting an item on a shelf. The shop needs
+ * to say which floor that is before the button is pressed, because a purchase whose effect
+ * depends on your feet has to name what your feet chose.
+ */
+export function maDefense(): { etage: number; charges: number } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  const moi = monAdresseClient()
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== moi) continue
+    const bt = Transform.getOrNull(e)
+    if (bt === null) return null
+    const dx = t.position.x - bt.position.x, dz = t.position.z - bt.position.z
+    if (Math.sqrt(dx * dx + dz * dz) > PLACE_RANGE) return null
+    const etage = Math.max(0, Math.round(t.position.y / FLOOR_HEIGHT))
+    if (etage >= p.floors) return null
+    return { etage, charges: p.sentryFloors[etage] ?? 0 }
+  }
+  return null
 }
 
 /**
@@ -461,7 +493,7 @@ export function setupPlots(): void {
         What stays per-frame is what genuinely ticks: the LOCKED countdown on the nameplate and
         the shield, which is why neither of them is behind this flag.
       */
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentries}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}`
       const structurel = sig !== v.signature
       const txt = TextShape.getMutableOrNull(v.label)
       if (txt !== null) {
@@ -479,10 +511,16 @@ export function setupPlots(): void {
           )
         }
         const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
-        const ts = structurel ? Transform.getMutableOrNull(v.sentry) : null
-        if (ts !== null) {
-          const k = p.sentries === 0 ? 0 : 0.6 + p.sentries * 0.18
-          ts.scale = Vector3.create(k, k, k)
+        if (structurel) {
+          // One marker per storey, sized by what that storey holds. An empty floor shows
+          // nothing at all, which is exactly the information a thief is looking for.
+          for (let e = 0; e < v.floors.length; e++) {
+            const ts = Transform.getMutableOrNull(v.floors[e].sentry)
+            if (ts === null) continue
+            const n = p.sentryFloors[e] ?? 0
+            const k = n === 0 ? 0 : 0.6 + n * 0.18
+            ts.scale = Vector3.create(k, k, k)
+          }
         }
         /*
           The rank goes on the nameplate, because that is the only place it does its job.

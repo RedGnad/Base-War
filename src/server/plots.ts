@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor
+  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -38,6 +38,7 @@ type Base = {
   lastSeen: number
   floorsBought: number
   sentries: number
+  sentryFloors: number[]
   rebirths: number
   given: number
   received: number
@@ -55,6 +56,7 @@ type Profil = {
   lastDay?: number
   streak?: number
   sentries?: number
+  sentryFloors?: number[]
   sentryTier?: number
   given?: number
   received?: number
@@ -130,13 +132,14 @@ function publish(b: Base, ici?: Set<string>): void {
       sentry and crossing a prestige did not, so those two would have shown correctly until
       the owner logged off and then quietly reverted.
     */
-    const avant = `${b.floorsBought}|${b.sentries}|${b.rebirths}|${b.given}|${b.received}`
+    const avant = `${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}`
     b.floorsBought = pr.floorsBought ?? 0
-    b.sentries = pr.sentries ?? 0
+    b.sentryFloors = [...(pr.sentryFloors ?? [])]
+    b.sentries = totalCharges(b.sentryFloors)
     b.rebirths = pr.rebirths ?? 0
     b.given = pr.given ?? 0
     b.received = pr.received ?? 0
-    if (`${b.floorsBought}|${b.sentries}|${b.rebirths}|${b.given}|${b.received}` !== avant) {
+    if (`${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}` !== avant) {
       dirtyBases.add(b.address)
     }
   }
@@ -148,11 +151,21 @@ function publish(b: Base, ici?: Set<string>): void {
   c.ownerPresent = (ici ?? presents()).has(b.address)
   c.given = b.given
   c.received = b.received
-  c.sentries = b.sentries
+  c.sentries = totalCharges(b.sentryFloors)
+  c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; rebirths: number; given: number; received: number }
-const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, rebirths: 0, given: 0, received: 0 }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; rebirths: number; given: number; received: number }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], rebirths: 0, given: 0, received: 0 }
+
+/** Charges on a storey, zero when that storey has none and when the array is short. */
+export function chargesA(liste: number[] | undefined, etage: number): number {
+  return liste === undefined || etage < 0 ? 0 : (liste[etage] ?? 0)
+}
+
+export function totalCharges(liste: number[] | undefined): number {
+  return liste === undefined ? 0 : liste.reduce((a, b) => a + b, 0)
+}
 
 function createBase(
   address: string, name: string, items: number[], lastSeen: number, x: number, z: number,
@@ -193,6 +206,9 @@ async function loadBases(): Promise<void> {
           // "never written", which is what tells the migration below to go and find them.
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
+            // Blobs written before defences had storeys carry a single count: it all sits on
+            // the ground floor, which is where an undifferentiated defence effectively was.
+            sentryFloors: Array.isArray(v.sentryFloors) ? v.sentryFloors : (v.sentries > 0 ? [v.sentries] : []),
             rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
           }
         }
@@ -224,7 +240,8 @@ async function loadBases(): Promise<void> {
         const b = bases.get(l.address)
         if (b === undefined) continue
         b.floorsBought = prof.floorsBought ?? 0
-        b.sentries = prof.sentries ?? 0
+        b.sentryFloors = [...(prof.sentryFloors ?? (prof.sentries ? [prof.sentries] : []))]
+        b.sentries = totalCharges(b.sentryFloors)
         b.rebirths = prof.rebirths ?? 0
         b.given = prof.given ?? 0
         b.received = prof.received ?? 0
@@ -247,7 +264,7 @@ async function save(): Promise<void> {
     if (!b) continue
     const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
       name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
-      floorsBought: b.floorsBought, sentries: b.sentries, rebirths: b.rebirths,
+      floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, rebirths: b.rebirths,
       given: b.given, received: b.received
     }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
@@ -681,37 +698,75 @@ export function sentryPrice(address: string, tier = 0): number {
   return Math.max(SENTRY_MIN_PRICE, prixParCharge(revenuParObjet(address), tier) * t.charges)
 }
 
-export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?: string; charges?: number; cost?: number } {
+/**
+ * Which storey of their OWN base a player is standing on, or -1 if they are not in it.
+ *
+ * Arming happens where you stand, the same rule as putting an item on a shelf, so a defence is
+ * something you walk to rather than something you tick in a list. It also means the shop cannot
+ * arm anything from across the plaza, which is the point: choosing the floor IS the purchase.
+ */
+export function etageChezSoi(address: string): number {
+  const b = bases.get(address)
+  if (b === undefined) return -1
+  const t = Transform.getOrNull(b.entity)
+  const p = positionOf(address)
+  if (t === null || p === null) return -1
+  const dx = p.x - t.position.x, dz = p.z - t.position.z
+  if (Math.sqrt(dx * dx + dz * dz) > PLACE_RANGE) return -1
+  const e = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
+  return e >= openFloors(b.floorsBought) ? -1 : e
+}
+
+export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?: string; charges?: number; cost?: number; floor?: number } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
-  if (!bases.has(address)) return { ok: false, reason: 'place your base first' }
+  const b = bases.get(address)
+  if (b === undefined) return { ok: false, reason: 'place your base first' }
+  const etage = etageChezSoi(address)
+  if (etage < 0) return { ok: false, reason: 'stand inside your base, on the floor you want to defend' }
+
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
-  const avant = p.sentries ?? 0
-  if (avant >= SENTRY_MAX_CHARGES) return { ok: false, reason: 'sentry already full' }
+  const liste = [...(p.sentryFloors ?? [])]
+  while (liste.length <= etage) liste.push(0)
+  const avant = liste[etage]
+  if (avant >= SENTRY_MAX_CHARGES) return { ok: false, reason: `floor ${etage + 1} is already fully defended` }
   const cost = sentryPrice(address, tier)
   if (p.coins < cost) return { ok: false, reason: `you need ${Math.ceil(cost - p.coins)} more coins` }
   p.coins -= cost
   // Charges add up rather than replace, so a second purchase is never a downgrade. The tier
   // follows the same rule: what fires is the best thing you ever armed, so buying a GUARD
   // after a BATTERY tops up the charges without quietly weakening what they do.
-  p.sentries = Math.min(SENTRY_MAX_CHARGES, avant + t.charges)
+  liste[etage] = Math.min(SENTRY_MAX_CHARGES, avant + t.charges)
+  p.sentryFloors = liste
+  p.sentries = totalCharges(liste)
   p.sentryTier = Math.max(p.sentryTier ?? 0, SENTRY_TIERS.indexOf(t))
   dirtyProfiles.add(address)
-  const b = bases.get(address)
-  if (b) publish(b)
-  log(`${displayName(address)} armed a ${t.name} (${cost}, ${avant} -> ${p.sentries} charges)`)
-  return { ok: true, charges: p.sentries, cost }
+  b.sentryFloors = [...liste]
+  b.sentries = p.sentries
+  dirtyBases.add(address)
+  publish(b)
+  log(`${displayName(address)} armed a ${t.name} on floor ${etage + 1} (${cost}, ${avant} -> ${liste[etage]} charges there)`)
+  return { ok: true, charges: liste[etage], cost, floor: etage }
 }
 
 /** Spends one charge and answers WHICH tier fired, or -1 if there was nothing to fire. */
-export function useSentryCharge(address: string): number {
+export function useSentryCharge(address: string, etage: number): number {
   const p = profiles.get(address)
-  if (!p || (p.sentries ?? 0) <= 0) return -1
-  p.sentries = (p.sentries ?? 0) - 1
+  if (!p) return -1
+  const liste = [...(p.sentryFloors ?? [])]
+  if (chargesA(liste, etage) <= 0) return -1
+  liste[etage] -= 1
+  p.sentryFloors = liste
+  p.sentries = totalCharges(liste)
   dirtyProfiles.add(address)
   const b = bases.get(address)
-  if (b) publish(b)
+  if (b) { b.sentryFloors = [...liste]; b.sentries = p.sentries; dirtyBases.add(address); publish(b) }
   return p.sentryTier ?? 0
+}
+
+/** Charges left on that storey, which is what the owner and the thief both need to read. */
+export function sentriesSurEtage(address: string, etage: number): number {
+  return chargesA(profiles.get(address)?.sentryFloors, etage)
 }
 
 export function sentriesOf(address: string): number { return profiles.get(address)?.sentries ?? 0 }
