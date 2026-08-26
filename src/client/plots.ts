@@ -1,4 +1,4 @@
-import { TOY, plastic, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, accentDe } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, accentDe } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -233,7 +233,7 @@ function createView(x: number, z: number, accent: string): View {
   MeshCollider.setBox(door)
   Material.setPbrMaterial(door, {
     albedoColor: TOY.shield,
-    emissiveColor: Color4.fromHexString(TOY.sentry + 'ff'),
+    emissiveColor: Color3.fromHexString(TOY.sentry),
     emissiveIntensity: 0.55,
     metallic: 0,
     roughness: 0.1
@@ -662,7 +662,7 @@ export function setupPlots(): void {
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
-        const mat = { albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0 }
+        const mat = plasticDe(c, r.glow)
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)

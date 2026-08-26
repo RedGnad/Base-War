@@ -1,3 +1,4 @@
+import { plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
   InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers
@@ -144,10 +145,9 @@ export function setupBox(): void {
         jouer(sonCoup)
 
         const usure = boxView.coups / COUPS
+        // The crate heats up as it is hit: the darkening albedo is what makes that readable.
         Material.setPbrMaterial(crateMesh, {
-          albedoColor: Color4.fromHexString(b.color + 'ff'),
-          emissiveColor: Color4.fromHexString(b.color + 'ff'),
-          emissiveIntensity: 0.4 + usure * 1.6,
+          ...plasticDe(Color4.fromHexString(b.color + 'ff'), 0.4 + usure * 1.6),
           metallic: 0.5,
           roughness: 0.4
         })
@@ -210,7 +210,7 @@ function exploser(center: Vector3, color: string): void {
     if (t === null) continue
     t.position = center
     t.scale = Vector3.create(0.16, 0.16, 0.16)
-    Material.setPbrMaterial(e, { albedoColor: c, emissiveColor: c, emissiveIntensity: 1.4 })
+    Material.setPbrMaterial(e, plasticDe(c, 1.4))
     Tween.createOrReplace(e, {
       mode: Tween.Mode.Move({
         start: center,
@@ -263,7 +263,7 @@ function sendToHand(from: Vector3, rarityId: number, mut = 0): void {
   Transform.create(e, { position: from, scale: Vector3.create(r.size, r.size, r.size) })
   MeshRenderer.setBox(e)
   const c = Color4.fromHexString(itemColor(rarityId, mut) + 'ff')
-  Material.setPbrMaterial(e, { albedoColor: c, emissiveColor: c, emissiveIntensity: 1.2 })
+  Material.setPbrMaterial(e, plasticDe(c, 1.2))
 
   const haut = Vector3.create((from.x + target.x) / 2, Math.max(from.y, target.y) + 5, (from.z + target.z) / 2)
   Tween.createOrReplace(e, {
@@ -366,7 +366,7 @@ export function openCrate(crateTier: number): void {
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }
   const c = Color4.fromHexString(b.color + 'ff')
-  Material.setPbrMaterial(crateMesh, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.4, metallic: 0.5, roughness: 0.4 })
+  Material.setPbrMaterial(crateMesh, plasticDe(c, 0.4))
 }
 
 export function openBestCrate(): void {

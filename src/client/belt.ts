@@ -1,4 +1,4 @@
-import { TOY, plastic } from './toy'
+import { TOY, plastic, plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -117,7 +117,7 @@ export function setupBelt(): void {
         Transform.create(item, { parent: racine, scale: Vector3.create(r.size, r.size, r.size) })
         MeshRenderer.setBox(item)
         MeshCollider.setBox(item)
-        Material.setPbrMaterial(item, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.6, roughness: 0.45, metallic: 0 })
+        Material.setPbrMaterial(item, plasticDe(c, 0.6))
         PointerEvents.create(item, {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${ligneDeCaisse(b.crateTier)}` } }

@@ -1,4 +1,4 @@
-import { TOY } from './toy'
+import { TOY, plasticDe } from './toy'
 import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
@@ -75,7 +75,7 @@ export function setupGear(): void {
   marqueur = engine.addEntity()
   Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(marqueur, 0.5, 0.5)
-  Material.setPbrMaterial(marqueur, { albedoColor: Color4.create(0.35, 0.95, 0.45, 0.42), emissiveColor: MIENNE, emissiveIntensity: 0.7 })
+  Material.setPbrMaterial(marqueur, plasticDe(Color4.create(0.35, 0.95, 0.45, 0.42), 0.7))
 
   room.onMessage('gearHeld', (d) => {
     for (let i = 0; i < GEARS.length; i++) gearView.held[i] = d.counts[i] ?? 0
@@ -118,7 +118,7 @@ export function setupGear(): void {
       })
       MeshRenderer.setCylinder(plaque, 0.55, 0.55)
       const teinte = t.owner.toLowerCase() === moi ? MIENNE : PLAQUE
-      Material.setPbrMaterial(plaque, { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 0.4, metallic: 0.6, roughness: 0.4 })
+      Material.setPbrMaterial(plaque, plasticDe(teinte, 0.4))
       vues.set(id, plaque)
     }
     // Bombs: a dark plate with a short life, everyone sees it coming for three seconds.
@@ -132,7 +132,7 @@ export function setupGear(): void {
       Transform.create(plaque, { position: Vector3.create(tr.position.x, tr.position.y + 0.15, tr.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
       MeshRenderer.setSphere(plaque)
       const teinte = b.owner.toLowerCase() === moi ? MIENNE : Color4.fromHexString(TOY.bomb + 'ff')
-      Material.setPbrMaterial(plaque, { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.2 })
+      Material.setPbrMaterial(plaque, plasticDe(teinte, 1.2))
       vues.set(id, plaque)
     }
     for (const [id, p] of [...vues]) {

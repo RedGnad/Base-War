@@ -1,3 +1,4 @@
+import { plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, Material, Entity, Billboard, BillboardMode, TextShape,
   Tween, TweenSequence, TweenLoop, EasingFunction
@@ -33,7 +34,7 @@ export function setupLootUi(): void {
       Transform.create(corps, { position: t.position, scale: Vector3.create(0.5, 0.5, 0.5) })
       MeshRenderer.setBox(corps)
       Material.setPbrMaterial(corps, {
-        albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 2.0, roughness: 0.4
+        ...plasticDe(teinte, 2.0)
       })
       Tween.setRotate(corps, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1400, EasingFunction.EF_LINEAR)
       TweenSequence.createOrReplace(corps, { sequence: [], loop: TweenLoop.TL_RESTART })

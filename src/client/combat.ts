@@ -1,3 +1,4 @@
+import { plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
@@ -209,7 +210,7 @@ export function setupCombat(): void {
   flash = engine.addEntity()
   Transform.create(flash, { parent: vue.poignee, position: BOUCHE, scale: Vector3.Zero() })
   MeshRenderer.setSphere(flash)
-  Material.setPbrMaterial(flash, { albedoColor: FLASH, emissiveColor: FLASH, emissiveIntensity: 5 })
+  Material.setPbrMaterial(flash, plasticDe(FLASH, 5))
 
   AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/hit.wav', playing: false, loop: false, volume: 0.5 })
 
@@ -563,7 +564,7 @@ function pileSystem(): void {
     const body = engine.addEntity()
     Transform.create(body, { parent: chute, position: Vector3.create(0, 0, 0), scale: Vector3.create(0.34, 0.12, 0.34) })
     MeshRenderer.setCylinder(body, 0.34, 0.34)
-    Material.setPbrMaterial(body, { albedoColor: OR, emissiveColor: OR, emissiveIntensity: 1.6, metallic: 0.8 })
+    Material.setPbrMaterial(body, plasticDe(OR, 1.6))
     Tween.setRotate(body, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1600, EasingFunction.EF_LINEAR)
     TweenSequence.createOrReplace(body, { sequence: [], loop: TweenLoop.TL_RESTART })
     // Hung from the same faller, so the number arrives with the coin instead of waiting for it.

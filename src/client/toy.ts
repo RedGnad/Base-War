@@ -64,12 +64,38 @@ export function accentDe(address: string): string {
   return ACCENTS[h % ACCENTS.length]
 }
 
-/** One flat plastic. `glow` is the emissive intensity, zero for anything that is not lit. */
+/*
+  One flat plastic. `glow` is the emissive intensity, zero for anything that is not lit.
+
+  A glow nobody could see, explained by one line of the rendering doc: "use emissiveColor with
+  a DARK albedoColor for maximum glow visibility". Seventeen sites passed the same bright colour
+  as albedo and as emissive, so the surface was already at full brightness under the sky and
+  the emissive had nowhere to go; the mobile renderer has no bloom to spill it past the edge.
+  The tester saw no glow at any rarity, and that was correct rendering of a wrong material.
+
+  So the albedo darkens as the glow rises: at glow 0 the plastic is its own colour, at glow 2
+  it is a quarter of it, and the emissive term is what the eye reads. A lit toy is dark
+  plastic with the colour coming out of it, which is also what a lit toy looks like.
+*/
 export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
-  return glow > 0
-    ? { albedoColor: c, emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: glow, metallic: 0, roughness: 0.45 }
-    : { albedoColor: c, metallic: 0, roughness: 0.55 }
+  if (glow <= 0) return { albedoColor: c, metallic: 0, roughness: 0.55 }
+  const sombre = 1 / (1 + glow * 1.5)
+  return {
+    albedoColor: Color4.create(c.r * sombre, c.g * sombre, c.b * sombre, c.a),
+    emissiveColor: Color3.create(c.r, c.g, c.b),
+    emissiveIntensity: glow,
+    metallic: 0,
+    roughness: 0.45
+  }
+}
+
+/** The same rule for a colour that already exists as a Color4. */
+export function plasticDe(c: Color4, glow = 0): PBMaterial_PbrMaterial {
+  const hex = '#' + [c.r, c.g, c.b].map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join('')
+  const m = plastic(hex, glow)
+  if (m.albedoColor !== undefined) m.albedoColor = Color4.create(m.albedoColor.r, m.albedoColor.g, m.albedoColor.b, c.a)
+  return m
 }
 
 /** Tinted acrylic: the same plastic, see-through. */

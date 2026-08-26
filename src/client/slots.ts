@@ -1,4 +1,4 @@
-import { TOY } from './toy'
+import { TOY, plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -74,7 +74,7 @@ export function setupSlots(): void {
       t.scale = Vector3.create(BASE_SIDE, 0.16, BASE_SIDE)
     }
     const c = Color4.fromHexString((slotView.valid ? TOY.markerOk : TOY.markerBad) + 'ff')
-    Material.setPbrMaterial(fantome, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.7 })
+    Material.setPbrMaterial(fantome, plasticDe(c, 0.7))
 
     const te = Transform.getMutableOrNull(label)
     if (te !== null) {

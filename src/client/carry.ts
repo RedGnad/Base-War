@@ -9,7 +9,7 @@ import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
-import { formeDeRarete, effacerForme } from './toy'
+import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -46,7 +46,7 @@ export function setupCarry(): void {
   Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   MeshRenderer.setBox(marqueur)
   Material.setPbrMaterial(marqueur, {
-    albedoColor: VERT, emissiveColor: Color4.create(0.35, 0.95, 0.45, 1), emissiveIntensity: 0.7
+    ...plasticDe(VERT, 0.7)
   })
 
   engine.addSystem(() => {
@@ -90,7 +90,7 @@ export function setupCarry(): void {
           // A toy in a hand reads at about a fifth of a metre; a third looked like a suitcase.
           scale: Vector3.create(0.2, 0.2, 0.2)
         })
-        const mat = { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.45, metallic: 0 }
+        const mat = plasticDe(teinte, 1.1)
         Material.setPbrMaterial(corps, mat)
         // The same toy the pedestal shows, so what you carry is recognisably what you took.
         formeDeRarete(corps, r, mat)

@@ -1,3 +1,4 @@
+import { plasticDe } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -36,7 +37,7 @@ export function setupConvoy(): void {
         Transform.create(body, { position: Vector3.create(0, -5, 0), scale: Vector3.create(b.size, b.size, b.size) })
         MeshRenderer.setBox(body)
         MeshCollider.setBox(body)
-        Material.setPbrMaterial(body, { albedoColor: color, emissiveColor: color, emissiveIntensity: 0.6, metallic: 0.5, roughness: 0.4 })
+        Material.setPbrMaterial(body, plasticDe(color, 0.6))
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
