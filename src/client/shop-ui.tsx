@@ -37,7 +37,7 @@ export const shopView = { open: false }
   The window is capped at `BAND.dialogMaxHeight`, 620, and the old flat list reached 618 of it.
   Three family headers had to come out of that same budget, so the row shrank from 76 to 64:
   the button stays TAP.height regardless, and 34 + 26 still holds a label and a caption. What
-  got cut was air, not content. 3 x 40 + 5 x 72 + padding lands at 616.
+  got cut was air, not content. 3 x 38 + 5 x 72 + the window's own padding lands at 620.
 */
 const RANG = 64
 const TITRE_FAMILLE = 34
@@ -50,7 +50,7 @@ function prixTourelle(tier: number): number {
 }
 
 const Famille = (props: { titre: string; note: string }) => (
-  <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 6 } }}>
+  <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 4 } }}>
     {/* Fixed widths, because a Label given none resolves to nothing in this layout engine. */}
     <Label value={props.titre} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
       uiTransform={{ width: 150, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
@@ -99,8 +99,8 @@ const Rang = (props: {
   </UiEntity>
 )
 
-/** Three family headers and five rows: 3 x 40 + 5 x 72 = 480. */
-export const HAUTEUR_SHOP = 3 * (TITRE_FAMILLE + 6) + 5 * (RANG + 8)
+/** Three family headers and five rows: 3 x 38 + 5 x 72 = 474, which is the whole budget. */
+export const HAUTEUR_SHOP = 3 * (TITRE_FAMILLE + 4) + 5 * (RANG + 8)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
