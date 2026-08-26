@@ -246,15 +246,25 @@ export function startCarry(): void {
       return
     }
     /*
-      The storey you are standing on is where it goes, and that is the whole interface.
+      The client proposes a pedestal; the server decides the storey.
 
       An item's index decides its storey, and its storey decides whether a thief can reach it
-      without climbing. So carrying something upstairs before setting it down is a real
-      decision, and it needs no menu: you already walked there. Beyond the top of the shelf it
-      clamps, so aiming higher than you own puts it on top rather than refusing.
+      without climbing, so the storey is the part that must not be forgeable. It comes from
+      the position the server reads itself. Within that storey the client's choice is honoured,
+      because which of the six pedestals it lands on changes nothing a thief cares about: they
+      span 7.2 m against a 10 m reach, so all six are reachable from any of them. Free where it
+      is only pleasant, authoritative where it matters.
+
+      Beyond the top of the shelf it clamps rather than refuses, since the shelf is a dense
+      queue and an index past the end would be a hole.
     */
     const etageVise = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
-    const ou = Math.min(etageVise * SLOTS_PER_FLOOR, b.items.length)
+    const bas = etageVise * SLOTS_PER_FLOOR
+    const propose = Number.isInteger(d?.slot) ? d.slot : bas
+    const ou = Math.min(
+      Math.max(bas, Math.min(propose, bas + SLOTS_PER_FLOOR - 1)),
+      b.items.length
+    )
     const etageReel = Math.floor(ou / SLOTS_PER_FLOOR)
 
     // Same word-not-a-boolean trap: a full base used to accept the item and lose it.

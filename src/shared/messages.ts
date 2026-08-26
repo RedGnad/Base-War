@@ -74,7 +74,7 @@ export const MESSAGES = {
 
   /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
   pickUp: Schemas.Map({ slot: Schemas.Int }),
-  placeDown: Schemas.Map({ ownerId: Schemas.String }),
+  placeDown: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
   dropCarried: Schemas.Map({}),
   sellCarried: Schemas.Map({}),
   /** Seconds left before the play-time crate, or -1 once it has been given. */

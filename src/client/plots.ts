@@ -343,6 +343,57 @@ export function baseIci(): { ownerId: string; mienne: boolean } | null {
   return proche
 }
 
+/**
+ * Which pedestal an item would land on, if it were put down right now.
+ *
+ * The storey comes from where the player is standing, because that is the part that decides
+ * anything: `aPortee` gates theft on `|dy| <= SAME_STOREY`, so only the same floor is
+ * reachable. Within a floor the six pedestals span 7.2 m against a 10 m reach, so which one
+ * you pick changes nothing a thief cares about. It is offered anyway, because arranging your
+ * own building is worth doing for its own sake and because the marker makes the choice legible
+ * before it is made rather than after.
+ *
+ * Candidates are the indices of that floor, cut to the length of the shelf: an index beyond
+ * the end would be a hole, and the shelf is a dense queue. A floor above what the shelf
+ * reaches falls back to the top of it.
+ */
+export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  let base: { p: ReturnType<typeof Plot.get>; x: number; z: number } | null = null
+  let distance = PLACE_RANGE
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    const bt = Transform.getOrNull(e)
+    if (bt === null) continue
+    const dx = t.position.x - bt.position.x, dz = t.position.z - bt.position.z
+    const d = Math.sqrt(dx * dx + dz * dz)
+    if (d > distance) continue
+    distance = d
+    base = { p, x: bt.position.x, z: bt.position.z }
+  }
+  if (base === null) return null
+
+  const fin = base.p.items.length
+  const etage = Math.max(0, Math.round(t.position.y / FLOOR_HEIGHT))
+  const bas = etage * SLOTS_PER_FLOOR
+  if (bas > fin) {
+    const s = slotPosition(fin)
+    return { ownerId: base.p.ownerId, index: fin, pos: Vector3.create(base.x + s.dx, s.dy, base.z + s.dz) }
+  }
+  let choisi = bas
+  let meilleur = Infinity
+  for (let k = bas; k <= Math.min(bas + SLOTS_PER_FLOOR - 1, fin); k++) {
+    const s = slotPosition(k)
+    const dx = t.position.x - (base.x + s.dx), dz = t.position.z - (base.z + s.dz)
+    const d = dx * dx + dz * dz
+    if (d >= meilleur) continue
+    meilleur = d
+    choisi = k
+  }
+  const s = slotPosition(choisi)
+  return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + s.dx, s.dy, base.z + s.dz) }
+}
+
 export function setupPlots(): void {
   engine.addSystem(() => {
     for (const v of views.values()) {

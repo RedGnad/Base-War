@@ -8,6 +8,7 @@ import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
+import { cibleDePose } from './plots'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -26,7 +27,44 @@ export const carryView = { code: -1, name: '', vole: false }
 
 const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
 
+/*
+  The marker that says where it will land, before it lands.
+
+  The same shape the base placement uses, for the same reason: a choice you make by walking is
+  only a choice if you can see what you are choosing. It sits on the pedestal the item would
+  take, so putting something down stops being a guess and the arranging of a building becomes
+  something you do on purpose. Hidden by scaling to zero rather than by removing the entity,
+  because it is one box and it changes several times a second.
+*/
+const VERT = Color4.create(0.35, 0.95, 0.45, 0.42)
+let marqueur: Entity
+let cibleIndex = -1
+
+/** Where the carried item would go right now, or -1 if it would go nowhere. */
+export function poseCible(): number { return cibleIndex }
+
 export function setupCarry(): void {
+  marqueur = engine.addEntity()
+  Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+  MeshRenderer.setBox(marqueur)
+  Material.setPbrMaterial(marqueur, {
+    albedoColor: VERT, emissiveColor: Color4.create(0.35, 0.95, 0.45, 1), emissiveIntensity: 0.7
+  })
+
+  engine.addSystem(() => {
+    const t = Transform.getMutableOrNull(marqueur)
+    if (t === null) return
+    const cible = carryView.code >= 0 ? cibleDePose() : null
+    if (cible === null) {
+      cibleIndex = -1
+      if (t.scale.x !== 0) t.scale = Vector3.Zero()
+      return
+    }
+    cibleIndex = cible.index
+    t.position = Vector3.create(cible.pos.x, cible.pos.y, cible.pos.z)
+    t.scale = Vector3.create(0.62, 0.62, 0.62)
+  })
+
   room.onMessage('carryResult', (d) => {
     if (d.ok) return
     // Only the failures need saying: a success is already visible in the player's own hand.
@@ -97,6 +135,8 @@ export function setupCarry(): void {
 }
 
 export function pickUp(slot: number): void { void room.send('pickUp', { slot }) }
-export function placeDown(ownerId: string): void { void room.send('placeDown', { ownerId }) }
+export function placeDown(ownerId: string): void {
+  void room.send('placeDown', { ownerId, slot: cibleIndex })
+}
 export function dropCarried(): void { void room.send('dropCarried', {}) }
 export function sellCarried(): void { void room.send('sellCarried', {}) }
