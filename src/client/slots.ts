@@ -1,3 +1,4 @@
+import { TOY } from './toy'
 import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -72,7 +73,7 @@ export function setupSlots(): void {
       t.position = Vector3.create(x, 0.08, z)
       t.scale = Vector3.create(BASE_SIDE, 0.16, BASE_SIDE)
     }
-    const c = slotView.valid ? Color4.fromHexString('#3ddc84ff') : Color4.fromHexString('#e04a3aff')
+    const c = Color4.fromHexString((slotView.valid ? TOY.markerOk : TOY.markerBad) + 'ff')
     Material.setPbrMaterial(fantome, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.7 })
 
     const te = Transform.getMutableOrNull(label)

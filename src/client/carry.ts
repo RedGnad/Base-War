@@ -90,7 +90,7 @@ export function setupCarry(): void {
         })
         MeshRenderer.setBox(corps)
         Material.setPbrMaterial(corps, {
-          albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.5
+          albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.45, metallic: 0
         })
         AvatarAttach.create(corps, {
           avatarId: c.holder,

@@ -1,3 +1,4 @@
+import { TOY, plastic, acrylic, montable, remonter } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -50,9 +51,10 @@ type View = {
 const NOIR = Color3.create(0, 0, 0)
 const VERT = Color4.fromHexString(HUE.money + 'ff')
 
-const GRIS = '#9aa3b0ff'
-const GRIS_CLAIR = '#b6bec9ff'
-const FLOOR_COLOR = '#7f8794ff'
+// The toy palette lives in toy.ts; these are the roles a base is built from.
+const GRIS = TOY.post
+const GRIS_CLAIR = TOY.lintel
+const FLOOR_COLOR = TOY.slab
 
 /**
  * The size every piece was built at, so showing and hiding never has to restate it.
@@ -76,7 +78,7 @@ function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: numbe
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
-  Material.setPbrMaterial(e, { albedoColor: Color4.fromHexString(color), roughness: 0.85 })
+  Material.setPbrMaterial(e, plastic(color))
   return e
 }
 
@@ -86,11 +88,7 @@ function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: numb
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
-  Material.setPbrMaterial(e, {
-    albedoColor: Color4.create(0.62, 0.78, 0.88, 0.22),   // alpha bas = transparent
-    metallic: 0.1,
-    roughness: 0.05
-  })
+  Material.setPbrMaterial(e, acrylic(TOY.glass))
   return e
 }
 
@@ -124,7 +122,7 @@ function buildFloor(x: number, z: number, floor: number): Floor {
   taille.set(ramp, Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH))
   MeshRenderer.setBox(ramp)
   MeshCollider.setBox(ramp)
-  Material.setPbrMaterial(ramp, { albedoColor: Color4.fromHexString('#c9a227ff'), roughness: 0.7, metallic: 0.3 })
+  Material.setPbrMaterial(ramp, plastic(TOY.ramp))
 
   /*
     Railings, sized in metres and then divided by the ramp they hang from.
@@ -145,7 +143,7 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     })
     MeshRenderer.setBox(rail)
     MeshCollider.setBox(rail)
-    Material.setPbrMaterial(rail, { albedoColor: Color4.fromHexString('#7d8698ff'), roughness: 0.6, metallic: 0.4 })
+    Material.setPbrMaterial(rail, plastic(TOY.rail))
   }
 
   /*
@@ -186,18 +184,15 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     scale: Vector3.create(0, 0, 0)
   })
   MeshRenderer.setCylinder(sentry, 0.25, 0.45)
-  Material.setPbrMaterial(sentry, {
-    albedoColor: Color4.fromHexString('#4dd2ffff'),
-    emissiveColor: Color4.fromHexString('#4dd2ffff'),
-    emissiveIntensity: 1.6, metallic: 0.8, roughness: 0.2
-  })
+  Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
+  montable(sentry, 'sentry.glb')
 
   return { floorSlab, walls, ramp, landing, sentry }
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
 function createView(x: number, z: number): View {
-  const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, '#6b6f78ff')
+  const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
 
   /*
     Only the ground floor is built here; the rest appear when they are bought.
@@ -218,8 +213,7 @@ function createView(x: number, z: number): View {
   MeshRenderer.setBox(ascenseur)
   MeshCollider.setBox(ascenseur)
   Material.setPbrMaterial(ascenseur, {
-    albedoColor: Color4.fromHexString('#2f3648ff'),
-    emissiveColor: Color4.fromHexString('#4dd2ffff'), emissiveIntensity: 0.7,
+    ...plastic(TOY.elevator, 0.5),
     metallic: 0.85, roughness: 0.25
   })
   PointerEvents.create(ascenseur, {
@@ -238,8 +232,8 @@ function createView(x: number, z: number): View {
   // looked like a wall and stopped nothing.
   MeshCollider.setBox(door)
   Material.setPbrMaterial(door, {
-    albedoColor: Color4.create(0.30, 0.85, 1.0, 0.16),
-    emissiveColor: Color4.fromHexString('#4dd2ffff'),
+    albedoColor: TOY.shield,
+    emissiveColor: Color4.fromHexString(TOY.sentry + 'ff'),
     emissiveIntensity: 0.55,
     metallic: 0,
     roughness: 0.1
@@ -551,9 +545,7 @@ export function setupPlots(): void {
         }
       }
       if (structurel) {
-        Material.setPbrMaterial(v.plinth, {
-          albedoColor: Color4.fromHexString(p.ownerPresent ? '#4a5568ff' : '#40454fff')
-        })
+        Material.setPbrMaterial(v.plinth, plastic(p.ownerPresent ? TOY.plinth : TOY.plinthAway))
       }
 
       // Catch up to what this base has actually opened, one floor at a time.
@@ -641,8 +633,18 @@ export function setupPlots(): void {
           tr.scale = Vector3.create(size, size, size)
           const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
           Material.setPbrMaterial(v.items[k], {
-            albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.35, metallic: 0.6
+            albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0
           })
+          /*
+            One shared model per rarity, and the artist decides the silhouette.
+
+            `assets/toy/item-<rarity>.glb`, authored to a unit cube: the entity keeps being
+            scaled by rarity and mutation exactly as the box is, so a model exported at one
+            metre lands at the right size on every pedestal. Seven files for seven rarities is
+            the whole item budget; sixty bases share them and the engine keeps one copy each.
+            Only reloaded when the rarity on this pedestal changes.
+          */
+          remonter(v.items[k], `item-${rarityOf(code)}.glb`)
           if (r.tours > 0 || m.mult > 1) {
             Tween.createOrReplace(v.items[k], {
               mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),

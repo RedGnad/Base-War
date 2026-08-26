@@ -21,6 +21,7 @@ import { setupCombat } from './combat'
 import { setupCarry } from './carry'
 import { setupGear } from './gear'
 import { setupEvents } from './events'
+import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
 import { setupIntent } from './intent'
 
@@ -69,6 +70,7 @@ export function startClient(): void {
   setupCarry()
   setupGear()
   setupEvents()
+  setupToy()
   setupLootUi()
   setupBelt()
   setupSlots()

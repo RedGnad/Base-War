@@ -1,3 +1,4 @@
+import { TOY } from './toy'
 import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
@@ -25,7 +26,7 @@ export const gearView = {
   cloaked: false
 }
 
-const PLAQUE = Color4.create(0.55, 0.55, 0.6, 0.85)
+const PLAQUE = Color4.fromHexString(TOY.trapPlate + 'd9')
 const MIENNE = Color4.create(0.35, 0.95, 0.45, 0.85)
 const vues = new Map<number, Entity>()
 
@@ -130,7 +131,7 @@ export function setupGear(): void {
       const plaque = engine.addEntity()
       Transform.create(plaque, { position: Vector3.create(tr.position.x, tr.position.y + 0.15, tr.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
       MeshRenderer.setSphere(plaque)
-      const teinte = b.owner.toLowerCase() === moi ? MIENNE : Color4.create(0.9, 0.3, 0.2, 1)
+      const teinte = b.owner.toLowerCase() === moi ? MIENNE : Color4.fromHexString(TOY.bomb + 'ff')
       Material.setPbrMaterial(plaque, { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.2 })
       vues.set(id, plaque)
     }

@@ -1,3 +1,4 @@
+import { TOY, plastic } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
@@ -42,7 +43,7 @@ export function setupBelt(): void {
   })
   MeshRenderer.setBox(bande)
   MeshCollider.setBox(bande)
-  Material.setPbrMaterial(bande, { albedoColor: Color4.fromHexString('#8e2b2bff'), roughness: 0.8 })
+  Material.setPbrMaterial(bande, plastic(TOY.belt))
 
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()
@@ -52,7 +53,7 @@ export function setupBelt(): void {
     })
     MeshRenderer.setBox(pied)
     MeshCollider.setBox(pied)
-    Material.setPbrMaterial(pied, { albedoColor: Color4.fromHexString('#3f4650ff'), roughness: 0.9 })
+    Material.setPbrMaterial(pied, plastic(TOY.beltLeg))
   }
   for (const dz of [-1.42, 1.42]) {
     const r = engine.addEntity()
@@ -61,7 +62,7 @@ export function setupBelt(): void {
       scale: Vector3.create(BELT_LENGTH + 2, 0.24, 0.16)
     })
     MeshRenderer.setBox(r)
-    Material.setPbrMaterial(r, { albedoColor: Color4.fromHexString('#5a6270ff'), roughness: 0.85 })
+    Material.setPbrMaterial(r, plastic(TOY.beltRail))
   }
 
   const bx = CENTER.x + BELT_LENGTH / 2 + 1.3
@@ -71,7 +72,7 @@ export function setupBelt(): void {
   Transform.create(fond, { position: Vector3.create(bx, 0.1, CENTER.z), scale: Vector3.create(R * 2, 0.2, R * 2) })
   MeshRenderer.setBox(fond)
   MeshCollider.setBox(fond)
-  Material.setPbrMaterial(fond, { albedoColor: Color4.fromHexString('#0d0c0aff'), roughness: 1 })
+  Material.setPbrMaterial(fond, plastic(TOY.beltPit))
 
   const H = 0.9
   for (const [dx, dz, sx, sz] of [
@@ -85,7 +86,7 @@ export function setupBelt(): void {
     })
     MeshRenderer.setBox(m)
     MeshCollider.setBox(m)
-    Material.setPbrMaterial(m, { albedoColor: Color4.fromHexString('#3a342cff'), roughness: 0.95 })
+    Material.setPbrMaterial(m, plastic(TOY.beltRing))
   }
 
   engine.addSystem(() => {
