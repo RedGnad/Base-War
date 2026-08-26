@@ -49,6 +49,21 @@ export const TOY = {
   markerBad: HUE.danger
 } as const
 
+/*
+  Every base gets its own accent, from its owner's address, so five buildings are not five
+  copies. A judge's first view is the plaza from its edge, and a tester's screenshot of it
+  showed identical glass boxes: nothing said whose was whose, or that any was worth walking to.
+  The accent is one of eight toy primaries chosen by hashing the address, painted on the ramp,
+  the corner posts and the lintel, which are the parts that read from thirty metres. The name
+  plate was the only differentiator, and text is the last thing legible at distance.
+*/
+const ACCENTS = ['#ff6b6b', '#ffd23f', '#4dabf7', '#51cf66', '#ff9f43', '#cc5de8', '#22b8cf', '#f06595'] as const
+export function accentDe(address: string): string {
+  let h = 0
+  for (let i = 0; i < address.length; i++) h = (h * 31 + address.charCodeAt(i)) >>> 0
+  return ACCENTS[h % ACCENTS.length]
+}
+
 /** One flat plastic. `glow` is the emissive intensity, zero for anything that is not lit. */
 export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
@@ -176,6 +191,35 @@ export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMateri
   // The parent is a container now: its own box would sit inside the toy.
   if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent)
 }
+
+/*
+ * A mutation is a BODY change, not a tint, or it is invisible from across the plaza.
+ *
+ * The reference's mutations recolour the whole figure, cycle it through RGB, turn it black
+ * with white flashes. Ours tinted the same box and, at thirty metres, a Gold Rare and a Rare
+ * were the same blue dot. A halo is the cheapest body change the mobile renderer draws: a wide
+ * flat disc under the toy, emissive, in the mutation's colour, one entity. It reads as "this
+ * one is special" before anyone can read which rarity it is, which is the right order.
+ */
+const halos = new Map<Entity, Entity>()
+
+export function haloDeMutation(parent: Entity, hex: string | null): void {
+  const cur = halos.get(parent)
+  if (hex === null) {
+    if (cur !== undefined) { engine.removeEntity(cur); halos.delete(parent) }
+    return
+  }
+  let e = cur
+  if (e === undefined) {
+    e = engine.addEntity()
+    Transform.create(e, { parent, position: Vector3.create(0, -0.5, 0), scale: Vector3.create(1.9, 0.05, 1.9) })
+    MeshRenderer.setCylinder(e, 0.5, 0.5)
+    halos.set(parent, e)
+  }
+  Material.setPbrMaterial(e, plastic(hex, 1.6))
+}
+
+export function effacerHalo(parent: Entity): void { haloDeMutation(parent, null) }
 
 export function effacerForme(parent: Entity): void {
   const cur = formes.get(parent)

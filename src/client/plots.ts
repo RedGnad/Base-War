@@ -1,4 +1,4 @@
-import { TOY, plastic, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme } from './toy'
+import { TOY, plastic, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, accentDe } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -92,7 +92,7 @@ function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: numb
   return e
 }
 
-function buildFloor(x: number, z: number, floor: number): Floor {
+function buildFloor(x: number, z: number, floor: number, accent: string): Floor {
   const y = floor * FLOOR_HEIGHT
   const c = BASE_SIDE
   const h = WALL_HEIGHT
@@ -105,11 +105,11 @@ function buildFloor(x: number, z: number, floor: number): Floor {
     vitre(x + c / 2, y + h / 2, z, ep, h, c),                            // droite
     vitre(x - (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
     vitre(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
-    bloc(x, y + h - 0.15, z + c / 2, DOOR_WIDTH, 0.3, ep, GRIS_CLAIR),  // linteau
-    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, GRIS),
-    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, GRIS),
-    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, GRIS),
-    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, GRIS)
+    bloc(x, y + h - 0.15, z + c / 2, DOOR_WIDTH, 0.3, ep, accent),  // linteau
+    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent),
+    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent),
+    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent),
+    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent)
   ]
 
   const r = rampPosition(floor)
@@ -122,7 +122,7 @@ function buildFloor(x: number, z: number, floor: number): Floor {
   taille.set(ramp, Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH))
   MeshRenderer.setBox(ramp)
   MeshCollider.setBox(ramp)
-  Material.setPbrMaterial(ramp, plastic(TOY.ramp))
+  Material.setPbrMaterial(ramp, plastic(accent))
 
   /*
     Railings, sized in metres and then divided by the ramp they hang from.
@@ -191,7 +191,7 @@ function buildFloor(x: number, z: number, floor: number): Floor {
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
-function createView(x: number, z: number): View {
+function createView(x: number, z: number, accent: string): View {
   const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
 
   /*
@@ -203,7 +203,7 @@ function createView(x: number, z: number): View {
     and in network traffic the moment anyone walks in. Floors are added in the update below
     as the plot reports them, so an unreached floor costs exactly nothing.
   */
-  const floors: Floor[] = [buildFloor(x, z, 0)]
+  const floors: Floor[] = [buildFloor(x, z, 0, accent)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
@@ -467,7 +467,7 @@ export function setupPlots(): void {
       const t = Transform.get(ent)
       let v = views.get(id)
       if (!v) {
-        v = createView(t.position.x, t.position.z)
+        v = createView(t.position.x, t.position.z, accentDe(p.ownerId))
         views.set(id, v)
       }
 
@@ -551,7 +551,7 @@ export function setupPlots(): void {
       // Catch up to what this base has actually opened, one floor at a time.
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
-          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length))
+          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length, accentDe(p.ownerId)))
         }
 
         for (let e = 0; e < v.floors.length; e++) {
@@ -648,6 +648,7 @@ export function setupPlots(): void {
           tr.scale = Vector3.Zero()
           demonter(ent)
           effacerForme(ent)
+          effacerHalo(ent)
           continue
         }
 
@@ -655,15 +656,18 @@ export function setupPlots(): void {
         const code = p.items[k]
         const r = rarity(rarityOf(code))
         const m = mutation(mutationDe(code))
-        tr.position = Vector3.create(t.position.x + d.dx, d.dy, t.position.z + d.dz)
-        tr.rotation = Quaternion.Identity()
         const size = r.size * (m.mult > 1 ? 1.12 : 1)
+        // Sat ON the slab: the centre rises with half the size, so a big toy stands rather than sinks.
+        tr.position = Vector3.create(t.position.x + d.dx, d.dy - 0.45 + 0.12 + size / 2, t.position.z + d.dz)
+        tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
         const mat = { albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0 }
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
+        // A mutation shows as a halo under the toy, in its own colour; none shows nothing.
+        haloDeMutation(ent, m.mult > 1 ? m.color : null)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 

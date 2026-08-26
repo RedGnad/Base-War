@@ -1,12 +1,25 @@
 import { CRATE_PRICE, PRODUCTION_PER_RARITY } from './economy'
+/*
+  Sizes measured against the distance a judge looks from, not chosen to look nice up close.
+
+  A tester's screenshot from the plaza edge, twelve metres from the nearest base and thirty
+  from the rest: every item was a dot. At a 60 degree field of view on a 1186 px screen, a
+  0.38 m Common is 33 px at 12 m and 13 px at 30 m; even a 0.90 m Secret is 31 px at 30 m.
+  The whole genre rests on what you have accumulated being SEEN by the others in the room,
+  and it was not visible from where they stand. Pedestals are 3.06 m apart on a floor 4 m
+  high, so an item can be 2.4 m wide before neighbours touch: there was room for six times
+  the size. Two and a half times puts a Common at 1 m (85 px at 12 m, 34 at 30) and a Secret
+  at 2.2 m (75 px at 30 m), which is the size a mobile HUD guideline calls a readable target.
+  `glow` rises with it so the top of the ladder reads as lit, not just large.
+*/
 export const RARITIES = [
-  { id: 0, name: 'Common',    color: '#9aa3ad', size: 0.38, glow: 0.00, tours: 0 },
-  { id: 1, name: 'Uncommon',  color: '#4ec04e', size: 0.45, glow: 0.25, tours: 0 },
-  { id: 2, name: 'Rare',      color: '#3d8ef0', size: 0.52, glow: 0.55, tours: 20 },
-  { id: 3, name: 'Epic',      color: '#a855f7', size: 0.60, glow: 0.95, tours: 35 },
-  { id: 4, name: 'Legendary', color: '#f5a524', size: 0.68, glow: 1.50, tours: 55 },
-  { id: 5, name: 'Mythic',    color: '#ff4d6d', size: 0.78, glow: 2.20, tours: 80 },
-  { id: 6, name: 'Secret',    color: '#e8e8f0', size: 0.90, glow: 3.20, tours: 120 }
+  { id: 0, name: 'Common',    color: '#9aa3ad', size: 1.00, glow: 0.00, tours: 0 },
+  { id: 1, name: 'Uncommon',  color: '#4ec04e', size: 1.15, glow: 0.35, tours: 0 },
+  { id: 2, name: 'Rare',      color: '#3d8ef0', size: 1.30, glow: 0.80, tours: 20 },
+  { id: 3, name: 'Epic',      color: '#a855f7', size: 1.50, glow: 1.30, tours: 35 },
+  { id: 4, name: 'Legendary', color: '#f5a524', size: 1.70, glow: 2.00, tours: 55 },
+  { id: 5, name: 'Mythic',    color: '#ff4d6d', size: 1.95, glow: 2.80, tours: 80 },
+  { id: 6, name: 'Secret',    color: '#e8e8f0', size: 2.20, glow: 4.00, tours: 120 }
 ] as const
 
 export function rarity(id: number) {
