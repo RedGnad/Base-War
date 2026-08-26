@@ -3,7 +3,8 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
-import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier } from '../shared/schemas'
+import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge } from '../shared/schemas'
+import { view } from './setup'
 import { theftView, buyFloorFor, armSentry } from './theft'
 import { openPrestige } from './prestige-ui'
 import { closeMenu } from './menu'
@@ -27,7 +28,8 @@ const RANG = 76
 /** What a defence tier costs this base, mirroring the server's own formula for display. */
 function prixTourelle(tier: number): number {
   const t = SENTRY_TIERS[tier]
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(theftView.income * t.charges * t.secondsPerCharge))
+  const parObjet = view.items === 0 ? 0 : theftView.income / view.items
+  return prixParCharge(parObjet, tier) * t.charges
 }
 
 const Rang = (props: {

@@ -5,7 +5,7 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY
+  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import { itemIncome, rarityOf } from '../shared/loot-table'
@@ -654,9 +654,31 @@ export function socialDe(address: string): { given: number; received: number } {
  * rich base nor unreachable to a new one. The per-charge rate falls as the tier rises, which
  * is what makes buying the bigger one a decision instead of a multiplication.
  */
+/*
+  How long the owner has ACTUALLY been away, and zero while they are here.
+
+  `lastSeen` is stamped on departure, so a player who quits in the middle of being robbed has
+  an absence of nearly nothing by the time the theft lands. That is deliberate: every offline
+  protection system in every shared world has the same documented exploit, logging off mid-raid
+  to trigger the shield, and reading real elapsed absence rather than a present/absent flag is
+  what closes it.
+*/
+export function absenceDe(address: string): number {
+  if (presents().has(address)) return 0
+  const b = bases.get(address)
+  if (b === undefined) return 0
+  return Math.max(0, Date.now() - b.lastSeen)
+}
+
+/** What one item on this base produces, which is what a charge is priced against. */
+export function revenuParObjet(address: string): number {
+  const n = bases.get(address)?.items.length ?? 0
+  return n === 0 ? 0 : incomePerSecond(address) / n
+}
+
 export function sentryPrice(address: string, tier = 0): number {
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(incomePerSecond(address) * t.charges * t.secondsPerCharge))
+  return Math.max(SENTRY_MIN_PRICE, prixParCharge(revenuParObjet(address), tier) * t.charges)
 }
 
 export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?: string; charges?: number; cost?: number } {

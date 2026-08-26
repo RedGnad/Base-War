@@ -2,12 +2,12 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, prixParCharge, shieldFor, REVENGE_MS
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
@@ -45,6 +45,14 @@ function refus(address: string, action: string, reason: string, antiCheat = fals
   void room.send('actionRejected', { action, reason, antiCheat }, { to: [address] })
 }
 
+/*
+  Coming back SHORTENS the shield, on purpose.
+
+  An earned shield can run for hours, and the owner walking back in replaces it with the
+  arrival grace. That is the intent rather than an accident: the shield exists to cover an
+  absence, and a base sealed for six more hours with its owner standing inside it is a venue
+  with nothing left in it to do. You are here, you can give chase, so the wall comes down.
+*/
 export function lockOnArrival(address: string): void {
   const until = Date.now() + LOCK_ON_ARRIVAL_MS + lockBonus(address)
   if (setLock(address, until)) {
@@ -67,9 +75,18 @@ export function delivrerAlertes(address: string): void {
       void room.send('wasGifted', { byName: x.byName, rarity: rarityOf(code), mutation: mutationDe(code) }, { to: [address] })
       continue
     }
-    void room.send('youWereRobbed', { byName: x.byName, rarity: x.rarity ?? 0, mutation: x.mutation ?? 0 }, { to: [address] })
+    void room.send('youWereRobbed', {
+      byName: x.byName, rarity: x.rarity ?? 0, mutation: x.mutation ?? 0,
+      shieldSec: (x as { shieldSec?: number }).shieldSec ?? 0
+    }, { to: [address] })
   }
   log(`${a.length} alert(s) differee(s) delivree(s) a ${displayName(address)}`)
+}
+
+/** Has `cible` taken something from `moi` recently enough to owe them an open door? */
+function meDoitUneRevanche(moi: string, cible: string): boolean {
+  const t = Date.now()
+  return larcins.some((l) => l.thief === cible && l.victim === moi && t - l.quand <= REVENGE_MS)
 }
 
 export function hasSomethingToRecover(address: string): boolean {
@@ -158,7 +175,7 @@ export function startTheft(): void {
         let pris = 0
         if (palier.tithe > 0) {
           // The ceiling is what this charge cost, times what the tier promises back.
-          const prixCharge = incomePerSecond(v.victim) * palier.secondsPerCharge
+          const prixCharge = prixParCharge(revenuParObjet(v.victim), tier)
           const plafond = Math.max(SHOT_MIN_YIELD, Math.floor(prixCharge * palier.retour))
           const voulu = Math.floor(coinsOf(thief) * palier.tithe)
           const montant = Math.max(0, Math.min(voulu, plafond))
@@ -203,12 +220,32 @@ export function startTheft(): void {
       */
       remettreEnMain(thief, r, v.victim)
       larcins.push({ thief, victim: v.victim, code: r, quand: maintenant })
+
+      /*
+        Losing something is what buys the shield, which is the genre's whole answer.
+
+        Clash of Clans grants eight hours for being raided and sells only two hours a day of
+        anything shorter; the heavy protection lands on the player who just lost something,
+        never on the one who could afford to stack it in advance. We had no such thing at all:
+        an absent player owned nothing but what a bought sentry could hold, and twenty charges
+        of one minute is twenty minutes of cover for a night.
+
+        It ramps on REAL absence rather than on a present/absent flag, because the documented
+        failure of every offline-protection scheme is quitting mid-raid to trigger it. Standing
+        here earns a minute, which is a chase rather than a wall and keeps a busy venue worth
+        visiting. Genuinely asleep earns the eight hours.
+      */
+      const bouclier = shieldFor(absenceDe(v.victim))
+      setLock(v.victim, maintenant + bouclier)
+
       const nomV = displayName(thief)
       const rar = rarityOf(r), mut = mutationDe(r)
-      storeAlert(v.victim, { byName: nomV, rarity: rar, mutation: mut })
-      void room.send('youWereRobbed', { byName: nomV, rarity: rar, mutation: mut }, { to: [v.victim] })
+      storeAlert(v.victim, { byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000) })
+      void room.send('youWereRobbed', {
+        byName: nomV, rarity: rar, mutation: mut, shieldSec: Math.round(bouclier / 1000)
+      }, { to: [v.victim] })
       void room.send('stolen', { byName: nomV, fromName: b.name, rarity: rar, mutation: mut })
-      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}`)
+      log(`${nomV} took a ${itemName(rar, mut)} from ${b.name}; shield ${Math.round(bouclier / 60000)} min (away ${Math.round(absenceDe(v.victim) / 60000)} min)`)
     }
   })
 
@@ -229,7 +266,7 @@ export function startTheft(): void {
     const maintenant = Date.now()
     for (const c of cibles) {
       const lock = lockOf(c.address)
-      if (lock > maintenant) {
+      if (lock > maintenant && !meDoitUneRevanche(thief, c.address)) {
         refus(thief, 'steal', `${c.name} is shielded for ${Math.ceil((lock - maintenant) / 1000)}s`)
         continue
       }
@@ -417,7 +454,8 @@ export function startTheft(): void {
   })
 
   timers.setInterval(() => {
-    const t = Date.now() - RECOVER_WINDOW_MS * 3
+    // Kept as long as revenge lasts, since the list IS the revenge list now.
+    const t = Date.now() - REVENGE_MS
     while (larcins.length > 0 && larcins[0].quand < t) larcins.shift()
   }, 10000)
 

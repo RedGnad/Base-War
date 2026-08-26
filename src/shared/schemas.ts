@@ -302,11 +302,19 @@ export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
   GUARD keeps a tithe of zero on purpose. It stays the pure deterrent, the cheap one that
   simply says no, so the ladder starts at a rung that costs nothing to understand.
 
+  `itemSecondsPerCharge` is seconds of ONE item's output, not of the base's total, and the
+  rename is the fix for a measured inversion. The price was `income x charges x seconds`, and
+  income tracks how many slots you own while a charge protects the base for a minute, which is
+  worth at most a handful of items however big the building is. So a six-slot hut paid 0.3
+  times the value of what it saved and a seventy-two-slot tower paid 4.2 times: the more you
+  built, the worse defending yourself became. Pricing off one item's output makes the charge
+  track the QUALITY of what is on the shelves and stop tracking their number.
+
   `retour` is the ceiling, and it is expressed in charges rather than in seconds because the
   first version of this borrowed the gun's cap and that was measurably wrong. A shot caps at
   eight seconds of the shooter's income, which is right for a bullet since bullets are free.
-  A charge is not free: `sentryPrice` charges `secondsPerCharge` seconds of income for each
-  one, so 28 to 40 seconds. Capping its return at eight meant a defence that fired perfectly,
+  A charge is not free: `prixParCharge` asks `itemSecondsPerCharge` seconds of one item's
+  output for each one. Capping its return below its price meant a defence that fired perfectly,
   every single time, still lost its owner money. It could never pay for itself.
 
   So the ceiling is a multiple of what the charge itself cost. A TURRET that catches a thief
@@ -315,14 +323,63 @@ export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
   apart at every level of wealth: under the old cap a rich enough thief handed TURRET and
   BATTERY exactly the same sum, which is precisely where the difference should matter most.
 */
+/*
+  The shield you EARN by being robbed, which is the genre's actual answer and the piece we
+  never had.
+
+  Clash of Clans, wiki pages `Shield` and `Guard`: the main protection is an automatic shield
+  granted for BEING RAIDED, eight hours, "regardless of loot taken and overall damage on the
+  base". What you can buy with the game's own currency is short, two hours of Village Guard,
+  once a day. Whole days cost premium money. That asymmetry is what stops protection from
+  killing the game: it cannot be stacked in advance, and it lands on the player who just lost
+  something rather than on the one who could already afford not to.
+
+  Which is why the sentry does NOT get a long lock. Selling twenty charges of eight hours would
+  be a hundred and sixty hours of stackable immunity bought with ordinary coins, and nothing in
+  the genre does that. The sentry stays the ACTIVE defence: it breaks an attempt in progress and
+  takes a tithe. The long protection is earned.
+
+  The duration ramps with how long the owner has ACTUALLY been away, and that is not a detail.
+  The documented failure of every offline-protection system is players logging off mid-raid to
+  trigger it. `lastSeen` is stamped on departure, so somebody who quits while being robbed has
+  an absence of nearly zero when the theft lands, and earns the floor rather than the ceiling.
+  Present, you get a minute: enough to give chase, short enough that a venue full of people
+  stays a venue. Genuinely asleep, you get the genre's eight hours.
+*/
+export const SHIELD_MIN_MS = 60_000
+export const SHIELD_MAX_MS = 8 * 3600_000
+export const SHIELD_FULL_ABSENCE_MS = 4 * 3600_000
+
+/*
+  Revenge walks through a shield, and without it the wall is one-sided.
+
+  Same wiki, same page: "Revenge attacks and attacks from Ranked Battles can bypass Shields."
+  It is the counterweight that makes an eight hour shield acceptable in the first place. Ours
+  runs as long as the longest shield can, so being robbed while asleep never leaves you facing
+  a wall you cannot answer: whoever took from you is open to you for as long as they could
+  possibly be sealed, however sealed they are against everybody else.
+*/
+export const REVENGE_MS = SHIELD_MAX_MS
+
+export function shieldFor(absenceMs: number): number {
+  const t = Math.max(0, Math.min(1, absenceMs / SHIELD_FULL_ABSENCE_MS))
+  return Math.round(SHIELD_MIN_MS + (SHIELD_MAX_MS - SHIELD_MIN_MS) * t)
+}
+
 export const SENTRY_TIERS = [
-  { name: 'GUARD', charges: 3, secondsPerCharge: 40, tithe: 0, retour: 0 },
-  { name: 'TURRET', charges: 8, secondsPerCharge: 34, tithe: 0.15, retour: 2 },
-  { name: 'BATTERY', charges: 20, secondsPerCharge: 28, tithe: 0.30, retour: 4 }
+  { name: 'GUARD', charges: 3, itemSecondsPerCharge: 480, tithe: 0, retour: 0 },
+  { name: 'TURRET', charges: 8, itemSecondsPerCharge: 400, tithe: 0.15, retour: 2 },
+  { name: 'BATTERY', charges: 20, itemSecondsPerCharge: 330, tithe: 0.30, retour: 4 }
 ] as const
 
 /** The ceiling a base can hold, whichever tiers were bought to get there. */
 export const SENTRY_MAX_CHARGES = SENTRY_TIERS[SENTRY_TIERS.length - 1].charges
+
+/** One charge, priced off what ONE item on the shelf produces. Both sides call this. */
+export function prixParCharge(revenuParObjet: number, tier: number): number {
+  const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
+  return Math.max(SENTRY_MIN_PRICE, Math.floor(revenuParObjet * t.itemSecondsPerCharge))
+}
 export const SENTRY_MIN_PRICE = 240
 
 /**

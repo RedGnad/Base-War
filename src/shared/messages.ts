@@ -98,7 +98,7 @@ export const MESSAGES = {
   activateLock: Schemas.Map({}),
   reclaim: Schemas.Map({}),
   actionRejected: Schemas.Map({ action: Schemas.String, reason: Schemas.String, antiCheat: Schemas.Boolean }),
-  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
+  youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, shieldSec: Schemas.Int }),
   thiefPenalty: Schemas.Map({ ms: Schemas.Int }),
   stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
   reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int })

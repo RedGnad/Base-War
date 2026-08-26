@@ -77,7 +77,16 @@ export function setupTheft(): void {
 
   room.onMessage('youWereRobbed', (d) => {
     const r = rarity(d.rarity)
-    alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!`, r.color, 8000)
+    /*
+      The shield is the consolation, so it has to be said in the same breath as the loss.
+      A protection nobody is told about does no work at all: the point of earning it by being
+      robbed is that the moment of losing something is also the moment you are told the rest is
+      safe. Only worth a line when it is long enough to matter; a minute is a chase, not a wall.
+    */
+    const abri = d.shieldSec >= 300
+      ? `\nyour base is sealed for ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
+      : ''
+    alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!${abri}`, r.color, 8000)
     const a = AudioSource.getMutableOrNull(sonneur)
     if (a !== null) { a.playing = false; a.playing = true }
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.name}`)
