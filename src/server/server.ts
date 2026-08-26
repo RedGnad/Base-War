@@ -8,6 +8,7 @@ import { runConvoys, balayerConvois } from './convoy'
 import { startCombat } from './combat'
 import { startCarry } from './carry'
 import { startGear } from './gear'
+import { startEvents } from './events'
 import { log, flushLog, replayLog } from './log'
 import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
 import { startBelt } from './belt'
@@ -39,6 +40,7 @@ export function startServer(): void {
   startTheft()
   startCarry()
   startGear()
+  startEvents()
   startBelt()
   runConvoys()
   balayerConvois()

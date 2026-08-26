@@ -15,6 +15,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
+import { eventView } from './client/events'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
 
@@ -657,6 +658,7 @@ const uiComponent = () => {
   */
   const band = topBand([
     ['money', true, TYPE.hero + 6 + 34],
+    ['event', eventView.theme >= 0, 52],
     ['belt', beltView.annonce !== '', 58]
   ])
   /*
@@ -884,6 +886,32 @@ const uiComponent = () => {
       A crate worth crossing the room for. One in about thirteen now, rather than one in
       four, so it is allowed to be loud; it is not allowed to be wider than its sentence.
     */}
+    {/*
+      The event clock: announced once in the player's gaze, then it lives here.
+
+      Placement and shape follow the documented timer conveyance: after the initial prompt the
+      timer moves to a permanent spot at the top, it carries iconography (the theme's name in
+      the theme's colour is ours), and it is set apart from the rest of the HUD by that colour
+      alone. It sits between the money and the belt line because it is the one thing on screen
+      that ties the two together: this is why the belt is worth watching right now.
+    */}
+    {hud() && eventView.theme >= 0 && band.event >= 0 && (
+      <Centre top={band.event}>
+        <UiEntity
+          uiTransform={{
+            height: 52, padding: { left: 22, right: 22 },
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={{ color: Color4.create(0.06, 0.05, 0.08, 0.9) }}
+        >
+          <Label
+            value={`${eventView.name}   ${Math.floor(eventView.leftS / 60)}:${String(eventView.leftS % 60).padStart(2, '0')}`}
+            fontSize={TYPE.label}
+            color={Color4.fromHexString(eventView.color + 'ff')} textWrap="nowrap" />
+        </UiEntity>
+      </Centre>
+    )}
+
     {hud() && beltView.annonce !== '' && band.belt >= 0 && (
       <Centre top={band.belt}>
         <UiEntity

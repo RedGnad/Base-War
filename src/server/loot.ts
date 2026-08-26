@@ -69,14 +69,26 @@ export function rollCrateTier(): number {
 }
 
 import { crate, MUTATIONS, CRATE_WEIGHTS } from '../shared/loot-table'
+import { EVENT_WEIGHT } from '../shared/schemas'
 
 /**
  * A themed crate multiplies its own mutation's weight; every other weight is untouched,
  * so the tail stays reachable and a Lava Crate can still yield a Phantom.
  */
+/** The mutation an event is pushing right now, or -1. Set by events.ts, read here. */
+export let eventTheme = -1
+export function setEventTheme(theme: number): void { eventTheme = theme }
+
 export function rollMutation(crateId = 0): number {
   const c = crate(crateId)
-  const poids = MUTATIONS.map((m) => (c.theme === m.id ? m.poids * c.weight : m.poids))
+  // The crate's own theme and the venue's event both push; a Lava crate during Lava Hour
+  // stacks, which is the moment the belt is worth crossing the room for.
+  const poids = MUTATIONS.map((m) => {
+    let w = m.poids
+    if (c.theme === m.id) w *= c.weight
+    if (eventTheme === m.id) w *= EVENT_WEIGHT
+    return w
+  })
   const total = poids.reduce((a, b) => a + b, 0)
   let n = Math.random() * total
   for (let i = 0; i < MUTATIONS.length; i++) {

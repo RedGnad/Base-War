@@ -461,6 +461,36 @@ export const Bomb = engine.defineComponent('basetycoon::bomb', {
 })
 export const BOMB_FUSE_MS = 3_000
 export const BOMB_RADIUS = 4
+/*
+  A window in which the belt gives something else, which is the genre's "event".
+
+  Steal a Brainrot, wiki `Events`, read at source: events are "a Core feature" that "have a
+  chance to make brainrots get Traits or Mutations", the natural ones have "a chance to spawn
+  every 15 minutes", and their column for how they show is titled "Environmental Changes":
+  Bloodmoon is "the sky turns a deep red", the concert is "the screen goes dark with neon
+  lights and music". So an event is two things: a mutation whose odds are pushed for everyone
+  for a few minutes, and a WORLD that looks different while it lasts. Not a boss, not a
+  minigame, not a private roll: a shared clock the whole venue reads at once.
+
+  One synced entity carries it, written by the server, so every client agrees on what is on
+  and until when. `theme` is a mutation id or -1 for none.
+*/
+export const Event = engine.defineComponent('basetycoon::event', {
+  theme: Schemas.Int,
+  untilMs: Schemas.Int64
+})
+export const EVENT_MS = 5 * 60_000
+/** Mean gap between events. The genre rolls every fifteen minutes; ours lands there on average. */
+export const EVENT_GAP_MS = 15 * 60_000
+/** How hard the event pushes its mutation: the Lava crate's own weight, applied to every crate. */
+export const EVENT_WEIGHT = 60
+/** Which mutations can headline an event, and the world colour each one brings. */
+export const EVENT_THEMES = [
+  { theme: 1, name: 'GOLD HOUR', sol: '#6b5a2aff' },
+  { theme: 5, name: 'LAVA HOUR', sol: '#6a2f22ff' },
+  { theme: 9, name: 'CURSED HOUR', sol: '#3b2050ff' }
+] as const
+
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
 export const Trap = engine.defineComponent('basetycoon::trap', {
   owner: Schemas.String,
@@ -834,6 +864,7 @@ export function registerValidators(): void {
 
   ServerBeat.validateBeforeChange(serverOnly)
   Trap.validateBeforeChange(serverOnly)
+  Event.validateBeforeChange(serverOnly)
   Cloaked.validateBeforeChange(serverOnly)
   Bomb.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)

@@ -1,6 +1,7 @@
 import { engine, Transform, MeshRenderer, MeshCollider, Material } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE } from '../shared/schemas'
+import { setEventFloor } from './events'
 
 /**
  * A ground plane. Without one the scene inherits the host terrain.
@@ -17,4 +18,5 @@ export function setupVenue(): void {
   MeshRenderer.setPlane(sol)
   MeshCollider.setPlane(sol)
   Material.setPbrMaterial(sol, { albedoColor: Color4.fromHexString('#5c667aff'), metallic: 0, roughness: 0.95 })
+  setEventFloor(sol, '#5c667aff')
 }
