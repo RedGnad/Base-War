@@ -1,8 +1,8 @@
-import { engine, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
+import { engine, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, cashOfflineEarnings, reclamerQuotidienne, pushQuests } from './plots'
+import { startPlots, accueillir, auRevoir, cashOfflineEarnings, reclamerQuotidienne, pushQuests, presents as presentsAvecGrace } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
 import { runConvoys, balayerConvois } from './convoy'
 import { startCombat } from './combat'
@@ -53,11 +53,8 @@ export function startServer(): void {
     if (sinceCheck < 1) return
     sinceCheck = 0
 
-    const ici = new Set<string>()
-    for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
-      const a = id.address?.toLowerCase()
-      if (a) ici.add(a)
-    }
+    // One definition of "here" for the whole server, with its grace: see presents().
+    const ici = presentsAvecGrace()
 
     for (const address of ici) {
       if (presents.has(address)) continue

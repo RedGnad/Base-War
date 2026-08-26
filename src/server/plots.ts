@@ -107,11 +107,32 @@ function nameOf(address: string): string {
   return `Guest ${address.slice(-4)}`
 }
 
+/*
+  Who is here, with a memory, because the raw component blinks.
+
+  `PlayerIdentityData` can be absent for a tick while an avatar changes state, and every
+  loop that read it directly treated one missing tick as a departure. Measured on 26 Aug: a
+  tester opened a crate, the item landed in their hand, and eight seconds later the carry
+  loop logged "released (you left)" with no join/leave in between. They had not moved. One
+  blink of the component sent their item home while their screen still said CARRYING.
+
+  So presence is a timestamp per address: seen now, or seen within the grace. A player is
+  gone when they have been unseen for `PRESENCE_GRACE_MS`, not when a frame skipped them.
+  Same logic as the earned shield reading real absence rather than a flag (invariant 123).
+*/
+const PRESENCE_GRACE_MS = 5_000
+const vuA = new Map<string, number>()
+
 export function presents(): Set<string> {
-  const s = new Set<string>()
+  const now = Date.now()
   for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
     const a = id.address?.toLowerCase()
-    if (a) s.add(a)
+    if (a) vuA.set(a, now)
+  }
+  const s = new Set<string>()
+  for (const [a, t] of vuA) {
+    if (now - t <= PRESENCE_GRACE_MS) s.add(a)
+    else vuA.delete(a)
   }
   return s
 }
