@@ -2,12 +2,13 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   STEAL_RANGE, STEAL_REACH, STEAL_HOLD_REACH, GIFT_RANGE, STEAL_BASE_MS, STEAL_PER_RARITY_MS, RECOVER_RANGE, LOCK_ON_ARRIVAL_MS, LOCK_FREE_MS, SENTRY_FREEZE_MS, SENTRY_LOCK_MS,
-  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP
+  LOCK_BONUS_MS, PENALTY_MS, RECOVER_WINDOW_MS, CARRY_GRIP, SENTRY_TIERS, SHOT_MIN_YIELD, SHOT_DROP_CAP_S
 } from '../shared/schemas'
 
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend } from './plots'
+import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
@@ -57,7 +58,8 @@ export function delivrerAlertes(address: string): void {
   for (const alert of a) {
     const x = alert as { type?: string; byName: string; rarity?: number; mutation?: number; code?: number }
     if (x.type === 'sentry') {
-      void room.send('sentryTriggered', { byName: x.byName, left: (x as { left?: number }).left ?? 0 }, { to: [address] })
+      const y = x as { left?: number; taken?: number }
+      void room.send('sentryTriggered', { byName: x.byName, left: y.left ?? 0, taken: y.taken ?? 0 }, { to: [address] })
       continue
     }
     if (x.type === 'gift') {
@@ -135,18 +137,41 @@ export function startTheft(): void {
       }
 
       // LA SENTINELLE AGIT PENDANT L'ACTION, pas a la place de l'action.
-      if (useSentryCharge(v.victim)) {
+      // `>= 0` et pas une verite: la fonction rend le TIER qui a tire, et le tier zero existe.
+      const tier = useSentryCharge(v.victim)
+      if (tier >= 0) {
         const left = sentriesOf(v.victim)
         setLock(v.victim, maintenant + SENTRY_LOCK_MS)
         enCours.delete(thief)
+
+        /*
+          The tier's tithe, shaken out of the thief and left on the floor.
+          
+          Priced off the same two rules a bullet uses, so a player who has learned one has
+          learned both: a share of what the target is carrying, capped by what the OWNER's
+          base earns. The cap is what stops a hut farming a fortune off one rich visitor, and
+          it is the owner's income rather than the thief's for exactly the reason the shot
+          caps on the shooter's. Dropped under the thief, not credited: the owner has to walk
+          out and pick it up, and the thief can try to take their own money back on the way.
+        */
+        const part = SENTRY_TIERS[Math.min(tier, SENTRY_TIERS.length - 1)].tithe
+        let pris = 0
+        if (part > 0) {
+          const plafond = Math.max(SHOT_MIN_YIELD, Math.floor(incomePerSecond(v.victim) * SHOT_DROP_CAP_S))
+          const voulu = Math.floor(coinsOf(thief) * part)
+          const montant = Math.max(0, Math.min(voulu, plafond))
+          if (montant > 0 && spend(thief, montant)) { dropAt(thief, montant, p); pris = montant }
+        }
+
         void room.send('sentryBlocked', {
-          ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left, lockSec: Math.round(SENTRY_LOCK_MS / 1000)
+          ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
+          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
-        const info = { type: 'sentry', byName: displayName(thief), left }
+        const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
         if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
         else storeAlert(v.victim, info)
-        log(`${b.name} sentry blocked ${displayName(thief)} (${left} charge(s) left)`)
+        log(`${b.name} sentry (${SENTRY_TIERS[Math.min(tier, SENTRY_TIERS.length - 1)].name}) blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left`)
         continue
       }
 

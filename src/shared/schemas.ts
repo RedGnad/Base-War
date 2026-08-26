@@ -285,10 +285,27 @@ export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
  * commitment, and the per-charge price falls as the tier rises, which is what makes the
  * ladder a decision rather than a multiplication.
  */
+/*
+  Three tiers that did the same thing, until now.
+
+  GUARD, TURRET and BATTERY differed only by how many charges they granted and what a charge
+  cost. Firing one produced an identical outcome whichever you had bought, so the choice was
+  arithmetic rather than a decision: buy the cheapest per charge and never think about it.
+
+  `tithe` is what separates them. A sentry that fires now also shakes coins out of the thief,
+  as a bullet does, and those coins land ON THE GROUND at the thief's feet rather than in the
+  owner's pocket. That matters: it opens the moment instead of closing it. The owner has to
+  come and collect, the thief can try to snatch their own money back, and anyone watching has
+  a reason to run over. Same rule as everywhere else in this game, the floor is where the
+  consequences of a fight land.
+
+  GUARD keeps a tithe of zero on purpose. It stays the pure deterrent, the cheap one that
+  simply says no, so the ladder starts at a rung that costs nothing to understand.
+*/
 export const SENTRY_TIERS = [
-  { name: 'GUARD', charges: 3, secondsPerCharge: 40 },
-  { name: 'TURRET', charges: 8, secondsPerCharge: 34 },
-  { name: 'BATTERY', charges: 20, secondsPerCharge: 28 }
+  { name: 'GUARD', charges: 3, secondsPerCharge: 40, tithe: 0 },
+  { name: 'TURRET', charges: 8, secondsPerCharge: 34, tithe: 0.06 },
+  { name: 'BATTERY', charges: 20, secondsPerCharge: 28, tithe: 0.12 }
 ] as const
 
 /** The ceiling a base can hold, whichever tiers were bought to get there. */

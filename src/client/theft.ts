@@ -1,7 +1,7 @@
 import { engine, AudioSource, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
-import { rarity } from '../shared/loot-table'
+import { rarity, formatIncome } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
@@ -112,10 +112,14 @@ export function setupTheft(): void {
   })
   room.onMessage('sentryBlocked', (d) => {
     applyFreeze(d.gelMs)
-    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s`, '#ff6b6b', 6500)
+    // The coins are on the floor at your feet, not in their pocket: worth saying, because it
+    // is the difference between a punishment and a scramble you can still win.
+    const paye = d.lost > 0 ? `\ndropped ${formatIncome(d.lost)} at your feet` : ''
+    alerter(`${d.ownerName.toUpperCase()}'S SENTRY CAUGHT YOU\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s${paye}`, '#ff6b6b', 6500)
   })
   room.onMessage('sentryTriggered', (d) => {
-    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left`, '#4dd2ff', 7000)
+    const butin = d.taken > 0 ? `\nthey dropped ${formatIncome(d.taken)}, go and get it` : ''
+    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', 7000)
   })
   room.onMessage('sentryBought', (d) => {
     alerter(`SENTRY ARMED  ·  ${d.charges} charges  ·  -${d.cost} coins`, '#4dd2ff', 4000)

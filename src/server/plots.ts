@@ -55,6 +55,7 @@ type Profil = {
   lastDay?: number
   streak?: number
   sentries?: number
+  sentryTier?: number
   given?: number
   received?: number
   tuto?: number
@@ -648,8 +649,11 @@ export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?:
   const cost = sentryPrice(address, tier)
   if (p.coins < cost) return { ok: false, reason: `you need ${Math.ceil(cost - p.coins)} more coins` }
   p.coins -= cost
-  // Charges add up rather than replace, so a second purchase is never a downgrade.
+  // Charges add up rather than replace, so a second purchase is never a downgrade. The tier
+  // follows the same rule: what fires is the best thing you ever armed, so buying a GUARD
+  // after a BATTERY tops up the charges without quietly weakening what they do.
   p.sentries = Math.min(SENTRY_MAX_CHARGES, avant + t.charges)
+  p.sentryTier = Math.max(p.sentryTier ?? 0, SENTRY_TIERS.indexOf(t))
   dirtyProfiles.add(address)
   const b = bases.get(address)
   if (b) publish(b)
@@ -657,14 +661,15 @@ export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?:
   return { ok: true, charges: p.sentries, cost }
 }
 
-export function useSentryCharge(address: string): boolean {
+/** Spends one charge and answers WHICH tier fired, or -1 if there was nothing to fire. */
+export function useSentryCharge(address: string): number {
   const p = profiles.get(address)
-  if (!p || (p.sentries ?? 0) <= 0) return false
+  if (!p || (p.sentries ?? 0) <= 0) return -1
   p.sentries = (p.sentries ?? 0) - 1
   dirtyProfiles.add(address)
   const b = bases.get(address)
   if (b) publish(b)
-  return true
+  return p.sentryTier ?? 0
 }
 
 export function sentriesOf(address: string): number { return profiles.get(address)?.sentries ?? 0 }

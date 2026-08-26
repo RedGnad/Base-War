@@ -69,8 +69,8 @@ export const MESSAGES = {
 
   buySentry: Schemas.Map({ tier: Schemas.Int }),
   sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int }),
-  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int }),
-  sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int }),
+  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int }),
+  sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int, taken: Schemas.Int }),
 
   /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
   pickUp: Schemas.Map({ slot: Schemas.Int }),

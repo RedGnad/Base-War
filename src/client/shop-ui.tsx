@@ -3,7 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
-import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES } from '../shared/schemas'
+import { SENTRY_TIERS, SENTRY_MIN_PRICE, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier } from '../shared/schemas'
 import { theftView, buyFloorFor, armSentry } from './theft'
 import { openPrestige } from './prestige-ui'
 import { closeMenu } from './menu'
@@ -85,7 +85,7 @@ export const ShopContent = () => {
 
       <Rang
         titre={etage > 0 ? '+1 FLOOR' : 'FLOORS MAXED'}
-        detail={etage > 0 ? 'six more slots, you keep everything' : 'three floors is the cap'}
+        detail={etage > 0 ? 'six more slots, you keep everything' : `${MAX_FLOORS} floors is the cap`}
         bouton="BUY" prix={etage}
         possible={etage > 0 && argent >= etage}
         onClick={() => { buyFloorFor(); closeMenu() }} />
@@ -96,7 +96,17 @@ export const ShopContent = () => {
         return (
           <Rang key={t.name}
             titre={t.name}
-            detail={`${t.charges} charges, each one blocks a theft   ·   you hold ${theftView.sentries}`}
+            /*
+              What each tier actually DOES, now that they differ.
+
+              All three read `N charges, each one blocks a theft`, which was true of all of
+              them and therefore said nothing: the choice was arithmetic, buy whichever is
+              cheapest per charge. The tithe is the difference, so the tithe is what the line
+              names, and GUARD's absence of one is stated rather than left blank.
+            */
+            detail={t.tithe > 0
+              ? `${t.charges} charges  ·  blocks a theft and drops ${Math.round(t.tithe * 100)}% of their coins  ·  you hold ${theftView.sentries}`
+              : `${t.charges} charges  ·  blocks a theft, takes nothing  ·  you hold ${theftView.sentries}`}
             bouton="ARM" prix={prix}
             possible={!plein && theftView.basePosee && argent >= prix}
             onClick={() => { armSentry(i); closeMenu() }} />
@@ -105,7 +115,7 @@ export const ShopContent = () => {
 
       <Rang
         titre={`PRESTIGE x${theftView.multiplier + 1}`}
-        detail="doubles everything, and takes your loot"
+        detail={`x${prestigeTier(theftView.prestige).multiplier} on everything you earn, and you keep your best ${prestigeTier(theftView.prestige).guard === 1 ? 'item' : prestigeTier(theftView.prestige).guard + ' items'}`}
         bouton="OPEN" prix={palier}
         possible={palier > 0 && argent >= palier}
         onClick={() => { closeMenu(); openPrestige() }} />
