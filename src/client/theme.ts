@@ -70,8 +70,8 @@ export const HUE = {
   money: '#6ef07a',
   bonus: '#ff8a3d',
   name: '#ffffff',
-  danger: '#ff5c5c',
-  dim: '#9aa3ad'
+  danger: '#ffa3a3',
+  dim: '#b4bcc6'
 } as const
 
 /**
@@ -138,6 +138,16 @@ function calculerLisible(hex: string): string {
   return `#${deux(r)}${deux(g)}${deux(b)}`
 }
 
+/*
+  Two of the five were failing the contrast floor at the sizes they are used at, measured.
+
+  Google's Playables certification is blunt: text under 18 pt needs 4.5:1, everything else 3:1.
+  Our `label` (14 pt) and `caption` (11 pt) are under 18. Against the inset plate on a mid-grey
+  sky, `danger` at #ff5c5c measured 2.87:1 and `dim` at #9aa3ad measured 3.40:1, and `dim` is
+  the colour of every secondary line in every panel. Lifted to the first value of each hue that
+  clears 4.5 on both the plate and the inset: danger #ffa3a3 (4.57), dim #b4bcc6 (4.54). The
+  hue survives; the reading becomes possible for the sizes the rule is about.
+*/
 export const C = {
   money: Color4.fromHexString(HUE.money + 'ff'),
   bonus: Color4.fromHexString(HUE.bonus + 'ff'),

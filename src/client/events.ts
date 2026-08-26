@@ -1,4 +1,5 @@
-import { engine, Material, SkyboxTime, TransitionMode, Entity } from '@dcl/sdk/ecs'
+import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform } from '@dcl/sdk/ecs'
+import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES } from '../shared/schemas'
 import { mutation } from '../shared/loot-table'
@@ -23,10 +24,17 @@ const DUSK = 64800
 let sol: Entity | null = null
 let solCouleur = ''
 let dernierTheme = -1
+let cloche: Entity | null = null
 
 export function setEventFloor(entity: Entity, base: string): void { sol = entity; solCouleur = base }
 
 export function setupEvents(): void {
+  // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
+  // player looking at their base cannot see the belt line change colour.
+  cloche = engine.addEntity()
+  Transform.create(cloche, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(cloche, { audioClipUrl: 'assets/sounds/reveal.wav', playing: false, loop: false, volume: 0.8 })
+
   engine.addSystem(() => {
     const now = Date.now()
     let theme = -1, until = 0
@@ -45,6 +53,8 @@ export function setupEvents(): void {
     if (actif && t !== undefined) {
       // Announced once where the eye is, then it lives at the top of the screen.
       alerter(`${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for 5 minutes`, mutation(theme).color, 6000)
+      const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
+      if (a !== null) { a.playing = false; a.playing = true }
       SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: DUSK, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null) Material.setPbrMaterial(sol, { albedoColor: Color4.fromHexString(t.sol), metallic: 0, roughness: 0.95 })
     } else {

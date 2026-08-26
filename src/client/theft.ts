@@ -73,7 +73,9 @@ export function filVisible(): string[] {
 export function setupTheft(): void {
   sonneur = engine.addEntity()
   Transform.create(sonneur, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
-  AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alert-steal.wav', playing: false, loop: false, volume: 1 })
+  // The file is `alerte-vol.wav`; this pointed at a name that has never existed in the repo,
+  // so the one sound the genre insists on (a siren when you are robbed) never played.
+  AudioSource.create(sonneur, { audioClipUrl: 'assets/sounds/alerte-vol.wav', playing: false, loop: false, volume: 1 })
 
   room.onMessage('youWereRobbed', (d) => {
     const r = rarity(d.rarity)
