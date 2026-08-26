@@ -460,6 +460,7 @@
               "social"
             ],
             "author": "SDK",
+            "email": "",
             "tags": [
               "tycoon",
               "multiplayer",
@@ -468,10 +469,6 @@
               "mobile"
             ],
             "layout": {
-              "base": {
-                "x": 0,
-                "y": 0
-              },
               "parcels": [
                 {
                   "x": 0,
@@ -1049,8 +1046,14 @@
                   "x": 11,
                   "y": 11
                 }
-              ]
+              ],
+              "base": {
+                "x": 0,
+                "y": 0
+              }
             },
+            "silenceVoiceChat": false,
+            "disablePortableExperiences": false,
             "spawnPoints": [
               {
                 "name": "plaza",
@@ -1064,8 +1067,11 @@
                     ]
                   },
                   "y": {
-                    "$case": "single",
-                    "value": 0
+                    "$case": "range",
+                    "value": [
+                      0,
+                      0
+                    ]
                   },
                   "z": {
                     "$case": "range",
@@ -1082,7 +1088,10 @@
                 }
               }
             ],
-            "skyboxConfig": {}
+            "skyboxConfig": {},
+            "creator": "",
+            "disableNearbyVoiceChat": false,
+            "hideLandscapeTerrain": false
           }
         }
       }

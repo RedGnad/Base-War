@@ -4,7 +4,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
-import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT } from '../shared/schemas'
+import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome, ligneDeCaisse } from '../shared/loot-table'
 import { HUE } from './theme'
@@ -32,7 +32,7 @@ export const beltView = {
 const NOIR = Color3.create(0, 0, 0)
 const VERT = Color4.fromHexString(HUE.money + 'ff')
 
-type View = { item: Entity; label: Entity; nom: Entity; rendement: Entity }
+type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number }
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
@@ -89,74 +89,73 @@ export function setupBelt(): void {
     Material.setPbrMaterial(m, plastic(TOY.beltRing))
   }
 
-  engine.addSystem(() => {
+  /*
+    Drawn from `progres`, advanced locally, corrected by the network.
+
+    Each crate is one parent entity that carries the box, the price, the name and the yield as
+    children at fixed offsets, so moving a crate is one Transform write a frame instead of
+    four. Between two values from the server the client advances `progres` itself at the same
+    rate the server does (`dt / BELT_DURATION_S`), and when a fresh value arrives it snaps to
+    it only if the drift is large; small drift is folded in over the next frames. The result
+    is a crate that glides even when the server is late, and stops where the server says.
+  */
+  engine.addSystem((dt) => {
     const vivants = new Set<number>()
 
-    for (const [ent, b] of engine.getEntitiesWith(Belt, Transform)) {
+    for (const [ent, b] of engine.getEntitiesWith(Belt)) {
       vivants.add(b.articleId)
-      const t = Transform.get(ent)
       let v = views.get(b.articleId)
       if (!v) {
         const r = crate(b.crateTier)
+        const c = Color4.fromHexString(r.color + 'ff')
+        const p0 = beltPosition(b.progres)
+
+        const racine = engine.addEntity()
+        Transform.create(racine, { position: Vector3.create(p0.x, p0.y, p0.z) })
+
         const item = engine.addEntity()
-        Transform.create(item, { position: Vector3.create(t.position.x, t.position.y, t.position.z), scale: Vector3.create(r.size, r.size, r.size) })
+        Transform.create(item, { parent: racine, scale: Vector3.create(r.size, r.size, r.size) })
         MeshRenderer.setBox(item)
         MeshCollider.setBox(item)
-        const c = Color4.fromHexString(r.color + 'ff')
-        Material.setPbrMaterial(item, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.45, metallic: 0.6, roughness: 0.35 })
+        Material.setPbrMaterial(item, { albedoColor: c, emissiveColor: c, emissiveIntensity: 0.6, roughness: 0.45, metallic: 0 })
         PointerEvents.create(item, {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${ligneDeCaisse(b.crateTier)}` } }
           ]
         })
 
-        // The label rides the crate rather than the interface.
-        //
-        // Two lines and two colours, because one TextShape carries one colour: the price
-        // in the money green above the name in white, both outlined in black so they hold
-        // over sky, ground or another player. 3D text is the only place Decentraland
-        // offers an outline at all, which is the second reason the reading lives here.
         const label = engine.addEntity()
-        Transform.create(label, { position: Vector3.create(t.position.x, t.position.y + 1.24, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(label, { parent: racine, position: Vector3.create(0, 1.24, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(label, {
-          text: formatIncome(b.price), fontSize: 4.2, textColor: VERT,
-          outlineWidth: 0.22, outlineColor: NOIR
-        })
+        TextShape.create(label, { text: formatIncome(b.price), fontSize: 4.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
         const nom = engine.addEntity()
-        Transform.create(nom, { position: Vector3.create(t.position.x, t.position.y + 0.86, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(nom, { parent: racine, position: Vector3.create(0, 0.86, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
-        /*
-          The name, and under it what the crate is worth in the unit the player already reads
-          everywhere. Two crates at almost the same price used to be told apart by nothing but
-          a colour; `~131/s  67% Gold` next to `~145/s` is the whole trade-off in one glance.
-        */
-        TextShape.create(nom, {
-          text: r.name, fontSize: 3, textColor: c,
-          outlineWidth: 0.22, outlineColor: NOIR
-        })
+        TextShape.create(nom, { text: r.name, fontSize: 3, textColor: c, outlineWidth: 0.22, outlineColor: NOIR })
 
-        // Its own entity at its own size, the same way the price is: rich-text tags inside one
-        // TextShape are not something this codebase has ever verified on the client.
         const rendement = engine.addEntity()
-        Transform.create(rendement, { position: Vector3.create(t.position.x, t.position.y + 0.58, t.position.z), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(rendement, { parent: racine, position: Vector3.create(0, 0.58, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(rendement, {
-          text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT,
-          outlineWidth: 0.22, outlineColor: NOIR
-        })
+        TextShape.create(rendement, { text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
-        v = { item, label, nom, rendement }
+        v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres }
         views.set(b.articleId, v)
       }
 
-      const to = Transform.getMutableOrNull(v.item)
-      if (to !== null) to.position = Vector3.create(t.position.x, t.position.y, t.position.z)
-      const te = Transform.getMutableOrNull(v.label)
-      if (te !== null) te.position = Vector3.create(t.position.x, t.position.y + 1.24, t.position.z)
-      const tn = Transform.getMutableOrNull(v.nom)
-      if (tn !== null) tn.position = Vector3.create(t.position.x, t.position.y + 0.86, t.position.z)
+      // Advance locally; when the server's value moves, converge on it.
+      v.progres += dt / BELT_DURATION_S
+      if (b.progres !== v.vu) {
+        v.vu = b.progres
+        const ecart = b.progres - v.progres
+        if (Math.abs(ecart) > 0.05) v.progres = b.progres
+        else v.progres += ecart * 0.5
+      }
+      const tr = Transform.getMutableOrNull(v.racine)
+      if (tr !== null) {
+        const p = beltPosition(v.progres)
+        tr.position = Vector3.create(p.x, p.y, p.z)
+      }
 
       if (
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.item)
@@ -167,10 +166,7 @@ export function setupBelt(): void {
 
     for (const [id, v] of views) {
       if (vivants.has(id)) continue
-      engine.removeEntity(v.item)
-      engine.removeEntity(v.label)
-      engine.removeEntity(v.nom)
-      engine.removeEntity(v.rendement)
+      engine.removeEntityWithChildren(v.racine)
       views.delete(id)
     }
 

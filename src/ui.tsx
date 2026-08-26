@@ -657,7 +657,7 @@ const uiComponent = () => {
     and is the one dropped when the band is full.
   */
   const band = topBand([
-    ['money', true, TYPE.hero + 6 + 34],
+    ['money', true, TYPE.hero + 6 + 34 + 6],
     ['event', eventView.theme >= 0, 52],
     ['belt', beltView.annonce !== '', 58]
   ])
@@ -735,7 +735,12 @@ const uiComponent = () => {
     {hud() && (
     <UiEntity
       uiTransform={{
-        width: strip(760).width, height: TYPE.hero + 6 + 34, positionType: 'absolute',
+        /*
+          Six more than the two lines need: the wait bar draws below them while the server
+          is silent, and a column sized to the text alone let it overflow onto the glyphs.
+          The photograph read RECONNEC G, with the T, I and N under an orange line.
+        */
+        width: strip(760).width, height: TYPE.hero + 6 + 34 + 6, positionType: 'absolute',
         position: { top: band.money, left: '50%' }, margin: strip(760).margin,
         flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center'
       }}

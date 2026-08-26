@@ -84,22 +84,35 @@ function retirer(a: Article): void {
 
 export function startBelt(): void {
   balayer()
+  /*
+    The server keeps the clock; the client draws the motion.
+
+    This used to write BOTH `progres` and a fresh Transform for every crate on every server
+    frame, and the client copied that Transform straight into four entities of its own each
+    frame. Nothing interpolated anywhere, so a crate moved exactly as smoothly as the network
+    delivered positions, and when the server hiccupped the belt visibly stuttered. `beltPosition`
+    is shared and deterministic, so the client can place a crate from `progres` alone and glide
+    between the values it receives. The Transform is still synced, but written once at spawn:
+    it is where the crate IS for purchase range, not how it moves.
+
+    Ten writes a second is enough for a value the client only uses to correct its own clock.
+  */
+  let sync = 0
   engine.addSystem((dt: number) => {
     depuisSpawn += dt
     if (depuisSpawn >= BELT_INTERVAL_S) {
       depuisSpawn = 0
       spawnBeltItem()
     }
+    sync += dt
+    const publier = sync >= 0.1
+    if (publier) sync = 0
     for (const a of [...articles]) {
       a.progres += dt / BELT_DURATION_S
       if (a.progres >= 1 + CHUTE_FIN) { retirer(a); continue }
+      if (!publier) continue
       const c = Belt.getMutableOrNull(a.entity)
       if (c !== null) c.progres = a.progres
-      const t = Transform.getMutableOrNull(a.entity)
-      if (t !== null) {
-        const p = beltPosition(a.progres)
-        t.position = Vector3.create(p.x, p.y, p.z)
-      }
     }
   })
 
