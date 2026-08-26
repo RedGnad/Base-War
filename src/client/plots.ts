@@ -1,4 +1,4 @@
-import { TOY, plastic, acrylic, montable, remonter, demonter } from './toy'
+import { TOY, plastic, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -647,6 +647,7 @@ export function setupPlots(): void {
           tr.position = Vector3.create(t.position.x, -5, t.position.z)
           tr.scale = Vector3.Zero()
           demonter(ent)
+          effacerForme(ent)
           continue
         }
 
@@ -659,9 +660,10 @@ export function setupPlots(): void {
         const size = r.size * (m.mult > 1 ? 1.12 : 1)
         tr.scale = Vector3.create(size, size, size)
         const c = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
-        Material.setPbrMaterial(ent, {
-          albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0
-        })
+        const mat = { albedoColor: c, emissiveColor: c, emissiveIntensity: r.glow, roughness: 0.45, metallic: 0 }
+        Material.setPbrMaterial(ent, mat)
+        // The toy of this rarity, as children: the same silhouette the hand and the belt show.
+        formeDeRarete(ent, rarityOf(code), mat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 

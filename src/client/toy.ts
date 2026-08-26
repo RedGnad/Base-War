@@ -1,5 +1,5 @@
-import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
-import { Color3, Color4 } from '@dcl/sdk/math'
+import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
+import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
 
 /**
@@ -113,14 +113,83 @@ export function demonter(primitive: Entity): void {
   if (!MeshRenderer.has(primitive)) MeshRenderer.setBox(primitive)
 }
 
+/**
+ * Seven toys from four primitives, until the artist's models arrive.
+ *
+ * The engine draws boxes, spheres, planes and cylinders, and a cylinder with different top
+ * and bottom radii is a cone or a spinning top. Two children under a unit-cube parent, each a
+ * flat plastic, give every rarity its own silhouette readable from across the plaza:
+ *
+ *   Common     a marble, plain sphere
+ *   Uncommon   a die: a cube with a smaller cube sat on it, like stacked blocks
+ *   Rare       a spinning top: cone on a disc
+ *   Epic       a rocket: cylinder with a cone nose
+ *   Legendary  a trophy: cone cup on a stem
+ *   Mythic     a crystal: two cones point to point
+ *   Secret     a star: sphere with a wide flat ring
+ *
+ * All parts are children of the pedestal entity at unit scale, so the pedestal's own scale
+ * (rarity, mutation) sizes the whole toy, and `montable()` still swaps the lot for a GLB the
+ * moment the file exists. The pedestal itself stops drawing: it is the parent, not the toy.
+ * Two extra entities per pedestal is 8,640 more on a full field, against a cap of 28,800.
+ */
+const formes = new Map<Entity, { parts: Entity[]; rarete: number }>()
+
+function part(parent: Entity, pos: Vector3, scale: Vector3, kind: 'box' | 'sphere' | 'cone' | 'cyl' | 'disc'): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { parent, position: pos, scale })
+  if (kind === 'box') MeshRenderer.setBox(e)
+  else if (kind === 'sphere') MeshRenderer.setSphere(e)
+  else if (kind === 'cone') MeshRenderer.setCylinder(e, 0.5, 0.0)
+  else if (kind === 'cyl') MeshRenderer.setCylinder(e, 0.5, 0.5)
+  else MeshRenderer.setCylinder(e, 0.5, 0.5)
+  return e
+}
+
+function silhouette(parent: Entity, rarete: number): Entity[] {
+  const V = Vector3.create
+  switch (rarete) {
+    case 0: return [part(parent, V(0, 0, 0), V(1, 1, 1), 'sphere')]
+    case 1: return [part(parent, V(0, -0.2, 0), V(1, 0.6, 1), 'box'), part(parent, V(0.15, 0.35, 0.1), V(0.55, 0.55, 0.55), 'box')]
+    case 2: return [part(parent, V(0, -0.35, 0), V(1, 0.3, 1), 'disc'), part(parent, V(0, 0.25, 0), V(0.8, 0.9, 0.8), 'cone')]
+    case 3: return [part(parent, V(0, -0.15, 0), V(0.6, 0.9, 0.6), 'cyl'), part(parent, V(0, 0.55, 0), V(0.6, 0.5, 0.6), 'cone')]
+    case 4: return [part(parent, V(0, -0.4, 0), V(0.3, 0.5, 0.3), 'cyl'), part(parent, V(0, 0.25, 0), V(1, 0.8, 1), 'cone')]
+    case 5: return [part(parent, V(0, 0.3, 0), V(0.8, 0.7, 0.8), 'cone'), part(parent, V(0, -0.3, 0), V(0.8, 0.7, 0.8), 'cone')]
+    default: return [part(parent, V(0, 0, 0), V(0.6, 0.6, 0.6), 'sphere'), part(parent, V(0, 0, 0), V(1.3, 0.08, 1.3), 'disc')]
+  }
+}
+
+/** Give a pedestal (or a hand, or a belt crate) the toy of a rarity, rebuilt only if it changed. */
+export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
+  const cur = formes.get(parent)
+  if (cur !== undefined && cur.rarete === rarete) {
+    for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
+    return
+  }
+  if (cur !== undefined) for (const e of cur.parts) engine.removeEntity(e)
+  const parts = silhouette(parent, rarete)
+  for (const e of parts) Material.setPbrMaterial(e, materiau)
+  formes.set(parent, { parts, rarete })
+  // The parent is a container now: its own box would sit inside the toy.
+  if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent)
+}
+
+export function effacerForme(parent: Entity): void {
+  const cur = formes.get(parent)
+  if (cur === undefined) return
+  for (const e of cur.parts) engine.removeEntity(e)
+  formes.delete(parent)
+}
+
 export function setupToy(): void {
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
       const st = GltfContainerLoadingState.getOrNull(m.modele)
       if (st === null) continue
       if (st.currentState === LoadingState.FINISHED) {
-        // The model is in: the stand-in stops drawing but keeps its collider and its slot.
+        // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
+        effacerForme(primitive)
       }
     }
   })

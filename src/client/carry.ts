@@ -9,6 +9,7 @@ import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
+import { formeDeRarete, effacerForme } from './toy'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -88,10 +89,10 @@ export function setupCarry(): void {
           position: Vector3.create(0, 0.12, 0.16),
           scale: Vector3.create(0.34, 0.34, 0.34)
         })
-        MeshRenderer.setBox(corps)
-        Material.setPbrMaterial(corps, {
-          albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.45, metallic: 0
-        })
+        const mat = { albedoColor: teinte, emissiveColor: teinte, emissiveIntensity: 1.1, roughness: 0.45, metallic: 0 }
+        Material.setPbrMaterial(corps, mat)
+        // The same toy the pedestal shows, so what you carry is recognisably what you took.
+        formeDeRarete(corps, r, mat)
         AvatarAttach.create(corps, {
           avatarId: c.holder,
           anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND
@@ -117,6 +118,7 @@ export function setupCarry(): void {
 
     for (const [id, v] of [...vues]) {
       if (vivants.has(id)) continue
+      effacerForme(v.corps)
       engine.removeEntity(v.corps)
       engine.removeEntity(v.etiquette)
       vues.delete(id)
