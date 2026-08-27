@@ -293,17 +293,16 @@ const MenuWindow = () => {
  * minimalism), keep primary actions in the thumb zone and put secondary or destructive ones
  * beside them in a lesser style, and give an irreversible act friction rather than distance.
  * So: a small secondary control, priced, present only while your own item is in your hands,
- * at the edge of the screen rather than its centre, and it asks "SELL?" in the danger colour
- * before it does anything. Key 2 on a desktop. On a phone it is a scene button, because the
+ * at the edge of the screen rather than its centre. It asked a question first; the tester cut
+ * that as friction, so one press sells. Key 2 on a desktop. On a phone it is a scene button, because the
  * client's own stack has no free slot without folding the others behind a "+".
  */
 const SellChip = (props: { right?: number }) => {
   if (carryView.code < 0 || carryView.vole) return null
-  const question = Date.now() < carryView.confirmJusqua
   const prix = formatIncome(prixDeRevente(carryView.code))
   return (
-    <Btn label={question ? `AGAIN TO SELL  +${prix}` : phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
-      width={phone() ? 300 : 340} right={props.right} danger={question}
+    <Btn label={phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
+      width={phone() ? 250 : 290} right={props.right}
       bind={[InputAction.IA_ACTION_4]} />
   )
 }

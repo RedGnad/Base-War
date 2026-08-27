@@ -29,8 +29,6 @@ export const Btn = (props: {
   bind?: InputAction[]
   /** A red pip in the corner: something behind this control is waiting to be collected. */
   badge?: boolean
-  /** The danger skin: a question about something irreversible, waiting for its second press. */
-  danger?: boolean
 }) => {
   const size = props.size ?? TYPE.body
   return (
@@ -40,7 +38,7 @@ export const Btn = (props: {
         margin: props.right !== undefined ? { right: props.right } : undefined,
         pointerFilter: 'block'
       }}
-      uiBackground={props.danger === true ? SKIN.danger : props.primary === true ? SKIN.primary : SKIN.secondary}
+      uiBackground={props.primary === true ? SKIN.primary : SKIN.secondary}
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
       onMouseDown={props.onClick}
     >
