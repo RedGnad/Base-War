@@ -39,6 +39,7 @@ type Base = {
   floorsBought: number
   sentries: number
   sentryFloors: number[]
+  sentryTier: number
   rebirths: number
   given: number
   received: number
@@ -156,8 +157,6 @@ function publish(b: Base, ici?: Set<string>): void {
     */
     const avant = `${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}`
     b.floorsBought = pr.floorsBought ?? 0
-    b.sentryFloors = defensesDe(pr)
-    b.sentries = totalCharges(b.sentryFloors)
     b.rebirths = pr.rebirths ?? 0
     b.given = pr.given ?? 0
     b.received = pr.received ?? 0
@@ -177,8 +176,8 @@ function publish(b: Base, ici?: Set<string>): void {
   c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; rebirths: number; given: number; received: number }
-const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], rebirths: 0, given: 0, received: 0 }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0 }
 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
@@ -186,15 +185,18 @@ export function chargesA(liste: number[] | undefined, etage: number): number {
 }
 
 /**
- * A stored blob's per-storey charges, whatever generation of blob it is.
+ * A stored base blob's per-storey charges, whatever generation of blob it is.
  *
  * Blobs written before defences had storeys carry one count, `sentries`; it all sits on the
- * ground floor, which is where an undifferentiated defence effectively was. That rule lived in
- * two places (the base index and the absent-owner refresh) and in neither of them for the
- * PROFILE, which is what `useSentryCharge` fires from. So a base drawn from its blob showed
- * three charges on the ground floor while the profile behind it had none: the tester walked
- * onto a guarded floor, the turret never fired, and the earned shield sealed him inside with
- * the loot. One reader now, for every place a blob becomes charges.
+ * ground floor, which is where an undifferentiated defence effectively was.
+ *
+ * The charges live on the BASE record and nowhere else. They used to be copied between the
+ * profile and the base, and the sentry fired from the profile, which is loaded only for
+ * players who have connected to this server run. An absent owner's profile is never loaded,
+ * so an absent owner's turret never fired: the one situation the whole defence exists for,
+ * and the tester robbed a guarded base twice, "away 2028 min", without a shot. The base
+ * record exists for every base on the field, present or absent, is what the clients draw,
+ * and is what is saved, so it is the single place a charge can be spent from.
  */
 export function defensesDe(brut: { sentryFloors?: number[]; sentries?: number } | null | undefined): number[] {
   if (Array.isArray(brut?.sentryFloors)) return [...brut.sentryFloors]
@@ -245,7 +247,7 @@ async function loadBases(): Promise<void> {
           // "never written", which is what tells the migration below to go and find them.
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
-            sentryFloors: defensesDe(v),
+            sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0,
             rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
           }
         }
@@ -277,8 +279,6 @@ async function loadBases(): Promise<void> {
         const b = bases.get(l.address)
         if (b === undefined) continue
         b.floorsBought = prof.floorsBought ?? 0
-        b.sentryFloors = defensesDe(prof)
-        b.sentries = totalCharges(b.sentryFloors)
         b.rebirths = prof.rebirths ?? 0
         b.given = prof.given ?? 0
         b.received = prof.received ?? 0
@@ -301,7 +301,7 @@ async function save(): Promise<void> {
     if (!b) continue
     const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
       name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
-      floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, rebirths: b.rebirths,
+      floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
       given: b.given, received: b.received
     }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
@@ -329,9 +329,7 @@ export async function accueillir(address: string): Promise<void> {
     itemsFound: stocke?.itemsFound ?? items.length,
     floorsBought: stocke?.floorsBought ?? 0,
     rebirths: stocke?.rebirths ?? 0,
-    alerts: stocke?.alerts ?? [],
-    sentryFloors: defensesDe(stocke),
-    sentries: totalCharges(defensesDe(stocke))
+    alerts: stocke?.alerts ?? []
   }
   profiles.set(address, profile)
   dirtyProfiles.add(address)
@@ -768,50 +766,47 @@ export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?:
   if (etage < 0) return { ok: false, reason: 'stand inside your base, on the floor you want to defend' }
 
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
-  const liste = [...(p.sentryFloors ?? [])]
+  const liste = [...b.sentryFloors]
   while (liste.length <= etage) liste.push(0)
   const avant = liste[etage]
   if (avant >= SENTRY_MAX_CHARGES) return { ok: false, reason: `floor ${etage + 1} is already fully defended` }
   const cost = sentryPrice(address, tier)
   if (p.coins < cost) return { ok: false, reason: `you need ${Math.ceil(cost - p.coins)} more coins` }
   p.coins -= cost
+  dirtyProfiles.add(address)
   // Charges add up rather than replace, so a second purchase is never a downgrade. The tier
   // follows the same rule: what fires is the best thing you ever armed, so buying a GUARD
   // after a BATTERY tops up the charges without quietly weakening what they do.
   liste[etage] = Math.min(SENTRY_MAX_CHARGES, avant + t.charges)
-  p.sentryFloors = liste
-  p.sentries = totalCharges(liste)
-  p.sentryTier = Math.max(p.sentryTier ?? 0, SENTRY_TIERS.indexOf(t))
-  dirtyProfiles.add(address)
-  b.sentryFloors = [...liste]
-  b.sentries = p.sentries
+  b.sentryFloors = liste
+  b.sentries = totalCharges(liste)
+  b.sentryTier = Math.max(b.sentryTier, SENTRY_TIERS.indexOf(t))
   dirtyBases.add(address)
   publish(b)
   log(`${displayName(address)} armed a ${t.name} on floor ${etage + 1} (${cost}, ${avant} -> ${liste[etage]} charges there)`)
   return { ok: true, charges: liste[etage], cost, floor: etage }
 }
 
-/** Spends one charge and answers WHICH tier fired, or -1 if there was nothing to fire. */
+/** Spends one charge and answers WHICH tier fired, or -1 if there was nothing to fire. Owner present or not. */
 export function useSentryCharge(address: string, etage: number): number {
-  const p = profiles.get(address)
-  if (!p) return -1
-  const liste = [...(p.sentryFloors ?? [])]
+  const b = bases.get(address)
+  if (b === undefined) return -1
+  const liste = [...b.sentryFloors]
   if (chargesA(liste, etage) <= 0) return -1
   liste[etage] -= 1
-  p.sentryFloors = liste
-  p.sentries = totalCharges(liste)
-  dirtyProfiles.add(address)
-  const b = bases.get(address)
-  if (b) { b.sentryFloors = [...liste]; b.sentries = p.sentries; dirtyBases.add(address); publish(b) }
-  return p.sentryTier ?? 0
+  b.sentryFloors = liste
+  b.sentries = totalCharges(liste)
+  dirtyBases.add(address)
+  publish(b)
+  return b.sentryTier
 }
 
 /** Charges left on that storey, which is what the owner and the thief both need to read. */
 export function sentriesSurEtage(address: string, etage: number): number {
-  return chargesA(profiles.get(address)?.sentryFloors, etage)
+  return chargesA(bases.get(address)?.sentryFloors, etage)
 }
 
-export function sentriesOf(address: string): number { return profiles.get(address)?.sentries ?? 0 }
+export function sentriesOf(address: string): number { return bases.get(address)?.sentries ?? 0 }
 
 /*
   Pockets: how many of each gear a player holds, indexed by gear id.
