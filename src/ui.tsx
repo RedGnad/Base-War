@@ -17,6 +17,7 @@ import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/loco
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
 import { ligneDuBandeau, prochainGrandTexte } from './client/events'
+import { raidView } from './client/raid'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
@@ -547,7 +548,7 @@ function hud(): boolean {
  */
 function barre(): string {
   if (combatView.aiming) {
-    return combatView.targetName !== '' ? `FIRE on ${combatView.targetName}` : 'aim at someone'
+    return combatView.targetName !== '' ? `FIRE on ${combatView.targetName}` : raidView.active ? 'aim at the boss, or at someone' : 'aim at someone'
   }
   if (intentEnAttente()) return 'queued, the game is still starting up'
   /*

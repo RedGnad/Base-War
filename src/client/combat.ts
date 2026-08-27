@@ -11,6 +11,7 @@ import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS } from '../shared/schemas'
 import { gearView, tirerLaCape } from './gear'
+import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
@@ -101,7 +102,8 @@ const RECUL_DEG = 20
 /** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
 const TIR_MS = 300
 /** Shortest gap between two arm animations, whatever the weapon's own rate. */
-const CLIP_MIN_MS = 340
+// Raised from 340 on 28 Aug: a sixty-shot raid at three clips a second left the arm frozen mid-pose.
+const CLIP_MIN_MS = 800
 
 /**
  * Whether the avatar is posed at all.
@@ -192,7 +194,10 @@ function rafraichirVisibilite(): void {
   const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
   if (porteur !== null) {
     const t = Transform.getOrNull(flash)
-    if (t !== null && t.parent !== porteur.poignee) Transform.getMutable(flash).parent = porteur.poignee
+    if (t !== null && t.parent !== porteur.poignee) {
+      const ft = Transform.getMutableOrNull(flash)
+      if (ft !== null) ft.parent = porteur.poignee
+    }
   }
 }
 
@@ -295,10 +300,24 @@ function reconcilierArmes(): void {
     montrer(g, false)
   }
   for (const [a, g] of [...armes]) {
-    if (vus.has(a)) continue
+    /*
+      My own weapon is never taken down by the roster. `PlayerIdentityData` blinks for a tick
+      now and then (invariant on presence, server side), and a blink here removed my weapon
+      WITH its children, the muzzle flash among them: every later shot then wrote to a
+      deleted Transform and the fire path died mid-raid (tester, 28 Aug: "the gun stayed in
+      the air and I could not aim any more").
+    */
+    if (vus.has(a) || a === moi) continue
     engine.removeEntityWithChildren(g.racine)
     armes.delete(a)
   }
+  rafraichirVisibilite()
+}
+
+/** The muzzle flash, written through one door that tolerates a missing entity. */
+function poserFlash(scale: number): void {
+  const t = Transform.getMutableOrNull(flash)
+  if (t !== null) t.scale = Vector3.create(scale, scale, scale)
 }
 
 /**
@@ -389,7 +408,7 @@ function gunSystem(dt: number): void {
 
   if (flashScale > 0) {
     flashScale = Math.max(0, flashScale - dt * 1.8)
-    Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
+    poserFlash(flashScale)
   }
 
   // Recoil. The avatar's arm cannot move, so the weapon does: it rises on the shot and
@@ -483,6 +502,19 @@ function viser(): void {
     if ((dx * ax + dz * az) / d < SHOT_CONE_DOT) continue
     if (best === null || d < best.d) best = { addr: a, d }
   }
+  // The raid boss is a target like any other, and the nearer one wins the reticle.
+  if (raidView.active) {
+    const dx = raidView.x - moiT.position.x
+    const dz = raidView.z - moiT.position.z
+    const d = Math.sqrt(dx * dx + dz * dz)
+    if (d <= porteeArme() + 1.6 && d >= 0.5 && (dx * ax + dz * az) / d >= SHOT_CONE_DOT && (best === null || d < best.d)) {
+      adresseCible = 'raid-boss'
+      nomCible = 'RAID BOSS'
+      combatView.targetName = nomCible
+      combatView.targetDist = d
+      return
+    }
+  }
   if (best === null) { adresseCible = ''; return }
   // Resolving a display name is a lookup: do it when the target changes, not every frame.
   if (best.addr !== adresseCible) {
@@ -535,7 +567,7 @@ function tirer(now: number): boolean {
   })
 
   flashScale = 0.5
-  Transform.getMutable(flash).scale = Vector3.create(flashScale, flashScale, flashScale)
+  poserFlash(flashScale)
   recul = 1
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)

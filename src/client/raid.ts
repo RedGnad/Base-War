@@ -1,6 +1,6 @@
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode,
-  PointerEvents, PointerEventType, InputAction, AudioSource, Entity
+  PointerEvents, PointerEventType, InputAction, AudioSource, Entity, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Raid } from '../shared/schemas'
@@ -15,7 +15,7 @@ import { alerter, pushToFeed } from './theft'
  * swipes. Everything drawn comes from one synced component the server writes; the client
  * adds the smoothing between positions and the timing of the flashes.
  */
-export const raidView = { active: false, leftS: 0, nextS: 0, hp: 0, hpMax: 1, topName: '' }
+export const raidView = { active: false, leftS: 0, nextS: 0, hp: 0, hpMax: 1, topName: '', x: 0, z: 0 }
 
 const NOIR = Color3.create(0, 0, 0)
 const PEAU = '#7a1f2e'
@@ -33,7 +33,8 @@ export function setupRaid(): void {
   const corps = engine.addEntity()
   Transform.create(corps, { parent: racine, scale: Vector3.create(2.6, 2.6, 2.6) })
   MeshRenderer.setSphere(corps)
-  MeshCollider.setSphere(corps)
+  // Pointer only: a physics sphere walking a circle through the crowd shoved avatars around.
+  MeshCollider.setSphere(corps, ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(corps, plastic(PEAU, 0.35))
   PointerEvents.create(corps, {
     pointerEvents: [
@@ -103,6 +104,8 @@ export function setupRaid(): void {
     raidView.hp = r.hp
     raidView.hpMax = Math.max(1, r.hpMax)
     raidView.topName = r.topName
+    raidView.x = r.x
+    raidView.z = r.z
 
     const t = Transform.getMutableOrNull(racine)
     if (t === null) return
