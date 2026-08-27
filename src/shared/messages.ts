@@ -105,6 +105,8 @@ export const MESSAGES = {
   feedFusion: Schemas.Map({}),
   /** Fuse three of a rarity straight off the player's shelves, hopper first. */
   fuseFromBase: Schemas.Map({ rarity: Schemas.Int }),
+  /** Empty the player's hopper back onto their shelves. */
+  takeBackFusion: Schemas.Map({}),
   /** What a rush hands to whoever is present when it opens: a crate, and the toy that gained a trait, or -1. */
   rushGift: Schemas.Map({ crateTier: Schemas.Int, code: Schemas.Int, grand: Schemas.Boolean, name: Schemas.String }),
   /** The caller's own hopper, and the code just made out of it, or -1. */

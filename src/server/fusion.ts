@@ -1,11 +1,11 @@
 import { engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
-import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE } from '../shared/schemas'
+import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
+import { encoder, rarityOf, mutationDe, mutation, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { log } from './log'
-import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem } from './plots'
+import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf } from './plots'
 import { porteDetail, prendreDesMains, remettreEnMain } from './carry'
 import { rollMutation } from './loot'
 import { noter } from './records'
@@ -39,11 +39,21 @@ function pres(a: string): boolean {
   return Math.sqrt(dx * dx + dz * dz) <= FUSION_RANGE
 }
 
-/** Three of rarity `r` are gone; here is what they became, in the player's hand and on the dome. */
-function produire(machine: Machine, a: string, r: number, resteHopper: number[]): void {
+/**
+ * Three of rarity `r` are gone; here is what they became, in the player's hand and on the dome.
+ *
+ * The mutation is rolled again, with the venue's push and the player's bought luck, and the
+ * result keeps the BEST mutation among what went in if the roll does worse: nobody loses a
+ * Lava by fusing it (tester's question, 27 Aug). Traits are not kept: they come from rushes,
+ * not from machines. The reference does not document its own machine's rule; this is ours.
+ */
+function produire(machine: Machine, a: string, r: number, resteHopper: number[], entrees: number[]): void {
   const name = displayName(a)
   setFusion(a, resteHopper)
-  const sortie = encoder(r + 1, rollMutation(0))
+  const roule = rollMutation(0, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1)
+  const meilleure = entrees.map(mutationDe).reduce((m, x) => mutation(x).mult > mutation(m).mult ? x : m, 0)
+  const mut = mutation(roule).mult >= mutation(meilleure).mult ? roule : meilleure
+  const sortie = encoder(r + 1, mut)
   remettreEnMain(a, sortie, a)
   const f = Fusion.getMutableOrNull(machine)
   if (f !== null) {
@@ -91,7 +101,7 @@ export function startFusion(): void {
       log(`fusion: ${name} fed a ${itemName(r, mutationDe(main.code))}, ${hopper.length}/${FUSION_NEEDS}`)
       return
     }
-    produire(machine, a, r, [])
+    produire(machine, a, r, [], hopper)
   })
 
   room.onMessage('fuseFromBase', (d, ctx) => {
@@ -117,9 +127,31 @@ export function startFusion(): void {
       return
     }
     // Holes are left where the toys stood (removeItem), so earlier indices stay valid.
-    for (const x of surEtagere.slice(0, besoin)) removeItem(a, x.i)
+    const pris = surEtagere.slice(0, besoin)
+    for (const x of pris) removeItem(a, x.i)
     log(`fusion: ${displayName(a)} fused ${besoin} ${rarity(r).name}(s) off the shelf${dedans.length > 0 ? ` and ${dedans.length} from the hopper` : ''}`)
-    produire(machine, a, r, reste)
+    produire(machine, a, r, reste, [...dedans, ...pris.map((x) => x.c)])
+  })
+
+  // A hopper filled by mistake goes back to the shelves, as far as the shelves have room.
+  room.onMessage('takeBackFusion', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    if (!pres(a)) { refuser(a, 'walk up to the fuser'); return }
+    const hopper = fusionOf(a)
+    if (hopper.length === 0) { refuser(a, 'the fuser holds nothing of yours'); return }
+    const reste: number[] = []
+    let rendus = 0
+    for (const code of hopper) {
+      if (reste.length === 0 && addItem(a, code) !== 'plein') rendus += 1
+      else reste.push(code)
+    }
+    setFusion(a, reste)
+    const f = Fusion.getMutableOrNull(machine)
+    if (f !== null && f.byName === displayName(a)) { f.count = reste.length; if (reste.length === 0) f.rarity = -1 }
+    void room.send('fusionState', { codes: reste, made: -1 }, { to: [a] })
+    if (reste.length > 0) refuser(a, `${rendus} back on your shelves, no room for the other ${reste.length}`)
+    log(`fusion: ${displayName(a)} took ${rendus} toy(s) back out of the fuser`)
   })
 
   log('fusion ready')

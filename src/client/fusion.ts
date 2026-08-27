@@ -125,9 +125,7 @@ export function setupFusion(): void {
         ? `${f.lastName} made a ${itemName(rarityOf(f.lastCode), mutationDe(f.lastCode))}`
         : mienne > 0
           ? `yours: ${mienne}/${FUSION_NEEDS} ${RARITIES[rareteMienne]?.name ?? ''}`
-          : f !== null && f.count > 0
-            ? `${f.byName}: ${f.count}/${FUSION_NEEDS} ${RARITIES[f.rarity]?.name ?? ''}`
-            : `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`
+          : `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`
     }
   })
 }

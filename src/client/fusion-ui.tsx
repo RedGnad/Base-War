@@ -61,16 +61,26 @@ export const FusionPanel = () => {
       uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
     >
       <UiEntity
-        uiTransform={{ width: 940, height: 130 + fusibles.length * RANG + TAP.height + 40, flexDirection: 'column', alignItems: 'center', padding: 22 }}
+        uiTransform={{ width: 940, height: 130 + fusibles.length * RANG + TAP.height + 40 + (m.hopper.length > 0 ? TAP.height + 8 : 0), flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
         <UiEntity uiTransform={{ width: '100%', height: 56 }}>
           <Glyphs value="FUSER" size={TYPE.title} role="bonus" />
         </UiEntity>
         <Label
-          value={`${FUSION_NEEDS} toys of one rarity become one of the rarity above, mutation rolled again  ·  taken from your shelves, cheapest first`}
+          value={`${FUSION_NEEDS} toys of one rarity become one of the rarity above  ·  keeps the best mutation of the three, or better  ·  cheapest first`}
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" textWrap="nowrap" />
+        {/* What the machine already holds for this player, and the way back out of it. */}
+        {m.hopper.length > 0 && (
+          <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
+            <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
+              color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
+            <UiEntity uiTransform={{ width: 280, height: TAP.height, justifyContent: 'flex-end' }}>
+              <Btn label="TAKE BACK" width={260} onClick={() => { void room.send('takeBackFusion', {}); closeFusion() }} />
+            </UiEntity>
+          </UiEntity>
+        )}
         {fusibles.map((r) => {
           const total = m.hopper.filter((c) => rarityOf(c) === r.id).length + m.etagere.filter((c) => rarityOf(c) === r.id).length
           const assez = total >= FUSION_NEEDS
