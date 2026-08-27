@@ -5,7 +5,8 @@ import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE } from '../shared/schemas'
-import { RARITIES, rarityOf } from '../shared/loot-table'
+import { RARITIES, rarityOf, itemIncome, nomDuCode } from '../shared/loot-table'
+import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
 import { monAdresseClient } from './theft'
 import { fusionView } from './fusion'
@@ -24,24 +25,35 @@ export const fusionPanelView = { open: false }
 export function openFusion(): void { fusionPanelView.open = true }
 export function closeFusion(): void { fusionPanelView.open = false }
 
-const RANG = 58
+const RANG = 84
 
-/** What the player owns of each rarity: on their shelves, plus what the machine already holds for them. */
-function comptes(): number[] {
-  const n = new Array<number>(RARITIES.length).fill(0)
+/** The player's toys: what the machine already holds for them first, then the shelves. */
+function miens(): { hopper: number[]; etagere: number[] } {
   const moi = monAdresseClient()
+  let etagere: number[] = []
   for (const [, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== moi) continue
-    for (const c of p.items) if (c !== VIDE) n[rarityOf(c)] += 1
+    etagere = p.items.filter((c) => c !== VIDE)
     break
   }
-  for (const c of fusionView.codes) n[rarityOf(c)] += 1
-  return n
+  return { hopper: [...fusionView.codes], etagere }
+}
+
+/**
+ * Exactly what the server would take for rarity `r`: the hopper's, then the shelf's cheapest.
+ * Named on the row, because a fusion that eats a Lava Rare +2 among three Rares must say so
+ * before the button, not after (the prestige learned this on 27 Aug).
+ */
+function choix(m: { hopper: number[]; etagere: number[] }, r: number): number[] {
+  const dedans = m.hopper.filter((c) => rarityOf(c) === r)
+  const sur = m.etagere.filter((c) => rarityOf(c) === r)
+    .sort((x, y) => itemIncome(x, PRODUCTION_PER_RARITY) - itemIncome(y, PRODUCTION_PER_RARITY))
+  return [...dedans, ...sur].slice(0, FUSION_NEEDS)
 }
 
 export const FusionPanel = () => {
   if (!fusionPanelView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
-  const n = comptes()
+  const m = miens()
   const fusibles = RARITIES.slice(0, RARITIES.length - 1)
   return (
     <UiEntity
@@ -60,13 +72,19 @@ export const FusionPanel = () => {
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" textWrap="nowrap" />
         {fusibles.map((r) => {
-          const assez = n[r.id] >= FUSION_NEEDS
+          const total = m.hopper.filter((c) => rarityOf(c) === r.id).length + m.etagere.filter((c) => rarityOf(c) === r.id).length
+          const assez = total >= FUSION_NEEDS
           const suivant = RARITIES[r.id + 1]
+          const pris = choix(m, r.id)
           return (
             <UiEntity key={r.id} uiTransform={{ width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center' }}>
-              <Label value={`${n[r.id]}  ${r.name}${n[r.id] === 1 ? '' : 's'}`} fontSize={TYPE.body}
-                color={Color4.fromHexString(lisible(r.color) + 'ff')}
-                uiTransform={{ width: 420, height: RANG }} textAlign="middle-left" textWrap="nowrap" />
+              <UiEntity uiTransform={{ width: 440, height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
+                <Label value={`${total}  ${r.name}${total === 1 ? '' : 's'}`} fontSize={TYPE.body}
+                  color={Color4.fromHexString(lisible(r.color) + 'ff')}
+                  uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
+                <Label value={pris.length > 0 ? `takes: ${pris.map(nomDuCode).join(', ')}` : 'none on your shelves'} fontSize={TYPE.caption}
+                  color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+              </UiEntity>
               <UiEntity uiTransform={{ width: 440, height: TAP.height, justifyContent: 'flex-end' }}>
                 <Btn label={assez ? `FUSE ${FUSION_NEEDS} INTO A ${suivant.name.toUpperCase()}` : `${FUSION_NEEDS} NEEDED`} width={420} primary={assez}
                   onClick={() => { if (assez) { void room.send('fuseFromBase', { rarity: r.id }); closeFusion() } }} />
