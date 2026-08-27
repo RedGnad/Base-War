@@ -7,7 +7,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 
@@ -83,12 +83,17 @@ const taille = new Map<Entity, Vector3>()
  */
 let parentCourant: Entity | null = null
 
-function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: string): Entity {
+/**
+ * `solide` false for the decorative parts: lintel, corner posts, stairwell rails. A collider on
+ * every decorative box was the workshop's own example of what tanks a phone ("decorative props,
+ * no collision"); a base had eight of them per storey that nothing ever touched.
+ */
+function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: string, solide = true): Entity {
   const e = engine.addEntity()
   Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
-  MeshCollider.setBox(e)
+  if (solide) MeshCollider.setBox(e)
   Material.setPbrMaterial(e, plastic(color))
   return e
 }
@@ -116,11 +121,11 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
     vitre(x + c / 2, y + h / 2, z, ep, h, c),                            // droite
     vitre(x - (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
     vitre(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
-    bloc(x, y + h - 0.15, z + c / 2, DOOR_WIDTH, 0.3, ep, accent),  // linteau
-    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent),
-    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent),
-    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent),
-    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent)
+    bloc(x, y + h - 0.15, z + c / 2, DOOR_WIDTH, 0.3, ep, accent, false),  // linteau
+    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent, false)
   ]
 
   const r = rampPosition(floor)
@@ -178,8 +183,8 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   const stairwellEdge = c / 2 - STAIRWELL_WIDTH
   walls.push(
     bloc(x + stairwellEdge, y + RAIL_HEIGHT / 2, z, 0.12, RAIL_HEIGHT, c, '#7d8698'),
-    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z - c / 2 + 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698'),
-    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z + c / 2 - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698')
+    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z - c / 2 + 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698', false),
+    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z + c / 2 - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698', false)
   )
 
   /*
@@ -249,6 +254,25 @@ function expulser(base: Vector3, floors: number): void {
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
   void movePlayerTo({ newRelativePosition: porte, cameraTarget: Vector3.create(base.x, 2, base.z) })
   alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
+}
+
+/** One pedestal: a small box under the floor until something stands on it, with the steal handle. */
+function creerSocle(racine: Entity, k: number): Entity {
+  const o = engine.addEntity()
+  const d = slotPosition(k)
+  Transform.create(o, {
+    parent: racine,
+    position: Vector3.create(d.dx, -5, d.dz),
+    scale: Vector3.create(0.45, 0.45, 0.45)
+  })
+  MeshRenderer.setBox(o)
+  MeshCollider.setBox(o)
+  PointerEvents.create(o, {
+    pointerEvents: [
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
+    ]
+  })
+  return o
 }
 
 function createView(x: number, z: number, accent: string): View {
@@ -332,24 +356,14 @@ function createView(x: number, z: number, accent: string): View {
     text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
   })
 
+  /*
+    Pedestals for the ground storey only; the rest are added with the storeys they stand on.
+    Every base used to create all seventy-two up front, each with a collider and a pointer
+    event, for shelves nobody had bought: sixty bases made four thousand colliders standing in
+    for nothing, which is the entity count the workshop said to cut first (28 Aug).
+  */
   const items: Entity[] = []
-  for (let k = 0; k < PLOT_MAX_ITEMS; k++) {
-    const o = engine.addEntity()
-    const d = slotPosition(k)
-    Transform.create(o, {
-      parent: racine,
-      position: Vector3.create(d.dx, -5, d.dz),
-      scale: Vector3.create(0.45, 0.45, 0.45)
-    })
-    MeshRenderer.setBox(o)
-    MeshCollider.setBox(o)
-    PointerEvents.create(o, {
-      pointerEvents: [
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
-      ]
-    })
-    items.push(o)
-  }
+  for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
   return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
@@ -627,6 +641,8 @@ export function setupPlots(): void {
           parentCourant = v.racine
           v.floors.push(buildFloor(0, 0, v.floors.length, accentPour(p)))
           parentCourant = null
+          // The storey's six pedestals arrive with it.
+          while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(creerSocle(v.racine, v.items.length))
         }
 
         for (let e = 0; e < v.floors.length; e++) {
