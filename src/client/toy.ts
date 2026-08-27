@@ -384,7 +384,8 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
       part(racine, V(0, -0.11, 0), V(1.04, 0.16, 1.04), 'box'),    // strap around
       part(racine, V(0, -0.11, 0), V(0.16, 0.8, 1.04), 'box'),     // strap over
       part(racine, V(0, 0.39, 0), V(1.12, 0.22, 1.12), 'box'),     // lid
-      part(racine, V(0, 0.16, 0.53), V(0.2, 0.2, 0.06), 'box')     // latch
+      part(racine, V(0, 0.16, 0.53), V(0.2, 0.2, 0.06), 'box'),    // latch
+      part(racine, V(0, 0.05, 0), V(0, 0, 0), 'sphere')             // halo, Rare and above
     ]
     k = { parts, crateId }
     caisses.set(racine, k)
@@ -394,10 +395,10 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
     Tween.setMove(parts[3], V(0, 0.39, 0), V(0, 0.45, 0), 900, EasingFunction.EF_EASESINE)
     TweenSequence.create(parts[3], { sequence: [], loop: TweenLoop.TL_YOYO })
   }
-  const [corps, sangleH, sangleV, couvercle, loquet] = k.parts
+  const [corps, sangleH, sangleV, couvercle, loquet, halo] = k.parts
   const base = Color4.fromHexString(c.color + 'ff')
   Material.setPbrMaterial(corps, plastic(c.color, chauffe * 1.2))
-  Material.setPbrMaterial(couvercle, plastic(c.color, 0.5 + c.tier * 0.45 + chauffe * 1.6))
+  Material.setPbrMaterial(couvercle, plastic(c.color, 0.8 + c.tier * 0.8 + chauffe * 1.6))
   const sangle = theme === null
     ? plasticDe(Color4.create(base.r * 0.55, base.g * 0.55, base.b * 0.55, 1))
     : plastic(theme, 1.2 + chauffe)
@@ -406,7 +407,37 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
   Material.setPbrMaterial(loquet, plastic(TOY.wallCream))
   remonter(racine, `crate-${crateId}.glb`)
   const eclaire = c.tier >= 2 || theme !== null
-  lumiereDuJouet(racine, eclaire ? (theme ?? c.color) : null, 0.6 + c.tier * 0.4)
+  lumiereDuJouet(racine, eclaire ? (theme ?? c.color) : null, 0.8 + c.tier * 0.6)
+  /*
+    The halo: a breathing, see-through sphere in the crate's colour around anything Rare or
+    themed. The point light and the emissive lid depend on the client's quality preset (no
+    scene lights on Low, bloom from Medium up) and on the sun, which here is fixed at noon;
+    a tester on the belt saw no glow on any crate, high tiers included. A translucent shell
+    is drawn on every preset, in any light, and reads as "glow" from the plaza edge, which is
+    what the rare drops of the genre look like.
+  */
+  const ht = Transform.getMutableOrNull(halo)
+  if (eclaire) {
+    const hex = theme ?? c.color
+    const h = Color4.fromHexString(hex + 'ff')
+    Material.setPbrMaterial(halo, {
+      albedoColor: Color4.create(h.r, h.g, h.b, 0.14 + c.tier * 0.03),
+      emissiveColor: Color3.create(h.r, h.g, h.b),
+      emissiveIntensity: 2.5 + c.tier,
+      metallic: 0,
+      roughness: 1
+    })
+    const taille = 1.6 + c.tier * 0.15
+    if (ht !== null && ht.scale.x === 0) ht.scale = Vector3.create(taille, taille, taille)
+    if (!Tween.has(halo)) {
+      Tween.setScale(halo, Vector3.create(taille, taille, taille), Vector3.create(taille * 1.18, taille * 1.18, taille * 1.18), 1100, EasingFunction.EF_EASESINE)
+      TweenSequence.create(halo, { sequence: [], loop: TweenLoop.TL_YOYO })
+    }
+  } else {
+    Tween.deleteFrom(halo)
+    TweenSequence.deleteFrom(halo)
+    if (ht !== null && ht.scale.x !== 0) ht.scale = Vector3.Zero()
+  }
 }
 
 export function effacerCaisse(racine: Entity): void {
