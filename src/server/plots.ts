@@ -3,9 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
-  coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -49,7 +47,10 @@ type Base = {
   vols: number
   /** The mutation skin on the building, 0 for none; kept on the base so an absent owner's stays painted. */
   skin: number
+  /** Mines set inside the base: kept until stepped on, whoever is away, and regrown at every server start. */
+  mines: Mine[]
 }
+export type Mine = { x: number; y: number; z: number }
 type Profil = {
   coins: number
   items: number[]
@@ -190,8 +191,8 @@ function publish(b: Base, ici?: Set<string>): void {
   c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number }
-const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0, skin: 0 }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number; mines: Mine[] }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0, skin: 0, mines: [] }
 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
@@ -262,7 +263,7 @@ async function loadBases(): Promise<void> {
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
             sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0, vols: v.vols ?? 0,
-            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0, skin: v.skin ?? 0
+            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0, skin: v.skin ?? 0, mines: Array.isArray(v.mines) ? v.mines : []
           }
         }
       })
@@ -316,7 +317,7 @@ async function save(): Promise<void> {
     const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
       name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
       floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
-      given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0
+      given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines
     }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
   }
@@ -881,6 +882,36 @@ export function marquerTrait(address: string): number | null {
   dirtyProfiles.add(address)
   publish(b)
   return neuf
+}
+
+/*
+  Mines live on the BASE record, like sentry charges (invariant 207), for the same reason: the
+  one situation a mine is sold for is an owner who is away for days, and a placed entity dies
+  with the server two minutes after the venue empties. The record is saved with the base and
+  the gear module regrows the entities from it at every start, until somebody steps on one.
+  Inside the owner's own footprint only: a mine that never expires on the plaza would be a
+  permanent trap for everyone, which is griefing, not defence.
+*/
+export function minesDe(address: string): Mine[] { return [...(bases.get(address)?.mines ?? [])] }
+export function poserMine(address: string, m: Mine): boolean {
+  const b = bases.get(address)
+  if (!b) return false
+  if (Math.abs(m.x - b.x) > BASE_SIDE / 2 || Math.abs(m.z - b.z) > BASE_SIDE / 2) return false
+  b.mines = [...b.mines, m]
+  dirtyBases.add(address)
+  return true
+}
+export function retirerMine(address: string, at: { x: number; z: number }): void {
+  const b = bases.get(address)
+  if (!b) return
+  let k = -1, best = 0.5
+  for (let i = 0; i < b.mines.length; i++) {
+    const d = Math.abs(b.mines[i].x - at.x) + Math.abs(b.mines[i].z - at.z)
+    if (d < best) { best = d; k = i }
+  }
+  if (k < 0) return
+  b.mines = b.mines.filter((_, i) => i !== k)
+  dirtyBases.add(address)
 }
 
 /** The Index's button: a skin is a mutation whose column is filled to `SKIN_NEEDS`, or none. */

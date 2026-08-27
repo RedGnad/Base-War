@@ -9,7 +9,8 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import {
   displayName, presents, positionOf, spend, prestigeOf,
-  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil
+  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil,
+  minesDe, poserMine, retirerMine, toutesLesBases
 } from './plots'
 import { portePour, frapperPorteur } from './carry'
 
@@ -25,7 +26,7 @@ import { portePour, frapperPorteur } from './carry'
 function piegesPoses(address: string, gear: number): number {
   let n = 0
   if (gear === 0) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address && !t.mine) n += 1
-  if (gear === 7) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address && t.mine) n += 1
+  if (gear === 7) n += minesDe(address).length
   if (gear === 4) for (const [, b] of engine.getEntitiesWith(Bomb)) if (b.owner === address) n += 1
   return n
 }
@@ -100,15 +101,25 @@ export function startGear(): void {
     }
     const p = positionOf(a)
     if (p === null) return
-    removeGear(a, gear)
-    const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.create(p.x, p.y, p.z) })
-    if (gear === 4) {
-      Bomb.create(e, { owner: a, atMs: Date.now() + BOMB_FUSE_MS })
-      syncEntity(e, [Bomb.componentId, Transform.componentId])
+    if (gear === 7) {
+      // A mine is a record on the base, not an entity: the entity is grown from the record
+      // below, now and after every restart, until somebody steps on it (invariant 222).
+      if (!poserMine(a, { x: p.x, y: p.y, z: p.z })) {
+        void room.send('actionRejected', { action: 'gear', reason: 'a mine goes inside your own base', antiCheat: false }, { to: [a] })
+        return
+      }
+      removeGear(a, gear)
     } else {
-      Trap.create(e, { owner: a, untilMs: Date.now() + TRAP_LIFETIME_MS, mine: gear === 7 })
-      syncEntity(e, [Trap.componentId, Transform.componentId])
+      removeGear(a, gear)
+      const e = engine.addEntity()
+      Transform.create(e, { position: Vector3.create(p.x, p.y, p.z) })
+      if (gear === 4) {
+        Bomb.create(e, { owner: a, atMs: Date.now() + BOMB_FUSE_MS })
+        syncEntity(e, [Bomb.componentId, Transform.componentId])
+      } else {
+        Trap.create(e, { owner: a, untilMs: Date.now() + TRAP_LIFETIME_MS, mine: false })
+        syncEntity(e, [Trap.componentId, Transform.componentId])
+      }
     }
     void room.send('gearPlaced', { gear, held: gearsOf(a)[gear] }, { to: [a] })
     log(`${displayName(a)} set a ${g.name} at ${p.x.toFixed(1)},${p.z.toFixed(1)}`)
@@ -165,12 +176,46 @@ export function startGear(): void {
     theft would just be a slower gun. It catches them on the way in.
   */
   let acc = 0
+  let reconcile = 4
+  const minesVues = new Map<string, { cle: string; entites: Array<ReturnType<typeof engine.addEntity>> }>()
   engine.addSystem((dt) => {
     acc += dt
     if (acc < 0.25) return
     acc = 0
     const now = Date.now()
     const ici = presents()
+
+    /*
+      Mines are grown from the base records, once a second, whenever a record changed: at
+      server start (the sweep above took every plate with it), after a mine is set, after one
+      fires, after a base moves. One key per base, rebuilt whole when it differs; the flicker
+      is the owner's alone, since nobody else sees a mine.
+    */
+    reconcile += 1
+    if (reconcile >= 4) {
+      reconcile = 0
+      const vivantes = new Set<string>()
+      for (const b of toutesLesBases()) {
+        vivantes.add(b.address)
+        const cle = b.mines.map((m) => `${m.x.toFixed(2)},${m.y.toFixed(2)},${m.z.toFixed(2)}`).join('|')
+        const cur = minesVues.get(b.address)
+        if (cur !== undefined && cur.cle === cle) continue
+        if (cur !== undefined) for (const e of cur.entites) engine.removeEntity(e)
+        const entites = b.mines.map((m) => {
+          const e = engine.addEntity()
+          Transform.create(e, { position: Vector3.create(m.x, m.y, m.z) })
+          Trap.create(e, { owner: b.address, untilMs: 0, mine: true })
+          syncEntity(e, [Trap.componentId, Transform.componentId])
+          return e
+        })
+        minesVues.set(b.address, { cle, entites })
+      }
+      for (const [a, cur] of [...minesVues]) {
+        if (vivantes.has(a)) continue
+        for (const e of cur.entites) engine.removeEntity(e)
+        minesVues.delete(a)
+      }
+    }
 
     // Cloaks end on their timer, or when their wearer leaves.
     for (const [a, e] of [...capes]) {
@@ -201,7 +246,8 @@ export function startGear(): void {
     }
 
     for (const [e, t] of engine.getEntitiesWith(Trap)) {
-      if (t.untilMs < now) { engine.removeEntity(e); continue }
+      // A plate expires; a mine waits.
+      if (!t.mine && t.untilMs < now) { engine.removeEntity(e); continue }
       const tr = Transform.getOrNull(e)
       if (tr === null) continue
       for (const addr of ici) {
@@ -216,7 +262,7 @@ export function startGear(): void {
         const gel = t.mine ? MINE_FREEZE_MS : TRAP_FREEZE_MS
         engine.removeEntity(e)
         const proprio = baseDe(t.owner)?.name ?? displayName(t.owner)
-        if (t.mine) frapperPorteur(addr, 5)
+        if (t.mine) { retirerMine(t.owner, tr.position); frapperPorteur(addr, 5) }
         void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine }, { to: [addr] })
         const info = { type: 'trap', byName: displayName(addr) }
         if (ici.has(t.owner)) void room.send('trapSprung', { byName: displayName(addr) }, { to: [t.owner] })
