@@ -1,9 +1,7 @@
 import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem,
-  Tween, TweenSequence, TweenLoop, EasingFunction
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
@@ -266,7 +264,8 @@ function creerSocle(racine: Entity, k: number): Entity {
     scale: Vector3.create(0.45, 0.45, 0.45)
   })
   MeshRenderer.setBox(o)
-  MeshCollider.setBox(o)
+  // Pointer only: a toy on a shelf is clicked, never walked into.
+  MeshCollider.setBox(o, ColliderLayer.CL_POINTER)
   PointerEvents.create(o, {
     pointerEvents: [
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }

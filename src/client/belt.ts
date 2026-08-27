@@ -1,7 +1,6 @@
 import { TOY, plastic, caisse, demolir } from './toy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S } from '../shared/schemas'
@@ -156,7 +155,8 @@ export function setupBelt(): void {
         // bottom face sits on the tread, and the labels stack above whatever its size is.
         const item = engine.addEntity()
         Transform.create(item, { parent: racine, position: Vector3.create(0, r.size / 2 - 0.27, 0), scale: Vector3.create(r.size, r.size, r.size) })
-        MeshCollider.setBox(item)
+        // Pointer only: a crate on the belt is bought with a tap, and it rides above head height.
+        MeshCollider.setBox(item, ColliderLayer.CL_POINTER)
         caisse(item, b.crateTier)
         const haut = r.size - 0.27
         PointerEvents.create(item, {

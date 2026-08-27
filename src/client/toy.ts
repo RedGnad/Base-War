@@ -307,13 +307,43 @@ export function vif(hex: string): Color4 {
   return Color4.create(Math.min(1, c.r * k), Math.min(1, c.g * k), Math.min(1, c.b * k), 1)
 }
 
+/*
+  A light BUDGET, not a light per toy.
+
+  Every Rare-or-better and every mutated toy asks for a point light, and so does every lit
+  crate; sixty bases full of them is hundreds of lights, which the workshop names first among
+  what a phone cannot carry ("don't overuse lights, use emission"). The wish is recorded here;
+  a system every half second lights only the `LUMIERES_MAX` nearest to the player and takes
+  the light off the rest. Emission on the toy's own plastic carries the rest of the glow.
+*/
+const LUMIERES_MAX = 8
+const souhaits = new Map<Entity, { hex: string; glow: number }>()
+
 export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {
-  const cur = lumieres.get(parent)
   if (hex === null) {
+    souhaits.delete(parent)
+    const cur = lumieres.get(parent)
     if (cur !== undefined) { engine.removeEntity(cur); lumieres.delete(parent) }
     return
   }
-  let e = cur
+  souhaits.set(parent, { hex, glow })
+}
+
+/** World position of an entity, up its parent chain; rotation ignored, which is fine for a distance. */
+function positionMonde(e: Entity): Vector3 | null {
+  let x = 0, y = 0, z = 0
+  let cur: Entity | undefined = e
+  for (let n = 0; n < 8 && cur !== undefined; n++) {
+    const t = Transform.getOrNull(cur)
+    if (t === null) return null
+    x += t.position.x; y += t.position.y; z += t.position.z
+    cur = t.parent
+  }
+  return Vector3.create(x, y, z)
+}
+
+function allumer(parent: Entity, hex: string, glow: number): void {
+  let e = lumieres.get(parent)
   if (e === undefined) {
     e = engine.addEntity()
     Transform.create(e, { parent })
@@ -327,6 +357,29 @@ export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number)
     range: 1.5 + glow,
     shadow: false
   })
+}
+
+function budgetDeLumiere(): void {
+  const moi = Transform.getOrNull(engine.PlayerEntity)
+  if (moi === null) return
+  const classes: Array<{ parent: Entity; d: number }> = []
+  for (const [parent] of souhaits) {
+    if (!Transform.has(parent)) { souhaits.delete(parent); continue }
+    const p = positionMonde(parent)
+    if (p === null) continue
+    classes.push({ parent, d: Vector3.distanceSquared(p, moi.position) })
+  }
+  classes.sort((a, b) => a.d - b.d)
+  const garder = new Set(classes.slice(0, LUMIERES_MAX).map((c) => c.parent))
+  for (const parent of garder) {
+    const s = souhaits.get(parent)
+    if (s !== undefined) allumer(parent, s.hex, s.glow)
+  }
+  for (const [parent, e] of [...lumieres]) {
+    if (garder.has(parent)) continue
+    engine.removeEntity(e)
+    lumieres.delete(parent)
+  }
 }
 
 export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, null, 0) }
@@ -385,7 +438,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
       part(racine, V(0, -0.11, 0), V(0.16, 0.8, 1.04), 'box'),     // strap over
       part(racine, V(0, 0.39, 0), V(1.12, 0.22, 1.12), 'box'),     // lid
       part(racine, V(0, 0.16, 0.53), V(0.2, 0.2, 0.06), 'box'),    // latch
-      part(racine, V(0, 0.05, 0), V(0, 0, 0), 'sphere')             // halo, Rare and above
+      part(racine, V(0, -0.52, 0), V(0, 0, 0), 'cyl')                // glow disc, Rare and above
     ]
     k = { parts, crateId }
     caisses.set(racine, k)
@@ -416,21 +469,20 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
     is drawn on every preset, in any light, and reads as "glow" from the plaza edge, which is
     what the rare drops of the genre look like.
   */
+  /*
+    The glow is an OPAQUE emissive disc under the crate that breathes, not a translucent
+    sphere around it. The workshop's word for alpha on a phone GPU is "brutal", and a halo
+    was one alpha mesh per lit crate; a lit disc reads as the same pool of light from the
+    plaza edge and costs what any plastic costs.
+  */
   const ht = Transform.getMutableOrNull(halo)
   if (eclaire) {
     const hex = theme ?? c.color
-    const h = Color4.fromHexString(hex + 'ff')
-    Material.setPbrMaterial(halo, {
-      albedoColor: Color4.create(h.r, h.g, h.b, 0.14 + c.tier * 0.03),
-      emissiveColor: Color3.create(h.r, h.g, h.b),
-      emissiveIntensity: 2.5 + c.tier,
-      metallic: 0,
-      roughness: 1
-    })
-    const taille = 1.6 + c.tier * 0.15
-    if (ht !== null && ht.scale.x === 0) ht.scale = Vector3.create(taille, taille, taille)
+    Material.setPbrMaterial(halo, plastic(hex, 2.5 + c.tier))
+    const taille = 1.7 + c.tier * 0.15
+    if (ht !== null && ht.scale.x === 0) ht.scale = Vector3.create(taille, 0.05, taille)
     if (!Tween.has(halo)) {
-      Tween.setScale(halo, Vector3.create(taille, taille, taille), Vector3.create(taille * 1.18, taille * 1.18, taille * 1.18), 1100, EasingFunction.EF_EASESINE)
+      Tween.setScale(halo, Vector3.create(taille, 0.05, taille), Vector3.create(taille * 1.18, 0.05, taille * 1.18), 1100, EasingFunction.EF_EASESINE)
       TweenSequence.create(halo, { sequence: [], loop: TweenLoop.TL_YOYO })
     }
   } else {
@@ -448,6 +500,11 @@ export function effacerCaisse(racine: Entity): void {
 }
 
 export function setupToy(): void {
+  let accLumiere = 0
+  engine.addSystem((dt) => {
+    accLumiere += dt
+    if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
+  })
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
       const st = GltfContainerLoadingState.getOrNull(m.modele)

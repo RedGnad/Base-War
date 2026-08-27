@@ -1,6 +1,5 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
-  InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, LightSource
+  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, LightSource, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Fusion, FUSION_POS, FUSION_NEEDS } from '../shared/schemas'
@@ -44,7 +43,7 @@ export function setupFusion(): void {
   const tambour = engine.addEntity()
   Transform.create(tambour, { parent: racine, position: Vector3.create(0, 1.1, 0), scale: Vector3.create(1.8, 1.6, 1.8) })
   MeshRenderer.setCylinder(tambour, 0.5, 0.5)
-  MeshCollider.setCylinder(tambour, 0.5, 0.5)
+  MeshCollider.setCylinder(tambour, 0.5, 0.5, ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(tambour, plastic(TOY.belt))
   PointerEvents.create(tambour, {
     pointerEvents: [
@@ -55,7 +54,7 @@ export function setupFusion(): void {
   const dome = engine.addEntity()
   Transform.create(dome, { parent: racine, position: Vector3.create(0, 2.35, 0), scale: Vector3.create(1.3, 1.3, 1.3) })
   MeshRenderer.setSphere(dome)
-  Material.setPbrMaterial(dome, plasticDe(TOY.glass, 0))
+  Material.setPbrMaterial(dome, plastic(TOY.wallCream))
   const lampe = engine.addEntity()
   Transform.create(lampe, { parent: dome })
 
@@ -113,10 +112,11 @@ export function setupFusion(): void {
     }
     if (brille && f !== null) {
       const c = couleur(rarityOf(f.lastCode), mutationDe(f.lastCode))
-      Material.setPbrMaterial(dome, plasticDe(Color4.create(c.r, c.g, c.b, 0.55), 1.6))
+      // Opaque and lit: no alpha on a phone for a dome that only has to be seen glowing.
+      Material.setPbrMaterial(dome, plasticDe(Color4.create(c.r, c.g, c.b, 1), 1.6))
       LightSource.createOrReplace(lampe, { type: LightSource.Type.Point({}), color: Color3.create(c.r, c.g, c.b), intensity: AMPOULE * 3, range: 6, shadow: false })
     } else {
-      Material.setPbrMaterial(dome, plasticDe(TOY.glass, 0))
+      Material.setPbrMaterial(dome, plastic(TOY.wallCream))
       if (LightSource.has(lampe)) LightSource.deleteFrom(lampe)
     }
     const t = TextShape.getMutableOrNull(ligne)

@@ -15,6 +15,7 @@ import { setupBelt } from './belt'
 import { setupRecords } from './records'
 import { setupFusion } from './fusion'
 import { setupRaid } from './raid'
+import { setupStress } from './stress'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
@@ -92,6 +93,7 @@ export function startClient(): void {
   setupVenue()
   setupBox()
   setupPlots()
+  setupStress()
   setupTheft()
   setupCarry()
   setupGear()

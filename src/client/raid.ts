@@ -21,7 +21,6 @@ const NOIR = Color3.create(0, 0, 0)
 const PEAU = '#7a1f2e'
 const CORNE = '#f2e9d8'
 const OEIL = '#ffd166'
-const HALO = Color4.create(1, 0.25, 0.3, 0.16)
 const HAUTEUR = 1.7
 const FLASH_MS = 160
 const BALAI_MS = 420
@@ -55,10 +54,11 @@ export function setupRaid(): void {
     Material.setPbrMaterial(oeil, plastic(OEIL, 2.5))
   }
 
+  // The halo is an opaque emissive ring at the waist, not a translucent sphere: no alpha.
   const halo = engine.addEntity()
-  Transform.create(halo, { parent: racine, scale: Vector3.create(3.6, 3.6, 3.6) })
-  MeshRenderer.setSphere(halo)
-  Material.setPbrMaterial(halo, { albedoColor: HALO, emissiveColor: Color3.create(1, 0.25, 0.3), emissiveIntensity: 2.5, metallic: 0, roughness: 1 })
+  Transform.create(halo, { parent: racine, scale: Vector3.create(3.4, 0.14, 3.4) })
+  MeshRenderer.setCylinder(halo, 0.5, 0.5)
+  Material.setPbrMaterial(halo, plastic('#ff4d5e', 3))
 
   const ombre = engine.addEntity()
   Transform.create(ombre, { parent: racine, position: Vector3.create(0, -HAUTEUR + 0.03, 0), scale: Vector3.create(3.2, 0.02, 3.2) })
@@ -132,8 +132,8 @@ export function setupRaid(): void {
     const balai = now - r.swipeAtMs
     const ht = Transform.getMutableOrNull(halo)
     if (ht !== null) {
-      const s = balai >= 0 && balai < BALAI_MS ? 3.6 + (1 - balai / BALAI_MS) * 4.4 : 3.6
-      if (Math.abs(ht.scale.x - s) > 0.01) ht.scale = Vector3.create(s, s, s)
+      const s = balai >= 0 && balai < BALAI_MS ? 3.4 + (1 - balai / BALAI_MS) * 4.6 : 3.4
+      if (Math.abs(ht.scale.x - s) > 0.01) ht.scale = Vector3.create(s, 0.14, s)
     }
 
     const part = Math.max(0, Math.min(1, r.hp / Math.max(1, r.hpMax)))
