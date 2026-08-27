@@ -4,7 +4,7 @@
   "display": {
     "title": "Base War",
     "description": "Open crates, put your loot on show, and it earns while you're away. Everything on show can be taken by someone else. Arm a sentry, or come take theirs.",
-    "navmapThumbnail": "images/scene-thumbnail.png",
+    "navmapThumbnail": "images/base-war-thumbnail.png",
     "favicon": "favicon_asset"
   },
   "owner": "",
