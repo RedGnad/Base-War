@@ -60,15 +60,20 @@ export const WelcomePanel = () => {
     >
       <UiEntity
         uiTransform={{
-          width: strip(900).width, height: 560,
+          width: strip(900).width, height: 600,
           flexDirection: 'column', padding: 24, justifyContent: 'space-between'
         }}
       >
         <UiEntity uiTransform={{ width: '100%', height: 54 }}>
           <Glyphs value="BASE WAR" size={TYPE.title} role="bonus" />
         </UiEntity>
+        {/* The goal in one line, before the how: the platform's own guide asks a welcome to state the end goal. */}
         <Label
-          uiTransform={{ width: '100%', height: 44 }}
+          uiTransform={{ width: '100%', height: 40 }}
+          value="GOAL: top the records board. Earn, steal, defend."
+          fontSize={TYPE.label} color={C.bonus} />
+        <Label
+          uiTransform={{ width: '100%', height: 40 }}
           value="Your loot earns while it is on show. While it is on show, anyone can take it."
           fontSize={TYPE.caption} color={C.dim} />
 

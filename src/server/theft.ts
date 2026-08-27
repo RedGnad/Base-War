@@ -238,6 +238,8 @@ export function startTheft(): void {
       remettreEnMain(thief, r, v.victim)
       larcins.push({ thief, victim: v.victim, code: r, quand: maintenant })
       compterVol(thief)
+      // The last tutorial step is the game's core verb: a theft that reached the hands (27 Aug).
+      tutoFait(thief, 4)
       noter('vol', displayName(thief), b.name, r)
 
       /*

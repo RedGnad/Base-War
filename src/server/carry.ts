@@ -325,7 +325,6 @@ export function startCarry(): void {
     noter('don', displayName(a), displayName(vise), 0)
     advanceQuest(a, 'gift')
     pushQuests(a)
-    tutoFait(a, 4)
 
     /*
       Both ends of a gift get told, which is the whole reason anybody gives one.
