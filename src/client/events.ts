@@ -3,7 +3,7 @@ import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation } from '../shared/loot-table'
 import { alerter } from './theft'
-import { plastic, vif } from './toy'
+import { plastic, TOY } from './toy'
 
 /**
  * What an event looks like, which is the part that makes it one.
@@ -21,17 +21,20 @@ import { plastic, vif } from './toy'
 export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0 }
 
 /**
- * What each rush looks like: its ground and its hour of the day.
+ * What each rush looks like: its mat and its hour of the day.
  *
- * One cracked-crust texture served all three themes, tinted, and a tester saw a GOLD event with
- * a floor of lava: cracks with glowing veins read as lava whatever their colour. So gold gets
- * glitter under a golden-hour sky, lava keeps the crust under a darker evening, and cursed
- * keeps the crust in violet under the night. Sky times are seconds since midnight.
+ * The first version was one cracked-crust texture at full contrast, tinted to saturation and
+ * repeated twenty-four times across the plaza: it tiled like a bathroom, and a tester saw a
+ * GOLD event with a floor of lava, because glowing cracks read as lava in any colour. The
+ * venue is a play mat, so an event is the mat changing: a mid-tone from the palette carries
+ * the colour, and a soft pattern with a fifth of contrast breathes underneath at sixteen
+ * metres a cell. Gold sparkles under the golden hour, lava has slow blobs under a darker
+ * evening, cursed swirls under the night. Sky times are seconds since midnight.
  */
-const LOOK: Record<number, { texture: string; sky: number }> = {
-  1: { texture: 'glitter', sky: 64800 },
-  5: { texture: 'flow', sky: 72000 },
-  9: { texture: 'flow', sky: 79200 }
+const LOOK: Record<number, { texture: string; teinte: string; sky: number }> = {
+  1: { texture: 'mat-gold', teinte: TOY.groundEvent.gold, sky: 64800 },
+  5: { texture: 'mat-lava', teinte: TOY.groundEvent.lava, sky: 72000 },
+  9: { texture: 'mat-cursed', teinte: TOY.groundEvent.cursed, sky: 79200 }
 }
 let sol: Entity | null = null
 let solCouleur = ''
@@ -63,7 +66,7 @@ export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
   faint veins. Eight-metre cells across the venue. Both states write both facts, material and
   tween, so an event that ended leaves neither behind.
 */
-const MAILLE_SOL = 8
+const MAILLE_SOL = 16
 
 export function setupEvents(): void {
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
@@ -101,11 +104,11 @@ export function setupEvents(): void {
             wrapMode: TextureWrapMode.TWM_REPEAT,
             tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
           }),
-          albedoColor: vif(mutation(theme).color),
+          albedoColor: Color4.fromHexString(look.teinte + 'ff'),
           metallic: 0,
           roughness: 0.95
         })
-        Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.04, TextureMovementType.TMT_OFFSET)
+        Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
       SkyboxTime.deleteFrom(engine.RootEntity)

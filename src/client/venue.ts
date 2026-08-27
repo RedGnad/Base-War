@@ -25,7 +25,7 @@ export function setupVenue(): void {
   // The event floors' textures, fetched now rather than at the first event: a texture is
   // requested when a material first names it, and an event floor that appears untextured
   // for its first seconds is the same cold-start defect the reel had.
-  for (const f of ['flow', 'glitter']) {
+  for (const f of ['mat-gold', 'mat-lava', 'mat-cursed']) {
     const chauffe = engine.addEntity()
     Transform.create(chauffe, { position: Vector3.create(CENTER.x, -2, CENTER.z), scale: Vector3.create(0.01, 0.01, 0.01) })
     MeshRenderer.setPlane(chauffe)
