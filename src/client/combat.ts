@@ -71,6 +71,10 @@ const MODELE = 'assets/Models/gun.glb'
  */
 const CLIP_VISEE = 'assets/animations/aim_emote.glb'
 const CLIP_TIR = 'assets/animations/fire_emote.glb'
+/** The kick on a loop whose cycle is the shot cooldown: one emote per burst, not one per round. */
+const CLIP_RAFALE = 'assets/animations/burst_emote.glb'
+/** A burst ends this long after its last round; the arm goes back to the held aim then. */
+const RAFALE_FIN_MS = 420
 /**
  * The model's own pivot is 87 cm away from the weapon: measured, its bounds run
  * y 0.563..0.778 and z 0.390..0.700, muzzle at +Z, wooden grip at low Y and low Z.
@@ -102,10 +106,7 @@ const ARMES_MAX = 10
 /** Muzzle rise on the shot, in degrees, decayed back to rest. */
 const RECUL_DEG = 20
 /** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
-const TIR_MS = 300
 /** Shortest gap between two arm animations, whatever the weapon's own rate. */
-// Raised from 340 on 28 Aug: a sixty-shot raid at three clips a second left the arm frozen mid-pose.
-const CLIP_MIN_MS = 800
 
 /**
  * Whether the avatar is posed at all.
@@ -137,6 +138,8 @@ let zoneVisee: Entity | null = null
 let vueVisibleApres = 0
 let dernierClipTir = 0
 let degainages = 0
+let enRafale = false
+let rafaleJusqua = 0
 /** Whether first person was the player's own setting when the weapon came out. */
 let prefereVuePremiere = false
 let dernierRecensement = 0
@@ -343,6 +346,11 @@ function gunSystem(dt: number): void {
 
   const reste = dernierTir + SHOT_COOLDOWN_MS - now
   combatView.cooldown = reste > 0 ? reste / SHOT_COOLDOWN_MS : 0
+  // The burst is over: the arm returns to the held aim, once.
+  if (enRafale && now > rafaleJusqua) {
+    enRafale = false
+    if (combatView.aiming && poseDisponible()) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+  }
 
   // One control, and it toggles rather than being held.
   //
@@ -386,16 +394,20 @@ function gunSystem(dt: number): void {
     // it played and turn a burst into a twitch, at one restricted call per round. The
     // muzzle flash and the weapon's own kick carry the cadence; the arm plays about three
     // times a second and that is enough to read as recoil.
-    if (poseDisponible() && now - dernierClipTir >= CLIP_MIN_MS) {
-      dernierClipTir = now
-      void triggerSceneEmote({ src: CLIP_TIR, loop: false, mask: AvatarMask.AM_UPPER_BODY })
-      // The shot clip displaces the held pose, so the aim goes back when it ends, unless a
-      // later round has already claimed the arm.
-      timers.setTimeout(() => {
-        if (combatView.aiming && dernierClipTir === now) {
-          void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
-        }
-      }, TIR_MS + 20)
+    /*
+      One looping clip per burst, not one clip per round. The loop's cycle is the shot cooldown,
+      so fire at full cadence reads as fire; the avatar takes two emote calls per burst (in,
+      then back to the held aim) instead of one per round, which is what froze the arm over a
+      sixty-round raid (28 Aug). `CLIP_TIR` stays for a single shot's feel: the burst loop is
+      only started on the second round within the window.
+    */
+    if (poseDisponible()) {
+      if (!enRafale) {
+        enRafale = true
+        dernierClipTir = now
+        void triggerSceneEmote({ src: CLIP_RAFALE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+      }
+      rafaleJusqua = now + RAFALE_FIN_MS
     }
   }
 
@@ -466,6 +478,7 @@ function degainer(on: boolean): void {
     Transform.create(zoneVisee, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0), scale: ZONE_VISEE })
     CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
+    enRafale = false
     if (poseDisponible()) void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
     // The cursor is NOT given back here any more. This used to release the capture on the

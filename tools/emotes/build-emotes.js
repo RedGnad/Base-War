@@ -257,7 +257,13 @@ async function main() {
   const f = write(path.join(OUT, 'fire_emote.glb'), [
     { t: 0, rot: aim.rot }, { t: 0.05, rot: kick.rot }, { t: 0.30, rot: aim.rot }
   ])
-  console.log(`wrote aim_emote.glb (${a} B) and fire_emote.glb (${f} B)`)
+  // BURST is the same kick on a loop whose cycle is the shot cooldown (180 ms): one looping
+  // emote per burst instead of one clip per round, so fire at full cadence reads as fire and
+  // the avatar takes two emote calls per burst, not sixty (28 Aug: a raid froze the arm).
+  const b = write(path.join(OUT, 'burst_emote.glb'), [
+    { t: 0, rot: aim.rot }, { t: 0.04, rot: kick.rot }, { t: 0.18, rot: aim.rot }
+  ])
+  console.log(`wrote aim_emote.glb (${a} B), fire_emote.glb (${f} B) and burst_emote.glb (${b} B)`)
 }
 
 main().catch((e) => { console.error(e.message); process.exit(1) })
