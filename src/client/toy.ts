@@ -25,6 +25,8 @@ export const TOY = {
   slab: '#e6dcc8',
   plinth: '#d9d0bf',
   plinthAway: '#c9c1b2',
+  /** The pad every displayed toy stands on: darker than the slab, so a toy has a place, not a spot. */
+  socle: '#bfb5a4',
   post: '#f6f1e8',
   lintel: '#ff6b6b',
   /** The ramp is the one bold primary on a base: yellow, so a way up reads from across the plaza. */
@@ -225,34 +227,49 @@ export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMateri
 }
 
 /*
- * A mutation is a BODY change, not a tint, or it is invisible from across the plaza.
+ * Every displayed toy stands on a pad; a mutation colours the pad.
  *
- * The reference's mutations recolour the whole figure, cycle it through RGB, turn it black
- * with white flashes. Ours tinted the same box and, at thirty metres, a Gold Rare and a Rare
- * were the same blue dot. A halo is the cheapest body change the mobile renderer draws: a wide
- * flat disc under the toy, emissive, in the mutation's colour, one entity. It reads as "this
- * one is special" before anyone can read which rarity it is, which is the right order.
+ * The first version drew a disc only under mutated toys, sized with the toy (1.9 times it),
+ * to make a mutation a BODY change readable across the plaza. The tester's word for the
+ * result was "messy": a floor where some toys had a plate and others had nothing read as
+ * inconsistency, not as information, and a Gold Epic's disc was 3.2 m wide on pedestals
+ * 3.06 m apart, so neighbouring discs cut into each other. A pastel mutation (Candy) at
+ * emissive 1.6 also clipped to plain white.
+ *
+ * So the pad is a FIXED 1.4 m stand under every occupied slot, never scaled by the toy: pads
+ * are 1.66 m apart on the tightest pitch and never touch. Plain toys stand on a neutral pad,
+ * darker than the slab; a mutated toy's pad takes the mutation's colour, with an emissive
+ * term below 1 so no hue clips to white. The same fact is written for every occupied slot,
+ * which is what makes it read as a rule. The toy stands ON the pad, so the pedestal's height
+ * includes the pad's thickness (`SOCLE_EPAISSEUR`) and a hair of air above the slab.
  */
-const halos = new Map<Entity, Entity>()
+export const SOCLE_DIAMETRE = 1.4
+export const SOCLE_EPAISSEUR = 0.08
+const socles = new Map<Entity, Entity>()
 
-export function haloDeMutation(parent: Entity, hex: string | null): void {
-  const cur = halos.get(parent)
-  if (hex === null) {
-    if (cur !== undefined) { engine.removeEntity(cur); halos.delete(parent) }
-    return
-  }
-  let e = cur
+export function socleDuJouet(parent: Entity, size: number, mutationHex: string | null): void {
+  let e = socles.get(parent)
   if (e === undefined) {
     e = engine.addEntity()
-    // Its underside is the toy's underside: half its thickness above the cube's bottom face.
-    Transform.create(e, { parent, position: Vector3.create(0, -0.475, 0), scale: Vector3.create(1.9, 0.05, 1.9) })
     MeshRenderer.setCylinder(e, 0.5, 0.5)
-    halos.set(parent, e)
+    socles.set(parent, e)
   }
-  Material.setPbrMaterial(e, plastic(hex, 1.6))
+  // Child of a parent scaled by `size`: divide, so the pad keeps its world size whatever the toy.
+  // Its top face is the cube's bottom face: the toy stands on it.
+  Transform.createOrReplace(e, {
+    parent,
+    position: Vector3.create(0, -0.5 - SOCLE_EPAISSEUR / 2 / size, 0),
+    scale: Vector3.create(SOCLE_DIAMETRE / size, SOCLE_EPAISSEUR / size, SOCLE_DIAMETRE / size)
+  })
+  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 0.9))
 }
 
-export function effacerHalo(parent: Entity): void { haloDeMutation(parent, null) }
+export function effacerSocle(parent: Entity): void {
+  const cur = socles.get(parent)
+  if (cur === undefined) return
+  engine.removeEntity(cur)
+  socles.delete(parent)
+}
 
 /*
  * Light, for the toys worth crossing the room for.
@@ -316,7 +333,7 @@ export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, nu
 /**
  * Remove an entity and everything this module hung under it.
  *
- * `removeEntity` does not take children, and the silhouette, the halo, the light and the
+ * `removeEntity` does not take children, and the silhouette, the pad, the light and the
  * mounted model are all children, held in maps keyed by the parent. A view torn down with a
  * bare `removeEntity` left them behind twice: as orphans in the world, drawn at their local
  * offsets from a parent that no longer exists, and as map entries nothing would ever clear.
@@ -324,7 +341,7 @@ export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, nu
  */
 export function demolir(parent: Entity): void {
   effacerForme(parent)
-  effacerHalo(parent)
+  effacerSocle(parent)
   effacerLumiere(parent)
   demonter(parent)
   engine.removeEntity(parent)

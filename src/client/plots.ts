@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, haloDeMutation, effacerHalo, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
@@ -632,7 +632,7 @@ export function setupPlots(): void {
         never restored the scale the empty branch had zeroed, so a pedestal that had been empty
         once stayed invisible for ever; the empty branch never removed the tween the occupied
         one had started, so a sold item kept turning on its plinth. Every fix moved the bug to
-        the other branch. Position, scale, material, silhouette, halo, light, tween and
+        the other branch. Position, scale, material, silhouette, pad, light, tween and
         mounted model are the facts of a pedestal; both states write all of them, in the one
         order that survives the engine: tweens off, transform written whole, tweens back on. A tween that is still alive rewrites the
         Transform next frame, so anything set before deleting it is lost.
@@ -654,7 +654,7 @@ export function setupPlots(): void {
           tr.scale = Vector3.Zero()
           demonter(ent)
           effacerForme(ent)
-          effacerHalo(ent)
+          effacerSocle(ent)
           effacerLumiere(ent)
           continue
         }
@@ -664,9 +664,9 @@ export function setupPlots(): void {
         const r = rarity(rarityOf(code))
         const m = mutation(mutationDe(code))
         const size = r.size * (m.mult > 1 ? 1.12 : 1)
-        // `dy` is the slab's top face. The toy's centre is half its size above it, plus a hair,
-        // so its underside (and the halo's) never shares a plane with the floor.
-        tr.position = Vector3.create(t.position.x + d.dx, d.dy + JEU + size / 2, t.position.z + d.dz)
+        // `dy` is the slab's top face. A hair of air, the pad, then the toy standing on the pad
+        // with its centre half its size up. Nothing shares a plane with anything.
+        tr.position = Vector3.create(t.position.x + d.dx, d.dy + JEU + SOCLE_EPAISSEUR + size / 2, t.position.z + d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const hex = itemColor(rarityOf(code), mutationDe(code))
@@ -675,8 +675,8 @@ export function setupPlots(): void {
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
-        // A mutation shows as a halo under the toy, in its own colour; none shows nothing.
-        haloDeMutation(ent, m.mult > 1 ? m.color : null)
+        // Every toy stands on a pad; a mutation colours it.
+        socleDuJouet(ent, size, m.mult > 1 ? m.color : null)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         const eclat = r.glow + (m.mult > 1 ? 1 : 0)
         lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
