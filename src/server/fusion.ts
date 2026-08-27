@@ -2,7 +2,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { encoder, rarityOf, mutationDe, mutation, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
+import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { log } from './log'
 import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf } from './plots'
@@ -42,18 +42,18 @@ function pres(a: string): boolean {
 /**
  * Three of rarity `r` are gone; here is what they became, in the player's hand and on the dome.
  *
- * The mutation is rolled again, with the venue's push and the player's bought luck, and the
- * result keeps the BEST mutation among what went in if the roll does worse: nobody loses a
- * Lava by fusing it (tester's question, 27 Aug). Traits are not kept: they come from rushes,
- * not from machines. The reference does not document its own machine's rule; this is ours.
+ * The mutation is rolled again, with the venue's push, the player's bought luck, and one
+ * push per mutated toy that went in (`FUSION_PUSH`): a Lava fed in is a chance of a Lava out,
+ * about one in five, never a certainty. "Keeps the best of the three" lasted an hour: the
+ * tester saw the farm in it at once (two plain and one Lava, every rung). Traits are not
+ * kept: they come from rushes, not from machines. The reference does not document its own
+ * machine's rule; this is ours.
  */
 function produire(machine: Machine, a: string, r: number, resteHopper: number[], entrees: number[]): void {
   const name = displayName(a)
   setFusion(a, resteHopper)
-  const roule = rollMutation(0, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1)
-  const meilleure = entrees.map(mutationDe).reduce((m, x) => mutation(x).mult > mutation(m).mult ? x : m, 0)
-  const mut = mutation(roule).mult >= mutation(meilleure).mult ? roule : meilleure
-  const sortie = encoder(r + 1, mut)
+  const pousses = entrees.map(mutationDe).filter((m) => m > 0)
+  const sortie = encoder(r + 1, rollMutation(0, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1, pousses))
   remettreEnMain(a, sortie, a)
   const f = Fusion.getMutableOrNull(machine)
   if (f !== null) {

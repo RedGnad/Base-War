@@ -68,7 +68,7 @@ export const FusionPanel = () => {
           <Glyphs value="FUSER" size={TYPE.title} role="bonus" />
         </UiEntity>
         <Label
-          value={`${FUSION_NEEDS} toys of one rarity become one of the rarity above  ·  keeps the best mutation of the three, or better  ·  cheapest first`}
+          value={`${FUSION_NEEDS} toys of one rarity become one better  ·  each mutated toy fed is about 1 in 5 that its mutation passes on  ·  cheapest first`}
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" textWrap="nowrap" />
         {/* What the machine already holds for this player, and the way back out of it. */}

@@ -971,6 +971,15 @@ export const Fusion = engine.defineComponent('basetycoon::fusion', {
   atMs: Schemas.Int64
 })
 export const FUSION_NEEDS = 3
+/*
+  What a mutated toy fed to the fuser does to the roll: its mutation's weight rises by this
+  much, on top of the crate weights (plain 1000, Gold 220 ... Phantom 1). One mutated input
+  is about a one-in-five chance of passing its mutation on, two the same about one in three,
+  three about one in two. It was "the result keeps the best mutation of the three", which the
+  tester read at once as a farm: two plain and one Lava made a Lava for certain, one rung up,
+  every time. A chance is a bet; a guarantee was a ladder.
+*/
+export const FUSION_PUSH = 400
 export const FUSION_RANGE = 4.5
 /** Beside the records board, on the side of the belt away from the pit. */
 export const FUSION_POS = { x: CENTER.x - 9, z: CENTER.z - 7 }

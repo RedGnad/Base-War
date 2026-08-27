@@ -61,7 +61,7 @@ export function rollCrateTier(): number {
 }
 
 import { crate, MUTATIONS, CRATE_WEIGHTS } from '../shared/loot-table'
-import { EVENT_WEIGHT } from '../shared/schemas'
+import { EVENT_WEIGHT, FUSION_PUSH } from '../shared/schemas'
 
 /**
  * A themed crate multiplies its own mutation's weight; every other weight is untouched,
@@ -71,8 +71,11 @@ import { EVENT_WEIGHT } from '../shared/schemas'
 export let eventTheme = -1
 export function setEventTheme(theme: number): void { eventTheme = theme }
 
-/** `luck` multiplies every mutation's weight but the plain one: 2 doubles the odds of any mutation. */
-export function rollMutation(crateId = 0, luck = 1): number {
+/**
+ * `luck` multiplies every mutation's weight but the plain one: 2 doubles the odds of any mutation.
+ * `pousses` are mutation ids fed to the fuser: each adds `FUSION_PUSH` to that mutation's weight.
+ */
+export function rollMutation(crateId = 0, luck = 1, pousses: number[] = []): number {
   const c = crate(crateId)
   // The crate's own theme and the venue's event both push; a Lava crate during Lava Hour
   // stacks, which is the moment the belt is worth crossing the room for.
@@ -81,6 +84,7 @@ export function rollMutation(crateId = 0, luck = 1): number {
     if (c.theme === m.id) w *= c.weight
     if (eventTheme === m.id) w *= EVENT_WEIGHT
     if (m.id !== 0) w *= luck
+    for (const p of pousses) if (p === m.id && m.id !== 0) w += FUSION_PUSH
     return w
   })
   const total = poids.reduce((a, b) => a + b, 0)
