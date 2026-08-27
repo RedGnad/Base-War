@@ -83,7 +83,10 @@ export const CRATES = [
   { id: 3, name: 'Epic Crate',   tier: 3, theme: -1, weight: 0,   price: CRATE_PRICE[3],                     color: '#a855f7', size: 1.20 },
   { id: 4, name: 'Gold Crate',   tier: 1, theme: 1,  weight: 12,  price: Math.round(CRATE_PRICE[1] * 0.90),  color: '#ffd700', size: 0.99 },
   { id: 5, name: 'Lava Crate',   tier: 2, theme: 5,  weight: 60,  price: Math.round(CRATE_PRICE[2] * 2.32),  color: '#ff5722', size: 1.11 },
-  { id: 6, name: 'Cursed Crate', tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.09),  color: '#3b0a45', size: 1.29 }
+  { id: 6, name: 'Cursed Crate', tier: 3, theme: 9,  weight: 180, price: Math.round(CRATE_PRICE[3] * 3.09),  color: '#3b0a45', size: 1.29 },
+  // The two rungs above Epic: what a rich player crosses the plaza for. Rare on the belt, announced.
+  { id: 7, name: 'Legendary Crate', tier: 4, theme: -1, weight: 0, price: CRATE_PRICE[4],                 color: '#f5a524', size: 1.34 },
+  { id: 8, name: 'Mythic Crate',    tier: 5, theme: -1, weight: 0, price: CRATE_PRICE[5],                 color: '#ff4d6d', size: 1.40 }
 ] as const
 /*
   `size` is the crate's edge in metres, and it grew by half on 27 Aug: a 0.55 m cube on the
@@ -154,6 +157,8 @@ export const CRATE_WEIGHTS = [
   [22, 55,  22,   6,    1.20, 0.200, 0.030],  // Good,  peaks on Uncommon
   [ 6, 22,  55,  22,    6.00, 1.200, 0.200],  // Rare,  peaks on Rare
   [ 1,  6,  22,  55,   22.00, 6.000, 1.200],  // Epic,  peaks on Epic
+  [ 0.2, 1.2, 6,  22,   55.00, 22.00, 6.000],  // Legendary, peaks on Legendary
+  [ 0.03, 0.2, 1.2, 6,  22.00, 55.00, 22.00],  // Mythic, peaks on Mythic
 ]
 
 /**
@@ -199,7 +204,9 @@ export function formatIncome(v: number): string {
   if (v < 10) return v.toFixed(2).replace(/\.?0+$/, '')
   if (v < 1000) return Math.round(v).toString()
   if (v < 1e6) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'
-  return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (v < 1e9) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (v < 1e12) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'B'
+  return (v / 1e12).toFixed(1).replace(/\.0$/, '') + 'T'
 }
 
 /*

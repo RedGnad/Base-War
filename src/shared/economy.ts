@@ -36,9 +36,20 @@ export const RESELL_SECONDS = 30
  * times over, and theft is available from the first second because it is gated by nothing.
  * The ladder stays where it belongs: second floor at 24 minutes, third at 1.3 hours.
  */
-export const CRATE_PRICE = [2018, 17425, 165140, 1473212] as const
+export const CRATE_PRICE = [2018, 17425, 165140, 1473212, 11244378, 68656098] as const
 
-export const CRATE_PAYBACK_S = [60, 120, 240, 480] as const
+export const CRATE_PAYBACK_S = [60, 120, 240, 480, 960, 1920] as const
+/*
+  Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.
+
+  A tester a few days in, at multiplier five with 700M in hand: "nothing costs anything any
+  more". The belt's top crate was Epic at 1.47M, which is the reference's conveyor stopping
+  at its third tier of seven; theirs runs to the top of the rarity table with prices in the
+  trillions, and the expensive item passing by IS the thing a rich player is saving for.
+  Same rule as the four below, expected yield times a payback that doubles again: the
+  Legendary crate (11713/s) pays back in sixteen minutes, the Mythic crate
+  (35758/s) in thirty-two. Both are rare on the belt and both are announced.
+*/
 
 /**
  * Floors grow geometrically, and the RATE is the whole ladder. It was set too high.
@@ -89,11 +100,12 @@ export function floorCost(targetFloor: number): number {
  * second run of the whole loop under the prices above, swept across candidates and read off
  * the milestones it produces.
  *
- * A price paid in coins held, not a lifetime total reached. Cost grows with the cube of the
- * tier, so the ladder is long by construction: about 2.4 hours of base income for the first,
- * 106 for the sixth, past four hundred for the twelfth, before any of it is spent elsewhere.
- * A tycoon is a thing somebody can still be playing in three months, and a threshold picked
- * so a visitor reaches the top of it in an afternoon would have thrown that away.
+ * A price paid in coins held, not a lifetime total reached. The cost then multiplies by
+ * `PRESTIGE_GROWTH` a rung (see `coutPrestige`); the cube it replaced read "106 hours for
+ * the sixth tier" against a base that never held an Epic or a multiplier, and was measured
+ * wrong on 27 Aug. A tycoon is a thing somebody can still be playing in three months, and a
+ * threshold picked so a visitor reaches the top of it in an afternoon would have thrown that
+ * away.
  */
 export const PRESTIGE_THRESHOLD = 2_500_000
 
@@ -105,8 +117,28 @@ export const PRESTIGE_THRESHOLD = 2_500_000
   a tier from lifetime earnings, sat right here implementing the other model and was called by
   nothing: two contradictory economies in nine lines, around real money. One survives.
 */
+/**
+ * Geometric, four times the last rung, and the reason is a measurement.
+ *
+ * The cube was calibrated against a base of Basic-crate items at multiplier one. Measured on
+ * 27 Aug against what a base actually holds after a few days, the ladder was finished: a
+ * tester at multiplier five with 700M and "nothing costs anything any more". Simulated with
+ * the real tables, six Epic-crate slots earn 18K/s before prestige, and income is multiplied
+ * by the tier: under the cube, tier 6 came 1.4 hours after tier 5, tier 10 two hours later,
+ * and the ratio between rungs tends to one. A polynomial price against an income that is
+ * itself multiplied every rung is a ladder that flattens exactly when it should steepen.
+ *
+ * The reference's rebirth cash goes $500K, 1.5M, 12.5M, 35M, 100M, 350M, 1B, 5B, 12.5B, 125B
+ * ... 30Qa: times 3.35 a rung on average, never under times two. Four here, so the first
+ * rungs stay near where they were tuned (2.5M, 10M, 40M, 160M, 640M against the cube's 2.5M,
+ * 20M, 68M, 160M, 313M) and the ladder is endless past them: the same six-slot base reaches
+ * tier 8 in 77 hours and tier 10 in a thousand, and a full three-storey base of Mythics still
+ * needs five days for tier 10. Tier 30 costs 7e23 and is not meant to be reached; it is meant
+ * to exist.
+ */
+export const PRESTIGE_GROWTH = 4
 export function coutPrestige(n: number): number {
-  return n <= 0 ? 0 : Math.round(n * n * n * PRESTIGE_THRESHOLD)
+  return n <= 0 ? 0 : Math.round(PRESTIGE_THRESHOLD * Math.pow(PRESTIGE_GROWTH, n - 1))
 }
 
 export function prestigeMultiplier(n: number): number {

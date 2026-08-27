@@ -24,7 +24,8 @@ export function rollCrate(crateId: number): number {
  * they are the reason to keep watching, and seeing one is meant to feel like an event.
  * Order matches CRATES: Basic, Good, Rare, Epic, Gold, Lava, Cursed.
  */
-const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1]
+// The two top crates: one Legendary every ~200 spawns (a quarter hour), one Mythic every ~800 (an hour).
+const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1, 0.5, 0.12]
 
 /**
  * Which crates are worth interrupting the screen for, read off the table above.
