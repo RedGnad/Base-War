@@ -228,6 +228,8 @@ export function setupCombat(): void {
     where the other player gets to stop you.
   */
   room.onMessage('shotResult', (d) => {
+    // The boss flashes when hit; a line per round at five rounds a second would be noise.
+    if (d.reason === 'boss') return
     // One shot, one line. What it did to their hands leads, because that is the bigger prize.
     const qui = d.hitName.toUpperCase()
     if (d.loot === 3) {

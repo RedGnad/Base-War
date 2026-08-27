@@ -14,6 +14,7 @@ import { setupTheft, setAdresseClient, theftView } from './theft'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
 import { setupFusion } from './fusion'
+import { setupRaid } from './raid'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
@@ -100,6 +101,7 @@ export function startClient(): void {
   setupBelt()
   setupRecords()
   setupFusion()
+  setupRaid()
   setupSlots()
   setupConvoy()
   setupCombat()

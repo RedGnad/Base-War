@@ -3,6 +3,7 @@ import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
+import { raidView } from './raid'
 import { alerter, alerterEnFile } from './theft'
 import { plastic, TOY } from './toy'
 
@@ -25,6 +26,9 @@ const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padS
 
 /** The band's one line: the rush RUNNING, or nothing. A rush lasts minutes and earns the centre. */
 export function ligneDuBandeau(): { text: string; color: string } | null {
+  if (raidView.active) {
+    return { text: `RAID BOSS   ${mmss(raidView.leftS)}   ·   ${Math.round((raidView.hp / raidView.hpMax) * 100)}%${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
+  }
   if (eventView.theme < 0) return null
   return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }
 }
@@ -35,9 +39,13 @@ export function ligneDuBandeau(): { text: string; color: string } | null {
  * other standing facts go, under the money, at caption size.
  */
 export function prochainGrandTexte(): string | null {
-  if (eventView.theme >= 0) return null
-  if (eventView.nextGrandS <= 0 || eventView.nextGrandS > 3600) return null
-  return `GRAND RUSH IN ${mmss(eventView.nextGrandS)}`
+  if (eventView.theme >= 0 || raidView.active) return null
+  const grand = eventView.nextGrandS > 0 && eventView.nextGrandS <= 3600 ? eventView.nextGrandS : 0
+  const raid = raidView.nextS > 0 && raidView.nextS <= 600 ? raidView.nextS : 0
+  // The sooner of the two standing facts; the raid within ten minutes, the grand rush within the hour.
+  if (raid > 0 && (grand === 0 || raid <= grand)) return `RAID IN ${mmss(raid)}`
+  if (grand > 0) return `GRAND RUSH IN ${mmss(grand)}`
+  return null
 }
 
 /**

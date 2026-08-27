@@ -1002,6 +1002,45 @@ export const FUSION_RANGE = 4.5
 /** Beside the records board, on the side of the belt away from the pit. */
 export const FUSION_POS = { x: CENTER.x - 9, z: CENTER.z - 7 }
 
+/*
+  The raid: one boss on the plaza, every so often, for three minutes. The server writes this
+  one entity; every client draws the same boss from it. `hp` is fractional because a shot
+  from across the plaza is a fraction of a hit, the same force rule the pockets obey.
+*/
+export const Raid = engine.defineComponent('basetycoon::raid', {
+  active: Schemas.Boolean,
+  hp: Schemas.Float,
+  hpMax: Schemas.Float,
+  untilMs: Schemas.Int64,
+  nextMs: Schemas.Int64,
+  x: Schemas.Float,
+  z: Schemas.Float,
+  topName: Schemas.String,
+  lastHitName: Schemas.String,
+  hitAtMs: Schemas.Int64,
+  swipeAtMs: Schemas.Int64
+})
+/** The switch. Off, the entity exists and never activates; the HUD shows nothing. */
+export const RAID_ENABLED = true
+export const RAID_FIRST_MS = 6 * 60_000
+export const RAID_EVERY_MS = 45 * 60_000
+export const RAID_MS = 3 * 60_000
+/** On the plaza side of the belt lane, opposite the board and the fuser. */
+export const RAID_POS = { x: CENTER.x, z: CENTER.z + 7 }
+export const RAID_RADIUS = 1.6
+export const RAID_ORBIT = 4
+export const RAID_ORBIT_MS = 40_000
+/** Hits to fell it: forty alone, twenty-five more per person in the room. */
+export const RAID_HP_BASE = 40
+export const RAID_HP_PER_PLAYER = 25
+export const RAID_SWIPE_MS = 5_000
+export const RAID_SWIPE_RANGE = 4
+/** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */
+export const RAID_SWIPE_SHARE = 0.10
+export const RAID_SWIPE_CAP_S = 120
+/** The Legendary crate, to whoever dealt the most. */
+export const RAID_REWARD_CRATE = 7
+
 export const BEAT_MS = 2000
 export const BEAT_DEAD_AFTER_MS = BEAT_MS * 3
 
@@ -1021,6 +1060,7 @@ export function registerValidators(): void {
   Event.validateBeforeChange(serverOnly)
   Records.validateBeforeChange(serverOnly)
   Fusion.validateBeforeChange(serverOnly)
+  Raid.validateBeforeChange(serverOnly)
   Cloaked.validateBeforeChange(serverOnly)
   Bomb.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)

@@ -10,6 +10,7 @@ import { frapperPorteur } from './carry'
 import { interrompreVol } from './theft'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf } from './plots'
 import { dropAt } from './coins'
+import { raidHit } from './raid'
 
 /**
  * Combat, server side.
@@ -75,6 +76,11 @@ export function startCombat(): void {
 
     const from = positionOf(a)
     if (from === null) return
+    // A raid boss in the line of fire takes the hit before any player does.
+    if (raidHit(a, from, d)) {
+      void room.send('shotResult', { hitName: 'RAID BOSS', dropped: 0, reason: 'boss', loot: 0 }, { to: [a] })
+      return
+    }
     const best = cible(a, from, d, portee)
 
     if (best === null) {

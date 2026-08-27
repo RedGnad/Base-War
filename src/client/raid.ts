@@ -1,0 +1,145 @@
+import {
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode,
+  PointerEvents, PointerEventType, InputAction, AudioSource, Entity
+} from '@dcl/sdk/ecs'
+import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
+import { Raid } from '../shared/schemas'
+import { room } from '../shared/messages'
+import { formatIncome, crate } from '../shared/loot-table'
+import { plastic, plasticDe } from './toy'
+import { alerter, pushToFeed } from './theft'
+
+/**
+ * The raid boss, client side: a big hostile toy that walks a circle on the plaza, a life bar
+ * over its head that everyone reads the same, a flash when it is hit and a ring when it
+ * swipes. Everything drawn comes from one synced component the server writes; the client
+ * adds the smoothing between positions and the timing of the flashes.
+ */
+export const raidView = { active: false, leftS: 0, nextS: 0, hp: 0, hpMax: 1, topName: '' }
+
+const NOIR = Color3.create(0, 0, 0)
+const PEAU = '#7a1f2e'
+const CORNE = '#f2e9d8'
+const OEIL = '#ffd166'
+const HALO = Color4.create(1, 0.25, 0.3, 0.16)
+const HAUTEUR = 1.7
+const FLASH_MS = 160
+const BALAI_MS = 420
+
+export function setupRaid(): void {
+  const racine = engine.addEntity()
+  Transform.create(racine, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+
+  const corps = engine.addEntity()
+  Transform.create(corps, { parent: racine, scale: Vector3.create(2.6, 2.6, 2.6) })
+  MeshRenderer.setSphere(corps)
+  MeshCollider.setSphere(corps)
+  Material.setPbrMaterial(corps, plastic(PEAU, 0.35))
+  PointerEvents.create(corps, {
+    pointerEvents: [
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'RAID BOSS  ·  draw (F) and fire (E)' } }
+    ]
+  })
+
+  const cornes: Entity[] = []
+  for (const cote of [-1, 1]) {
+    const c = engine.addEntity()
+    Transform.create(c, { parent: racine, position: Vector3.create(cote * 0.9, 1.25, 0), scale: Vector3.create(0.5, 1.1, 0.5) })
+    MeshRenderer.setCylinder(c, 0.5, 0)
+    Material.setPbrMaterial(c, plastic(CORNE))
+    cornes.push(c)
+    const oeil = engine.addEntity()
+    Transform.create(oeil, { parent: racine, position: Vector3.create(cote * 0.5, 0.35, -1.15), scale: Vector3.create(0.36, 0.36, 0.2) })
+    MeshRenderer.setSphere(oeil)
+    Material.setPbrMaterial(oeil, plastic(OEIL, 2.5))
+  }
+
+  const halo = engine.addEntity()
+  Transform.create(halo, { parent: racine, scale: Vector3.create(3.6, 3.6, 3.6) })
+  MeshRenderer.setSphere(halo)
+  Material.setPbrMaterial(halo, { albedoColor: HALO, emissiveColor: Color3.create(1, 0.25, 0.3), emissiveIntensity: 2.5, metallic: 0, roughness: 1 })
+
+  const ombre = engine.addEntity()
+  Transform.create(ombre, { parent: racine, position: Vector3.create(0, -HAUTEUR + 0.03, 0), scale: Vector3.create(3.2, 0.02, 3.2) })
+  MeshRenderer.setCylinder(ombre, 0.5, 0.5)
+  Material.setPbrMaterial(ombre, plasticDe(Color4.create(0, 0, 0, 0.35)))
+
+  const titre = engine.addEntity()
+  Transform.create(titre, { parent: racine, position: Vector3.create(0, 2.6, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
+  TextShape.create(titre, { text: 'RAID BOSS', fontSize: 5, textColor: Color4.fromHexString('#ff6b6bff'), outlineWidth: 0.22, outlineColor: NOIR })
+  const barre = engine.addEntity()
+  Transform.create(barre, { parent: racine, position: Vector3.create(0, 2.15, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Billboard.create(barre, { billboardMode: BillboardMode.BM_Y })
+  TextShape.create(barre, { text: '', fontSize: 3.2, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+
+  const son = engine.addEntity()
+  Transform.create(son, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(son, { audioClipUrl: 'assets/sounds/reveal.wav', playing: false, loop: false, volume: 0.9 })
+
+  room.onMessage('raidSwipe', (d) => {
+    alerter(d.lost > 0
+      ? `THE BOSS HIT YOU  ·  -${formatIncome(d.lost)} on the floor, grab it back`
+      : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', 4000)
+  })
+  room.onMessage('raidWon', (d) => {
+    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your crates`, '#ffd166', 8000)
+  })
+  room.onMessage('raidOver', (d) => {
+    pushToFeed(d.slain ? `${d.winner} slew the raid boss` : 'the raid boss left')
+  })
+
+  let etaitActif = false
+  let vu = { x: 0, z: 0 }
+  let barreTexte = ''
+  engine.addSystem((dt) => {
+    let r: ReturnType<typeof Raid.get> | null = null
+    for (const [, v] of engine.getEntitiesWith(Raid)) { r = v; break }
+    const now = Date.now()
+    if (r === null) { raidView.active = false; return }
+    raidView.active = r.active
+    raidView.leftS = r.active ? Math.max(0, Math.ceil((r.untilMs - now) / 1000)) : 0
+    raidView.nextS = !r.active && r.nextMs > now ? Math.ceil((r.nextMs - now) / 1000) : 0
+    raidView.hp = r.hp
+    raidView.hpMax = Math.max(1, r.hpMax)
+    raidView.topName = r.topName
+
+    const t = Transform.getMutableOrNull(racine)
+    if (t === null) return
+    if (!r.active) {
+      if (t.scale.x !== 0) t.scale = Vector3.Zero()
+      etaitActif = false
+      return
+    }
+    if (!etaitActif) {
+      etaitActif = true
+      vu = { x: r.x, z: r.z }
+      alerter('RAID BOSS ON THE PLAZA  ·  3 min  ·  most damage wins a LEGENDARY CRATE', '#ff6b6b', 7000)
+      const a = AudioSource.getMutableOrNull(son)
+      if (a !== null) { a.playing = false; a.playing = true }
+    }
+    // Glide toward the last position the server wrote: it moves half a metre a second.
+    vu = { x: vu.x + (r.x - vu.x) * Math.min(1, dt * 4), z: vu.z + (r.z - vu.z) * Math.min(1, dt * 4) }
+    const bob = Math.sin(now / 350) * 0.12
+    t.position = Vector3.create(vu.x, HAUTEUR + bob, vu.z)
+    const frappe = now - r.hitAtMs < FLASH_MS ? 1.12 : 1
+    t.scale = Vector3.create(frappe, frappe, frappe)
+
+    // The swipe: the halo swells for a moment, which is the warning and the hit in one shape.
+    const balai = now - r.swipeAtMs
+    const ht = Transform.getMutableOrNull(halo)
+    if (ht !== null) {
+      const s = balai >= 0 && balai < BALAI_MS ? 3.6 + (1 - balai / BALAI_MS) * 4.4 : 3.6
+      if (Math.abs(ht.scale.x - s) > 0.01) ht.scale = Vector3.create(s, s, s)
+    }
+
+    const part = Math.max(0, Math.min(1, r.hp / Math.max(1, r.hpMax)))
+    const pleins = Math.round(part * 20)
+    const ligne = `${'#'.repeat(pleins)}${'-'.repeat(20 - pleins)}  ${Math.round(part * 100)}%${r.topName !== '' ? `   top: ${r.topName}` : ''}`
+    if (ligne !== barreTexte) {
+      barreTexte = ligne
+      const tb = TextShape.getMutableOrNull(barre)
+      if (tb !== null) tb.text = ligne
+    }
+  })
+}

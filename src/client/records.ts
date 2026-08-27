@@ -132,6 +132,7 @@ function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code
     case 'tirage': phrase = `${e.a} pulled a ${objet}`; break
     case 'fusion': phrase = `${e.a} fused a ${objet}`; break
     case 'trait': phrase = `${e.a}'s ${objet} was marked by the ${e.b}`; break
+    case 'raid': phrase = `${e.a} slew the raid boss, Legendary Crate`; break
     default: phrase = e.a
   }
   // Sixty characters is what the full width holds at this size; the end of a long line is the

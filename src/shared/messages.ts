@@ -107,6 +107,10 @@ export const MESSAGES = {
   fuseFromBase: Schemas.Map({ rarity: Schemas.Int }),
   /** Empty the player's hopper back onto their shelves. */
   takeBackFusion: Schemas.Map({}),
+  /** The raid boss's swipe on you: what fell on the floor (0 when the purse was empty). */
+  raidSwipe: Schemas.Map({ lost: Schemas.Int }),
+  raidWon: Schemas.Map({ crate: Schemas.Int }),
+  raidOver: Schemas.Map({ winner: Schemas.String, slain: Schemas.Boolean }),
   /** What a rush hands to whoever is present when it opens: a crate, and the toy that gained a trait, or -1. */
   rushGift: Schemas.Map({ crateTier: Schemas.Int, code: Schemas.Int, grand: Schemas.Boolean, name: Schemas.String }),
   /** The caller's own hopper, and the code just made out of it, or -1. */

@@ -14,6 +14,7 @@ import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
 import { startBelt } from './belt'
 import { startRecords } from './records'
 import { startFusion } from './fusion'
+import { startRaid } from './raid'
 
 /*
   The template's tap counter was deleted here on 25 Aug.
@@ -46,6 +47,7 @@ export function startServer(): void {
   startBelt()
   startRecords()
   startFusion()
+  startRaid()
   runConvoys()
   balayerConvois()
   startCombat()
