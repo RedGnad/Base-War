@@ -9,6 +9,7 @@ import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/l
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
 import { alerter, pushToFeed } from './theft'
+import { openFusion } from './fusion-ui'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -47,7 +48,7 @@ export function setupFusion(): void {
   Material.setPbrMaterial(tambour, plastic(TOY.belt))
   PointerEvents.create(tambour, {
     pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Feed the fuser  ·  ${FUSION_NEEDS} of a kind in, one better out` } }
+      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Fuser  ·  ${FUSION_NEEDS} of a kind become one better` } }
     ]
   })
 
@@ -74,7 +75,7 @@ export function setupFusion(): void {
   const ligne = engine.addEntity()
   Transform.create(ligne, { parent: racine, position: Vector3.create(0, 3.1, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(ligne, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind in, one better out`, fontSize: 2.4, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
 
   room.onMessage('fusionState', (d) => {
     fusionView.codes = [...d.codes]
@@ -88,8 +89,9 @@ export function setupFusion(): void {
 
   let dessine = ''
   engine.addSystem(() => {
+    // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
     if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, tambour)) {
-      if (carryView.code < 0) alerter(`CARRY A TOY TO THE FUSER  ·  ${FUSION_NEEDS} of one rarity make one of the next`, '#ffd166', 3000)
+      if (carryView.code < 0) openFusion()
       else void room.send('feedFusion', {})
     }
 
@@ -125,7 +127,7 @@ export function setupFusion(): void {
           ? `yours: ${mienne}/${FUSION_NEEDS} ${RARITIES[rareteMienne]?.name ?? ''}`
           : f !== null && f.count > 0
             ? `${f.byName}: ${f.count}/${FUSION_NEEDS} ${RARITIES[f.rarity]?.name ?? ''}`
-            : `${FUSION_NEEDS} of a kind in, one better out`
+            : `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`
     }
   })
 }

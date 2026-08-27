@@ -7,6 +7,7 @@ import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn, lisible, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
+import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS } from './shared/schemas'
@@ -510,7 +511,7 @@ const WaitBar = () => {
 
 /** A panel that takes the whole screen: nothing of the game draws behind it, not even tabs. */
 function modale(): boolean {
-  return welcomeView.open || prestigeView.open
+  return welcomeView.open || prestigeView.open || fusionPanelView.open
 }
 
 /**
@@ -799,6 +800,7 @@ const uiComponent = () => {
     )}
     <WelcomePanel />
     <PrestigePanel />
+    <FusionPanel />
     <MenuWindow />
 
     {combatView.aiming && hud() && !slotView.active && <Crosshair />}
