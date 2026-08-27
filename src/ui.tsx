@@ -20,13 +20,13 @@ import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
-import { ShopContent, shopView, hauteurShop } from './client/shop-ui'
+import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { RARITIES, itemName, itemColor, mutation, formatIncome } from './shared/loot-table'
+import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -54,8 +54,8 @@ const ETATS: Record<string, (r: number) => string> = {
   plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
-import { carryView, placeDown, dropCarried } from './client/carry'
-import { baseIci } from './client/plots'
+import { carryView, placeDown, dropCarried, sellCarried } from './client/carry'
+import { baseIci, auBac } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -210,7 +210,7 @@ const MenuWindow = () => {
 
   const besoin = questsView.open ? HAUTEUR_GOALS
     : indexView.open ? HAUTEUR_INDEX
-    : shopView.open ? hauteurShop()
+    : shopView.open ? HAUTEUR_SHOP
     : HAUTEUR_TRAVEL
   const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
@@ -361,6 +361,10 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     picture on the button beats a plate on the screen every time.
   */
   if (carryView.code >= 0) {
+    // At your own bin with your own item, the verb is selling, priced. Nowhere else.
+    if (!carryView.vole && auBac()) {
+      return { label: `SELL  +${formatIncome(prixDeRevente(carryView.code))}`, action: sellCarried }
+    }
     const ou = baseIci()
     if (ou === null) return { label: 'DROP', icon: 'icon-drop', action: dropCarried }
     return ou.mienne

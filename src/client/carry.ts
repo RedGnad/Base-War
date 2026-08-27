@@ -1,14 +1,13 @@
 import {
   engine, Transform, MeshRenderer, Material, AvatarAttach, AvatarAnchorPointType,
-  Entity, Billboard, BillboardMode, TextShape
-} from '@dcl/sdk/ecs'
+  Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
 import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
-import { cibleDePose } from './plots'
+import { cibleDePose, monBac } from './plots'
 import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 /**
@@ -142,3 +141,15 @@ export function placeDown(ownerId: string): void {
 }
 export function dropCarried(): void { void room.send('dropCarried', {}) }
 export function sellCarried(): void { void room.send('sellCarried', {}) }
+
+/** The bin answers a click the way the button answers a press: sell, or say what is missing. */
+export function setupBac(): void {
+  engine.addSystem(() => {
+    const bac = monBac()
+    if (bac === null) return
+    if (!inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, bac)) return
+    if (carryView.code < 0) { alerter('CARRY SOMETHING OF YOURS TO SELL IT', '#ffd166', 2500); return }
+    if (carryView.vole) { alerter('NOT YOURS TO SELL', '#ff6b6b', 2500); return }
+    sellCarried()
+  })
+}

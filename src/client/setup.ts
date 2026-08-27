@@ -18,7 +18,7 @@ import { setupTravel } from './travel'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
-import { setupCarry } from './carry'
+import { setupCarry, setupBac } from './carry'
 import { setupGear } from './gear'
 import { setupEvents } from './events'
 import { setupToy } from './toy'
@@ -68,6 +68,7 @@ export function startClient(): void {
   setupPlots()
   setupTheft()
   setupCarry()
+  setupBac()
   setupGear()
   setupEvents()
   setupToy()
