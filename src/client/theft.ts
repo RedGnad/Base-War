@@ -36,9 +36,21 @@ export const theftView = {
   malusJusqua: 0,
   luckSec: 0,
   luckPrice: 0,
+  /** Written by the interface every frame: whether an alert on screen can actually be seen. */
+  hudVisible: true,
 }
 
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
+
+const file: Array<{ t: string; c: string; ms: number }> = []
+/**
+ * For what arrives in a burst, or behind a screen: shown one after another, each for its
+ * full time, once the HUD is back. The join answers with the offline sum, the day's crate
+ * and a goal within the same second; three writes to one slot showed the last.
+ */
+export function alerterEnFile(texte: string, color: string, durationMs = 6000): void {
+  file.push({ t: texte, c: color, ms: durationMs })
+}
 
 export function alerter(texte: string, color: string, durationMs = 6000): void {
   theftView.alert = texte
@@ -215,12 +227,12 @@ export function setupTheft(): void {
 
   room.onMessage('offlineEarnings', (d) => {
     const min = Math.round(d.seconds / 60)
-    alerter(`WELCOME BACK  ·  +${d.gain} coins earned in ${min} min away`, '#ffd166', 9000)
+    alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.gain)} coins earned in ${min} min away`, '#ffd166', 9000)
     console.log(`[CLIENT] offline: +${d.gain} over ${min} min`)
   })
 
   room.onMessage('dailyReward', (d) => {
-    alerter(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', 7000)
+    alerterEnFile(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', 7000)
     console.log(`[CLIENT] recompense du log ${d.log}`)
   })
   /*
@@ -228,7 +240,7 @@ export function setupTheft(): void {
     fourth day read "DAY 0/7" for finishing an objective. Two events, two messages.
   */
   room.onMessage('questReward', (d) => {
-    alerter(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', 6000)
+    alerterEnFile(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', 6000)
   })
 
   room.onMessage('floorBought', (d) => {
@@ -250,7 +262,19 @@ export function setupTheft(): void {
     if (theftView.stealing) {
       theftView.stealLeftMs = Math.max(0, theftView.stealLeftMs - dt * 1000)
     }
+    /*
+      An alert does not run out while nobody can see it. The welcome-back sum was set the
+      moment the server answered the join, nine seconds long, behind the welcome screen the
+      player was still reading; by the time the HUD came up it had expired unseen (tester,
+      27 Aug: "no message telling me what I earned while away"). The clock runs only while
+      the HUD is on screen, and the queue feeds the slot only then.
+    */
+    if (!theftView.hudVisible) { theftView.alerteJusqua += dt * 1000; return }
     if (theftView.alert !== '' && Date.now() > theftView.alerteJusqua) theftView.alert = ''
+    if (theftView.alert === '' && file.length > 0) {
+      const n = file.shift()
+      if (n !== undefined) alerter(n.t, n.c, n.ms)
+    }
   })
 }
 

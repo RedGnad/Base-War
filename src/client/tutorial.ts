@@ -1,6 +1,6 @@
 import { room } from '../shared/messages'
 import { crate } from '../shared/loot-table'
-import { alerter } from './theft'
+import { alerter, alerterEnFile } from './theft'
 
 export const ETAPES_TEXTE = [
   { titre: 'Place your base', aide: 'tap BUILD BASE, then pick a spot' },
@@ -19,6 +19,6 @@ export function setupTutorial(): void {
   room.onMessage('tutorial', (d) => { tutoView.etape = d.etape; tutoView.total = d.total })
   room.onMessage('giftProgress', (d) => { cadeauView.leftS = d.leftS; cadeauView.totalS = d.totalS })
   room.onMessage('timeGift', (d) => {
-    alerter(`${d.minutes} MINUTES PLAYED  ·  free ${crate(d.crate).name}`, '#ffd166', 8000)
+    alerterEnFile(`${d.minutes} MINUTES PLAYED  ·  free ${crate(d.crate).name}`, '#ffd166', 8000)
   })
 }

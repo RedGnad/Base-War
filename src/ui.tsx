@@ -765,6 +765,8 @@ function Roulette(): ReactEcs.JSX.Element {
 
 
 const uiComponent = () => {
+  // The alert clock reads this: an alert behind a screen keeps for when the screen goes.
+  theftView.hudVisible = hud()
   /*
     The top band, resolved once per frame, in priority order.
 

@@ -3,7 +3,7 @@ import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
-import { alerter } from './theft'
+import { alerter, alerterEnFile } from './theft'
 import { plastic, TOY } from './toy'
 
 /**
@@ -85,7 +85,7 @@ export function setupEvents(): void {
   room.onMessage('rushGift', (d) => {
     const caisse = CRATES[d.crateTier]?.name ?? 'crate'
     const trait = d.code >= 0 ? `  ·  your ${nomDuCode(d.code)} gained a trait` : ''
-    alerter(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', 7000)
+    alerterEnFile(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', 7000)
   })
 
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
