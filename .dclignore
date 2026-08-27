@@ -23,3 +23,6 @@ cursor.config
 cursorignore
 .github
 tools
+ytenv
+local
+dclcontext
