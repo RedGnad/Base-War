@@ -481,6 +481,23 @@ export const Event = engine.defineComponent('basetycoon::event', {
   theme: Schemas.Int,
   untilMs: Schemas.Int64
 })
+/**
+ * The venue's memory, for the one who arrives alone.
+ *
+ * A judge enters an empty plaza in a metaverse of ten people. What is social for them is what the
+ * others LEFT: full bases, and a board that says who earns most, who steals most and what happened
+ * lately. That is the base-raid genre's own answer (the reference game's live-spawns board and its
+ * two leaderboards, top earner and top steals). Written by the server only, read by every client.
+ */
+export const Records = engine.defineComponent('basetycoon::records', {
+  earners: Schemas.Array(Schemas.Map({ name: Schemas.String, value: Schemas.Float })),
+  thieves: Schemas.Array(Schemas.Map({ name: Schemas.String, value: Schemas.Float })),
+  journal: Schemas.Array(Schemas.Map({ t: Schemas.Int64, kind: Schemas.String, a: Schemas.String, b: Schemas.String, code: Schemas.Int }))
+})
+export const RECORDS_TOP = 8
+export const JOURNAL_SHOWN = 10
+export const JOURNAL_KEPT = 40
+
 export const EVENT_MS = 5 * 60_000
 /** Mean gap between events. The genre rolls every fifteen minutes; ours lands there on average. */
 export const EVENT_GAP_MS = 15 * 60_000
@@ -877,6 +894,7 @@ export function registerValidators(): void {
   ServerBeat.validateBeforeChange(serverOnly)
   Trap.validateBeforeChange(serverOnly)
   Event.validateBeforeChange(serverOnly)
+  Records.validateBeforeChange(serverOnly)
   Cloaked.validateBeforeChange(serverOnly)
   Bomb.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)

@@ -1,3 +1,4 @@
+import { noter } from './records'
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
@@ -197,6 +198,8 @@ export function startBelt(): void {
     const mut = rollMutation(d.crateTier)
     const code = encoder(rarity, mut)
     log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)}`)
+    // Epic and above go on the board, the way the reference game's live board shows rare spawns only.
+    if (rarity >= 3) noter('tirage', displayName(a), '', code)
     void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: 'main' }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 

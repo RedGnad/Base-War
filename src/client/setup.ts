@@ -11,6 +11,7 @@ import { setupBox } from './box'
 import { setupPlots } from './plots'
 import { setupTheft, setAdresseClient } from './theft'
 import { setupBelt } from './belt'
+import { setupRecords } from './records'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
@@ -73,6 +74,7 @@ export function startClient(): void {
   setupToy()
   setupLootUi()
   setupBelt()
+  setupRecords()
   setupSlots()
   setupConvoy()
   setupCombat()

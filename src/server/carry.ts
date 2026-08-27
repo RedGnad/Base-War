@@ -1,3 +1,4 @@
+import { noter } from './records'
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
@@ -309,6 +310,7 @@ export function startCarry(): void {
     }
 
     enregistrerDon(a, vise)
+    noter('don', displayName(a), displayName(vise), 0)
     advanceQuest(a, 'gift')
     pushQuests(a)
     tutoFait(a, 4)

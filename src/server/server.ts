@@ -12,6 +12,7 @@ import { startEvents } from './events'
 import { log, flushLog, replayLog } from './log'
 import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
 import { startBelt } from './belt'
+import { startRecords } from './records'
 
 /*
   The template's tap counter was deleted here on 25 Aug.
@@ -42,6 +43,7 @@ export function startServer(): void {
   startGear()
   startEvents()
   startBelt()
+  startRecords()
   runConvoys()
   balayerConvois()
   startCombat()

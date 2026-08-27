@@ -43,6 +43,8 @@ type Base = {
   rebirths: number
   given: number
   received: number
+  /** Successful thefts by this base's owner: the thieves' board reads it, present or absent. */
+  vols: number
 }
 type Profil = {
   coins: number
@@ -176,8 +178,8 @@ function publish(b: Base, ici?: Set<string>): void {
   c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number }
-const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0 }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0 }
 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
@@ -247,7 +249,7 @@ async function loadBases(): Promise<void> {
           // "never written", which is what tells the migration below to go and find them.
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
-            sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0,
+            sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0, vols: v.vols ?? 0,
             rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
           }
         }
@@ -302,7 +304,7 @@ async function save(): Promise<void> {
     const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
       name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
       floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
-      given: b.given, received: b.received
+      given: b.given, received: b.received, vols: b.vols
     }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
   }
@@ -843,6 +845,17 @@ export function removeGear(address: string, gear: number): boolean {
 }
 
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
+
+/** Every base on the field, present owners and absent ones alike: what the records board ranks. */
+export function toutesLesBases(): Base[] { return [...bases.values()] }
+
+/** One more successful theft on the thief's own record. Nobody without a base is ranked. */
+export function compterVol(address: string): void {
+  const b = bases.get(address)
+  if (b === undefined) return
+  b.vols += 1
+  dirtyBases.add(address)
+}
 /*
   What prestige actually does, because three screens said otherwise.
 

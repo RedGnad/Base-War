@@ -7,7 +7,8 @@ import {
 
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage } from './plots'
+import { noter } from './records'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
@@ -201,6 +202,7 @@ export function startTheft(): void {
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
         const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
+        noter('garde', displayName(thief), b.name, etageVise + 1)
         if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
         else storeAlert(v.victim, info)
         log(`${b.name} sentry (${palier.name}) on floor ${etageVise + 1} blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left there`)
@@ -233,6 +235,8 @@ export function startTheft(): void {
       */
       remettreEnMain(thief, r, v.victim)
       larcins.push({ thief, victim: v.victim, code: r, quand: maintenant })
+      compterVol(thief)
+      noter('vol', displayName(thief), b.name, r)
 
       /*
         Losing something is what buys the shield, which is the genre's whole answer.
