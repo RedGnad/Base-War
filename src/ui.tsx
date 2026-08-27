@@ -302,8 +302,8 @@ const SellChip = (props: { right?: number }) => {
   const question = Date.now() < carryView.confirmJusqua
   const prix = formatIncome(prixDeRevente(carryView.code))
   return (
-    <Btn label={question ? `SELL?  +${prix}` : phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
-      width={phone() ? 250 : 290} right={props.right} danger={question}
+    <Btn label={question ? `AGAIN TO SELL  +${prix}` : phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
+      width={phone() ? 300 : 340} right={props.right} danger={question}
       bind={[InputAction.IA_ACTION_4]} />
   )
 }

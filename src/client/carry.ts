@@ -152,7 +152,7 @@ export function sellCarried(): void { void room.send('sellCarried', {}) }
  * into a question in the danger colour, the second, within three seconds, is the answer.
  * Changing what you carry withdraws the question.
  */
-const CONFIRM_MS = 3000
+const CONFIRM_MS = 5000
 export function vendre(): void {
   if (carryView.code < 0 || carryView.vole) return
   const now = Date.now()
