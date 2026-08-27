@@ -966,6 +966,28 @@ export function compterVol(address: string): void {
   panel described a far more destructive act than this, which is the wrong way to be wrong
   about the one decision that drives the whole late game.
 */
+/*
+  What prestige eats: the LOWEST rarity that meets the requirement, and among those the least
+  valuable. It was the least valuable by income alone, which a tester paid for on 27 Aug: a
+  Legendary with a mutation and a trait out-earned his plain Mythic, so the Mythic was the
+  "cheapest" and went. A player reads rarity first; a Mythic must never leave while a
+  Legendary would do. The same function feeds the wallet, so the screen names the exact toy
+  before the button is pressed.
+*/
+function candidatsAuPrestige(pleins: number[], minRarity: number): number[] {
+  return pleins
+    .filter((c) => rarityOf(c) >= minRarity)
+    .sort((x, y) => rarityOf(x) - rarityOf(y) || itemIncome(x, INCOME_PER_RARITY) - itemIncome(y, INCOME_PER_RARITY))
+}
+export function objetConsommePar(address: string): number {
+  const p = profiles.get(address)
+  if (!p) return -1
+  const prestige = p.rebirths ?? 0
+  if (prestige >= REBIRTH_MAX) return -1
+  const c = candidatsAuPrestige(p.items.filter((x) => x !== VIDE), prestigeTier(prestige).minRarity)
+  return c.length === 0 ? -1 : c[0]
+}
+
 export function tenterRebirth(address: string): { ok: boolean; reason?: string; prestige?: number; multiplier?: number } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
@@ -981,9 +1003,7 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
     valuable item that meets it. Until 27 Aug the item was only checked, so prestige cost a
     player nothing they could see leave, and the rarity gate was a formality.
   */
-  const candidats = pleins
-    .filter((c) => rarityOf(c) >= exige.minRarity)
-    .sort((x, y) => itemIncome(x, INCOME_PER_RARITY) - itemIncome(y, INCOME_PER_RARITY))
+  const candidats = candidatsAuPrestige(pleins, exige.minRarity)
   if (candidats.length === 0) {
     return { ok: false, reason: `you need a ${rarity(exige.minRarity).name} or better on your shelves: prestige consumes it` }
   }
@@ -1299,6 +1319,7 @@ export function startPlots(): void {
         offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
         luckPrice: prixLuck(prestige),
         nextPrestige: next ? next.cost : 0,
+        prestigeEats: objetConsommePar(address),
         prestige,
         minRarity: next ? next.minRarity : 0,
         // Sent so the button can know what the server already knows: prestige needs an item

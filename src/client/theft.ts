@@ -36,6 +36,8 @@ export const theftView = {
   malusJusqua: 0,
   luckSec: 0,
   luckPrice: 0,
+  /** The exact toy the next prestige would eat, as a code, or -1. */
+  prestigeEats: -1,
   /** Written by the interface every frame: whether an alert on screen can actually be seen. */
   hudVisible: true,
 }
@@ -208,6 +210,7 @@ export function setupTheft(): void {
     theftView.pending = d.pending
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
+    theftView.prestigeEats = d.prestigeEats
     // The offline sum, read off the tick and said once per cash-in (see the server's wallet tick).
     if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
       derniereAnnonceHL = d.offlineAt

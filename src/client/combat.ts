@@ -441,14 +441,10 @@ function degainer(on: boolean): void {
   } else {
     if (poseDisponible()) void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
-    // Give the cursor back.
-    //
-    // First person captures the pointer, so the camera follows the mouse with no button
-    // held. Coming back out of it the capture survives, and the player is left in a third
-    // person view that still mouselooks until they press Escape, which is not a state they
-    // asked for. Only when the scene is what put them in first person: a player who chose
-    // it themselves keeps their cursor as it was.
-    if (!prefereVuePremiere) PointerLock.createOrReplace(engine.CameraEntity, { isPointerLocked: false })
+    // The cursor is NOT given back here any more. This used to release the capture on the
+    // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
+    // while the HUD is on screen (setup.ts owns it). Releasing here undid that policy every
+    // time the weapon was holstered (tester: "aim and back, the camera follow is gone").
   }
 }
 
