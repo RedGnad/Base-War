@@ -127,9 +127,15 @@ export function setupTheft(): void {
     applyFreeze(d.gelMs)
     // The coins are on the floor at your feet, not in their pocket: worth saying, because it
     // is the difference between a punishment and a scramble you can still win.
-    const paye = d.lost > 0 ? `\ndropped ${formatIncome(d.lost)} at your feet` : ''
-    // Naming the floor is the lesson: another storey may have nothing on it.
-    alerter(`${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  base sealed ${d.lockSec}s${paye}`, '#ff6b6b', 6500)
+    /*
+      The loss comes first, because it is the fact the player did not expect. The tester lost
+      coins to a turret and read a sign about a frozen thief and a sealed base: the third line,
+      the one with the money on it, was below the edge of a box sized for one. Two lines, the
+      sum in the first, and naming the floor stays, since another storey may have nothing on it.
+    */
+    const perte = d.lost > 0 ? `-${formatIncome(d.lost)} COINS  ·  ` : ''
+    const ramasser = d.lost > 0 ? '  ·  coins on the floor, up for grabs' : ''
+    alerter(`${perte}${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  sealed ${d.lockSec}s${ramasser}`, '#ff6b6b', 7000)
   })
   room.onMessage('sentryTriggered', (d) => {
     const butin = d.taken > 0 ? `\nthey dropped ${formatIncome(d.taken)}, go and get it` : ''

@@ -1107,16 +1107,25 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
+    {/*
+      The box grows with its text. It was seventy pixels for a title-size line, and several
+      alerts carry two (a sentry, a rush gift); the second line ran past the panel and the
+      third, when there was one, was simply not on screen. One line of height per line of
+      text, and wide enough that a sum and a name fit on the first.
+    */}
     {hud() && theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
-          width: strip(520).width, height: 70, positionType: 'absolute',
-          position: { top: '42%', left: '50%' }, margin: strip(520).margin,
+          width: strip(900).width,
+          height: 70 + (theftView.alert.split('\n').length - 1) * Math.round(TYPE.title * 1.35),
+          positionType: 'absolute',
+          position: { top: '42%', left: '50%' }, margin: strip(900).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
       >
-        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.title} color={Color4.fromHexString(theftView.alertColor + 'ff')} />
+        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.title} textAlign="middle-center"
+          color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}
 

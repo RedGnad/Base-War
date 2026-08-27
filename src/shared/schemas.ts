@@ -408,10 +408,17 @@ export function shieldFor(absenceMs: number): number {
   artefact of a ladder that multiplies by ten a rung where ours cubes; those keep the median
   of the first five tiers, 0.20 percent.
 
-  Priced this way the first coil is cheap, and it is cheap in the reference too: it is the
-  first purchase of the game, not its prize. What was wrong before was not the level, it was
-  the UNIT: a share of one item's output, which drifted with the shelves, so the same coil
-  cost 4K to a beginner and 1.7M to a veteran, and neither number had been chosen.
+  What was wrong before was not the level, it was the UNIT: a share of one item's output,
+  which drifted with the shelves, so the same coil cost 4K to a beginner and 1.7M to a
+  veteran, and neither number had been chosen.
+
+  THE COIL IS THE ONE DEPARTURE FROM THE REFERENCE, ON THE TESTER'S CALL. Their Speed Coil is
+  the first purchase of the game (0.15 percent of the first rebirth); ours is a permanent
+  change to a walking speed that is right as it is, and the tester ruled that a thing like
+  that is not bought five minutes in. Ten percent of the first prestige, 250K, which the
+  economy's own simulation puts at about the second floor: a goal for the first half hour,
+  not a reflex. The share is the only number that moved; the rule (fixed price on the ladder)
+  is the same for every row.
 
   The last three are the reference's COUNTERS, at the reference's own rungs: the taser at 3
   (a hit that freezes and opens the hands), the glasses at 9 (its Laser Cape, "x-ray vision",
@@ -420,7 +427,7 @@ export function shieldFor(absenceMs: number): number {
 */
 export const GEARS = [
   { id: 0, name: 'TRAP', prestige: 0, ratio: 0.0020, max: 5, kind: 'place', verb: 'freezes the first thief who steps on it, 7 s' },
-  { id: 1, name: 'SPEED COIL', prestige: 0, ratio: 0.0015, max: 1, kind: 'wear', verb: 'run 50% faster, always on, off while carrying' },
+  { id: 1, name: 'SPEED COIL', prestige: 0, ratio: 0.10, max: 1, kind: 'wear', verb: 'run 50% faster, always on, off while carrying' },
   { id: 2, name: 'SLAP', prestige: 1, ratio: 0.0017, max: 1, kind: 'wear', verb: 'replaces the gun: short reach, full force every hit' },
   { id: 3, name: 'CLOAK', prestige: 4, ratio: 0.0030, max: 1, kind: 'toggle', verb: 'invisible for 20 s, breaks the moment you touch loot' },
   { id: 4, name: 'BOOGIE BOMB', prestige: 4, ratio: 0.0050, max: 3, kind: 'place', verb: 'everyone nearby drops what they carry, 3 s later' },
