@@ -1,7 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Event, EVENT_MS, EVENT_GAP_MS, EVENT_THEMES, GRAND_RUSH_UTC_HOUR, GRAND_MS, GRAND_TEMPO
+  Event, Raid, EVENT_MS, EVENT_GAP_MS, EVENT_THEMES, GRAND_RUSH_UTC_HOUR, GRAND_MS, GRAND_TEMPO
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { setEventTheme } from './loot'
@@ -95,6 +95,12 @@ export function startEvents(): void {
       prochain = now + prochainDelai()
       return
     }
+
+    // One thing at a time on the plaza: while the boss is up, neither rush opens; the grand
+    // one keeps its window and starts the moment the boss is gone.
+    let raidEnCours = false
+    for (const [, r] of engine.getEntitiesWith(Raid)) if (r.active) raidEnCours = true
+    if (raidEnCours) return
 
     if (now >= lu.nextGrandMs) {
       if (now < lu.nextGrandMs + GRAND_MS) {

@@ -143,8 +143,11 @@ export function startRaid(): void {
     if (!lu.active) {
       if (now < prochain) return
       if (presents().size === 0) { prochain = now + 30_000; return }
-      // Not on top of a rush: two countdowns on one screen is one too many.
-      for (const [, ev] of engine.getEntitiesWith(Event)) if (ev.theme >= 0) { prochain = now + 60_000; return }
+      // Not on top of a rush, and not on the doorstep of the grand one: two countdowns on one
+      // screen is one too many.
+      for (const [, ev] of engine.getEntitiesWith(Event)) {
+        if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) { prochain = now + 60_000; return }
+      }
       ouvrir(now)
       return
     }
