@@ -1,4 +1,4 @@
-import { CRATE_PRICE, PRODUCTION_PER_RARITY } from './economy'
+import { CRATE_PRICE, PRODUCTION_PER_RARITY, RESELL_SECONDS } from './economy'
 /*
   Sizes measured against the distance a judge looks from, not chosen to look nice up close.
 
@@ -109,6 +109,11 @@ export function mutationDe(code: number): number { return code % 100 }
 
 export function itemIncome(code: number, incomeTable: readonly number[]): number {
   return (incomeTable[rarityOf(code)] ?? 1) * mutation(mutationDe(code)).mult
+}
+
+/** What selling an item pays. The server credits exactly this; the shop shows exactly this. */
+export function prixDeRevente(code: number): number {
+  return Math.round(itemIncome(code, PRODUCTION_PER_RARITY) * RESELL_SECONDS)
 }
 
 /**

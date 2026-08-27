@@ -105,6 +105,7 @@ export const MESSAGES = {
   claimQuest: Schemas.Map({ slot: Schemas.Int }),
 
   dailyReward: Schemas.Map({ log: Schemas.Int, crate: Schemas.Int }),
+  questReward: Schemas.Map({ crate: Schemas.Int }),
 
   offlineEarnings: Schemas.Map({ gain: Schemas.Int, seconds: Schemas.Int }),
 

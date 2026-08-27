@@ -358,7 +358,7 @@ export function startTheft(): void {
     if (!a) return
     const r = claimQuestReward(a, d.slot)
     if ('error' in r) { refus(a, 'quest', r.error); return }
-    void room.send('dailyReward', { log: 0, crate: r.crate }, { to: [a] })
+    void room.send('questReward', { crate: r.crate }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     pushQuests(a)
   })

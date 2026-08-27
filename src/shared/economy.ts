@@ -8,6 +8,8 @@
  * by construction.
  */
 export const PRODUCTION_PER_RARITY = [1, 7, 44, 287, 1897, 12523, 82654] as const
+/** Selling an item pays this many seconds of its own income. Both sides price from it. */
+export const RESELL_SECONDS = 30
 
 /**
  * Derived: expected output x target payback, where payback doubles per tier.

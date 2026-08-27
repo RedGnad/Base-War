@@ -2,7 +2,9 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
-import { formatIncome } from '../shared/loot-table'
+import { formatIncome, prixDeRevente } from '../shared/loot-table'
+import { RESELL_SECONDS } from '../shared/economy'
+import { carryView, sellCarried } from './carry'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, SENTRY_MIN_PRICE } from '../shared/schemas'
 import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
 import { view } from './setup'
@@ -109,7 +111,15 @@ function prixGear(gear: number): number {
 }
 
 /** Four family headers and eight rows. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (5 + GEARS.length) * (RANG + ENTRE)
+const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (5 + GEARS.length) * (RANG + ENTRE)
+
+/** Whether the shop has something of yours to buy back: your own item, in your hands. */
+function vendable(): boolean { return carryView.code >= 0 && !carryView.vole }
+
+/** The shop's height, one family taller while there is something to sell. */
+export function hauteurShop(): number {
+  return HAUTEUR_SHOP + (vendable() ? TITRE_FAMILLE + 16 + RANG + ENTRE : 0)
+}
 
 export const ShopContent = () => {
   if (!shopView.open) return null
@@ -120,7 +130,28 @@ export const ShopContent = () => {
   const ici = maDefense()
 
   return (
-    <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_SHOP, flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ width: '100%', height: hauteurShop(), flexDirection: 'column' }}>
+
+      {/*
+        Selling lives here, in the room you go to, and nowhere on the way.
+
+        It used to be a plate in the middle of the screen the whole time you carried your own
+        item: "CARRYING X" beside a large SELL. The tester's reading was right: a prominent
+        centred SELL pushes to sell, and the game wants the opposite, items placed and
+        buildings filled. A sale is a considered act, priced, in the shop, with the shelves
+        as the alternative in plain sight.
+      */}
+      {vendable() && (
+        <Famille titre="SELL" note={`what is in your hands, for ${RESELL_SECONDS} s of its income`} />
+      )}
+      {vendable() && (
+        <Rang
+          titre={carryView.name.toUpperCase()}
+          detail="gone for good; the shelf keeps it earning instead"
+          bouton="SELL" prix={prixDeRevente(carryView.code)}
+          possible
+          onClick={() => { sellCarried(); closeMenu() }} />
+      )}
 
       <Famille titre="BUILD" note="more shelves, so more earns" />
       <Rang

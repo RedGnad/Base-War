@@ -138,35 +138,8 @@ export function setupBox(): void {
   })
 
   engine.addSystem((dt: number) => {
-    if (boxView.opening) {
-      if (
-        inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, crateMesh)
-      ) {
-        boxView.coups += 1
-        const b = crate(boxView.typeEnCours)
-        Tween.createOrReplace(crateMesh, {
-          mode: Tween.Mode.Scale({
-            start: Vector3.create(b.size * 0.72, b.size * 1.25, b.size * 0.72),
-            end: Vector3.create(b.size, b.size, b.size)
-          }),
-          duration: 190,
-          easingFunction: EasingFunction.EF_EASEOUTELASTIC,
-          currentTime: 0
-        })
-        jouer(sonCoup)
-
-        // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
-        caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS)
-
-        if (boxView.coups >= COUPS) {
-          boxView.opening = false
-          const t = Transform.getOrNull(crateMesh)
-          if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
-          storeCrate()
-          const tier = boxView.typeEnCours
-          envoyerOuAttendre(() => { void room.send('openBox', { crateTier: tier }) })
-        }
-      }
+    if (boxView.opening && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, crateMesh)) {
+      frapper()
     }
 
     if (boxView.roule) {
@@ -191,6 +164,35 @@ export function setupBox(): void {
       boxView.message = ''
     }
   })
+}
+
+/** One blow on the crate in front of you, from a click on it or from the action button. */
+export function frapper(): void {
+  if (!boxView.opening) return
+  boxView.coups += 1
+  const b = crate(boxView.typeEnCours)
+  Tween.createOrReplace(crateMesh, {
+    mode: Tween.Mode.Scale({
+      start: Vector3.create(b.size * 0.72, b.size * 1.25, b.size * 0.72),
+      end: Vector3.create(b.size, b.size, b.size)
+    }),
+    duration: 190,
+    easingFunction: EasingFunction.EF_EASEOUTELASTIC,
+    currentTime: 0
+  })
+  jouer(sonCoup)
+
+  // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
+  caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS)
+
+  if (boxView.coups >= COUPS) {
+    boxView.opening = false
+    const t = Transform.getOrNull(crateMesh)
+    if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
+    storeCrate()
+    const tier = boxView.typeEnCours
+    envoyerOuAttendre(() => { void room.send('openBox', { crateTier: tier }) })
+  }
 }
 
 let lastPosition: Vector3 | null = null

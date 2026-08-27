@@ -762,7 +762,7 @@ export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
  */
 export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
 
-export const RESELL_SECONDS = 30
+export { RESELL_SECONDS } from './economy'
 
 export const GRILLE = 2                    // snap step, in metres
 export const MIN_BASE_GAP = BASE_SIDE + 4   // the footprint, plus a street between neighbours

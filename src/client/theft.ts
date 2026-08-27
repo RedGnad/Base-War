@@ -1,7 +1,7 @@
 import { engine, AudioSource, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { room } from '../shared/messages'
-import { rarity, formatIncome } from '../shared/loot-table'
+import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
@@ -212,6 +212,13 @@ export function setupTheft(): void {
   room.onMessage('dailyReward', (d) => {
     alerter(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', 7000)
     console.log(`[CLIENT] recompense du log ${d.log}`)
+  })
+  /*
+    A goal's crate used to ride the login-day message with a zero in it, so a player on their
+    fourth day read "DAY 0/7" for finishing an objective. Two events, two messages.
+  */
+  room.onMessage('questReward', (d) => {
+    alerter(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', 6000)
   })
 
   room.onMessage('floorBought', (d) => {

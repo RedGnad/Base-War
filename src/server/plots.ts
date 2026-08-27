@@ -5,10 +5,10 @@ import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
   coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
-  RESELL_SECONDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
+  SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
-import { itemIncome, rarityOf } from '../shared/loot-table'
+import { itemIncome, rarityOf, prixDeRevente } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
@@ -977,7 +977,7 @@ export function spend(address: string, montant: number): boolean {
  * is always a loss, and selling keeps the job it should have had: clearing a slot for better.
  */
 export function valeurRevente(_address: string, code: number): number {
-  return Math.round(itemIncome(code, INCOME_PER_RARITY) * RESELL_SECONDS)
+  return prixDeRevente(code)
 }
 
 export function crediterVente(address: string, code: number): number {

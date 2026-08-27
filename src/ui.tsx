@@ -17,10 +17,10 @@ import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, 
 import { gearView, poserPiege } from './client/gear'
 import { eventView } from './client/events'
 import { beltView } from './client/belt'
-import { boxView, openBestCrate, peutOuvrirIci, REEL_WIN } from './client/box'
+import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
-import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
+import { ShopContent, shopView, hauteurShop } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
@@ -54,7 +54,7 @@ const ETATS: Record<string, (r: number) => string> = {
   plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
-import { carryView, placeDown, dropCarried, sellCarried } from './client/carry'
+import { carryView, placeDown, dropCarried } from './client/carry'
 import { baseIci } from './client/plots'
 import { combatView } from './client/combat'
 
@@ -210,7 +210,7 @@ const MenuWindow = () => {
 
   const besoin = questsView.open ? HAUTEUR_GOALS
     : indexView.open ? HAUTEUR_INDEX
-    : shopView.open ? HAUTEUR_SHOP
+    : shopView.open ? hauteurShop()
     : HAUTEUR_TRAVEL
   const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
@@ -343,6 +343,9 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   if (slotView.active) {
     return slotView.valid ? { label: 'PLACE HERE', icon: 'icon-build', action: placeHere } : null
   }
+  // A crate on the floor in front of you is smashed with the same button as everything else,
+  // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.
+  if (boxView.opening) return { label: 'SMASH', icon: 'icon-crate', action: frapper }
   /*
     Hands first, because full hands are the loudest fact about your situation.
 
@@ -727,7 +730,6 @@ const uiComponent = () => {
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
     ['opening', boxView.opening, 54],
-    ['carrying', carryView.code >= 0 && !carryView.vole, 76]
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
@@ -1005,32 +1007,6 @@ const uiComponent = () => {
 
 
 
-    {/*
-      Shown only while the thing in your hands is yours to sell.
-
-      It used to appear for anything at all, announcing "CARRYING RARE" beside a SELL button,
-      which told the player what they could already see in their own hand and offered an
-      action that stolen goods are not allowed anyway. A plate that says the obvious next to a
-      button that refuses is worse than no plate: it takes the screen and returns nothing.
-      Carrying somebody else's trophy now shows nothing at all, which is correct, because the
-      only thing to do with it is on the action button already.
-    */}
-    {hud() && carryView.code >= 0 && !carryView.vole && (
-      <Centre bottom={notice.carrying}>
-        <UiEntity
-          uiTransform={{
-            height: 76, padding: { left: 22, right: 22 },
-            flexDirection: 'row', alignItems: 'center'
-          }}
-          uiBackground={SKIN.panel}
-        >
-          <Label uiTransform={{ width: 420, height: 40 }} textWrap="nowrap"
-            value={`CARRYING  ${carryView.name.toUpperCase()}`}
-            fontSize={TYPE.label} color={C.bonus} textAlign="middle-left" />
-          <Btn label="SELL" width={170} onClick={sellCarried} />
-        </UiEntity>
-      </Centre>
-    )}
 
     {hud() && boxView.opening && (
       <UiEntity
