@@ -318,9 +318,17 @@ const SellChip = (props: { right?: number }) => {
  * the second time. Two pixels off the canvas, one per image, is what it costs to have them
  * all resident before the first moment that needs them.
  */
+/*
+  Every UI texture the scene will ever show, fetched at start in a 2 px box off-screen. The
+  mobile team's own words (workshop #3): the first time a UI texture appears you get a white
+  flash, and nothing while loading "doesn't read as long, it reads as broken". The button
+  icons were missing from this list; the first draw of the gun or the menu badge flashed.
+*/
 const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
-  'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6'
+  'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
+  'icon-build', 'icon-collect', 'icon-crate', 'icon-drop', 'icon-fire', 'icon-give', 'icon-gun',
+  'icon-holster', 'icon-menu', 'icon-menu-alert', 'icon-place', 'icon-recover'
 ]
 const Prechauffe = () => (
   <UiEntity uiTransform={{ positionType: 'absolute', position: { left: -8, top: -8 }, width: 2, height: 2, overflow: 'hidden' }}>
