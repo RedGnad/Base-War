@@ -53,8 +53,33 @@ def flow():
     return im
 
 
+def glitter():
+    """A bright field with sparse glints, each drawn with its wrap-around copies so the tile has no seam."""
+    import random
+    random.seed(11)
+    im = Image.new('RGB', (N, N), (190, 190, 190))
+    px = im.load()
+    glints = [(random.random() * N, random.random() * N, 2.5 + random.random() * 3.5) for _ in range(46)]
+    for j in range(N):
+        for i in range(N):
+            v = 0.0
+            for (gx, gy, r) in glints:
+                dx = min(abs(i - gx), N - abs(i - gx))
+                dy = min(abs(j - gy), N - abs(j - gy))
+                d2 = dx * dx + dy * dy
+                if d2 < r * r * 9:
+                    v = max(v, math.exp(-d2 / (r * r)))
+            g = int(round(190 + 65 * v))
+            px[i, j] = (g, g, g)
+    return im
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     belt().save(os.path.join(OUT, 'belt.png'), optimize=True)
     flow().save(os.path.join(OUT, 'flow.png'), optimize=True)
+    glitter().save(os.path.join(OUT, 'glitter.png'), optimize=True)
+    # A white square: the texture a material names when it wants NO picture. Omitting the
+    # texture field leaves the client on whatever it drew last; naming this one replaces it.
+    Image.new('RGB', (8, 8), (255, 255, 255)).save(os.path.join(OUT, 'blank.png'), optimize=True)
     print('wrote', OUT)

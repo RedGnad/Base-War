@@ -487,10 +487,11 @@ export const EVENT_GAP_MS = 15 * 60_000
 /** How hard the event pushes its mutation: the Lava crate's own weight, applied to every crate. */
 export const EVENT_WEIGHT = 60
 /** Which mutations can headline an event, and the world colour each one brings. */
+/** Five minutes is a rush, not an hour: the tester read "HOUR" against the countdown and was right. */
 export const EVENT_THEMES = [
-  { theme: 1, name: 'GOLD HOUR' },
-  { theme: 5, name: 'LAVA HOUR' },
-  { theme: 9, name: 'CURSED HOUR' }
+  { theme: 1, name: 'GOLD RUSH' },
+  { theme: 5, name: 'LAVA RUSH' },
+  { theme: 9, name: 'CURSED RUSH' }
 ] as const
 
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */

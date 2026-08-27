@@ -308,6 +308,28 @@ const SellChip = (props: { right?: number }) => {
   )
 }
 
+/**
+ * Every image the interface will ever show, requested at start.
+ *
+ * The client fetches a UI texture the first time an element shows it. In production that
+ * fetch goes to the content server, and the first crate reel of a session was drawn before
+ * its cards' icons, fondus and backgrounds had arrived: a strip of nothing, then a normal one
+ * the second time. Two pixels off the canvas, one per image, is what it costs to have them
+ * all resident before the first moment that needs them.
+ */
+const PRECHAUFFE = [
+  'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
+  'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6'
+]
+const Prechauffe = () => (
+  <UiEntity uiTransform={{ positionType: 'absolute', position: { left: -8, top: -8 }, width: 2, height: 2, overflow: 'hidden' }}>
+    {PRECHAUFFE.map((n) => (
+      <UiEntity key={n} uiTransform={{ width: 2, height: 2 }}
+        uiBackground={{ texture: { src: `assets/ui/${n}.png` }, textureMode: 'stretch' }} />
+    ))}
+  </UiEntity>
+)
+
 const DesktopControls = () => {
   if (phone() || !hud()) return null
   const a = nextAction()
@@ -766,6 +788,7 @@ const uiComponent = () => {
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
+    <Prechauffe />
     <DesktopControls />
     {phone() && hud() && (
       <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: BAND.bottom, right: clientEdges().right + 16 } }}>

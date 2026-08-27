@@ -20,7 +20,19 @@ import { plastic, vif } from './toy'
  */
 export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0 }
 
-const DUSK = 64800
+/**
+ * What each rush looks like: its ground and its hour of the day.
+ *
+ * One cracked-crust texture served all three themes, tinted, and a tester saw a GOLD event with
+ * a floor of lava: cracks with glowing veins read as lava whatever their colour. So gold gets
+ * glitter under a golden-hour sky, lava keeps the crust under a darker evening, and cursed
+ * keeps the crust in violet under the night. Sky times are seconds since midnight.
+ */
+const LOOK: Record<number, { texture: string; sky: number }> = {
+  1: { texture: 'glitter', sky: 64800 },
+  5: { texture: 'flow', sky: 72000 },
+  9: { texture: 'flow', sky: 79200 }
+}
 let sol: Entity | null = null
 let solCouleur = ''
 let dernierTheme = -1
@@ -28,8 +40,17 @@ let cloche: Entity | null = null
 
 export function setEventFloor(entity: Entity, base: string): void { sol = entity; solCouleur = base }
 
-/** The floor at rest: a matte play mat. Defined once, for the venue that builds it and the event that hands it back. */
-export function materiauDuSol(hex: string): PBMaterial_PbrMaterial { return { ...plastic(hex), roughness: 0.9 } }
+/**
+ * The floor at rest: a matte play mat. Defined once, for the venue that builds it and the event
+ * that hands it back.
+ *
+ * It names a WHITE texture on purpose. A material written without a texture field does not
+ * clear the one the client is drawing: after the first Gold rush the floor went back to green
+ * and kept its cracks. White times green is green, and naming it is what makes the swap happen.
+ */
+export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
+  return { ...plastic(hex), roughness: 0.9, texture: Material.Texture.Common({ src: 'assets/textures/blank.png' }) }
+}
 
 /*
   The floor does not change colour, it starts to flow.
@@ -71,11 +92,12 @@ export function setupEvents(): void {
       alerter(`${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for 5 minutes`, mutation(theme).color, 6000)
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
-      SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: DUSK, transitionMode: TransitionMode.TM_FORWARD })
+      const look = LOOK[theme] ?? LOOK[5]
+      SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: look.sky, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null) {
         Material.setPbrMaterial(sol, {
           texture: Material.Texture.Common({
-            src: 'assets/textures/flow.png',
+            src: `assets/textures/${look.texture}.png`,
             wrapMode: TextureWrapMode.TWM_REPEAT,
             tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
           }),

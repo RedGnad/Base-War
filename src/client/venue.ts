@@ -1,4 +1,4 @@
-import { engine, Transform, MeshRenderer, MeshCollider, Material } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, MeshCollider, Material, TextureWrapMode } from '@dcl/sdk/ecs'
 import { Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE } from '../shared/schemas'
 import { setEventFloor, materiauDuSol } from './events'
@@ -21,4 +21,14 @@ export function setupVenue(): void {
   // A play mat: matte green, the table every toy stands on.
   Material.setPbrMaterial(sol, materiauDuSol(TOY.ground))
   setEventFloor(sol, TOY.ground)
+
+  // The event floors' textures, fetched now rather than at the first event: a texture is
+  // requested when a material first names it, and an event floor that appears untextured
+  // for its first seconds is the same cold-start defect the reel had.
+  for (const f of ['flow', 'glitter']) {
+    const chauffe = engine.addEntity()
+    Transform.create(chauffe, { position: Vector3.create(CENTER.x, -2, CENTER.z), scale: Vector3.create(0.01, 0.01, 0.01) })
+    MeshRenderer.setPlane(chauffe)
+    Material.setPbrMaterial(chauffe, { texture: Material.Texture.Common({ src: `assets/textures/${f}.png`, wrapMode: TextureWrapMode.TWM_REPEAT }) })
+  }
 }
