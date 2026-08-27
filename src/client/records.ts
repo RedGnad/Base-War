@@ -40,7 +40,9 @@ const faces: Face[] = []
 
 function texte(parent: Entity, x: number, y: number, taille: number, hex: string, align: TextAlignMode): Entity {
   const e = engine.addEntity()
-  Transform.create(e, { parent, position: Vector3.create(x, y, 0.11) })
+  // A text is readable from its -Z side (tester, 27 Aug: the first build read mirrored), so each face's
+  // text sits on the -Z side of its pivot; the back pivot's turn puts its copy on the far side.
+  Transform.create(e, { parent, position: Vector3.create(x, y, -0.11) })
   TextShape.create(e, {
     text: '', fontSize: taille, textColor: Color4.fromHexString(hex + 'ff'),
     outlineWidth: 0.12, outlineColor: NOIR, textAlign: align, textWrapping: false
@@ -50,7 +52,7 @@ function texte(parent: Entity, x: number, y: number, taille: number, hex: string
 
 function bande(parent: Entity, x: number, y: number, largeur: number): void {
   const e = engine.addEntity()
-  Transform.create(e, { parent, position: Vector3.create(x, y, 0.085), scale: Vector3.create(largeur, PAS - 0.06, 0.01) })
+  Transform.create(e, { parent, position: Vector3.create(x, y, -0.085), scale: Vector3.create(largeur, PAS - 0.06, 0.01) })
   MeshRenderer.setBox(e)
   Material.setPbrMaterial(e, plasticDe(BANDE, 0))
 }

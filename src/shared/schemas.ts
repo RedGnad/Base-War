@@ -940,6 +940,19 @@ export const SCENE_SIDE = 192
 export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
 
 /*
+  A base faces the belt. Its door, ramp and shelves are laid out for a door on +z; a base
+  placed north of the belt is that same base turned half a turn, so its door still opens on
+  the lane everybody walks. Until 27 Aug every base opened on +z whichever side it stood, and
+  half of them showed the plaza their back wall (tester). Both sides read geometry through
+  `tourner`, so a thief's reach and a marker's spot agree with what is drawn.
+*/
+export function sensDeBase(z: number): 1 | -1 { return z > CENTER.z ? -1 : 1 }
+export function tourner(z: number, dx: number, dz: number): { dx: number; dz: number } {
+  const s = sensDeBase(z)
+  return { dx: dx * s, dz: dz * s }
+}
+
+/*
   The fusion machine: three toys of one rarity go in, one of the rarity above comes out, with
   its mutation rolled again. The reference has one (Fuse Machine); ours stands by the belt so
   a base's Commons have somewhere to go besides the sell bin, and so what somebody just made

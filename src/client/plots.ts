@@ -7,8 +7,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe,
-  rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
+  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 
@@ -28,9 +27,11 @@ function goUpOneFloor(v: View): void {
   const y = cible * FLOOR_HEIGHT + 0.3
   // Land on the solid slab, not in the stairwell: the floor stops at dx = +2.5.
   const SORTIE_DX = 1.96
+  const o1 = tourner(t.position.z, SORTIE_DX, 3.0)
+  const o2 = tourner(t.position.z, -1.2, -2.2)
   void movePlayerTo({
-    newRelativePosition: Vector3.create(t.position.x + SORTIE_DX, y, t.position.z + 3.0),
-    cameraTarget: Vector3.create(t.position.x - 1.2, y + 0.8, t.position.z - 2.2)
+    newRelativePosition: Vector3.create(t.position.x + o1.dx, y, t.position.z + o1.dz),
+    cameraTarget: Vector3.create(t.position.x + o2.dx, y + 0.8, t.position.z + o2.dz)
   })
 }
 import { steal, monAdresseClient, alerter } from './theft'
@@ -42,6 +43,8 @@ type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
+  /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
+  racine: Entity
   /** The skin last painted, and how many storeys it was painted on. */
   skin: number; peints: number
 }
@@ -74,9 +77,15 @@ const JEU = 0.02
  */
 const taille = new Map<Entity, Vector3>()
 
+/**
+ * The base being built, or null. Parts made while it is set are its children, in local
+ * metres, so the one rotation on the root turns the whole building toward the belt.
+ */
+let parentCourant: Entity | null = null
+
 function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: string): Entity {
   const e = engine.addEntity()
-  Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
@@ -86,7 +95,7 @@ function bloc(x: number, y: number, z: number, sx: number, sy: number, sz: numbe
 
 function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: number): Entity {
   const e = engine.addEntity()
-  Transform.create(e, { position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
+  Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) })
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshRenderer.setBox(e)
   MeshCollider.setBox(e)
@@ -117,6 +126,7 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   const r = rampPosition(floor)
   const ramp = engine.addEntity()
   Transform.create(ramp, {
+    parent: parentCourant ?? undefined,
     position: Vector3.create(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz),
     scale: Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH),
     rotation: Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
@@ -182,6 +192,7 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   */
   const sentry = engine.addEntity()
   Transform.create(sentry, {
+    parent: parentCourant ?? undefined,
     position: Vector3.create(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1),
     scale: Vector3.create(0, 0, 0)
   })
@@ -234,13 +245,18 @@ function expulser(base: Vector3, floors: number): void {
   const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
   const dedans = dx <= BASE_SIDE / 2 + 0.6 && dz <= BASE_SIDE / 2 + 0.6 && moi.position.y <= floors * FLOOR_HEIGHT + 1
   if (!dedans) return
-  const porte = Vector3.create(base.x, 0.3, base.z + BASE_SIDE / 2 + 2.5)
+  const o = tourner(base.z, 0, BASE_SIDE / 2 + 2.5)
+  const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
   void movePlayerTo({ newRelativePosition: porte, cameraTarget: Vector3.create(base.x, 2, base.z) })
   alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
 }
 
 function createView(x: number, z: number, accent: string): View {
-  const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
+  // One root at the centre, turned so the door faces the belt; everything below is local to it.
+  const racine = engine.addEntity()
+  Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
+  parentCourant = racine
+  const plinth = bloc(0, 0.06, 0, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
 
   /*
     Only the ground floor is built here; the rest appear when they are bought.
@@ -251,11 +267,12 @@ function createView(x: number, z: number, accent: string): View {
     and in network traffic the moment anyone walks in. Floors are added in the update below
     as the plot reports them, so an unreached floor costs exactly nothing.
   */
-  const floors: Floor[] = [buildFloor(x, z, 0, accent)]
+  const floors: Floor[] = [buildFloor(0, 0, 0, accent)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
-    position: Vector3.create(x + BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, FLOOR_HEIGHT / 2, z + 1.4),
+    parent: racine,
+    position: Vector3.create(BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, FLOOR_HEIGHT / 2, 1.4),
     scale: Vector3.create(0.5, FLOOR_HEIGHT, 0.5)
   })
   MeshRenderer.setBox(ascenseur)
@@ -272,7 +289,8 @@ function createView(x: number, z: number, accent: string): View {
 
   const door = engine.addEntity()
   Transform.create(door, {
-    position: Vector3.create(x, (MAX_FLOORS * FLOOR_HEIGHT) / 2, z),
+    parent: racine,
+    position: Vector3.create(0, (MAX_FLOORS * FLOOR_HEIGHT) / 2, 0),
     scale: Vector3.create(0, 0, 0)
   })
   MeshRenderer.setBox(door)
@@ -319,7 +337,8 @@ function createView(x: number, z: number, accent: string): View {
     const o = engine.addEntity()
     const d = slotPosition(k)
     Transform.create(o, {
-      position: Vector3.create(x + d.dx, -5, z + d.dz),
+      parent: racine,
+      position: Vector3.create(d.dx, -5, d.dz),
       scale: Vector3.create(0.45, 0.45, 0.45)
     })
     MeshRenderer.setBox(o)
@@ -331,7 +350,8 @@ function createView(x: number, z: number, accent: string): View {
     })
     items.push(o)
   }
-  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0 }
+  parentCourant = null
+  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
@@ -358,6 +378,7 @@ function destroyView(v: View): void {
     // The sentry and the pedestals carry children of their own: model, silhouette, halo, light.
     demolir(e.sentry)
   }
+  engine.removeEntity(v.racine)
   for (const o of v.items) demolir(o)
 }
 
@@ -461,7 +482,7 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
   let meilleur = Infinity
   for (let k = bas; k < bas + SLOTS_PER_FLOOR; k++) {
     if (k < base.p.items.length && base.p.items[k] !== VIDE) continue
-    const s = slotPosition(k)
+    const s = tourner(base.z, slotPosition(k).dx, slotPosition(k).dz)
     const dx = t.position.x - (base.x + s.dx), dz = t.position.z - (base.z + s.dz)
     const d = dx * dx + dz * dz
     if (d >= meilleur) continue
@@ -470,7 +491,8 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
   }
   if (choisi < 0) return null
   const s = slotPosition(choisi)
-  return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + s.dx, s.dy, base.z + s.dz) }
+  const o = tourner(base.z, s.dx, s.dz)
+  return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + o.dx, s.dy, base.z + o.dz) }
 }
 
 export function setupPlots(): void {
@@ -553,9 +575,7 @@ export function setupPlots(): void {
         if (ta !== null) {
           const h = p.floors * FLOOR_HEIGHT
           ta.scale = Vector3.create(0.5, h, 0.5)
-          ta.position = Vector3.create(
-            t.position.x + BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, h / 2, t.position.z + 1.4
-          )
+          ta.position = Vector3.create(BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, h / 2, 1.4)
         }
         const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
         if (structurel) {
@@ -604,7 +624,9 @@ export function setupPlots(): void {
       // Catch up to what this base has actually opened, one floor at a time.
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
-          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length, accentPour(p)))
+          parentCourant = v.racine
+          v.floors.push(buildFloor(0, 0, v.floors.length, accentPour(p)))
+          parentCourant = null
         }
 
         for (let e = 0; e < v.floors.length; e++) {
@@ -699,7 +721,7 @@ export function setupPlots(): void {
 
         if (!occupe) {
           // 2a. Empty: under the floor, no size, no model. Material is irrelevant unseen.
-          tr.position = Vector3.create(t.position.x, -5, t.position.z)
+          tr.position = Vector3.create(0, -5, 0)
           tr.scale = Vector3.Zero()
           demonter(ent)
           effacerForme(ent)
@@ -717,7 +739,7 @@ export function setupPlots(): void {
         const size = r.size * (m.mult > 1 ? 1.12 : 1) * (1 + 0.05 * traits)
         // `dy` is the slab's top face. A hair of air, the pad, then the toy standing on the pad
         // with its centre half its size up. Nothing shares a plane with anything.
-        tr.position = Vector3.create(t.position.x + d.dx, d.dy + JEU + SOCLE_EPAISSEUR + size / 2, t.position.z + d.dz)
+        tr.position = Vector3.create(d.dx, d.dy + JEU + SOCLE_EPAISSEUR + size / 2, d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const hex = itemColor(rarityOf(code), mutationDe(code))

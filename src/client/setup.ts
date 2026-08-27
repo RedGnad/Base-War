@@ -1,7 +1,8 @@
 import {
-  engine, Transform, SkyboxTime,
+  engine, Transform, SkyboxTime, PointerLock,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
+import { isMobile } from '@dcl/sdk/platform'
 
 import { getPlayer } from '@dcl/sdk/players'
 import { Plot, ServerBeat, BEAT_DEAD_AFTER_MS, CENTER, occupe } from '../shared/schemas'
@@ -9,7 +10,7 @@ import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
 import { setupPlots } from './plots'
-import { setupTheft, setAdresseClient } from './theft'
+import { setupTheft, setAdresseClient, theftView } from './theft'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
 import { setupFusion } from './fusion'
@@ -55,11 +56,33 @@ export const view = {
   floors: 1
 }
 
+/*
+  On desktop the cursor is captured while the game is on screen: the camera follows the mouse
+  without a click-and-drag, the way any third-person game does, and the capture is released
+  the moment a panel needs the cursor (welcome, menu, prestige). Edge-triggered on the HUD's
+  visibility, so Esc still frees the cursor and nothing fights the player for it until the
+  next panel opens or closes. `isPointerLocked` is writable by a scene, verified in the SDK's
+  own `31,20-pointer-lock-control` test scene. Nothing on a phone: there is no cursor, and a
+  finger on the screen already looks around.
+*/
+function setupPointerLock(): void {
+  PointerLock.createOrReplace(engine.CameraEntity, { isPointerLocked: false })
+  let dernier: boolean | null = null
+  engine.addSystem(() => {
+    const voulu = theftView.hudVisible
+    if (voulu === dernier) return
+    dernier = voulu
+    const pl = PointerLock.getMutableOrNull(engine.CameraEntity)
+    if (pl !== null && pl.isPointerLocked !== voulu) pl.isPointerLocked = voulu
+  })
+}
+
 export function startClient(): void {
   console.log('[CLIENT] start')
   room.onMessage('serverLog', (d) => console.log(`[SERVER] ${d.line}`))
   setupIntent()
   setupTouchHud()
+  if (!isMobile()) setupPointerLock()
   reportPlatform()
   applyThiefPenalty(false)
 

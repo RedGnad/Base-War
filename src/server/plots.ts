@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -450,7 +450,8 @@ export function positionObjet(address: string, slot: number): Vector3 | null {
   const t = Transform.getOrNull(b.entity)
   if (t === null) return null
   const d = slotPosition(slot)
-  return Vector3.create(t.position.x + d.dx, t.position.y + d.dy, t.position.z + d.dz)
+  const o = tourner(t.position.z, d.dx, d.dz)
+  return Vector3.create(t.position.x + o.dx, t.position.y + d.dy, t.position.z + o.dz)
 }
 
 export function lockOf(address: string): number {
