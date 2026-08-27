@@ -47,7 +47,7 @@ export function setReference(w: number, h: number): void { active.w = w; active.
  * dividing here cancels it out. Missing or unreported means zero, which is the honest
  * answer for a client that has not told us anything.
  */
-function clientEdges(): { left: number; right: number } {
+export function clientEdges(): { left: number; right: number } {
   const info = UiCanvasInformation.getOrNull(engine.RootEntity)
   if (info === null || info.interactableArea === undefined) return { left: 0, right: 0 }
   const scale = Math.min(info.width / active.w, info.height / active.h)

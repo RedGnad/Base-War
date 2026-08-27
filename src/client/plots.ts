@@ -42,15 +42,9 @@ import { movePlayerTo } from '~system/RestrictedActions'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
-  plinth: Entity; label: Entity; gain: Entity; door: Entity; bac: Entity; bacLabel: Entity
+  plinth: Entity; label: Entity; gain: Entity; door: Entity
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
 }
-
-/** Where a base's bin stands: the inside front corner opposite the stairwell, by the door. */
-const BAC_DX = -BASE_SIDE / 2 + 1.1
-const BAC_DZ = BASE_SIDE / 2 - 1.1
-/** How close to the bin selling is offered, in metres. */
-export const BAC_PORTEE = 2.0
 
 /** World-label colours, built here rather than read from the shared token object: that one
  * is constructed at module load and a system can run before its module was touched. */
@@ -294,33 +288,6 @@ function createView(x: number, z: number, accent: string): View {
     text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
   })
 
-  /*
-    The bin: selling is a place, not a prompt.
-
-    A SELL button used to follow the player around the screen the whole time they carried
-    their own item, large and centred. The tester's reading was the right one: a prompt that
-    prominent pushes to sell, and the game wants shelves filled. The shop was tried and was
-    too far away. So selling is a THING in the world, a green bin by the door of your own
-    base: quick, because it is where you already walk in with a crate's yield; discreet,
-    because it asks nothing until you stand at it. Standing there with your own item turns
-    the action button into SELL with the price; clicking the bin does the same.
-  */
-  const bac = engine.addEntity()
-  Transform.create(bac, { position: Vector3.create(x + BAC_DX, SLAB_THICKNESS + 0.45, z + BAC_DZ), scale: Vector3.create(0.9, 0.9, 0.9) })
-  MeshRenderer.setCylinder(bac, 0.45, 0.4)
-  MeshCollider.setCylinder(bac)
-  Material.setPbrMaterial(bac, plastic(HUE.money, 0.5))
-  PointerEvents.create(bac, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Sell what you carry' } }
-    ]
-  })
-  montable(bac, 'bin.glb')
-  const bacLabel = engine.addEntity()
-  Transform.create(bacLabel, { position: Vector3.create(x + BAC_DX, SLAB_THICKNESS + 1.35, z + BAC_DZ), scale: Vector3.create(0.45, 0.45, 0.45) })
-  Billboard.create(bacLabel, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(bacLabel, { text: 'SELL', fontSize: 2.6, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
-
   const items: Entity[] = []
   for (let k = 0; k < PLOT_MAX_ITEMS; k++) {
     const o = engine.addEntity()
@@ -338,12 +305,10 @@ function createView(x: number, z: number, accent: string): View {
     })
     items.push(o)
   }
-  return { plinth, label, gain, door, bac, bacLabel, ascenseur, floors, items, signature: '', ownerId: '' }
+  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '' }
 }
 
 function destroyView(v: View): void {
-  demolir(v.bac)
-  engine.removeEntity(v.bacLabel)
   engine.removeEntity(v.plinth)
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
@@ -376,24 +341,6 @@ function destroyView(v: View): void {
  * The server checks this again before it moves anything; this is only so the button can read
  * PLACE rather than the player pressing it and being told no.
  */
-/** My own base's bin, if my base is in view. */
-export function monBac(): Entity | null {
-  const moi = monAdresseClient()
-  for (const [, v] of views) if (v.ownerId === moi) return v.bac
-  return null
-}
-
-/** Standing at my own bin: where the action button offers to sell what I carry. */
-export function auBac(): boolean {
-  const bac = monBac()
-  if (bac === null) return false
-  const t = Transform.getOrNull(bac)
-  const p = Transform.getOrNull(engine.PlayerEntity)
-  if (t === null || p === null) return false
-  const dx = p.position.x - t.position.x, dz = p.position.z - t.position.z
-  return Math.sqrt(dx * dx + dz * dz) <= BAC_PORTEE && Math.abs(p.position.y - t.position.y) < 2.5
-}
-
 export function baseIci(): { ownerId: string; mienne: boolean } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null

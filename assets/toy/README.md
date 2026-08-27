@@ -27,7 +27,6 @@ stand-in simply stays, so the scene never breaks on an absent model.
 |---|---|---|
 | `item-0.glb` .. `item-6.glb` | the exposed item, one per rarity (Common .. Secret) | unit cube |
 | `sentry.glb` | the per-floor turret | cylinder r 0.25, h 0.45 |
-| `bin.glb` | the sell bin by the door of every base | cylinder r 0.45, h 0.9 |
 | `crate-0.glb` .. `crate-6.glb` | the crate, one per catalogue entry (Basic, Good, Rare, Epic, Gold, Lava, Cursed): on the belt, in a convoy, and being smashed | unit cube, lid at the top |
 
 More mount points are added by calling `montable(entity, 'file.glb')` in the client.

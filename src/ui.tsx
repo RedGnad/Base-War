@@ -8,7 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn, lisible, FORCE_MOBILE_LAYOUT } from './cl
 import { Glyphs } from './client/glyphs'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS } from './shared/schemas'
 import { Btn } from './client/ui-kit'
 import { view } from './client/setup'
@@ -54,8 +54,8 @@ const ETATS: Record<string, (r: number) => string> = {
   plein: () => 'your base is full  ·  make room'
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
-import { carryView, placeDown, dropCarried, sellCarried } from './client/carry'
-import { baseIci, auBac } from './client/plots'
+import { carryView, placeDown, dropCarried, vendre } from './client/carry'
+import { baseIci } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -85,6 +85,8 @@ export function setupUi() {
     if (modale()) return
     // While the weapon is out this button is the trigger, and combat.ts owns it. Without
     // this, one press would fire and open the nearest crate in the same frame.
+    // Key 2 on a desktop, the chip's own binding on a phone: both arrive here, once.
+    if (inputSystem.isTriggered(InputAction.IA_ACTION_4, PointerEventType.PET_DOWN)) vendre()
     if (combatView.aiming) return
     if (!inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) return
     const a = nextAction()
@@ -280,6 +282,32 @@ const MenuWindow = () => {
  * the weapon, and whatever the game currently offers. They carry their key as well as their
  * name, and they are bound to the same actions, so they can be clicked or typed.
  */
+/**
+ * Selling, as a control: contextual, secondary, with friction.
+ *
+ * Three versions came before this one. A plate in the middle of the screen with a large SELL
+ * whenever you carried your own item, which a tester read as an incitement to sell, and the
+ * game wants shelves filled. A row in the shop, which was a room too far for an act done
+ * once per crate. A bin by the door, a place, which was still a walk. The mobile HUD
+ * guidance this project reads settles it: show a control only when it applies (contextual
+ * minimalism), keep primary actions in the thumb zone and put secondary or destructive ones
+ * beside them in a lesser style, and give an irreversible act friction rather than distance.
+ * So: a small secondary control, priced, present only while your own item is in your hands,
+ * at the edge of the screen rather than its centre, and it asks "SELL?" in the danger colour
+ * before it does anything. Key 2 on a desktop. On a phone it is a scene button, because the
+ * client's own stack has no free slot without folding the others behind a "+".
+ */
+const SellChip = (props: { right?: number }) => {
+  if (carryView.code < 0 || carryView.vole) return null
+  const question = Date.now() < carryView.confirmJusqua
+  const prix = formatIncome(prixDeRevente(carryView.code))
+  return (
+    <Btn label={question ? `SELL?  +${prix}` : phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
+      width={phone() ? 250 : 290} right={props.right} danger={question}
+      bind={[InputAction.IA_ACTION_4]} />
+  )
+}
+
 const DesktopControls = () => {
   if (phone() || !hud()) return null
   const a = nextAction()
@@ -292,6 +320,7 @@ const DesktopControls = () => {
         flexDirection: 'row', alignItems: 'center'
       }}
     >
+      <SellChip right={TAP.gap * 2} />
       <Btn label="1  MENU" width={190} right={TAP.gap} badge={questsToClaim() > 0}
         primary={questsToClaim() > 0} onClick={basculerMenu} />
       <Btn label={combatView.aiming ? 'F  HOLSTER' : 'F  DRAW'} width={210} right={TAP.gap}
@@ -361,10 +390,6 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     picture on the button beats a plate on the screen every time.
   */
   if (carryView.code >= 0) {
-    // At your own bin with your own item, the verb is selling, priced. Nowhere else.
-    if (!carryView.vole && auBac()) {
-      return { label: `SELL  +${formatIncome(prixDeRevente(carryView.code))}`, action: sellCarried }
-    }
     const ou = baseIci()
     if (ou === null) return { label: 'DROP', icon: 'icon-drop', action: dropCarried }
     return ou.mienne
@@ -739,6 +764,11 @@ const uiComponent = () => {
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
 
     <DesktopControls />
+    {phone() && hud() && (
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: BAND.bottom, right: clientEdges().right + 16 } }}>
+        <SellChip />
+      </UiEntity>
+    )}
     <WelcomePanel />
     <PrestigePanel />
     <MenuWindow />

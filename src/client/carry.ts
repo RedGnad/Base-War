@@ -7,7 +7,7 @@ import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
-import { cibleDePose, monBac } from './plots'
+import { cibleDePose } from './plots'
 import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 /**
@@ -23,7 +23,7 @@ import { formeDeRarete, effacerForme, plasticDe } from './toy'
  * exactly right for something you are carrying: it swings as they run.
  */
 
-export const carryView = { code: -1, name: '', vole: false }
+export const carryView = { code: -1, name: '', vole: false, confirmJusqua: 0 }
 
 const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
 
@@ -129,6 +129,7 @@ export function setupCarry(): void {
     if (porteMoi !== carryView.code || volee !== carryView.vole) {
       carryView.code = porteMoi
       carryView.vole = volee
+      carryView.confirmJusqua = 0
       setCarrying(porteMoi < 0 ? 'non' : volee ? 'vole' : 'sien')
       carryView.name = porteMoi < 0 ? '' : itemName(rarityOf(porteMoi), mutationDe(porteMoi))
     }
@@ -142,14 +143,20 @@ export function placeDown(ownerId: string): void {
 export function dropCarried(): void { void room.send('dropCarried', {}) }
 export function sellCarried(): void { void room.send('sellCarried', {}) }
 
-/** The bin answers a click the way the button answers a press: sell, or say what is missing. */
-export function setupBac(): void {
-  engine.addSystem(() => {
-    const bac = monBac()
-    if (bac === null) return
-    if (!inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, bac)) return
-    if (carryView.code < 0) { alerter('CARRY SOMETHING OF YOURS TO SELL IT', '#ffd166', 2500); return }
-    if (carryView.vole) { alerter('NOT YOURS TO SELL', '#ff6b6b', 2500); return }
-    sellCarried()
-  })
+/**
+ * Selling asks twice, three seconds apart.
+ *
+ * A sale is the one irreversible thing you can do with what you hold, and the control that
+ * does it sits a thumb away from the one that puts it on a shelf. The documented answer for a
+ * destructive action next to a routine one is friction: the first press turns the control
+ * into a question in the danger colour, the second, within three seconds, is the answer.
+ * Changing what you carry withdraws the question.
+ */
+const CONFIRM_MS = 3000
+export function vendre(): void {
+  if (carryView.code < 0 || carryView.vole) return
+  const now = Date.now()
+  if (now < carryView.confirmJusqua) { carryView.confirmJusqua = 0; sellCarried(); return }
+  carryView.confirmJusqua = now + CONFIRM_MS
 }
+
