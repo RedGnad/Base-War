@@ -10,7 +10,8 @@
     "upgrade-sdk:next": "npm install --save-dev @dcl/sdk@next",
     "server-logs": "sdk-commands sdk-server-logs",
     "duo": "bash tools/duo.sh",
-    "duo:reset": "bash tools/duo.sh --reset"
+    "duo:reset": "bash tools/duo.sh --reset",
+    "build:prod": "sdk-commands build --production"
   },
   "devDependencies": {
     "@dcl/js-runtime": "7.26.1-32239895147.commit-3c77d90",
