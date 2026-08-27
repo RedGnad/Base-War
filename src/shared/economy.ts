@@ -36,9 +36,17 @@ export const RESELL_SECONDS = 30
  * times over, and theft is available from the first second because it is gated by nothing.
  * The ladder stays where it belongs: second floor at 24 minutes, third at 1.3 hours.
  */
-export const CRATE_PRICE = [2018, 17425, 165140, 1473212, 11244378, 68656098] as const
+export const CRATE_PRICE = [2018, 34848, 660529, 11785149, 179901757, 2196893933] as const
 
-export const CRATE_PAYBACK_S = [60, 120, 240, 480, 960, 1920] as const
+/*
+  Payback QUADRUPLES a tier, from 27 Aug evening. It doubled, and a greedy player simulated
+  second by second (tools/economy/sim.js) went Basic to Epic in 1.3 hours and to Mythic in a
+  day and a half: each tier multiplies income by 6.6 and cost only a few minutes of the
+  previous tier's income, so the rarity ladder was a firehose feeding the prestige ladder. At
+  x4 the same player buys their first Epic crate at 7 hours, Legendary at a day, Mythic at
+  five days, with the belt's rarity of those crates on top.
+*/
+export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
 /*
   Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.
 
@@ -107,7 +115,7 @@ export function floorCost(targetFloor: number): number {
  * threshold picked so a visitor reaches the top of it in an afternoon would have thrown that
  * away.
  */
-export const PRESTIGE_THRESHOLD = 2_500_000
+export const PRESTIGE_THRESHOLD = 10_000_000
 
 /*
   What tier `n` costs, in coins the player must have in hand.
@@ -129,14 +137,32 @@ export const PRESTIGE_THRESHOLD = 2_500_000
  * itself multiplied every rung is a ladder that flattens exactly when it should steepen.
  *
  * The reference's rebirth cash goes $500K, 1.5M, 12.5M, 35M, 100M, 350M, 1B, 5B, 12.5B, 125B
- * ... 30Qa: times 3.35 a rung on average, never under times two. Four here, so the first
- * rungs stay near where they were tuned (2.5M, 10M, 40M, 160M, 640M against the cube's 2.5M,
- * 20M, 68M, 160M, 313M) and the ladder is endless past them: the same six-slot base reaches
- * tier 8 in 77 hours and tier 10 in a thousand, and a full three-storey base of Mythics still
- * needs five days for tier 10. Tier 30 costs 7e23 and is not meant to be reached; it is meant
- * to exist.
+ * ... 30Qa: times 3.35 a rung on average, never under times two.
+ *
+ * Four from 2.5M was the first correction and it was measured wrong too: it looked at a
+ * standing base, not at a player who keeps buying. The greedy player in tools/economy/sim.js
+ * reached prestige 5 in 1.7 hours and 10 in a day and a half under it, and the tester did
+ * the same in an evening. Ten million then six a rung, with the purse reset to one percent
+ * at each prestige and floors gated by prestige: P1 10M, P2 60M, P3 360M, P4 2.2B, P5 13B,
+ * P7 467B, P10 101T. The same greedy player, a lower bound on a real one: P1 at 1.4 h, P3 at
+ * 4.8 h, P5 at 13 h, P7 at 2 days, P10 past a month; floor 5 at 5 h, floor 8 at a day. Tier
+ * 30 is not meant to be reached; it is meant to exist.
  */
-export const PRESTIGE_GROWTH = 4
+export const PRESTIGE_GROWTH = 6
+/**
+ * What prestige leaves in the purse: the reference's rebirth "takes most of your money" and
+ * hands back a cash bonus ($5K after a $500K rebirth, $50K after $35M: about one percent).
+ * Without this the tester's coins compounded across prestiges and the ladder was walked in
+ * an evening.
+ */
+export const PRESTIGE_CASH_SHARE = 0.01
+/**
+ * Floors are gated by prestige as well as priced: floor n opens at prestige n - 2. The
+ * reference grows capacity through rebirth (one slot a rebirth, the second floor at R2, the
+ * third at R10); ours sold twelve floors for cash alone, and a base at seventy-two slots was
+ * a x12 on income bought in an afternoon (tester, 27 Aug: "I chained floors 2, 3, 4 and on").
+ */
+export const FLOOR_PRESTIGE_GATE = 2
 export function coutPrestige(n: number): number {
   return n <= 0 ? 0 : Math.round(PRESTIGE_THRESHOLD * Math.pow(PRESTIGE_GROWTH, n - 1))
 }

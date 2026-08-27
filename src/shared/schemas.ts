@@ -1,5 +1,5 @@
 import {
-  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, coutPrestige, prestigeMultiplier,
+  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, coutPrestige, prestigeMultiplier, FLOOR_PRESTIGE_GATE,
   OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
@@ -813,6 +813,10 @@ export function incomeMultiplier(n: number): number {
 
 export function floorPrice(targetFloor: number): number {
   return floorCost(targetFloor)
+}
+/** The prestige a floor needs before its price is even offered: floor n at prestige n - 2. */
+export function floorPrestigeRequired(targetFloor: number): number {
+  return Math.max(0, targetFloor - FLOOR_PRESTIGE_GATE)
 }
 
 export function openFloors(floorsBought = 0): number {
