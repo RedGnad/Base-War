@@ -44,6 +44,8 @@ import { setAiming, setArmeIcone } from './locomotion'
  */
 
 export const combatView = {
+  /** A nudge for a first-timer: on for the first seconds of the first two draws of a session. */
+  aideVisee: false,
   aiming: false,
   /** Name of the player the shot would reach right now, empty when the cone is clear. */
   targetName: '',
@@ -134,6 +136,7 @@ let flashScale = 0
 let zoneVisee: Entity | null = null
 let vueVisibleApres = 0
 let dernierClipTir = 0
+let degainages = 0
 /** Whether first person was the player's own setting when the weapon came out. */
 let prefereVuePremiere = false
 let dernierRecensement = 0
@@ -450,6 +453,9 @@ function degainer(on: boolean): void {
   else enJoue.delete(moi)
   void room.send('aim', { on })
   if (on) {
+    degainages += 1
+    combatView.aideVisee = degainages <= 2
+    if (combatView.aideVisee) timers.setTimeout(() => { combatView.aideVisee = false }, 6000)
     const c = CameraMode.getOrNull(engine.CameraEntity)
     prefereVuePremiere = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })

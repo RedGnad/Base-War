@@ -17,7 +17,6 @@ import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/loco
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
 import { ligneDuBandeau, prochainGrandTexte } from './client/events'
-import { raidView } from './client/raid'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
@@ -548,7 +547,14 @@ function hud(): boolean {
  */
 function barre(): string {
   if (combatView.aiming) {
-    return combatView.targetName !== '' ? `FIRE on ${combatView.targetName}` : raidView.active ? 'aim at the boss, or at someone' : 'aim at someone'
+    /*
+      The reticle names the target at the crosshair and the weapon button wears the sight, so
+      a line down here saying "FIRE on X" said it a third time (tester, 28 Aug: noise). What
+      remains is a first-timer's nudge, shown for the first seconds of the first two draws of
+      a session and never again: the guide's "players are there to play, not to read".
+    */
+    if (combatView.targetName !== '') return ''
+    return combatView.aideVisee ? 'aim at someone' : ''
   }
   if (intentEnAttente()) return 'queued, the game is still starting up'
   /*
