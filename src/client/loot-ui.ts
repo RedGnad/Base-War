@@ -5,9 +5,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
-import {
-  itemColor, itemName, rarityOf, mutationDe, nomDuCode
-} from '../shared/loot-table'
+import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
 
 /**
  * Loot lying on the ground, drawn from what the server publishes and nothing else.

@@ -201,7 +201,7 @@ export function setupTheft(): void {
     console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
 
-  room.onMessage('index', (d) => { indexView.vus = [...d.vus] })
+  room.onMessage('index', (d) => { indexView.vus = [...d.vus]; indexView.skin = d.skin })
 
   room.onMessage('collected', (d) => {
     alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)

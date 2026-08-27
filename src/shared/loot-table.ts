@@ -201,3 +201,19 @@ export function formatIncome(v: number): string {
   if (v < 1e6) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'
   return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
 }
+
+/*
+  Collection pays in skins. The reference: "obtaining at least 75% of all obtainable Brainrots
+  of a single Mutation will unlock a unique variant, or skin, for your base", picked in the
+  settings, with the Index showing the progress. Ours counts a mutation's RARITIES, seven, so
+  six of them, and the Index carries the buttons.
+*/
+export const SKIN_NEEDS = Math.ceil(RARITIES.length * 0.75)
+export function progresDuSkin(vus: readonly number[], mut: number): number {
+  let n = 0
+  for (const r of RARITIES) if (vus.includes(encoder(r.id, mut))) n += 1
+  return n
+}
+export function skinDebloque(vus: readonly number[], mut: number): boolean {
+  return mut > 0 && mut < MUTATIONS.length && progresDuSkin(vus, mut) >= SKIN_NEEDS
+}

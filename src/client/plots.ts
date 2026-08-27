@@ -10,9 +10,7 @@ import {
   Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe,
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
 } from '../shared/schemas'
-import {
-  rarity, rarityOf, mutationDe, itemColor, mutation, itemName, formatIncome, itemIncome, nomDuCode, traitsDe
-} from '../shared/loot-table'
+import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -44,6 +42,8 @@ type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
+  /** The skin last painted, and how many storeys it was painted on. */
+  skin: number; peints: number
 }
 
 /** World-label colours, built here rather than read from the shared token object: that one
@@ -193,6 +193,32 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
+/** The lintel, posts and ramp: the owner's accent, or the mutation skin their collection unlocked. */
+function accentPour(p: { ownerId: string; skin: number }): string {
+  return p.skin > 0 ? mutation(p.skin).color : accentDe(p.ownerId)
+}
+
+/*
+  A skin repaints what the accent paints, plus a wash on the glass, so a Lava base reads as
+  Lava from the plaza edge and not only up close. Painted once per skin and once per storey:
+  a storey built after the skin was chosen arrives with the accent but plain glass.
+*/
+function repeindre(v: View, p: { ownerId: string; skin: number }): void {
+  if (v.skin === p.skin && v.peints === v.floors.length) return
+  v.skin = p.skin
+  v.peints = v.floors.length
+  const accent = accentPour(p)
+  const teinte = Color4.fromHexString(accent + 'ff')
+  const verre = p.skin > 0 ? Color4.create(teinte.r, teinte.g, teinte.b, 0.3) : TOY.glass
+  for (const et of v.floors) {
+    for (let i = 0; i < et.walls.length; i++) {
+      if (i < 5) Material.setPbrMaterial(et.walls[i], acrylic(verre))
+      else if (i < 10) Material.setPbrMaterial(et.walls[i], plastic(accent))
+    }
+    Material.setPbrMaterial(et.ramp, plastic(accent))
+  }
+}
+
 /**
  * A shield that goes up around you puts you out; it does not wall you in.
  *
@@ -305,7 +331,7 @@ function createView(x: number, z: number, accent: string): View {
     })
     items.push(o)
   }
-  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '' }
+  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0 }
 }
 
 function destroyView(v: View): void {
@@ -491,7 +517,7 @@ export function setupPlots(): void {
       const t = Transform.get(ent)
       let v = views.get(id)
       if (!v) {
-        v = createView(t.position.x, t.position.z, accentDe(p.ownerId))
+        v = createView(t.position.x, t.position.z, accentPour(p))
         views.set(id, v)
       }
 
@@ -572,12 +598,13 @@ export function setupPlots(): void {
       }
       if (structurel) {
         Material.setPbrMaterial(v.plinth, plastic(p.ownerPresent ? TOY.plinth : TOY.plinthAway))
+        repeindre(v, p)
       }
 
       // Catch up to what this base has actually opened, one floor at a time.
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
-          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length, accentDe(p.ownerId)))
+          v.floors.push(buildFloor(t.position.x, t.position.z, v.floors.length, accentPour(p)))
         }
 
         for (let e = 0; e < v.floors.length; e++) {

@@ -20,6 +20,8 @@ export const Plot = engine.defineComponent('basetycoon::plot', {
   ownerPresent: Schemas.Boolean,
   given: Schemas.Int,
   received: Schemas.Int,
+  /** The mutation whose skin the owner chose for the building, 0 for none. */
+  skin: Schemas.Int,
   sentries: Schemas.Int,
   /*
     Charges per storey, which is what turns a defence into a decision.

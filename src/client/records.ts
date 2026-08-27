@@ -1,9 +1,7 @@
 import { engine, Transform, MeshRenderer, Material, TextShape, TextAlignMode, Billboard, BillboardMode, Entity } from '@dcl/sdk/ecs'
 import { Vector3, Color4, Color3 } from '@dcl/sdk/math'
 import { Records, CENTER, BELT_HEIGHT } from '../shared/schemas'
-import {
-  formatIncome, itemName, rarityOf, mutationDe, nomDuCode
-} from '../shared/loot-table'
+import { formatIncome, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
 import { TOY, plastic, montable } from './toy'
 import { HUE } from './theme'
 

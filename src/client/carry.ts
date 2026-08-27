@@ -3,9 +3,7 @@ import {
   Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
-import {
-  itemColor, itemName, rarityOf, mutationDe, nomDuCode
-} from '../shared/loot-table'
+import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'

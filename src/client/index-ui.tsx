@@ -2,9 +2,11 @@ import { Color4 } from '@dcl/sdk/math'
 import { strip } from './layout'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP , SKIN, lisible } from './theme'
-import { RARITIES, MUTATIONS, encoder, itemColor } from '../shared/loot-table'
+import { RARITIES, MUTATIONS, encoder, itemColor, progresDuSkin, skinDebloque, SKIN_NEEDS } from '../shared/loot-table'
+import { room } from '../shared/messages'
+import { Btn } from './ui-kit'
 
-export const indexView = { open: false, vus: [] as number[] }
+export const indexView = { open: false, vus: [] as number[], skin: 0 }
 
 export function basculerIndex(): void { indexView.open = !indexView.open }
 
@@ -27,7 +29,9 @@ const PANEL_W = PAD * 2 + LABEL_W + MUTATIONS.length * (CASE + GAP)
 const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
 /** The grid plus its two labels, which is what the window is asked to make room for. */
-export const HAUTEUR_INDEX = TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
+/** The skin row under the grid: the buttons for the columns that are full, the count for the nearest ones. */
+const SKINS_H = TAP.height + 16
+export const HAUTEUR_INDEX = TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H + SKINS_H
 
 export const IndexContent = () => {
   if (!indexView.open) return null
@@ -67,9 +71,27 @@ export const IndexContent = () => {
 
       <Label
         uiTransform={{ width: '100%', height: PIED_H }}
-        value="rows: rarity   ·   columns: mutation"
+        value={`rows: rarity   ·   columns: mutation   ·   ${SKIN_NEEDS} of ${RARITIES.length} in a column unlocks that base skin`}
         fontSize={TYPE.caption}
         color={Color4.fromHexString('#7d8798ff')} />
+      <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', alignItems: 'center' }}>
+        {MUTATIONS.filter((m) => m.id > 0 && skinDebloque(indexView.vus, m.id)).map((m) => (
+          <Btn key={`s${m.id}`}
+            label={indexView.skin === m.id ? `${m.name.toUpperCase()} SKIN  ·  ON` : `${m.name.toUpperCase()} SKIN`}
+            width={250} primary={indexView.skin === m.id} right={TAP.gap}
+            onClick={() => { void room.send('setSkin', { mutation: indexView.skin === m.id ? 0 : m.id }) }} />
+        ))}
+        {[...MUTATIONS]
+          .filter((m) => m.id > 0 && !skinDebloque(indexView.vus, m.id))
+          .sort((a, b) => progresDuSkin(indexView.vus, b.id) - progresDuSkin(indexView.vus, a.id))
+          .slice(0, 3)
+          .map((m) => (
+            <Label key={`p${m.id}`}
+              value={`${m.name} skin  ${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`}
+              fontSize={TYPE.caption} color={Color4.fromHexString(lisible(m.color) + 'ff')}
+              uiTransform={{ width: 210, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
+          ))}
+      </UiEntity>
     </UiEntity>
   )
 }

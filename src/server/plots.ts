@@ -9,7 +9,7 @@ import {
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
-  itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe
+  itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
@@ -47,6 +47,8 @@ type Base = {
   received: number
   /** Successful thefts by this base's owner: the thieves' board reads it, present or absent. */
   vols: number
+  /** The mutation skin on the building, 0 for none; kept on the base so an absent owner's stays painted. */
+  skin: number
 }
 type Profil = {
   coins: number
@@ -85,6 +87,8 @@ type Profil = {
   playedS?: number
   giftTaken?: boolean
   alerts?: object[]
+  /** The base skin chosen in the Index, a mutation id, 0 for none. */
+  skin?: number
   /** Bought luck: every mutation's odds doubled until this instant. */
   luckUntil?: number
   /** What this player has fed the fusion machine so far, all of one rarity. */
@@ -163,12 +167,13 @@ function publish(b: Base, ici?: Set<string>): void {
       sentry and crossing a prestige did not, so those two would have shown correctly until
       the owner logged off and then quietly reverted.
     */
-    const avant = `${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}`
+    const avant = `${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}|${b.skin}`
     b.floorsBought = pr.floorsBought ?? 0
     b.rebirths = pr.rebirths ?? 0
     b.given = pr.given ?? 0
     b.received = pr.received ?? 0
-    if (`${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}` !== avant) {
+    b.skin = pr.skin ?? 0
+    if (`${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}|${b.skin}` !== avant) {
       dirtyBases.add(b.address)
     }
   }
@@ -180,12 +185,13 @@ function publish(b: Base, ici?: Set<string>): void {
   c.ownerPresent = (ici ?? presents()).has(b.address)
   c.given = b.given
   c.received = b.received
+  c.skin = b.skin ?? 0
   c.sentries = totalCharges(b.sentryFloors)
   c.sentryFloors = [...b.sentryFloors]
 }
 
-type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number }
-const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0 }
+type Vitrine = { floorsBought: number; sentries: number; sentryFloors: number[]; sentryTier: number; rebirths: number; given: number; received: number; vols: number; skin: number }
+const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], sentryTier: 0, rebirths: 0, given: 0, received: 0, vols: 0, skin: 0 }
 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
@@ -256,7 +262,7 @@ async function loadBases(): Promise<void> {
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
             sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0, vols: v.vols ?? 0,
-            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
+            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0, skin: v.skin ?? 0
           }
         }
       })
@@ -310,7 +316,7 @@ async function save(): Promise<void> {
     const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
       name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
       floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
-      given: b.given, received: b.received, vols: b.vols
+      given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0
     }))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
   }
@@ -877,6 +883,20 @@ export function marquerTrait(address: string): number | null {
   return neuf
 }
 
+/** The Index's button: a skin is a mutation whose column is filled to `SKIN_NEEDS`, or none. */
+export function choisirSkin(address: string, mut: number): { ok: boolean; reason?: string } {
+  const p = profiles.get(address)
+  if (!p) return { ok: false, reason: 'unknown profile' }
+  if (mut !== 0 && !skinDebloque(p.vus ?? [], mut)) {
+    return { ok: false, reason: `collect ${SKIN_NEEDS} of ${RARITIES.length} ${mutation(mut).name} toys first` }
+  }
+  p.skin = mut
+  dirtyProfiles.add(address)
+  const b = bases.get(address)
+  if (b) { b.skin = mut; dirtyBases.add(address); publish(b) }
+  return { ok: true }
+}
+
 export function luckUntilOf(address: string): number { return profiles.get(address)?.luckUntil ?? 0 }
 export function setLuckUntil(address: string, until: number): void {
   const p = profiles.get(address)
@@ -1248,7 +1268,7 @@ export function startPlots(): void {
       }, { to: [address] })
       void room.send('inventory', { crates: [...(p.crates ?? [])] }, { to: [address] })
       void room.send('gearHeld', { counts: gearsOf(address) }, { to: [address] })
-      void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })
+      void room.send('index', { vus: [...(p.vus ?? [])], skin: p.skin ?? 0 }, { to: [address] })
       void room.send('fusionState', { codes: [...(p.fusion ?? [])], made: -1 }, { to: [address] })
       pushQuests(address)
     }

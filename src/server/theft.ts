@@ -8,7 +8,9 @@ import {
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol } from './plots'
+import {
+  advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol, choisirSkin
+} from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
@@ -394,6 +396,13 @@ export function startTheft(): void {
     const r = tenterRebirth(a)
     if (!r.ok) { refus(a, 'prestige', r.reason ?? 'refused'); return }
     void room.send('rebirthDone', { prestige: r.prestige ?? 0, multiplier: r.multiplier ?? 1 }, { to: [a] })
+  })
+
+  room.onMessage('setSkin', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const r = choisirSkin(a, Number.isInteger(d?.mutation) ? d.mutation : 0)
+    if (!r.ok) refus(a, 'skin', r.reason ?? 'refused')
   })
 
   room.onMessage('activateLock', (_d, ctx) => {

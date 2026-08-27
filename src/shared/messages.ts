@@ -26,7 +26,8 @@ export const MESSAGES = {
   rebirthDone: Schemas.Map({ prestige: Schemas.Int, multiplier: Schemas.Int }),
 
 
-  index: Schemas.Map({ vus: Schemas.Array(Schemas.Int) }),
+  index: Schemas.Map({ vus: Schemas.Array(Schemas.Int), skin: Schemas.Int }),
+  setSkin: Schemas.Map({ mutation: Schemas.Int }),
 
   collect: Schemas.Map({}),
   collected: Schemas.Map({ gain: Schemas.Int }),
