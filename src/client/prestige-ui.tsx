@@ -102,7 +102,7 @@ export const PrestigePanel = () => {
         <UiEntity uiTransform={{ width: 640, height: 124, flexDirection: 'row', justifyContent: 'center' }}>
           <Carte large={300} titre={formatIncome(cout)} note="coins, taken off your balance"
             teinte={assezDeCoins ? C.money : C.danger} />
-          <Carte large={300} titre={(exige?.name ?? '').toUpperCase()} note="you must already own one, or better"
+          <Carte large={300} titre={(exige?.name ?? '').toUpperCase()} note="one is consumed: your cheapest of it, or better"
             teinte={aLObjet ? C.money : C.danger} />
         </UiEntity>
 
@@ -113,8 +113,8 @@ export const PrestigePanel = () => {
         <UiEntity uiTransform={{ width: '100%', height: 66, flexDirection: 'column' }}>
           <Label
             value={palier.guard === 1
-              ? 'you keep your best item, every other item is gone'
-              : `you keep your best ${palier.guard} items, every other item is gone`}
+              ? `the ${(exige?.name ?? '').toUpperCase()} is eaten, you keep your best item, every other item is gone`
+              : `the ${(exige?.name ?? '').toUpperCase()} is eaten, you keep your best ${palier.guard} items, every other item is gone`}
             fontSize={TYPE.label} color={C.bonus}
             uiTransform={{ width: '100%', height: 33 }} textAlign="middle-center" />
           <Label value="your floors, sentries and crates all stay"

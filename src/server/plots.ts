@@ -4,11 +4,11 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
   Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots,
-  coutRebirth, REBIRTH_MAX, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
+  coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS,
   SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
-import { itemIncome, rarityOf, prixDeRevente } from '../shared/loot-table'
+import { itemIncome, rarityOf, prixDeRevente, rarity } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
@@ -83,6 +83,10 @@ type Profil = {
   playedS?: number
   giftTaken?: boolean
   alerts?: object[]
+  /** Bought luck: every mutation's odds doubled until this instant. */
+  luckUntil?: number
+  /** What this player has fed the fusion machine so far, all of one rarity. */
+  fusion?: number[]
 }
 
 const bases = new Map<string, Base>()
@@ -844,6 +848,21 @@ export function removeGear(address: string, gear: number): boolean {
   return true
 }
 
+export function luckUntilOf(address: string): number { return profiles.get(address)?.luckUntil ?? 0 }
+export function setLuckUntil(address: string, until: number): void {
+  const p = profiles.get(address)
+  if (!p) return
+  p.luckUntil = until
+  dirtyProfiles.add(address)
+}
+export function fusionOf(address: string): number[] { return [...(profiles.get(address)?.fusion ?? [])] }
+export function setFusion(address: string, codes: number[]): void {
+  const p = profiles.get(address)
+  if (!p) return
+  p.fusion = codes
+  dirtyProfiles.add(address)
+}
+
 export function baseDe(address: string): Base | undefined { return bases.get(address) }
 
 /** Every base on the field, present owners and absent ones alike: what the records board ranks. */
@@ -873,20 +892,31 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   if (p.coins < exige.cost) return { ok: false, reason: `you need ${Math.ceil(exige.cost - p.coins)} more coins` }
 
   const pleins = p.items.filter((c) => c !== VIDE)
-  const meilleur = pleins.length === 0 ? -1 : Math.max(...pleins.map(rarityOf))
-  if (meilleur < exige.minRarity) {
-    return { ok: false, reason: `you need an item of rarity ${exige.minRarity} or better` }
+  /*
+    The rung's price in kind. The reference's rebirth "requires cash AND specific brainrots,
+    which are consumed"; ours names a rarity rather than a species, and CONSUMES the least
+    valuable item that meets it. Until 27 Aug the item was only checked, so prestige cost a
+    player nothing they could see leave, and the rarity gate was a formality.
+  */
+  const candidats = pleins
+    .filter((c) => rarityOf(c) >= exige.minRarity)
+    .sort((x, y) => itemIncome(x, INCOME_PER_RARITY) - itemIncome(y, INCOME_PER_RARITY))
+  if (candidats.length === 0) {
+    return { ok: false, reason: `you need a ${rarity(exige.minRarity).name} or better on your shelves: prestige consumes it` }
   }
 
   p.coins -= exige.cost
-  const tries = pleins.sort((a, b) => b - a)
+  const consomme = candidats[0]
+  const reste = [...pleins]
+  reste.splice(reste.indexOf(consomme), 1)
+  const tries = reste.sort((a, b) => b - a)
   p.items = tries.slice(0, exige.guard)
   p.rebirths = prestige + 1
   dirtyProfiles.add(address)
   const b = bases.get(address)
   if (b) { b.items = [...p.items]; dirtyBases.add(address); publish(b) }
   const et = openFloors(p.floorsBought ?? 0)
-  log(`${b?.name ?? address.slice(0, 8)} reached prestige ${p.rebirths}: -${exige.cost} coins, kept ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
+  log(`${b?.name ?? address.slice(0, 8)} reached prestige ${p.rebirths}: -${exige.cost} coins, consumed a ${rarity(rarityOf(consomme)).name}, kept ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
   return { ok: true, prestige: p.rebirths, multiplier: incomeMultiplier(p.rebirths) }
 }
 
@@ -1172,6 +1202,8 @@ export function startPlots(): void {
         rechargeSec: Math.ceil(lockCooldown(address) / 1000),
         canRecover: hasSomethingToRecover(address),
         coins: p.coins,
+        luckSec: Math.max(0, Math.ceil(((p.luckUntil ?? 0) - Date.now()) / 1000)),
+        luckPrice: prixLuck(prestige),
         nextPrestige: next ? next.cost : 0,
         prestige,
         minRarity: next ? next.minRarity : 0,
@@ -1188,6 +1220,7 @@ export function startPlots(): void {
       void room.send('inventory', { crates: [...(p.crates ?? [])] }, { to: [address] })
       void room.send('gearHeld', { counts: gearsOf(address) }, { to: [address] })
       void room.send('index', { vus: [...(p.vus ?? [])] }, { to: [address] })
+      void room.send('fusionState', { codes: [...(p.fusion ?? [])], made: -1 }, { to: [address] })
       pushQuests(address)
     }
   }, 1500)

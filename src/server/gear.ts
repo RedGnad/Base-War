@@ -2,14 +2,14 @@ import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, SENTRY_MIN_PRICE,
+  GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, MINE_FREEZE_MS, prixGear, prixLuck, LUCK_MS,
   Cloaked, CLOAK_MS, CLOAK_COOLDOWN_MS, Bomb, BOMB_FUSE_MS, BOMB_RADIUS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import {
-  displayName, presents, positionOf, spend, revenuParObjet, prestigeOf,
-  gearsOf, addGear, removeGear, storeAlert, baseDe
+  displayName, presents, positionOf, spend, prestigeOf,
+  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil
 } from './plots'
 import { portePour, frapperPorteur } from './carry'
 
@@ -22,14 +22,10 @@ import { portePour, frapperPorteur } from './carry'
  * count and a lifetime, so the floor never fills with old plates.
  */
 
-function prixGear(address: string, gear: number): number {
-  const g = GEARS[gear]
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(revenuParObjet(address) * g.itemSeconds))
-}
-
 function piegesPoses(address: string, gear: number): number {
   let n = 0
-  if (gear === 0) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address) n += 1
+  if (gear === 0) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address && !t.mine) n += 1
+  if (gear === 7) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address && t.mine) n += 1
   if (gear === 4) for (const [, b] of engine.getEntitiesWith(Bomb)) if (b.owner === address) n += 1
   return n
 }
@@ -78,7 +74,7 @@ export function startGear(): void {
       void room.send('actionRejected', { action: 'gear', reason: `you already have ${g.max} ${g.name.toLowerCase()}s out or in your pocket`, antiCheat: false }, { to: [a] })
       return
     }
-    const cost = prixGear(a, gear)
+    const cost = prixGear(gear)
     if (!spend(a, cost)) {
       void room.send('actionRejected', { action: 'gear', reason: `you need ${cost} coins`, antiCheat: false }, { to: [a] })
       return
@@ -111,11 +107,31 @@ export function startGear(): void {
       Bomb.create(e, { owner: a, atMs: Date.now() + BOMB_FUSE_MS })
       syncEntity(e, [Bomb.componentId, Transform.componentId])
     } else {
-      Trap.create(e, { owner: a, untilMs: Date.now() + TRAP_LIFETIME_MS })
+      Trap.create(e, { owner: a, untilMs: Date.now() + TRAP_LIFETIME_MS, mine: gear === 7 })
       syncEntity(e, [Trap.componentId, Transform.componentId])
     }
     void room.send('gearPlaced', { gear, held: gearsOf(a)[gear] }, { to: [a] })
     log(`${displayName(a)} set a ${g.name} at ${p.x.toFixed(1)},${p.z.toFixed(1)}`)
+  })
+
+  /*
+    Luck is a timer on the profile, and buying more adds to what is left rather than
+    restarting it: paying twice for the same quarter of an hour is the kind of thing a shop
+    does to a player who did not read the small print, and this one has none.
+  */
+  room.onMessage('buyLuck', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const cost = prixLuck(prestigeOf(a))
+    if (!spend(a, cost)) {
+      void room.send('actionRejected', { action: 'luck', reason: `you need ${cost} coins`, antiCheat: false }, { to: [a] })
+      return
+    }
+    const now = Date.now()
+    const until = Math.max(now, luckUntilOf(a)) + LUCK_MS
+    setLuckUntil(a, until)
+    void room.send('luckBought', { cost, sec: Math.ceil((until - now) / 1000) }, { to: [a] })
+    log(`${displayName(a)} bought x2 luck for ${cost}, ${Math.ceil((until - now) / 60000)} min left`)
   })
 
   room.onMessage('cloak', (_d, ctx) => {
@@ -190,19 +206,22 @@ export function startGear(): void {
       if (tr === null) continue
       for (const addr of ici) {
         if (addr === t.owner) continue
-        if (portePour(addr)) continue
+        // A plate catches them on the way in; a mine is the one placed thing that also
+        // catches them on the way out, because that is what it is sold for.
+        if (!t.mine && portePour(addr)) continue
         const p = positionOf(addr)
         if (p === null) continue
         const d = Math.sqrt((p.x - tr.position.x) ** 2 + (p.z - tr.position.z) ** 2)
         if (d > TRAP_TRIGGER_RANGE || Math.abs(p.y - tr.position.y) > 2) continue
-        const gel = TRAP_FREEZE_MS
+        const gel = t.mine ? MINE_FREEZE_MS : TRAP_FREEZE_MS
         engine.removeEntity(e)
         const proprio = baseDe(t.owner)?.name ?? displayName(t.owner)
-        void room.send('trapped', { ownerName: proprio, gelMs: gel }, { to: [addr] })
+        if (t.mine) frapperPorteur(addr, 5)
+        void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine }, { to: [addr] })
         const info = { type: 'trap', byName: displayName(addr) }
         if (ici.has(t.owner)) void room.send('trapSprung', { byName: displayName(addr) }, { to: [t.owner] })
         else storeAlert(t.owner, info)
-        log(`${displayName(addr)} stepped on ${proprio}'s trap`)
+        log(`${displayName(addr)} stepped on ${proprio}'s ${t.mine ? 'mine' : 'trap'}`)
         break
       }
     }

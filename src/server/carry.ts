@@ -39,6 +39,18 @@ export function porteQuoi(address: string): number | null {
   return Carried.getOrNull(e)?.code ?? null
 }
 
+/** What is in the hand and where it came from, for the callers that must know both. */
+export function porteDetail(address: string): { code: number; origin: string } | null {
+  const e = portes.get(address)
+  if (e === undefined) return null
+  const c = Carried.getOrNull(e)
+  return c === null ? null : { code: c.code, origin: c.origin }
+}
+/** Take the hand's content without a word: the caller is about to say what became of it. */
+export function prendreDesMains(address: string): { code: number; origin: string } | null {
+  return lacher(address)
+}
+
 export function portePour(address: string): boolean {
   return porteQuoi(address) !== null
 }

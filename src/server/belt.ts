@@ -3,12 +3,12 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE
+  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE, LUCK_MULT
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce } from './loot'
-import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe } from './plots'
+import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf } from './plots'
 import { remettreEnMain, portePour } from './carry'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
@@ -195,7 +195,7 @@ export function startBelt(): void {
     advanceQuest(a, 'ouvrir')
     if (d.crateTier >= 1) advanceQuest(a, 'ouvrirRare')
     const rarity = rollCrate(d.crateTier)
-    const mut = rollMutation(d.crateTier)
+    const mut = rollMutation(d.crateTier, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1)
     const code = encoder(rarity, mut)
     log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)}`)
     // Epic and above go on the board, the way the reference game's live board shows rare spawns only.

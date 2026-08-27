@@ -52,6 +52,9 @@ export function poserPiege(): void {
 export function acheterGear(gear: number): void {
   void room.send('buyGear', { gear })
 }
+export function acheterLuck(): void {
+  void room.send('buyLuck', {})
+}
 
 /** F, when nothing is drawn and a cloak is in the pocket. The server decides if it takes. */
 export function tirerLaCape(): boolean {
@@ -70,6 +73,8 @@ export function tirerLaCape(): boolean {
   because the exclusion list is what makes the trick work and the room changes.
 */
 const capes = new Map<number, Entity>()
+/** Cloaks this client has already announced seeing through, so the line is said once per cloak. */
+const vusParRayons = new Set<number>()
 
 export function setupGear(): void {
   marqueur = engine.addEntity()
@@ -90,7 +95,16 @@ export function setupGear(): void {
   })
   room.onMessage('trapped', (d) => {
     applyFreeze(d.gelMs)
-    alerter(`${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 5000)
+    alerter(d.mine
+      ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`
+      : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 5000)
+  })
+  room.onMessage('tased', (d) => {
+    applyFreeze(d.gelMs)
+    alerter(`${d.byName.toUpperCase()}'S TASER  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`, '#ff6b6b', 4000)
+  })
+  room.onMessage('luckBought', (d) => {
+    alerter(`LUCKY CHARM  ·  x2 on every mutation for ${Math.ceil(d.sec / 60)} min  ·  -${formatIncome(d.cost)}`, '#4dd2ff', 4000)
   })
   room.onMessage('bombed', (d) => {
     alerter(d.dropped
@@ -107,6 +121,9 @@ export function setupGear(): void {
     const vivants = new Set<number>()
     for (const [e, t] of engine.getEntitiesWith(Trap)) {
       const id = e as unknown as number
+      const mienne = t.owner.toLowerCase() === moi
+      // A mine is drawn for the one player who set it. To everyone else it is floor.
+      if (t.mine && !mienne) continue
       vivants.add(id)
       if (vues.has(id)) continue
       const tr = Transform.getOrNull(e)
@@ -114,10 +131,10 @@ export function setupGear(): void {
       const plaque = engine.addEntity()
       Transform.create(plaque, {
         position: Vector3.create(tr.position.x, tr.position.y + 0.04, tr.position.z),
-        scale: Vector3.create(1, 0.08, 1)
+        scale: t.mine ? Vector3.create(0.6, 0.05, 0.6) : Vector3.create(1, 0.08, 1)
       })
       MeshRenderer.setCylinder(plaque, 0.55, 0.55)
-      const teinte = t.owner.toLowerCase() === moi ? MIENNE : PLAQUE
+      const teinte = mienne ? MIENNE : PLAQUE
       Material.setPbrMaterial(plaque, plasticDe(teinte, 0.4))
       vues.set(id, plaque)
     }
@@ -149,11 +166,21 @@ export function setupGear(): void {
     }
     const capesVivantes = new Set<number>()
     gearView.cloaked = false
+    // X-ray glasses: somebody else's cloak hides nothing from THIS client. The volume that
+    // would hide them is simply never built here, and one already built comes down.
+    const rayonsX = gearView.held[6] > 0
     for (const [e, c] of engine.getEntitiesWith(Cloaked)) {
       const id = e as unknown as number
-      capesVivantes.add(id)
       const qui = c.who.toLowerCase()
       if (qui === moi) gearView.cloaked = true
+      if (rayonsX && qui !== moi) {
+        if (!vusParRayons.has(id)) {
+          vusParRayons.add(id)
+          alerter('X-RAY GLASSES  ·  a cloak is out, and you can see who is under it', '#4dd2ff', 3500)
+        }
+        continue
+      }
+      capesVivantes.add(id)
       let zone = capes.get(id)
       if (zone === undefined) {
         zone = engine.addEntity()

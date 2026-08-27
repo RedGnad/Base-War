@@ -2,7 +2,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
   DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
-  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS
+  SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -165,6 +165,26 @@ export function startCombat(): void {
     if (!a) return
     if (gearsOf(a)[2] <= 0) return
     frapper(a, d, SLAP_RANGE, SLAP_COOLDOWN_MS, true)
+  })
+
+  /*
+    The taser is a slap that also freezes. The target is resolved here first, with the same
+    function the hit uses, so the freeze goes to exactly the player the hit lands on; the
+    cooldown is checked here too, because a hit refused for cadence must not freeze anybody.
+  */
+  room.onMessage('taser', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    if (gearsOf(a)[5] <= 0) return
+    const now = Date.now()
+    if ((lastShot.get(a) ?? 0) + TASER_COOLDOWN_MS > now) return
+    const from = positionOf(a)
+    if (from === null) return
+    const best = cible(a, from, d, SLAP_RANGE)
+    frapper(a, d, SLAP_RANGE, TASER_COOLDOWN_MS, true)
+    if (best === null) return
+    void room.send('tased', { byName: displayName(a), gelMs: TASER_FREEZE_MS }, { to: [best.addr] })
+    log(`${displayName(a)} tased ${displayName(best.addr)}`)
   })
 
   // Pickup and decay.

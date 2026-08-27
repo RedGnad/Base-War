@@ -70,7 +70,8 @@ import { EVENT_WEIGHT } from '../shared/schemas'
 export let eventTheme = -1
 export function setEventTheme(theme: number): void { eventTheme = theme }
 
-export function rollMutation(crateId = 0): number {
+/** `luck` multiplies every mutation's weight but the plain one: 2 doubles the odds of any mutation. */
+export function rollMutation(crateId = 0, luck = 1): number {
   const c = crate(crateId)
   // The crate's own theme and the venue's event both push; a Lava crate during Lava Hour
   // stacks, which is the moment the belt is worth crossing the room for.
@@ -78,6 +79,7 @@ export function rollMutation(crateId = 0): number {
     let w = m.poids
     if (c.theme === m.id) w *= c.weight
     if (eventTheme === m.id) w *= EVENT_WEIGHT
+    if (m.id !== 0) w *= luck
     return w
   })
   const total = poids.reduce((a, b) => a + b, 0)

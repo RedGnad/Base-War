@@ -48,6 +48,7 @@ function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code
     case 'garde': return `${quand}  ${e.b}'s sentry stopped ${e.a} on floor ${e.code}`
     case 'don': return `${quand}  ${e.a} gave a toy to ${e.b}`
     case 'tirage': return `${quand}  ${e.a} pulled a ${objet}`
+    case 'fusion': return `${quand}  ${e.a} fused a ${objet}`
     default: return `${quand}  ${e.a}`
   }
 }

@@ -34,6 +34,8 @@ export const theftView = {
   alerteJusqua: 0,
   fil: [] as Array<{ t: string; jusqua: number }>,
   malusJusqua: 0,
+  luckSec: 0,
+  luckPrice: 0,
 }
 
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
@@ -185,6 +187,8 @@ export function setupTheft(): void {
     theftView.floorPrice = d.floorPrice
     theftView.rechargeSec = d.rechargeSec
     theftView.pending = d.pending
+    theftView.luckSec = d.luckSec
+    theftView.luckPrice = d.luckPrice
   })
 
   room.onMessage('rebirthDone', (d) => {

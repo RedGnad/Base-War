@@ -9,7 +9,7 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int, rechargeSec: Schemas.Int, pending: Schemas.Int, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ luckSec: Schemas.Int, luckPrice: Schemas.Int, coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int, rechargeSec: Schemas.Int, pending: Schemas.Int, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
@@ -92,11 +92,19 @@ export const MESSAGES = {
   gearBought: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int, cost: Schemas.Int }),
   gearPlaced: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int }),
   /** server -> the one who stepped on it. */
-  trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int }),
+  trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, mine: Schemas.Boolean }),
   /** server -> the owner, live or deferred. */
   trapSprung: Schemas.Map({ byName: Schemas.String }),
   /** client -> server: pull the cloak on. Server answers by writing the Cloaked component. */
   cloak: Schemas.Map({}),
+  taser: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
+  tased: Schemas.Map({ byName: Schemas.String, gelMs: Schemas.Int }),
+  buyLuck: Schemas.Map({}),
+  luckBought: Schemas.Map({ cost: Schemas.Int, sec: Schemas.Int }),
+  feedFusion: Schemas.Map({}),
+  /** The caller's own hopper, and the code just made out of it, or -1. */
+  fusionState: Schemas.Map({ codes: Schemas.Array(Schemas.Int), made: Schemas.Int }),
+  fused: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, code: Schemas.Int }),
   /** server -> everyone near a bomb that went off, with what it did to them. */
   bombed: Schemas.Map({ ownerName: Schemas.String, dropped: Schemas.Boolean }),
   /** Pockets, sent with the wallet: how many of each gear the player holds. */

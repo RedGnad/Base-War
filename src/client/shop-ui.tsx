@@ -2,9 +2,9 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
-import { formatIncome } from '../shared/loot-table'
-import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, SENTRY_MIN_PRICE } from '../shared/schemas'
-import { gearView, acheterGear, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
+import { formatIncome, RARITIES } from '../shared/loot-table'
+import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
+import { gearView, acheterGear, acheterLuck, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -102,14 +102,13 @@ const Rang = (props: {
   </UiEntity>
 )
 
-/** What a gear costs this base, mirroring the server: seconds of one item's output. */
-function prixGear(gear: number): number {
-  const parObjet = view.items === 0 ? 0 : theftView.income / view.items
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(parObjet * GEARS[gear].itemSeconds))
-}
+/** The gear rows in the order the ladder opens them, which is the order a player meets them. */
+const ECHELLE = [...GEARS].sort((a, b) => a.prestige - b.prestige || a.id - b.id)
 
-/** Four family headers and eight rows. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (5 + GEARS.length) * (RANG + ENTRE)
+function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+
+/** Four family headers, the fixed rows, the gear ladder and the charm. The window scrolls past the dialog cap. */
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (6 + GEARS.length) * (RANG + ENTRE)
 
 export const ShopContent = () => {
   if (!shopView.open) return null
@@ -165,7 +164,7 @@ export const ShopContent = () => {
         the E button at the player's feet rather than doing it from here.
       */}
       <Famille titre="GEAR" note="tools to steal with, or to catch thieves" />
-      {GEARS.map((g) => {
+      {ECHELLE.map((g) => {
         const prix = prixGear(g.id)
         const debloque = theftView.prestige >= g.prestige
         const held = gearView.held[g.id] ?? 0
@@ -186,11 +185,18 @@ export const ShopContent = () => {
             }} />
         )
       })}
+      {/* Luck is the one thing here that is bought by the quarter hour, so its row shows the clock. */}
+      <Rang key="luck"
+        titre={theftView.luckSec > 0 ? `LUCKY CHARM  ·  ${mmss(theftView.luckSec)} LEFT` : 'LUCKY CHARM'}
+        detail={`x2 odds on every mutation for ${Math.round(LUCK_MS / 60000)} min, adds to the time left`}
+        bouton="BUY" prix={theftView.luckPrice}
+        possible={theftView.luckPrice > 0 && argent >= theftView.luckPrice}
+        onClick={() => acheterLuck()} />
 
       <Famille titre="PRESTIGE" note="start over, earn more for good" />
       <Rang
         titre={`PRESTIGE ${theftView.prestige + 1}`}
-        detail={`x${prestige.multiplier} on everything you earn, keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
+        detail={`x${prestige.multiplier} on everything you earn  ·  eats one ${(RARITIES[prestige.minRarity]?.name ?? '').toUpperCase()}, keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
         bouton="OPEN" prix={palierPrestige}
         possible={palierPrestige > 0 && argent >= palierPrestige}
         onClick={() => { closeMenu(); openPrestige() }} />

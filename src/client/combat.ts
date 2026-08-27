@@ -9,7 +9,7 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS } from '../shared/schemas'
+import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS } from '../shared/schemas'
 import { gearView, tirerLaCape } from './gear'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
@@ -504,8 +504,15 @@ function viser(): void {
  * offset, and the reticle would stop telling the truth as soon as the player switched view.
  */
 /** Reach and rhythm of whatever is in hand, read in one place so reticle and shot agree. */
-function porteeArme(): number { return gearView.held[2] > 0 ? SLAP_RANGE : SHOT_RANGE }
-function cadenceArme(): number { return gearView.held[2] > 0 ? SLAP_COOLDOWN_MS : SHOT_COOLDOWN_MS }
+/** The best arm in the pocket decides: taser over slap over gun, the ladder's own order. */
+function armeEnMain(): 'taser' | 'slap' | 'shoot' {
+  return gearView.held[5] > 0 ? 'taser' : gearView.held[2] > 0 ? 'slap' : 'shoot'
+}
+function porteeArme(): number { return armeEnMain() === 'shoot' ? SHOT_RANGE : SLAP_RANGE }
+function cadenceArme(): number {
+  const arme = armeEnMain()
+  return arme === 'taser' ? TASER_COOLDOWN_MS : arme === 'slap' ? SLAP_COOLDOWN_MS : SHOT_COOLDOWN_MS
+}
 
 function tirer(now: number): boolean {
   if (dernierTir + cadenceArme() > now) return false
@@ -523,7 +530,7 @@ function tirer(now: number): boolean {
     asking is only ever a preference.
   */
   const portee = porteeArme()
-  void room.send(gearView.held[2] > 0 ? 'slap' : 'shoot', {
+  void room.send(armeEnMain(), {
     x: moiT.position.x + (f.x / plat) * portee,
     y: moiT.position.y,
     z: moiT.position.z + (f.z / plat) * portee

@@ -393,32 +393,48 @@ export function shieldFor(absenceMs: number): number {
   what turns prestige from a number into a door. Ours opens the same way.
 
   Each entry has one verb and one number, which is also the genre's rule: freeze 7 seconds, at
-  most five out at once, nothing permanent and nothing global. Prices are seconds of one item's
-  output, the same unit the defences use, so they scale with the shelves and not with a guess.
+  most five out at once, nothing permanent and nothing global.
+
+  PRICES ARE FIXED, AND THEY SIT ON THE PRESTIGE LADDER. That is the reference's own shape,
+  read from its shop and its rebirth table (wiki `Gears` and `Rebirth`, 27 Aug 2026): every
+  gear has one cash price and one rebirth that unlocks it, and the price is a small share of
+  the NEXT rebirth, the one its buyer is saving towards. Slap $500, Speed Coil $750 and Trap
+  $1K sit under a first rebirth of $500K; Iron Slap $2.5K under a second of $1.5M; Taser $100K
+  under a fourth of $35M; Invisibility Cloak $300K and Boogie Bomb $500K under a fifth of
+  $100M. Read as shares those are 0.10 to 0.50 percent, and `ratio` holds each gear's own.
+  Above the fifth rebirth the reference's shares collapse (Laser Cape $20M under $125B), an
+  artefact of a ladder that multiplies by ten a rung where ours cubes; those keep the median
+  of the first five tiers, 0.20 percent.
+
+  Priced this way the first coil is cheap, and it is cheap in the reference too: it is the
+  first purchase of the game, not its prize. What was wrong before was not the level, it was
+  the UNIT: a share of one item's output, which drifted with the shelves, so the same coil
+  cost 4K to a beginner and 1.7M to a veteran, and neither number had been chosen.
+
+  The last three are the reference's COUNTERS, at the reference's own rungs: the taser at 3
+  (a hit that freezes and opens the hands), the glasses at 9 (its Laser Cape, "x-ray vision",
+  sees through the cloak sold at 4), the mine at 14 (its Subspace Mine, invisible, "extra
+  defense on your best" items). A cloak has an answer, and the answer is five rungs above it.
 */
 export const GEARS = [
-  {
-    id: 0, name: 'TRAP', prestige: 0, itemSeconds: 240, max: 5, kind: 'place',
-    verb: 'freezes the first thief who steps on it, 7 s'
-  },
-  {
-    id: 1, name: 'SPEED COIL', prestige: 0, itemSeconds: 600, max: 1, kind: 'wear',
-    verb: 'run 50% faster, always on, off while carrying'
-  },
-  {
-    id: 2, name: 'SLAP', prestige: 1, itemSeconds: 900, max: 1, kind: 'wear',
-    verb: 'replaces the gun: short reach, full force every hit'
-  },
-  {
-    id: 3, name: 'CLOAK', prestige: 4, itemSeconds: 1800, max: 1, kind: 'toggle',
-    verb: 'invisible for 20 s, breaks the moment you touch loot'
-  },
-  {
-    id: 4, name: 'BOOGIE BOMB', prestige: 4, itemSeconds: 1200, max: 3, kind: 'place',
-    verb: 'everyone nearby drops what they carry, 3 s later'
-  }
+  { id: 0, name: 'TRAP', prestige: 0, ratio: 0.0020, max: 5, kind: 'place', verb: 'freezes the first thief who steps on it, 7 s' },
+  { id: 1, name: 'SPEED COIL', prestige: 0, ratio: 0.0015, max: 1, kind: 'wear', verb: 'run 50% faster, always on, off while carrying' },
+  { id: 2, name: 'SLAP', prestige: 1, ratio: 0.0017, max: 1, kind: 'wear', verb: 'replaces the gun: short reach, full force every hit' },
+  { id: 3, name: 'CLOAK', prestige: 4, ratio: 0.0030, max: 1, kind: 'toggle', verb: 'invisible for 20 s, breaks the moment you touch loot' },
+  { id: 4, name: 'BOOGIE BOMB', prestige: 4, ratio: 0.0050, max: 3, kind: 'place', verb: 'everyone nearby drops what they carry, 3 s later' },
+  { id: 5, name: 'TASER', prestige: 3, ratio: 0.0029, max: 1, kind: 'wear', verb: "replaces the gun: arm's reach, 3 s frozen, hands emptied" },
+  { id: 6, name: 'X-RAY GLASSES', prestige: 9, ratio: 0.0020, max: 1, kind: 'wear', verb: 'you see through every cloak' },
+  { id: 7, name: 'SUBSPACE MINE', prestige: 14, ratio: 0.0020, max: 2, kind: 'place', verb: 'invisible to all but you: 3 s frozen, hands emptied' }
 ] as const
 export type GearId = typeof GEARS[number]['id']
+/** Under this a price is a rounding error on the screen: the sentry floor, kept for the same reason. */
+export const GEAR_MIN_PRICE = 240
+/** One price per gear, the same on both sides: a share of the prestige after the one that unlocks it. */
+export function prixGear(gear: number): number {
+  const g = GEARS[gear]
+  if (g === undefined) return 0
+  return Math.max(GEAR_MIN_PRICE, Math.round(g.ratio * coutPrestige(g.prestige + 1)))
+}
 
 export const TRAP_FREEZE_MS = 7_000
 /*
@@ -435,6 +451,13 @@ export const COIL_SHARE = 1.5
 */
 export const SLAP_RANGE = 2.5
 export const SLAP_COOLDOWN_MS = 420
+/*
+  The taser is the slap's rung at prestige 3, and what it adds is the reference's own effect:
+  "stun enemies with a taser to fling them and return your Brainrots". A hit at arm's reach
+  freezes the target three seconds and opens their hands at full force.
+*/
+export const TASER_FREEZE_MS = 3_000
+export const TASER_COOLDOWN_MS = 900
 
 /*
   The cloak is a timed state, and the server owns it.
@@ -503,6 +526,17 @@ export const EVENT_MS = 5 * 60_000
 export const EVENT_GAP_MS = 15 * 60_000
 /** How hard the event pushes its mutation: the Lava crate's own weight, applied to every crate. */
 export const EVENT_WEIGHT = 60
+/*
+  Luck for sale, in coins. The reference sells 2x and 4x luck for fifteen minutes; ours
+  doubles the odds of every mutation for fifteen minutes and is priced like a gear of the
+  buyer's own tier, a share of the prestige they are saving towards.
+*/
+export const LUCK_MS = 15 * 60_000
+export const LUCK_MULT = 2
+export const LUCK_RATIO = 0.0020
+export function prixLuck(prestige: number): number {
+  return Math.max(GEAR_MIN_PRICE, Math.round(LUCK_RATIO * coutPrestige(Math.min(prestige, MAX_PRESTIGE - 1) + 1)))
+}
 /** Which mutations can headline an event, and the world colour each one brings. */
 /** Five minutes is a rush, not an hour: the tester read "HOUR" against the countdown and was right. */
 export const EVENT_THEMES = [
@@ -514,8 +548,11 @@ export const EVENT_THEMES = [
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
 export const Trap = engine.defineComponent('basetycoon::trap', {
   owner: Schemas.String,
-  untilMs: Schemas.Int64
+  untilMs: Schemas.Int64,
+  /** A mine: drawn for its owner only, fires on carriers too, and empties their hands. */
+  mine: Schemas.Boolean
 })
+export const MINE_FREEZE_MS = 3_000
 
 /** Traps expire, because a floor that fills with old plates is a floor nobody can cross. */
 export const TRAP_LIFETIME_MS = 30 * 60_000
@@ -877,6 +914,25 @@ export function rampPosition(floor: number): { dx: number; dy: number; dz: numbe
 export const SCENE_SIDE = 192
 export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
 
+/*
+  The fusion machine: three toys of one rarity go in, one of the rarity above comes out, with
+  its mutation rolled again. The reference has one (Fuse Machine); ours stands by the belt so
+  a base's Commons have somewhere to go besides the sell bin, and so what somebody just made
+  is seen being made. One entity, written by the server, showing the last hand that fed it.
+*/
+export const Fusion = engine.defineComponent('basetycoon::fusion', {
+  byName: Schemas.String,
+  rarity: Schemas.Int,
+  count: Schemas.Int,
+  lastName: Schemas.String,
+  lastCode: Schemas.Int,
+  atMs: Schemas.Int64
+})
+export const FUSION_NEEDS = 3
+export const FUSION_RANGE = 4.5
+/** Beside the records board, on the side of the belt away from the pit. */
+export const FUSION_POS = { x: CENTER.x - 9, z: CENTER.z - 7 }
+
 export const BEAT_MS = 2000
 export const BEAT_DEAD_AFTER_MS = BEAT_MS * 3
 
@@ -895,6 +951,7 @@ export function registerValidators(): void {
   Trap.validateBeforeChange(serverOnly)
   Event.validateBeforeChange(serverOnly)
   Records.validateBeforeChange(serverOnly)
+  Fusion.validateBeforeChange(serverOnly)
   Cloaked.validateBeforeChange(serverOnly)
   Bomb.validateBeforeChange(serverOnly)
   Loot.validateBeforeChange(serverOnly)

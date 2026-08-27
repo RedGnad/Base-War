@@ -23,7 +23,7 @@ let journal: Entree[] = []
 let sale = false
 let tableau: Entity | null = null
 
-export function noter(kind: 'vol' | 'garde' | 'don' | 'tirage', a: string, b: string, code: number): void {
+export function noter(kind: 'vol' | 'garde' | 'don' | 'tirage' | 'fusion', a: string, b: string, code: number): void {
   journal.push({ t: Date.now(), kind, a, b, code })
   if (journal.length > JOURNAL_KEPT) journal = journal.slice(-JOURNAL_KEPT)
   sale = true

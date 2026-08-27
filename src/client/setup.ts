@@ -12,6 +12,7 @@ import { setupPlots } from './plots'
 import { setupTheft, setAdresseClient } from './theft'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
+import { setupFusion } from './fusion'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
@@ -75,6 +76,7 @@ export function startClient(): void {
   setupLootUi()
   setupBelt()
   setupRecords()
+  setupFusion()
   setupSlots()
   setupConvoy()
   setupCombat()
