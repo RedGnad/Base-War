@@ -2,7 +2,8 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Btn } from './ui-kit'
-import { formatIncome, RARITIES } from '../shared/loot-table'
+import { formatIncome } from '../shared/loot-table'
+import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
 import { gearView, acheterGear, acheterLuck, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
 import { view } from './setup'
@@ -124,9 +125,11 @@ export const ShopContent = () => {
       <Famille titre="BUILD" note="more shelves, so more earns" />
       <Rang
         titre={etage > 0 ? '+1 FLOOR' : 'FLOORS MAXED'}
-        detail={etage > 0 ? 'six more slots, you keep everything' : `${MAX_FLOORS} floors is the cap`}
-        bouton="BUY" prix={etage}
-        possible={etage > 0 && argent >= etage}
+        detail={etage <= 0 ? `${MAX_FLOORS} floors is the cap`
+          : theftView.prestige < theftView.floorNeedsPrestige ? `opens at prestige ${theftView.floorNeedsPrestige}  ·  six more slots`
+          : 'six more slots, you keep everything'}
+        bouton={etage > 0 && theftView.prestige < theftView.floorNeedsPrestige ? 'LOCKED' : 'BUY'} prix={etage}
+        possible={etage > 0 && argent >= etage && theftView.prestige >= theftView.floorNeedsPrestige}
         onClick={() => { buyFloorFor(); closeMenu() }} />
 
       {/*
@@ -196,7 +199,7 @@ export const ShopContent = () => {
       <Famille titre="PRESTIGE" note="start over, earn more for good" />
       <Rang
         titre={`PRESTIGE ${theftView.prestige + 1}`}
-        detail={`x${prestige.multiplier} on everything you earn  ·  eats one ${(RARITIES[prestige.minRarity]?.name ?? '').toUpperCase()}, keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
+        detail={`x${prestige.multiplier} on everything you earn  ·  keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}, coins reset to ${formatIncome(palierPrestige * PRESTIGE_CASH_SHARE)}`}
         bouton="OPEN" prix={palierPrestige}
         possible={palierPrestige > 0 && argent >= palierPrestige}
         onClick={() => { closeMenu(); openPrestige() }} />

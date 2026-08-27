@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -13,6 +13,7 @@ import { log, flushLog } from './log'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
+import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
 const BASE_KEY = (a: string) => `base:${a}`
 const PLAYER_KEY = 'profile'
@@ -1008,7 +1009,8 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
     return { ok: false, reason: `you need a ${rarity(exige.minRarity).name} or better on your shelves: prestige consumes it` }
   }
 
-  p.coins -= exige.cost
+  // The purse resets to the reference's bonus: prestige is a restart, not a purchase.
+  p.coins = Math.round(exige.cost * PRESTIGE_CASH_SHARE)
   const consomme = candidats[0]
   const reste = [...pleins]
   reste.splice(reste.indexOf(consomme), 1)
@@ -1136,6 +1138,8 @@ export function buyFloorFor(address: string): { ok: boolean; reason?: string; fl
   const actuels = 1 + (p.floorsBought ?? 0)
   if (actuels >= MAX_FLOORS) return { ok: false, reason: 'max floors reached' }
   const cost = floorPrice(actuels + 1)
+  const palier = floorPrestigeRequired(actuels + 1)
+  if ((p.rebirths ?? 0) < palier) return { ok: false, reason: `floor ${actuels + 1} opens at prestige ${palier}` }
   if (p.coins < cost) return { ok: false, reason: `need ${Math.ceil(cost - p.coins)} more coins` }
 
   p.coins -= cost
@@ -1320,6 +1324,7 @@ export function startPlots(): void {
         luckPrice: prixLuck(prestige),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),
+        floorNeedsPrestige: floorPrestigeRequired(1 + (p.floorsBought ?? 0) + 1),
         prestige,
         minRarity: next ? next.minRarity : 0,
         // Sent so the button can know what the server already knows: prestige needs an item

@@ -6,6 +6,7 @@ import { Btn } from './ui-kit'
 import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
 import { prestigeTier, REBIRTH_MAX } from '../shared/schemas'
+import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
 export const prestigeView = { open: false }
 export function openPrestige(): void { prestigeView.open = true }
@@ -116,7 +117,7 @@ export const PrestigePanel = () => {
             value={`${theftView.prestigeEats >= 0 ? `your ${nomDuCode(theftView.prestigeEats)}` : `the ${(exige?.name ?? '').toUpperCase()}`} is eaten, you keep your best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}, every other item is gone`}
             fontSize={TYPE.label} color={C.bonus}
             uiTransform={{ width: '100%', height: 33 }} textAlign="middle-center" />
-          <Label value="your floors, sentries and crates all stay"
+          <Label value={`your coins reset to ${formatIncome(cout * PRESTIGE_CASH_SHARE)}  ·  floors, sentries, crates and gear stay`}
             fontSize={TYPE.label} color={C.dim}
             uiTransform={{ width: '100%', height: 33 }} textAlign="middle-center" />
         </UiEntity>
