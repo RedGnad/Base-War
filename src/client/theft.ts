@@ -43,6 +43,7 @@ export const theftView = {
 let sonneur = 0 as unknown as ReturnType<typeof engine.addEntity>
 
 const file: Array<{ t: string; c: string; ms: number }> = []
+let derniereAnnonceHL = 0
 /**
  * For what arrives in a burst, or behind a screen: shown one after another, each for its
  * full time, once the HUD is back. The join answers with the offline sum, the day's crate
@@ -207,6 +208,12 @@ export function setupTheft(): void {
     theftView.pending = d.pending
     theftView.luckSec = d.luckSec
     theftView.luckPrice = d.luckPrice
+    // The offline sum, read off the tick and said once per cash-in (see the server's wallet tick).
+    if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
+      derniereAnnonceHL = d.offlineAt
+      const min = Math.max(1, Math.round(d.offlineSec / 60))
+      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away`, '#ffd166', 9000)
+    }
   })
 
   room.onMessage('rebirthDone', (d) => {
@@ -225,10 +232,10 @@ export function setupTheft(): void {
     alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)
   })
 
+  // The join-time message can arrive before this handler exists; the wallet tick carries the
+  // same fact until it is shown, so this only logs.
   room.onMessage('offlineEarnings', (d) => {
-    const min = Math.round(d.seconds / 60)
-    alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.gain)} coins earned in ${min} min away`, '#ffd166', 9000)
-    console.log(`[CLIENT] offline: +${d.gain} over ${min} min`)
+    console.log(`[CLIENT] offline: +${d.gain} over ${Math.round(d.seconds / 60)} min`)
   })
 
   room.onMessage('dailyReward', (d) => {

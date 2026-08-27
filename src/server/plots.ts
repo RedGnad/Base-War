@@ -90,6 +90,8 @@ type Profil = {
   alerts?: object[]
   /** The base skin chosen in the Index, a mutation id, 0 for none. */
   skin?: number
+  /** The last offline sum cashed, carried in the wallet tick for a while so a late client still hears it. */
+  annonceHL?: { gain: number; seconds: number; at: number }
   /** Bought luck: every mutation's odds doubled until this instant. */
   luckUntil?: number
   /** What this player has fed the fusion machine so far, all of one rarity. */
@@ -1137,7 +1139,7 @@ export function cashOfflineEarnings(address: string): { gain: number; seconds: n
   const p = profiles.get(address)
   if (!p || p.vuA === undefined) return null
   const elapsed = Math.min(Date.now() - p.vuA, OFFLINE_CAP_MS)
-  if (elapsed < 60_000) return null          // least d'une minute: rien a annoncer
+  if (elapsed < 30_000) return null          // under half a minute: nothing to announce
 
   let perSecond = 0
   for (const code of p.items) if (code !== VIDE) perSecond += itemIncome(code, INCOME_PER_RARITY)
@@ -1150,6 +1152,7 @@ export function cashOfflineEarnings(address: string): { gain: number; seconds: n
   if (gain <= 0) return null
   p.coins += gain
   p.vuA = Date.now()
+  p.annonceHL = { gain, seconds: Math.floor(elapsed / 1000), at: Date.now() }
   dirtyProfiles.add(address)
   log(`${nameOf(address)} cashed ${gain} offline (${Math.round(elapsed / 60000)} min at ${Math.round(OFFLINE_RATE * 100)}%)`)
   return { gain, seconds: Math.floor(elapsed / 1000) }
@@ -1284,6 +1287,16 @@ export function startPlots(): void {
         canRecover: hasSomethingToRecover(address),
         coins: p.coins,
         luckSec: Math.max(0, Math.ceil(((p.luckUntil ?? 0) - Date.now()) / 1000)),
+        /*
+          The offline sum rides the wallet tick for three minutes rather than one message at
+          the join: the server sees the avatar the moment the client joins the room, and a
+          message sent then can land before the scene's handlers exist (tester, 27 Aug, twice:
+          "still no welcome back"). A fact repeated every tick until acknowledged by time
+          cannot be missed; the client shows it once, keyed on `offlineAt`.
+        */
+        offlineGain: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.gain : 0,
+        offlineSec: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.seconds : 0,
+        offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
         luckPrice: prixLuck(prestige),
         nextPrestige: next ? next.cost : 0,
         prestige,

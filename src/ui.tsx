@@ -15,7 +15,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
-import { ligneDuBandeau } from './client/events'
+import { ligneDuBandeau, prochainGrandTexte } from './client/events'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
@@ -163,7 +163,7 @@ const MENU_W = 1088
  * pixels apart, which reads as one panel that has split rather than two panels. One place
  * decides, and it leaves a real gap.
  */
-const COIN_H = [52, 52, 62]
+const COIN_H = [52, 52, 40, 62]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
 const FIL_LIGNE = 26
 const COIN_GAP = 14
@@ -171,7 +171,8 @@ const COIN_GAP = 14
 function coinDroit(rang: number): number {
   const present = [
     tutoView.etape < tutoView.total,
-    cadeauView.leftS > 0
+    cadeauView.leftS > 0,
+    prochainGrandTexte() !== null
   ]
   let y = BAND.top
   for (let i = 0; i < rang; i++) if (present[i] === true) y += COIN_H[i] + COIN_GAP
@@ -951,6 +952,21 @@ const uiComponent = () => {
       whether an element WASTES the screen. Neither asks whether it EARNS it by showing
       progress towards something wanted. This one fails the first two and passes the third.
     */}
+    {/* The next grand rush, as a chip: a standing fact, not an announcement. */}
+    {hud() && prochainGrandTexte() !== null && (
+      <UiEntity
+        uiTransform={{
+          height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
+          position: { top: coinDroit(2), right: COIN_HAUT_DROIT },
+          flexDirection: 'row', alignItems: 'center'
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label value={prochainGrandTexte() ?? ''} fontSize={TYPE.caption}
+          color={Color4.fromHexString('#ffd166ff')} textWrap="nowrap" />
+      </UiEntity>
+    )}
+
     {hud() && cadeauView.leftS > 0 && (
       <UiEntity
         uiTransform={{
@@ -997,7 +1013,7 @@ const uiComponent = () => {
             three, and centring lines of different lengths turned a list into a shape.
           */
           width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
-          position: { top: coinDroit(2), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(3), right: COIN_HAUT_DROIT },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
@@ -1118,15 +1134,16 @@ const uiComponent = () => {
     {hud() && theftView.alert !== '' && (
       <UiEntity
         uiTransform={{
-          width: strip(900).width,
-          height: 70 + (theftView.alert.split('\n').length - 1) * Math.round(TYPE.title * 1.35),
+          width: strip(820).width,
+          height: 58 + (theftView.alert.split('\n').length - 1) * Math.round(TYPE.body * 1.35),
           positionType: 'absolute',
-          position: { top: '42%', left: '50%' }, margin: strip(900).margin,
+          // Above the middle, at body size: it must be read, not stood in front of (tester, 27 Aug).
+          position: { top: '28%', left: '50%' }, margin: strip(820).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
       >
-        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.title} textAlign="middle-center"
+        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.body} textAlign="middle-center"
           color={Color4.fromHexString(theftView.alertColor + 'ff')} />
       </UiEntity>
     )}

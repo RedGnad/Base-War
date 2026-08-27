@@ -21,16 +21,23 @@ import { plastic, TOY } from './toy'
  */
 export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, grand: false, nextGrandS: 0 }
 
-/** The band's one line: the rush running, or the grand one coming within the hour, or nothing. */
+const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+/** The band's one line: the rush RUNNING, or nothing. A rush lasts minutes and earns the centre. */
 export function ligneDuBandeau(): { text: string; color: string } | null {
-  const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-  if (eventView.theme >= 0) {
-    return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }
-  }
-  if (eventView.nextGrandS > 0 && eventView.nextGrandS <= 3600) {
-    return { text: `GRAND RUSH IN ${mmss(eventView.nextGrandS)}   ·   double belt, a crate for being here`, color: '#ffd166' }
-  }
-  return null
+  if (eventView.theme < 0) return null
+  return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }
+}
+
+/**
+ * The countdown to the grand rush, for a small chip in the corner. It can stand for an hour,
+ * and an hour in the middle of the screen is furniture (tester, 27 Aug): it goes where the
+ * other standing facts go, under the money, at caption size.
+ */
+export function prochainGrandTexte(): string | null {
+  if (eventView.theme >= 0) return null
+  if (eventView.nextGrandS <= 0 || eventView.nextGrandS > 3600) return null
+  return `GRAND RUSH IN ${mmss(eventView.nextGrandS)}`
 }
 
 /**
