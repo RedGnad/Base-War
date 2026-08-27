@@ -1,4 +1,5 @@
-import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource } from '@dcl/sdk/ecs'
+import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { crate, mutation } from '../shared/loot-table'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
 
@@ -341,6 +342,7 @@ export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, nu
  */
 export function demolir(parent: Entity): void {
   effacerForme(parent)
+  effacerCaisse(parent)
   effacerSocle(parent)
   effacerLumiere(parent)
   demonter(parent)
@@ -352,6 +354,66 @@ export function effacerForme(parent: Entity): void {
   if (cur === undefined) return
   for (const e of cur.parts) engine.removeEntity(e)
   formes.delete(parent)
+}
+
+/*
+ * A crate is a lidded box with straps, and the lid is what glows.
+ *
+ * Crates were plain cubes in three places (the belt, the convoy, the smash in front of the
+ * player), each drawn by its own code, each a cube with one emissive tint. A cube says
+ * nothing about being a container, and nothing about what is inside. This is the one crate:
+ * a body in the tier's plastic, two straps, a latch, and a lid that glows harder as the tier
+ * rises and floats a few centimetres, so a crate on the belt reads as alive from across the
+ * plaza. A themed crate (Gold, Lava, Cursed) wears its mutation as glowing straps: the thing
+ * it is likely to yield is written on it. Rare and above, and every themed crate, also throw
+ * a light on the belt. `chauffe` is how far along a smash it is: the whole crate heats up.
+ * The artist's `crate-<id>.glb` replaces all of it through the same mount as the toys.
+ */
+type Caisse = { parts: Entity[]; crateId: number }
+const caisses = new Map<Entity, Caisse>()
+
+export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
+  const c = crate(crateId)
+  const theme = c.theme >= 0 ? mutation(c.theme).color : null
+  let k = caisses.get(racine)
+  if (k !== undefined && k.crateId !== crateId) { effacerCaisse(racine); k = undefined }
+  if (k === undefined) {
+    const V = Vector3.create
+    const parts = [
+      part(racine, V(0, -0.11, 0), V(1, 0.78, 1), 'box'),          // body
+      part(racine, V(0, -0.11, 0), V(1.04, 0.16, 1.04), 'box'),    // strap around
+      part(racine, V(0, -0.11, 0), V(0.16, 0.8, 1.04), 'box'),     // strap over
+      part(racine, V(0, 0.39, 0), V(1.12, 0.22, 1.12), 'box'),     // lid
+      part(racine, V(0, 0.16, 0.53), V(0.2, 0.2, 0.06), 'box')     // latch
+    ]
+    k = { parts, crateId }
+    caisses.set(racine, k)
+    // The root is a container now; its own box would sit inside the crate.
+    if (MeshRenderer.has(racine)) MeshRenderer.deleteFrom(racine)
+    // The lid breathes: six centimetres up and back, for ever. A child's Move tween is local.
+    Tween.setMove(parts[3], V(0, 0.39, 0), V(0, 0.45, 0), 900, EasingFunction.EF_EASESINE)
+    TweenSequence.create(parts[3], { sequence: [], loop: TweenLoop.TL_YOYO })
+  }
+  const [corps, sangleH, sangleV, couvercle, loquet] = k.parts
+  const base = Color4.fromHexString(c.color + 'ff')
+  Material.setPbrMaterial(corps, plastic(c.color, chauffe * 1.2))
+  Material.setPbrMaterial(couvercle, plastic(c.color, 0.5 + c.tier * 0.45 + chauffe * 1.6))
+  const sangle = theme === null
+    ? plasticDe(Color4.create(base.r * 0.55, base.g * 0.55, base.b * 0.55, 1))
+    : plastic(theme, 1.2 + chauffe)
+  Material.setPbrMaterial(sangleH, sangle)
+  Material.setPbrMaterial(sangleV, sangle)
+  Material.setPbrMaterial(loquet, plastic(TOY.wallCream))
+  remonter(racine, `crate-${crateId}.glb`)
+  const eclaire = c.tier >= 2 || theme !== null
+  lumiereDuJouet(racine, eclaire ? (theme ?? c.color) : null, 0.6 + c.tier * 0.4)
+}
+
+export function effacerCaisse(racine: Entity): void {
+  const k = caisses.get(racine)
+  if (k === undefined) return
+  for (const e of k.parts) engine.removeEntity(e)
+  caisses.delete(racine)
 }
 
 export function setupToy(): void {

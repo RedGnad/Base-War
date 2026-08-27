@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe } from './toy'
+import { TOY, plastic, caisse, demolir } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType
@@ -152,11 +152,13 @@ export function setupBelt(): void {
         const racine = engine.addEntity()
         Transform.create(racine, { position: Vector3.create(p0.x, p0.y, p0.z) })
 
+        // Standing ON the belt: the root rides at the belt's reference height, the crate's
+        // bottom face sits on the tread, and the labels stack above whatever its size is.
         const item = engine.addEntity()
-        Transform.create(item, { parent: racine, scale: Vector3.create(r.size, r.size, r.size) })
-        MeshRenderer.setBox(item)
+        Transform.create(item, { parent: racine, position: Vector3.create(0, r.size / 2 - 0.27, 0), scale: Vector3.create(r.size, r.size, r.size) })
         MeshCollider.setBox(item)
-        Material.setPbrMaterial(item, plasticDe(c, 0.6))
+        caisse(item, b.crateTier)
+        const haut = r.size - 0.27
         PointerEvents.create(item, {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${ligneDeCaisse(b.crateTier)}` } }
@@ -164,17 +166,17 @@ export function setupBelt(): void {
         })
 
         const label = engine.addEntity()
-        Transform.create(label, { parent: racine, position: Vector3.create(0, 1.24, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(label, { parent: racine, position: Vector3.create(0, haut + 0.92, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(label, { text: formatIncome(b.price), fontSize: 4.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
         const nom = engine.addEntity()
-        Transform.create(nom, { parent: racine, position: Vector3.create(0, 0.86, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(nom, { parent: racine, position: Vector3.create(0, haut + 0.56, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(nom, { text: r.name, fontSize: 3, textColor: c, outlineWidth: 0.22, outlineColor: NOIR })
 
         const rendement = engine.addEntity()
-        Transform.create(rendement, { parent: racine, position: Vector3.create(0, 0.58, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+        Transform.create(rendement, { parent: racine, position: Vector3.create(0, haut + 0.28, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(rendement, { text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
@@ -205,6 +207,8 @@ export function setupBelt(): void {
 
     for (const [id, v] of views) {
       if (vivants.has(id)) continue
+      // The crate's parts, light and mount are the toy module's; it takes them down itself.
+      demolir(v.item)
       engine.removeEntityWithChildren(v.racine)
       views.delete(id)
     }

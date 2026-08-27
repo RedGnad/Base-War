@@ -1,6 +1,6 @@
-import { plasticDe } from './toy'
+import { caisse, demolir } from './toy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity,
+  engine, Transform, MeshCollider, TextShape, Billboard, BillboardMode, Entity,
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
@@ -35,9 +35,8 @@ export function setupConvoy(): void {
       if (v === undefined) {
         const body = engine.addEntity()
         Transform.create(body, { position: Vector3.create(0, -5, 0), scale: Vector3.create(b.size, b.size, b.size) })
-        MeshRenderer.setBox(body)
         MeshCollider.setBox(body)
-        Material.setPbrMaterial(body, plasticDe(color, 0.6))
+        caisse(body, c.crateTier)
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
@@ -52,9 +51,10 @@ export function setupConvoy(): void {
       const x = c.departX + (c.cibleX - c.departX) * k
       const z = c.departZ + (c.cibleZ - c.departZ) * k
       const tc = Transform.getMutableOrNull(v.body)
-      if (tc !== null) tc.position = Vector3.create(x, 1.0, z)
+      // Carried half a metre off the ground whatever its size, the label riding above it.
+      if (tc !== null) tc.position = Vector3.create(x, 0.5 + b.size / 2, z)
       const te = Transform.getMutableOrNull(v.label)
-      if (te !== null) te.position = Vector3.create(x, 2.0, z)
+      if (te !== null) te.position = Vector3.create(x, 0.5 + b.size + 0.6, z)
 
       const mine = c.owner.toLowerCase() === monAdresseClient()
       const price = Math.ceil(c.pricePaid * CONVOY_OUTBID)
@@ -85,7 +85,7 @@ export function setupConvoy(): void {
 
     for (const [id, v] of [...views]) {
       if (vivants.has(id)) continue
-      engine.removeEntity(v.body)
+      demolir(v.body)
       engine.removeEntity(v.label)
       views.delete(id)
     }

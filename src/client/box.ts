@@ -1,4 +1,4 @@
-import { plasticDe } from './toy'
+import { plasticDe, caisse } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
   InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers
@@ -86,7 +86,6 @@ export function setupBox(): void {
 
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
-  MeshRenderer.setBox(crateMesh)
   MeshCollider.setBox(crateMesh)
   PointerEvents.create(crateMesh, {
     pointerEvents: [
@@ -156,13 +155,8 @@ export function setupBox(): void {
         })
         jouer(sonCoup)
 
-        const usure = boxView.coups / COUPS
-        // The crate heats up as it is hit: the darkening albedo is what makes that readable.
-        Material.setPbrMaterial(crateMesh, {
-          ...plasticDe(Color4.fromHexString(b.color + 'ff'), 0.4 + usure * 1.6),
-          metallic: 0.5,
-          roughness: 0.4
-        })
+        // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
+        caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS)
 
         if (boxView.coups >= COUPS) {
           boxView.opening = false
@@ -370,12 +364,12 @@ export function openCrate(crateTier: number): void {
 
   const t = Transform.getMutableOrNull(crateMesh)
   if (t !== null) {
-    t.position = Vector3.create(p.position.x + ux * 2, p.position.y + 0.9, p.position.z + uz * 2)
+    // On the floor of the storey the player stands on, two metres ahead, turned a little.
+    t.position = Vector3.create(p.position.x + ux * 2, p.position.y + b.size / 2 + 0.02, p.position.z + uz * 2)
     t.scale = Vector3.create(b.size, b.size, b.size)
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }
-  const c = Color4.fromHexString(b.color + 'ff')
-  Material.setPbrMaterial(crateMesh, plasticDe(c, 0.4))
+  caisse(crateMesh, crateTier)
 }
 
 export function openBestCrate(): void {
