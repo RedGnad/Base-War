@@ -374,7 +374,10 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   }
   // A crate on the floor in front of you is smashed with the same button as everything else,
   // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.
-  if (boxView.opening) return { label: 'SMASH', icon: 'icon-crate', action: frapper }
+  // And while that crate is in flight, result, reel or landing, the button offers nothing at
+  // all: a fourth press in a rhythm used to open a second crate under the first one's reel.
+  if (boxView.phase === 'smash') return { label: 'SMASH', icon: 'icon-crate', action: frapper }
+  if (boxView.phase !== 'idle') return null
   /*
     Hands first, because full hands are the loudest fact about your situation.
 

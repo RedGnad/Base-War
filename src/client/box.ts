@@ -9,14 +9,30 @@ import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
 import { rarity, crate, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
+import { carryView } from './carry'
 import { envoyerOuAttendre } from './intent'
 
 let monAdresse = ''
 
 const COUPS = 3
 
+/**
+ * One crate at a time, from the floor to your hand.
+ *
+ * `opening` and `roule` were two booleans, and between them were gaps: after the third blow
+ * and before the server answered, and after the reel stopped and before the item landed in
+ * the hand, neither was set, so the action button offered OPEN again and a fourth press in a
+ * rhythm put a second crate on the floor under the first one's reel. The server refused the
+ * second opening, the crate burst into nothing, and the player saw a bug. One phase now, and
+ * the interface offers nothing but SMASH while a crate is in flight, whatever the phase.
+ */
+export type PhaseCaisse = 'idle' | 'smash' | 'wait' | 'roll' | 'land'
+
 export const boxView = {
   stock: [] as number[],
+  phase: 'idle' as PhaseCaisse,
+  /** When a phase that waits on something gives up and returns to idle. */
+  phaseJusqua: 0,
   opening: false,
   coups: 0,
   typeEnCours: 0,
@@ -120,6 +136,7 @@ export function setupBox(): void {
   })
 
   room.onMessage('boxResult', (d) => {
+    boxView.phase = 'roll'
     boxView.roule = true
     boxView.resultat = d.rarity
     boxView.resultatMutation = d.mutation
@@ -153,6 +170,8 @@ export function setupBox(): void {
       if (pas !== boxView.dernierPas) { boxView.dernierPas = pas; jouer(sonTic) }
       if (left <= 0) {
         boxView.roule = false
+        boxView.phase = 'land'
+        boxView.phaseJusqua = Date.now() + 5000
         boxView.progres = REEL_WIN
         boxView.gagneA = Date.now()
         jouer(sonReveal)
@@ -163,6 +182,12 @@ export function setupBox(): void {
       boxView.resultat = -1
       boxView.message = ''
     }
+
+    // The two waits end on what they wait for, or on a timeout when it never comes: the
+    // server refusing the opening, or the item not reaching the hand.
+    const now = Date.now()
+    if (boxView.phase === 'wait' && now > boxView.phaseJusqua) boxView.phase = 'idle'
+    if (boxView.phase === 'land' && (carryView.code >= 0 || now > boxView.phaseJusqua)) boxView.phase = 'idle'
   })
 }
 
@@ -187,6 +212,8 @@ export function frapper(): void {
 
   if (boxView.coups >= COUPS) {
     boxView.opening = false
+    boxView.phase = 'wait'
+    boxView.phaseJusqua = Date.now() + 6000
     const t = Transform.getOrNull(crateMesh)
     if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
     storeCrate()
@@ -324,7 +351,7 @@ export function peutOuvrirIci(): boolean {
  * base, so the thing they walked home is the thing they break open.
  */
 export function openCrate(crateTier: number): void {
-  if (boxView.opening || boxView.roule) return
+  if (boxView.phase !== 'idle') return
   if (!boxView.stock.includes(crateTier)) return
   if (!Transform.has(engine.PlayerEntity)) return
 
@@ -345,6 +372,7 @@ export function openCrate(crateTier: number): void {
   const p = Transform.get(engine.PlayerEntity)
   const b = crate(crateTier)
 
+  boxView.phase = 'smash'
   boxView.opening = true
   boxView.coups = 0
   boxView.typeEnCours = crateTier
