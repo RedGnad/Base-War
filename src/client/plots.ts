@@ -7,7 +7,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, PLACE_RANGE, slotPosition, VIDE, occupe,
+  Plot, PLOT_MAX_ITEMS, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe,
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
 } from '../shared/schemas'
 import {
@@ -55,6 +55,8 @@ const VERT = Color4.fromHexString(HUE.money + 'ff')
 const GRIS = TOY.post
 const GRIS_CLAIR = TOY.lintel
 const FLOOR_COLOR = TOY.slab
+/** Air between a toy's underside and the slab it stands on. */
+const JEU = 0.02
 
 /**
  * The size every piece was built at, so showing and hiding never has to restate it.
@@ -98,7 +100,7 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   const h = WALL_HEIGHT
   const ep = WALL_THICKNESS
 
-  const floorSlab = bloc(x - STAIRWELL_WIDTH / 2, y + 0.12, z, c - STAIRWELL_WIDTH, 0.24, c, FLOOR_COLOR)
+  const floorSlab = bloc(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
   const walls: Entity[] = [
     vitre(x, y + h / 2, z - c / 2, c, h, ep),                            // fond
     vitre(x - c / 2, y + h / 2, z, ep, h, c),                            // gauche
@@ -158,8 +160,8 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   */
   const course = RAMP_LENGTH * Math.cos((RAMP_ANGLE * Math.PI) / 180)
   const landing = bloc(
-    x + r.dx, y + FLOOR_HEIGHT + 0.12, z + r.dz + course / 2 + 1.2,
-    STAIRWELL_WIDTH, 0.24, 2.4, FLOOR_COLOR
+    x + r.dx, y + FLOOR_HEIGHT + SLAB_THICKNESS / 2, z + r.dz + course / 2 + 1.2,
+    STAIRWELL_WIDTH, SLAB_THICKNESS, 2.4, FLOOR_COLOR
   )
 
   const RAIL_HEIGHT = 1.1
@@ -662,8 +664,9 @@ export function setupPlots(): void {
         const r = rarity(rarityOf(code))
         const m = mutation(mutationDe(code))
         const size = r.size * (m.mult > 1 ? 1.12 : 1)
-        // Sat ON the slab: the centre rises with half the size, so a big toy stands rather than sinks.
-        tr.position = Vector3.create(t.position.x + d.dx, d.dy - 0.45 + 0.12 + size / 2, t.position.z + d.dz)
+        // `dy` is the slab's top face. The toy's centre is half its size above it, plus a hair,
+        // so its underside (and the halo's) never shares a plane with the floor.
+        tr.position = Vector3.create(t.position.x + d.dx, d.dy + JEU + size / 2, t.position.z + d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const hex = itemColor(rarityOf(code), mutationDe(code))

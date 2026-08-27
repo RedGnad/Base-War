@@ -40,6 +40,7 @@ const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
 const VERT = Color4.create(0.35, 0.95, 0.45, 0.42)
 let marqueur: Entity
 let cibleIndex = -1
+const MARQUEUR = 0.62
 
 export function setupCarry(): void {
   marqueur = engine.addEntity()
@@ -59,8 +60,9 @@ export function setupCarry(): void {
       return
     }
     cibleIndex = cible.index
-    t.position = Vector3.create(cible.pos.x, cible.pos.y, cible.pos.z)
-    t.scale = Vector3.create(0.62, 0.62, 0.62)
+    // The target is a point ON the slab; the marker is a box, so its centre sits half a box above it.
+    t.position = Vector3.create(cible.pos.x, cible.pos.y + MARQUEUR / 2, cible.pos.z)
+    t.scale = Vector3.create(MARQUEUR, MARQUEUR, MARQUEUR)
   })
 
   room.onMessage('carryResult', (d) => {

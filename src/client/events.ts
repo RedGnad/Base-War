@@ -3,7 +3,7 @@ import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation } from '../shared/loot-table'
 import { alerter } from './theft'
-import { plastic } from './toy'
+import { plastic, vif } from './toy'
 
 /**
  * What an event looks like, which is the part that makes it one.
@@ -37,8 +37,10 @@ export function materiauDuSol(hex: string): PBMaterial_PbrMaterial { return { ..
   A tint is a change the eye adapts to in seconds; motion is not. During an event the floor
   takes a cracked-crust texture that slides slowly, tinted by the theme (the albedo colour
   multiplies the image), so one grey image is molten gold in Gold Hour and lava in Lava Hour.
-  Eight-metre cells across the venue. Both states write both facts, material and tween, so an
-  event that ended leaves neither behind.
+  The tint is the mutation's own hue pushed to full brightness: the first version used dark
+  tints meant for a flat floor, and under the dusk sky the whole venue read as black with
+  faint veins. Eight-metre cells across the venue. Both states write both facts, material and
+  tween, so an event that ended leaves neither behind.
 */
 const MAILLE_SOL = 8
 
@@ -77,7 +79,7 @@ export function setupEvents(): void {
             wrapMode: TextureWrapMode.TWM_REPEAT,
             tiling: Vector2.create(SCENE_SIDE / MAILLE_SOL, SCENE_SIDE / MAILLE_SOL)
           }),
-          albedoColor: Color4.fromHexString(t.sol),
+          albedoColor: vif(mutation(theme).color),
           metallic: 0,
           roughness: 0.95
         })

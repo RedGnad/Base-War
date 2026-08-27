@@ -158,17 +158,23 @@ export function demonter(primitive: Entity): void {
 /**
  * Seven toys from four primitives, until the artist's models arrive.
  *
- * The engine draws boxes, spheres, planes and cylinders, and a cylinder with different top
- * and bottom radii is a cone or a spinning top. Two children under a unit-cube parent, each a
- * flat plastic, give every rarity its own silhouette readable from across the plaza:
+ * The engine draws boxes, spheres, planes and cylinders, and a cylinder with a zero top radius
+ * is a cone, point up. Two children under a unit-cube parent, each a flat plastic, give every
+ * rarity its own silhouette readable from across the plaza:
  *
  *   Common     a marble, plain sphere
- *   Uncommon   a die: a cube with a smaller cube sat on it, like stacked blocks
- *   Rare       a spinning top: cone on a disc
+ *   Uncommon   stacked blocks: a cube with a smaller cube sat on it
+ *   Rare       a party hat on a plate: cone on a disc
  *   Epic       a rocket: cylinder with a cone nose
- *   Legendary  a trophy: cone cup on a stem
- *   Mythic     a crystal: two cones point to point
+ *   Legendary  a tree: wide cone on a stem
+ *   Mythic     a pagoda: two cones stacked
  *   Secret     a star: sphere with a wide flat ring
+ *
+ * Every part stays INSIDE the unit cube, y from -0.5 to 0.5. The pedestal puts the cube's
+ * bottom face on the slab, so anything below -0.5 is inside the floor, and on a storey above
+ * it hangs out through the ceiling of the room underneath: the tester saw the stem of a
+ * Legendary and the base of an Epic as coloured pucks on his ground-floor ceiling. The same
+ * rule is the artist's contract in assets/toy/README.md, so a model and its stand-in agree.
  *
  * All parts are children of the pedestal entity at unit scale, so the pedestal's own scale
  * (rarity, mutation) sizes the whole toy, and `montable()` still swaps the lot for a GLB the
@@ -192,11 +198,11 @@ function silhouette(parent: Entity, rarete: number): Entity[] {
   const V = Vector3.create
   switch (rarete) {
     case 0: return [part(parent, V(0, 0, 0), V(1, 1, 1), 'sphere')]
-    case 1: return [part(parent, V(0, -0.2, 0), V(1, 0.6, 1), 'box'), part(parent, V(0.15, 0.35, 0.1), V(0.55, 0.55, 0.55), 'box')]
-    case 2: return [part(parent, V(0, -0.35, 0), V(1, 0.3, 1), 'disc'), part(parent, V(0, 0.25, 0), V(0.8, 0.9, 0.8), 'cone')]
-    case 3: return [part(parent, V(0, -0.15, 0), V(0.6, 0.9, 0.6), 'cyl'), part(parent, V(0, 0.55, 0), V(0.6, 0.5, 0.6), 'cone')]
-    case 4: return [part(parent, V(0, -0.4, 0), V(0.3, 0.5, 0.3), 'cyl'), part(parent, V(0, 0.25, 0), V(1, 0.8, 1), 'cone')]
-    case 5: return [part(parent, V(0, 0.3, 0), V(0.8, 0.7, 0.8), 'cone'), part(parent, V(0, -0.3, 0), V(0.8, 0.7, 0.8), 'cone')]
+    case 1: return [part(parent, V(0, -0.25, 0), V(1, 0.5, 1), 'box'), part(parent, V(0.12, 0.25, 0.08), V(0.5, 0.5, 0.5), 'box')]
+    case 2: return [part(parent, V(0, -0.35, 0), V(1, 0.3, 1), 'disc'), part(parent, V(0, 0.15, 0), V(0.8, 0.7, 0.8), 'cone')]
+    case 3: return [part(parent, V(0, -0.15, 0), V(0.6, 0.7, 0.6), 'cyl'), part(parent, V(0, 0.35, 0), V(0.6, 0.3, 0.6), 'cone')]
+    case 4: return [part(parent, V(0, -0.3, 0), V(0.3, 0.4, 0.3), 'cyl'), part(parent, V(0, 0.2, 0), V(1, 0.6, 1), 'cone')]
+    case 5: return [part(parent, V(0, 0.25, 0), V(0.8, 0.5, 0.8), 'cone'), part(parent, V(0, -0.25, 0), V(0.8, 0.5, 0.8), 'cone')]
     default: return [part(parent, V(0, 0, 0), V(0.6, 0.6, 0.6), 'sphere'), part(parent, V(0, 0, 0), V(1.3, 0.08, 1.3), 'disc')]
   }
 }
@@ -238,7 +244,8 @@ export function haloDeMutation(parent: Entity, hex: string | null): void {
   let e = cur
   if (e === undefined) {
     e = engine.addEntity()
-    Transform.create(e, { parent, position: Vector3.create(0, -0.5, 0), scale: Vector3.create(1.9, 0.05, 1.9) })
+    // Its underside is the toy's underside: half its thickness above the cube's bottom face.
+    Transform.create(e, { parent, position: Vector3.create(0, -0.475, 0), scale: Vector3.create(1.9, 0.05, 1.9) })
     MeshRenderer.setCylinder(e, 0.5, 0.5)
     halos.set(parent, e)
   }
@@ -259,14 +266,28 @@ export function effacerHalo(parent: Entity): void { haloDeMutation(parent, null)
  *
  * The renderer draws the four to ten lights nearest the player and drops the rest, which is
  * the right rule here: the lights that render are the ones in the base the judge is standing
- * in. Hue comes from the item, normalised to full brightness so a dark mutation (Cursed,
- * Blood) still throws a coloured light; brightness comes from the glow; the range is explicit
- * so a light stays a pool under its own toy rather than a wash over the floor. The two knobs
- * below are the whole calibration, and they are set on a device, not on a desktop.
+ * in. Hue comes from the item, at full brightness so a dark mutation (Cursed, Blood) still
+ * throws a coloured light; brightness comes from the glow; the range is explicit so a light
+ * stays a pool under its own toy rather than a wash over the floor.
+ *
+ * The scale is the documentation's own anchor, not an example: "the default intensity is
+ * 16000, this is the brightness of an average lightbulb", and "a light with the default
+ * brightness will be hardly visible with the midday sun, like in the real world". A pool that
+ * has to read under the sky therefore starts at one bulb and grows with the glow. The first
+ * version took 200 to 700 candela from a sample snippet and was invisible by construction.
+ * The light sits at the toy's centre: half a toy above the slab is where a point source makes
+ * a pool about one toy wide, rather than a pin-prick at floor level.
  */
 export const LUMIERE_MIN_GLOW = 0.8     // Rare and above; a mutation adds 1 and lights anything
-const CANDELA_PAR_GLOW = 160
+const AMPOULE = 16000                    // candela; the documentation's "average lightbulb"
 const lumieres = new Map<Entity, Entity>()
+
+/** A hue at full brightness: the colour with its largest channel pushed to 1. */
+export function vif(hex: string): Color4 {
+  const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
+  const k = 1 / Math.max(c.r, c.g, c.b, 0.05)
+  return Color4.create(Math.min(1, c.r * k), Math.min(1, c.g * k), Math.min(1, c.b * k), 1)
+}
 
 export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {
   const cur = lumieres.get(parent)
@@ -277,15 +298,14 @@ export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number)
   let e = cur
   if (e === undefined) {
     e = engine.addEntity()
-    Transform.create(e, { parent, position: Vector3.create(0, -0.5, 0) })
+    Transform.create(e, { parent })
     lumieres.set(parent, e)
   }
-  const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
-  const k = 1 / Math.max(c.r, c.g, c.b, 0.05)
+  const c = vif(hex)
   LightSource.createOrReplace(e, {
     type: LightSource.Type.Point({}),
-    color: Color3.create(Math.min(1, c.r * k), Math.min(1, c.g * k), Math.min(1, c.b * k)),
-    intensity: CANDELA_PAR_GLOW * (0.5 + glow),
+    color: Color3.create(c.r, c.g, c.b),
+    intensity: AMPOULE * (1 + glow),
     range: 1.5 + glow,
     shadow: false
   })

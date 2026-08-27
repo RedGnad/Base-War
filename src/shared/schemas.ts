@@ -488,9 +488,9 @@ export const EVENT_GAP_MS = 15 * 60_000
 export const EVENT_WEIGHT = 60
 /** Which mutations can headline an event, and the world colour each one brings. */
 export const EVENT_THEMES = [
-  { theme: 1, name: 'GOLD HOUR', sol: '#6b5a2aff' },
-  { theme: 5, name: 'LAVA HOUR', sol: '#6a2f22ff' },
-  { theme: 9, name: 'CURSED HOUR', sol: '#3b2050ff' }
+  { theme: 1, name: 'GOLD HOUR' },
+  { theme: 5, name: 'LAVA HOUR' },
+  { theme: 9, name: 'CURSED HOUR' }
 ] as const
 
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */
@@ -811,8 +811,17 @@ export const PLOT_MAX_ITEMS = SLOTS_PER_FLOOR * MAX_FLOORS
 /** The width of the hole the ramp climbs through, taken out of the +x side of every floor. */
 export const STAIRWELL_WIDTH = 3.6
 
+/** How thick a floor slab is. Its top face, floor height plus this, is the surface a toy stands on. */
+export const SLAB_THICKNESS = 0.24
+
 /**
  * Where the six display slots stand on a floor, spread across the room they are given.
+ *
+ * `dy` is the slab's TOP FACE, the surface the toy stands on, not the toy's centre. It used to
+ * be the centre of a 0.45 m box, and every later reader guessed a different slab from it: the
+ * toys of the big-silhouette pass were seated twelve centimetres inside the floor, and the
+ * parts of their silhouettes that hung below their cube came out through the ceiling of the
+ * storey underneath.
  *
  * The old figures were literals fitted to an eleven metre footprint, and they did not follow
  * when it grew: six pedestals huddled in a 4.8 by 2.4 corner of a 10.4 by 14 slab, with the
@@ -833,7 +842,7 @@ export function slotPosition(slot: number): { dx: number; dy: number; dz: number
   const pasZ = BASE_SIDE / 4.4
   return {
     dx: centreX + (col - 1) * pasX,
-    dy: 0.45 + floor * FLOOR_HEIGHT,
+    dy: floor * FLOOR_HEIGHT + SLAB_THICKNESS,
     dz: -BASE_SIDE / 5 + rang * pasZ
   }
 }
