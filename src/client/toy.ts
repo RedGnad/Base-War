@@ -83,11 +83,17 @@ export function accentDe(address: string): string {
 export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
   if (glow <= 0) return { albedoColor: c, metallic: 0, roughness: 0.55 }
-  const sombre = 1 / (1 + glow * 1.5)
+  /*
+    Barely darkened, strongly emissive. The albedo used to be cut to 0.45 for a Rare with an
+    emissive of 0.8 to make up for it, which only works under bloom; on a phone (no bloom, no
+    scene lights) and on any toy outside the light budget, a Rare read as a DARK toy (tester,
+    28 Aug: "no emission at all any more"). Emission is the workshop's own answer to lights.
+  */
+  const sombre = 1 / (1 + glow * 0.35)
   return {
     albedoColor: Color4.create(c.r * sombre, c.g * sombre, c.b * sombre, c.a),
     emissiveColor: Color3.create(c.r, c.g, c.b),
-    emissiveIntensity: glow,
+    emissiveIntensity: 0.6 + glow * 2.5,
     metallic: 0,
     roughness: 0.45
   }
@@ -316,7 +322,7 @@ export function vif(hex: string): Color4 {
   a system every half second lights only the `LUMIERES_MAX` nearest to the player and takes
   the light off the rest. Emission on the toy's own plastic carries the rest of the glow.
 */
-const LUMIERES_MAX = 8
+const LUMIERES_MAX = 16
 const souhaits = new Map<Entity, { hex: string; glow: number }>()
 
 export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {

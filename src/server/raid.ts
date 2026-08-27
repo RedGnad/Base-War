@@ -2,7 +2,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Raid, Event, RAID_ENABLED, RAID_EVERY_MS, RAID_FIRST_MS, RAID_MS, RAID_POS, RAID_RADIUS, RAID_ORBIT,
+  Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS, RAID_ORBIT,
   RAID_ORBIT_MS, RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE,
   RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, forceDuTir
 } from '../shared/schemas'
@@ -32,6 +32,17 @@ let boss: Entity | null = null
 let degats = new Map<string, number>()
 let prochain = 0
 let debut = 0
+
+/** The next fixed slot strictly after `apres`: the raid runs on the clock, not on uptime. */
+function prochainCreneau(apres: number): number {
+  const d = new Date(apres)
+  const base = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), 0, 0, 0)
+  for (const m of RAID_MINUTES) {
+    const t = base + m * 60_000
+    if (t > apres) return t
+  }
+  return base + 3_600_000 + RAID_MINUTES[0] * 60_000
+}
 let dernierBalai = 0
 
 function meneur(): { address: string; name: string } | null {
@@ -98,7 +109,7 @@ function finir(vaincu: boolean): void {
   const now = Date.now()
   m.active = false
   m.hp = 0
-  prochain = now + RAID_EVERY_MS
+  prochain = prochainCreneau(now)
   m.nextMs = prochain
   if (vaincu) {
     const top = meneur()
@@ -122,7 +133,7 @@ export function startRaid(): void {
     engine.removeEntity(e)
   }
   boss = engine.addEntity()
-  prochain = Date.now() + RAID_FIRST_MS
+  prochain = prochainCreneau(Date.now())
   Raid.create(boss, {
     active: false, hp: 0, hpMax: 0, untilMs: 0, nextMs: prochain,
     x: RAID_POS.x, z: RAID_POS.z, topName: '', lastHitName: '', hitAtMs: 0, swipeAtMs: 0
@@ -142,11 +153,22 @@ export function startRaid(): void {
 
     if (!lu.active) {
       if (now < prochain) return
-      if (presents().size === 0) { prochain = now + 30_000; return }
+      // A slot nobody is there for is skipped, not delayed: the next one is at its own time.
+      if (now > prochain + 60_000 || presents().size === 0) {
+        prochain = prochainCreneau(now)
+        const m = Raid.getMutableOrNull(boss)
+        if (m !== null) m.nextMs = prochain
+        return
+      }
       // Not on top of a rush, and not on the doorstep of the grand one: two countdowns on one
       // screen is one too many.
       for (const [, ev] of engine.getEntitiesWith(Event)) {
-        if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) { prochain = now + 60_000; return }
+        if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) {
+          prochain = prochainCreneau(now)
+          const m = Raid.getMutableOrNull(boss)
+          if (m !== null) m.nextMs = prochain
+          return
+        }
       }
       ouvrir(now)
       return

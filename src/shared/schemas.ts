@@ -1022,8 +1022,12 @@ export const Raid = engine.defineComponent('basetycoon::raid', {
 })
 /** The switch. Off, the entity exists and never activates; the HUD shows nothing. */
 export const RAID_ENABLED = true
-export const RAID_FIRST_MS = 6 * 60_000
-export const RAID_EVERY_MS = 45 * 60_000
+/*
+  On the clock, not on the server's uptime: hh:20 and hh:50 UTC, every day, the practice of
+  the genre for the events people organise around (the reference's rarest run "every day at
+  3:00 AM EST"). Never on the grand rush's 20:00 slot; a slot with nobody present is skipped.
+*/
+export const RAID_MINUTES = [20, 50] as const
 export const RAID_MS = 3 * 60_000
 /** On the plaza side of the belt lane, opposite the board and the fuser. */
 export const RAID_POS = { x: CENTER.x, z: CENTER.z + 7 }
