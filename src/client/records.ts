@@ -1,7 +1,9 @@
 import { engine, Transform, MeshRenderer, Material, TextShape, TextAlignMode, Billboard, BillboardMode, Entity } from '@dcl/sdk/ecs'
 import { Vector3, Color4, Color3 } from '@dcl/sdk/math'
 import { Records, CENTER, BELT_HEIGHT } from '../shared/schemas'
-import { formatIncome, itemName, rarityOf, mutationDe } from '../shared/loot-table'
+import {
+  formatIncome, itemName, rarityOf, mutationDe, nomDuCode
+} from '../shared/loot-table'
 import { TOY, plastic, montable } from './toy'
 import { HUE } from './theme'
 
@@ -42,13 +44,14 @@ function ecrire(c: Colonne, texte: string): void {
 function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code: number }, now: number): string {
   const min = Math.max(0, Math.round((now - e.t) / 60000))
   const quand = min < 1 ? 'now' : min < 60 ? `${min}m` : min < 1440 ? `${Math.round(min / 60)}h` : `${Math.round(min / 1440)}d`
-  const objet = itemName(rarityOf(e.code), mutationDe(e.code))
+  const objet = nomDuCode(e.code)
   switch (e.kind) {
     case 'vol': return `${quand}  ${e.a} stole a ${objet} from ${e.b}`
     case 'garde': return `${quand}  ${e.b}'s sentry stopped ${e.a} on floor ${e.code}`
     case 'don': return `${quand}  ${e.a} gave a toy to ${e.b}`
     case 'tirage': return `${quand}  ${e.a} pulled a ${objet}`
     case 'fusion': return `${quand}  ${e.a} fused a ${objet}`
+    case 'trait': return `${quand}  ${e.a}'s ${objet} was marked by the ${e.b}`
     default: return `${quand}  ${e.a}`
   }
 }

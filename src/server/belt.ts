@@ -3,11 +3,12 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE, LUCK_MULT
+  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE, LUCK_MULT, RUSH_TRAIT_CHANCE
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
-import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce } from './loot'
+import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce, eventTheme } from './loot'
+import { tempoDuTapis } from './events'
 import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf } from './plots'
 import { remettreEnMain, portePour } from './carry'
 import { tutoFait } from './onboarding'
@@ -102,7 +103,8 @@ export function startBelt(): void {
   let sync = 0
   engine.addSystem((dt: number) => {
     depuisSpawn += dt
-    if (depuisSpawn >= BELT_INTERVAL_S) {
+    // The grand rush is the reference's extra lanes, done with one belt: twice the crates.
+    if (depuisSpawn >= BELT_INTERVAL_S / tempoDuTapis()) {
       depuisSpawn = 0
       spawnBeltItem()
     }
@@ -196,11 +198,13 @@ export function startBelt(): void {
     if (d.crateTier >= 1) advanceQuest(a, 'ouvrirRare')
     const rarity = rollCrate(d.crateTier)
     const mut = rollMutation(d.crateTier, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1)
-    const code = encoder(rarity, mut)
+    // During a rush a crate has the reference's chance of coming out marked by it.
+    const traits = eventTheme >= 0 && Math.random() < RUSH_TRAIT_CHANCE ? 1 : 0
+    const code = encoder(rarity, mut, traits)
     log(`${displayName(a)} opened a crate ${d.crateTier} -> ${itemName(rarity, mut)}`)
     // Epic and above go on the board, the way the reference game's live board shows rare spawns only.
     if (rarity >= 3) noter('tirage', displayName(a), '', code)
-    void room.send('boxResult', { crateTier: d.crateTier, rarity, mutation: mut, state: 'main' }, { to: [a] })
+    void room.send('boxResult', { traits, crateTier: d.crateTier, rarity, mutation: mut, state: 'main' }, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
 
     inFlight.set(a, code)

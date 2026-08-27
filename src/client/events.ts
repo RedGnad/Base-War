@@ -1,7 +1,8 @@
 import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
 import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
-import { mutation } from '../shared/loot-table'
+import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
+import { room } from '../shared/messages'
 import { alerter } from './theft'
 import { plastic, TOY } from './toy'
 
@@ -18,7 +19,19 @@ import { plastic, TOY } from './toy'
  * main gaze, then living at the top with the remaining time, in the theme's colour, with the
  * theme's name as its icon.
  */
-export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0 }
+export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, grand: false, nextGrandS: 0 }
+
+/** The band's one line: the rush running, or the grand one coming within the hour, or nothing. */
+export function ligneDuBandeau(): { text: string; color: string } | null {
+  const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  if (eventView.theme >= 0) {
+    return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }
+  }
+  if (eventView.nextGrandS > 0 && eventView.nextGrandS <= 3600) {
+    return { text: `GRAND RUSH IN ${mmss(eventView.nextGrandS)}   ·   double belt, a crate for being here`, color: '#ffd166' }
+  }
+  return null
+}
 
 /**
  * What each rush looks like: its mat and its hour of the day.
@@ -69,6 +82,12 @@ export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
 const MAILLE_SOL = 16
 
 export function setupEvents(): void {
+  room.onMessage('rushGift', (d) => {
+    const caisse = CRATES[d.crateTier]?.name ?? 'crate'
+    const trait = d.code >= 0 ? `  ·  your ${nomDuCode(d.code)} gained a trait` : ''
+    alerter(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', 7000)
+  })
+
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
   // player looking at their base cannot see the belt line change colour.
   cloche = engine.addEntity()
@@ -77,9 +96,11 @@ export function setupEvents(): void {
 
   engine.addSystem(() => {
     const now = Date.now()
-    let theme = -1, until = 0
-    for (const [, e] of engine.getEntitiesWith(Event)) { theme = e.theme; until = e.untilMs }
+    let theme = -1, until = 0, grand = false, prochainGrand = 0
+    for (const [, e] of engine.getEntitiesWith(Event)) { theme = e.theme; until = e.untilMs; grand = e.grand; prochainGrand = e.nextGrandMs }
     const actif = theme >= 0 && until > now
+    eventView.grand = actif && grand
+    eventView.nextGrandS = prochainGrand > now ? Math.ceil((prochainGrand - now) / 1000) : 0
     const t = actif ? EVENT_THEMES.find((x) => x.theme === theme) : undefined
 
     eventView.theme = actif ? theme : -1
@@ -92,7 +113,10 @@ export function setupEvents(): void {
 
     if (actif && t !== undefined) {
       // Announced once where the eye is, then it lives at the top of the screen.
-      alerter(`${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for 5 minutes`, mutation(theme).color, 6000)
+      const minutes = Math.max(1, Math.round((until - now) / 60000))
+      alerter(grand
+        ? `GRAND ${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes, belt at double speed`
+        : `${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes`, mutation(theme).color, 6000)
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
       const look = LOOK[theme] ?? LOOK[5]

@@ -15,7 +15,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
-import { eventView } from './client/events'
+import { ligneDuBandeau } from './client/events'
 import { beltView } from './client/belt'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
@@ -690,7 +690,7 @@ function Roulette(): ReactEcs.JSX.Element {
 
         <UiEntity uiTransform={{ width: '100%', height: REEL_TITRE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
           {fini && (
-            <Label value={itemName(boxView.resultat, boxView.resultatMutation).toUpperCase()}
+            <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
               fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
               color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
               uiTransform={{ height: REEL_TITRE, margin: { right: 24 } }} />
@@ -774,7 +774,7 @@ const uiComponent = () => {
   */
   const band = topBand([
     ['money', true, TYPE.hero + 6 + 34 + 6],
-    ['event', eventView.theme >= 0, 52],
+    ['event', ligneDuBandeau() !== null, 52],
     ['belt', beltView.annonce !== '', 58]
   ])
   /*
@@ -1021,7 +1021,7 @@ const uiComponent = () => {
       alone. It sits between the money and the belt line because it is the one thing on screen
       that ties the two together: this is why the belt is worth watching right now.
     */}
-    {hud() && eventView.theme >= 0 && band.event >= 0 && (
+    {hud() && ligneDuBandeau() !== null && band.event >= 0 && (
       <Centre top={band.event}>
         <UiEntity
           uiTransform={{
@@ -1031,9 +1031,9 @@ const uiComponent = () => {
           uiBackground={{ color: Color4.create(0.06, 0.05, 0.08, 0.9) }}
         >
           <Label
-            value={`${eventView.name}   ${Math.floor(eventView.leftS / 60)}:${String(eventView.leftS % 60).padStart(2, '0')}`}
+            value={ligneDuBandeau()?.text ?? ''}
             fontSize={TYPE.label}
-            color={Color4.fromHexString(eventView.color + 'ff')} textWrap="nowrap" />
+            color={Color4.fromHexString((ligneDuBandeau()?.color ?? '#ffffff') + 'ff')} textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}

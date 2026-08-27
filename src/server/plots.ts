@@ -8,7 +8,9 @@ import {
   SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
-import { itemIncome, rarityOf, prixDeRevente, rarity } from '../shared/loot-table'
+import {
+  itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe
+} from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
@@ -527,8 +529,10 @@ export function addItem(address: string, rarity: number, ou?: number): Rangement
   const prof = profiles.get(address)
   const b = bases.get(address)
 
-  if (prof !== undefined && !(prof.vus ?? []).includes(rarity)) {
-    prof.vus = [...(prof.vus ?? []), rarity]
+  // The index counts what a thing IS, rarity and mutation; a trait is what happened to it.
+  const vu = rarity % 1000
+  if (prof !== undefined && !(prof.vus ?? []).includes(vu)) {
+    prof.vus = [...(prof.vus ?? []), vu]
     dirtyProfiles.add(address)
   }
 
@@ -848,6 +852,31 @@ export function removeGear(address: string, gear: number): boolean {
   return true
 }
 
+/*
+  A rush touches what is placed: one random toy on the shelves of everyone present gains a
+  trait, the reference's "off road" event. Traits stack to `TRAITS_MAX` and never go away,
+  which is what makes a base that shows up for rushes worth stealing from.
+*/
+export function marquerTrait(address: string): number | null {
+  const p = profiles.get(address)
+  const b = bases.get(address)
+  if (!p || !b) return null
+  const candidats: number[] = []
+  for (let i = 0; i < b.items.length; i++) {
+    const c = b.items[i]
+    if (c !== VIDE && traitsDe(c) < TRAITS_MAX) candidats.push(i)
+  }
+  if (candidats.length === 0) return null
+  const i = candidats[Math.floor(Math.random() * candidats.length)]
+  const neuf = encoder(rarityOf(b.items[i]), mutationDe(b.items[i]), traitsDe(b.items[i]) + 1)
+  b.items[i] = neuf
+  p.items = [...b.items]
+  dirtyBases.add(address)
+  dirtyProfiles.add(address)
+  publish(b)
+  return neuf
+}
+
 export function luckUntilOf(address: string): number { return profiles.get(address)?.luckUntil ?? 0 }
 export function setLuckUntil(address: string, until: number): void {
   const p = profiles.get(address)
@@ -909,7 +938,7 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   const consomme = candidats[0]
   const reste = [...pleins]
   reste.splice(reste.indexOf(consomme), 1)
-  const tries = reste.sort((a, b) => b - a)
+  const tries = reste.sort((a, b) => itemIncome(b, INCOME_PER_RARITY) - itemIncome(a, INCOME_PER_RARITY))
   p.items = tries.slice(0, exige.guard)
   p.rebirths = prestige + 1
   dirtyProfiles.add(address)

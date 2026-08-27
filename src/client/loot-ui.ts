@@ -5,7 +5,9 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
-import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
+import {
+  itemColor, itemName, rarityOf, mutationDe, nomDuCode
+} from '../shared/loot-table'
 
 /**
  * Loot lying on the ground, drawn from what the server publishes and nothing else.
@@ -46,7 +48,7 @@ export function setupLootUi(): void {
       })
       Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
       TextShape.create(etiquette, {
-        text: `${itemName(r, mutationDe(d.code))}\nGRAB IT`,
+        text: `${nomDuCode(d.code)}\nGRAB IT`,
         fontSize: 3, textColor: teinte,
         outlineWidth: 0.2, outlineColor: Color3.create(0, 0, 0)
       })

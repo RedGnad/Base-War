@@ -52,6 +52,7 @@ export const boxView = {
   dernierPas: 0,
   resultat: -1,
   resultatMutation: 0,
+  resultatTraits: 0,
   resultatJusqua: 0,
   state: 'expose',
   message: ''
@@ -140,6 +141,7 @@ export function setupBox(): void {
     boxView.roule = true
     boxView.resultat = d.rarity
     boxView.resultatMutation = d.mutation
+    boxView.resultatTraits = d.traits
     boxView.state = d.state
     boxView.reel = Array.from({ length: REEL_LEN }, () => rareteDecor())
     boxView.reel[REEL_WIN] = d.rarity

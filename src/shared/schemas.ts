@@ -502,8 +502,24 @@ export const BOMB_RADIUS = 4
 */
 export const Event = engine.defineComponent('basetycoon::event', {
   theme: Schemas.Int,
-  untilMs: Schemas.Int64
+  untilMs: Schemas.Int64,
+  /** The daily one, at its fixed hour: longer, the belt twice as fast, a themed crate to whoever is there. */
+  grand: Schemas.Boolean,
+  nextGrandMs: Schemas.Int64
 })
+/*
+  The reference runs its rarest events "every day at 3:00 AM EST", a fixed hour the community
+  organises around, next to the random ones that "have a chance to spawn every 15 minutes".
+  Ours: one GRAND RUSH a day at 20:00 UTC, ten minutes, present or not, because a fixed hour
+  that waits for somebody is not a fixed hour. Every rush pays presence the moment it opens:
+  a crate, and one placed toy of each player in the room gains a trait. Crates opened during
+  a rush carry a chance of a trait too, the reference's "brainrots on the conveyor have a
+  chance to get the trait".
+*/
+export const GRAND_RUSH_UTC_HOUR = 20
+export const GRAND_MS = 10 * 60_000
+export const GRAND_TEMPO = 2
+export const RUSH_TRAIT_CHANCE = 0.2
 /**
  * The venue's memory, for the one who arrives alone.
  *
@@ -540,9 +556,9 @@ export function prixLuck(prestige: number): number {
 /** Which mutations can headline an event, and the world colour each one brings. */
 /** Five minutes is a rush, not an hour: the tester read "HOUR" against the countdown and was right. */
 export const EVENT_THEMES = [
-  { theme: 1, name: 'GOLD RUSH' },
-  { theme: 5, name: 'LAVA RUSH' },
-  { theme: 9, name: 'CURSED RUSH' }
+  { theme: 1, name: 'GOLD RUSH', crate: 4 },
+  { theme: 5, name: 'LAVA RUSH', crate: 5 },
+  { theme: 9, name: 'CURSED RUSH', crate: 6 }
 ] as const
 
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */

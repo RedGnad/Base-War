@@ -11,7 +11,7 @@ import {
   rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH
 } from '../shared/schemas'
 import {
-  rarity, rarityOf, mutationDe, itemColor, mutation, itemName, formatIncome, itemIncome
+  rarity, rarityOf, mutationDe, itemColor, mutation, itemName, formatIncome, itemIncome, nomDuCode, traitsDe
 } from '../shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
@@ -639,7 +639,7 @@ export function setupPlots(): void {
         const code = p.items[k]
         const label = code === undefined || code === VIDE
           ? verbe
-          : `${verbe} ${itemName(rarityOf(code), mutationDe(code))} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
+          : `${verbe} ${nomDuCode(code)} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: label } }
@@ -685,7 +685,9 @@ export function setupPlots(): void {
         const code = p.items[k]
         const r = rarity(rarityOf(code))
         const m = mutation(mutationDe(code))
-        const size = r.size * (m.mult > 1 ? 1.12 : 1)
+        // A trait is worth five times the base: it shows as light and a little size, not a new shape.
+        const traits = traitsDe(code)
+        const size = r.size * (m.mult > 1 ? 1.12 : 1) * (1 + 0.05 * traits)
         // `dy` is the slab's top face. A hair of air, the pad, then the toy standing on the pad
         // with its centre half its size up. Nothing shares a plane with anything.
         tr.position = Vector3.create(t.position.x + d.dx, d.dy + JEU + SOCLE_EPAISSEUR + size / 2, t.position.z + d.dz)
@@ -700,7 +702,7 @@ export function setupPlots(): void {
         // Every toy stands on a pad; a mutation colours it.
         socleDuJouet(ent, size, m.mult > 1 ? m.color : null)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
-        const eclat = r.glow + (m.mult > 1 ? 1 : 0)
+        const eclat = r.glow + (m.mult > 1 ? 1 : 0) + 0.8 * traits
         lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.

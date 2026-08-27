@@ -101,14 +101,32 @@ export function crate(id: number) {
   return CRATES[Math.max(0, Math.min(id, CRATES.length - 1))]
 }
 
-export function encoder(rarity: number, mut: number): number {
-  return rarity * 100 + mut
-}
-export function rarityOf(code: number): number { return Math.floor(code / 100) }
-export function mutationDe(code: number): number { return code % 100 }
+/*
+  One integer per item: TRAITS x 1000 + RARITY x 100 + MUTATION.
 
+  The reference's rule for what an event leaves on an item, read from its wiki: a mutation is
+  one and multiplies, traits are many and ADD, each worth five times the base value, so
+  `(value x mutation) + trait + trait`; "a Default with two traits = 11x". Ours count them in
+  the thousands digit, up to `TRAITS_MAX`, and every reader below goes through these helpers:
+  nothing else in the game does arithmetic on a code.
+*/
+export const TRAIT_BONUS = 5
+export const TRAITS_MAX = 3
+export function encoder(rarity: number, mut: number, traits = 0): number {
+  return traits * 1000 + rarity * 100 + mut
+}
+export function rarityOf(code: number): number { return Math.floor(code / 100) % 10 }
+export function mutationDe(code: number): number { return code % 100 }
+export function traitsDe(code: number): number { return code < 0 ? 0 : Math.floor(code / 1000) }
 export function itemIncome(code: number, incomeTable: readonly number[]): number {
-  return (incomeTable[rarityOf(code)] ?? 1) * mutation(mutationDe(code)).mult
+  const base = incomeTable[rarityOf(code)] ?? 1
+  return base * mutation(mutationDe(code)).mult + base * TRAIT_BONUS * traitsDe(code)
+}
+/** The item's full name from its code, traits included: "Lava Rare +2". */
+export function nomDuCode(code: number): string {
+  const n = traitsDe(code)
+  const nom = itemName(rarityOf(code), mutationDe(code))
+  return n > 0 ? `${nom} +${n}` : nom
 }
 
 /** What selling an item pays. The server credits exactly this; the shop shows exactly this. */

@@ -3,7 +3,9 @@ import {
   Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
-import { itemColor, itemName, rarityOf, mutationDe } from '../shared/loot-table'
+import {
+  itemColor, itemName, rarityOf, mutationDe, nomDuCode
+} from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
@@ -105,7 +107,7 @@ export function setupCarry(): void {
         Transform.create(etiquette, { position: Vector3.create(0, 0.4, 0), scale: Vector3.create(0.34, 0.34, 0.34) })
         Billboard.create(etiquette, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(etiquette, {
-          text: itemName(r, mutationDe(c.code)),
+          text: nomDuCode(c.code),
           fontSize: 3, textColor: teinte,
           outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0)
         })
@@ -130,7 +132,7 @@ export function setupCarry(): void {
       carryView.code = porteMoi
       carryView.vole = volee
       setCarrying(porteMoi < 0 ? 'non' : volee ? 'vole' : 'sien')
-      carryView.name = porteMoi < 0 ? '' : itemName(rarityOf(porteMoi), mutationDe(porteMoi))
+      carryView.name = porteMoi < 0 ? '' : nomDuCode(porteMoi)
     }
   })
 }
