@@ -3,6 +3,7 @@ import {
   OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
+import { MUTATIONS, crate } from './loot-table'
 import { isServer } from '@dcl/sdk/network'
 import { AUTH_SERVER_PEER_ID } from '@dcl/sdk/network/message-bus-sync'
 
@@ -980,6 +981,23 @@ export const FUSION_NEEDS = 3
   every time. A chance is a bet; a guarantee was a ladder.
 */
 export const FUSION_PUSH = 400
+/**
+ * The weights every mutation roll uses, on BOTH sides: the crate's own theme, the venue's
+ * rush, bought luck, and what the fuser was fed. The server draws from them; the fuser's
+ * panel prints them as a percentage on the row, so the chance the player reads is the chance
+ * the server rolls, by construction.
+ */
+export function poidsDesMutations(crateId: number, eventTheme: number, luck: number, pousses: readonly number[]): number[] {
+  const c = crate(crateId)
+  return MUTATIONS.map((m) => {
+    let w = m.poids
+    if (c.theme === m.id) w *= c.weight
+    if (eventTheme === m.id) w *= EVENT_WEIGHT
+    if (m.id !== 0) w *= luck
+    for (const p of pousses) if (p === m.id && m.id !== 0) w += FUSION_PUSH
+    return w
+  })
+}
 export const FUSION_RANGE = 4.5
 /** Beside the records board, on the side of the belt away from the pit. */
 export const FUSION_POS = { x: CENTER.x - 9, z: CENTER.z - 7 }

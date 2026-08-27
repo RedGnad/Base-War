@@ -4,11 +4,12 @@ import { engine } from '@dcl/sdk/ecs'
 import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
-import { Plot, FUSION_NEEDS, VIDE } from '../shared/schemas'
-import { RARITIES, rarityOf, itemIncome, nomDuCode } from '../shared/loot-table'
+import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT } from '../shared/schemas'
+import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode } from '../shared/loot-table'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
-import { monAdresseClient } from './theft'
+import { monAdresseClient, theftView } from './theft'
+import { eventView } from './events'
 import { fusionView } from './fusion'
 
 /**
@@ -51,6 +52,17 @@ function choix(m: { hopper: number[]; etagere: number[] }, r: number): number[] 
   return [...dedans, ...sur].slice(0, FUSION_NEEDS)
 }
 
+/** The chance each fed mutation passes on, from the same weights the server rolls with. */
+function chances(pris: number[]): string {
+  const pousses = pris.map(mutationDe).filter((m) => m > 0)
+  if (pousses.length === 0) return 'no mutation fed'
+  const poids = poidsDesMutations(0, eventView.theme, theftView.luckSec > 0 ? LUCK_MULT : 1, pousses)
+  const total = poids.reduce((a, b) => a + b, 0)
+  return [...new Set(pousses)]
+    .map((m) => `${MUTATIONS[m]?.name ?? ''} ${Math.round((poids[m] / total) * 100)}%`)
+    .join(', ')
+}
+
 export const FusionPanel = () => {
   if (!fusionPanelView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   const m = miens()
@@ -61,16 +73,20 @@ export const FusionPanel = () => {
       uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
     >
       <UiEntity
-        uiTransform={{ width: 940, height: 130 + fusibles.length * RANG + TAP.height + 40 + (m.hopper.length > 0 ? TAP.height + 8 : 0), flexDirection: 'column', alignItems: 'center', padding: 22 }}
+        uiTransform={{ width: 940, height: 150 + fusibles.length * RANG + TAP.height + 40 + (m.hopper.length > 0 ? TAP.height + 8 : 0), flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
         <UiEntity uiTransform={{ width: '100%', height: 56 }}>
           <Glyphs value="FUSER" size={TYPE.title} role="bonus" />
         </UiEntity>
         <Label
-          value={`${FUSION_NEEDS} toys of one rarity become one better  ·  each mutated toy fed is about 1 in 5 that its mutation passes on  ·  cheapest first`}
+          value={`${FUSION_NEEDS} toys of one rarity become one better, the cheapest of them first`}
           fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" textWrap="nowrap" />
+          uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
+        <Label
+          value="a mutated toy fed is a chance its mutation passes on  ·  traits are lost"
+          fontSize={TYPE.caption} color={C.dim}
+          uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
         {/* What the machine already holds for this player, and the way back out of it. */}
         {m.hopper.length > 0 && (
           <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
@@ -92,7 +108,7 @@ export const FusionPanel = () => {
                 <Label value={`${total}  ${r.name}${total === 1 ? '' : 's'}`} fontSize={TYPE.body}
                   color={Color4.fromHexString(lisible(r.color) + 'ff')}
                   uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
-                <Label value={pris.length > 0 ? `takes: ${pris.map(nomDuCode).join(', ')}` : 'none on your shelves'} fontSize={TYPE.caption}
+                <Label value={pris.length > 0 ? `takes: ${pris.map(nomDuCode).join(', ')}  ·  ${chances(pris)}` : 'none on your shelves'} fontSize={TYPE.caption}
                   color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
               </UiEntity>
               <UiEntity uiTransform={{ width: 440, height: TAP.height, justifyContent: 'flex-end' }}>
