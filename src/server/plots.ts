@@ -156,7 +156,7 @@ function publish(b: Base, ici?: Set<string>): void {
     */
     const avant = `${b.floorsBought}|${b.sentryFloors.join(',')}|${b.rebirths}|${b.given}|${b.received}`
     b.floorsBought = pr.floorsBought ?? 0
-    b.sentryFloors = [...(pr.sentryFloors ?? [])]
+    b.sentryFloors = defensesDe(pr)
     b.sentries = totalCharges(b.sentryFloors)
     b.rebirths = pr.rebirths ?? 0
     b.given = pr.given ?? 0
@@ -183,6 +183,23 @@ const VITRINE_VIDE: Vitrine = { floorsBought: 0, sentries: 0, sentryFloors: [], 
 /** Charges on a storey, zero when that storey has none and when the array is short. */
 export function chargesA(liste: number[] | undefined, etage: number): number {
   return liste === undefined || etage < 0 ? 0 : (liste[etage] ?? 0)
+}
+
+/**
+ * A stored blob's per-storey charges, whatever generation of blob it is.
+ *
+ * Blobs written before defences had storeys carry one count, `sentries`; it all sits on the
+ * ground floor, which is where an undifferentiated defence effectively was. That rule lived in
+ * two places (the base index and the absent-owner refresh) and in neither of them for the
+ * PROFILE, which is what `useSentryCharge` fires from. So a base drawn from its blob showed
+ * three charges on the ground floor while the profile behind it had none: the tester walked
+ * onto a guarded floor, the turret never fired, and the earned shield sealed him inside with
+ * the loot. One reader now, for every place a blob becomes charges.
+ */
+export function defensesDe(brut: { sentryFloors?: number[]; sentries?: number } | null | undefined): number[] {
+  if (Array.isArray(brut?.sentryFloors)) return [...brut.sentryFloors]
+  const n = brut?.sentries ?? 0
+  return n > 0 ? [n] : []
 }
 
 export function totalCharges(liste: number[] | undefined): number {
@@ -228,9 +245,7 @@ async function loadBases(): Promise<void> {
           // "never written", which is what tells the migration below to go and find them.
           vitrine: v.floorsBought === undefined ? null : {
             floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
-            // Blobs written before defences had storeys carry a single count: it all sits on
-            // the ground floor, which is where an undifferentiated defence effectively was.
-            sentryFloors: Array.isArray(v.sentryFloors) ? v.sentryFloors : (v.sentries > 0 ? [v.sentries] : []),
+            sentryFloors: defensesDe(v),
             rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0
           }
         }
@@ -262,7 +277,7 @@ async function loadBases(): Promise<void> {
         const b = bases.get(l.address)
         if (b === undefined) continue
         b.floorsBought = prof.floorsBought ?? 0
-        b.sentryFloors = [...(prof.sentryFloors ?? (prof.sentries ? [prof.sentries] : []))]
+        b.sentryFloors = defensesDe(prof)
         b.sentries = totalCharges(b.sentryFloors)
         b.rebirths = prof.rebirths ?? 0
         b.given = prof.given ?? 0
@@ -314,7 +329,9 @@ export async function accueillir(address: string): Promise<void> {
     itemsFound: stocke?.itemsFound ?? items.length,
     floorsBought: stocke?.floorsBought ?? 0,
     rebirths: stocke?.rebirths ?? 0,
-    alerts: stocke?.alerts ?? []
+    alerts: stocke?.alerts ?? [],
+    sentryFloors: defensesDe(stocke),
+    sentries: totalCharges(defensesDe(stocke))
   }
   profiles.set(address, profile)
   dirtyProfiles.add(address)

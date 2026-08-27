@@ -193,6 +193,26 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
+/**
+ * A shield that goes up around you puts you out; it does not wall you in.
+ *
+ * The shield earned by being robbed rises the instant the theft succeeds, which is the instant
+ * the thief stands deepest inside the building. It became a solid box with the thief in it,
+ * camera against the walls, no way out, loot in hand. The base-raid genre's own rule is that a
+ * lock pushes intruders off the property, so anybody who is not the owner and is inside when
+ * it seals is set down at the doorstep. The chase starts outside, not in a cell.
+ */
+function expulser(base: Vector3, floors: number): void {
+  const moi = Transform.getOrNull(engine.PlayerEntity)
+  if (moi === null) return
+  const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
+  const dedans = dx <= BASE_SIDE / 2 + 0.6 && dz <= BASE_SIDE / 2 + 0.6 && moi.position.y <= floors * FLOOR_HEIGHT + 1
+  if (!dedans) return
+  const porte = Vector3.create(base.x, 0.3, base.z + BASE_SIDE / 2 + 2.5)
+  void movePlayerTo({ newRelativePosition: porte, cameraTarget: Vector3.create(base.x, 2, base.z) })
+  alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
+}
+
 function createView(x: number, z: number, accent: string): View {
   const plinth = bloc(x, 0.06, z, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
 
@@ -598,8 +618,10 @@ export function setupPlots(): void {
           only exists on somebody else's shield. Ours is drawn and walked through.
         */
         const solide = locked && !monBase
-        if (solide && !MeshCollider.has(v.door)) MeshCollider.setBox(v.door)
-        else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+        if (solide && !MeshCollider.has(v.door)) {
+          MeshCollider.setBox(v.door)
+          expulser(t.position, p.floors)
+        } else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
       }
 
       // The signature only carries STRUCTURAL state. A value that ticks every second

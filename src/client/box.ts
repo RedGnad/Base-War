@@ -7,7 +7,7 @@ import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
-import { rarity, crate, RARITIES, mutation, itemName, itemColor } from '../shared/loot-table'
+import { rarity, crate, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
 import { envoyerOuAttendre } from './intent'
 
@@ -21,7 +21,6 @@ export const boxView = {
   coups: 0,
   typeEnCours: 0,
   roule: false,
-  index: 0,
   /**
    * The reel, and where it has travelled to.
    *
@@ -31,6 +30,10 @@ export const boxView = {
    */
   reel: [] as number[],
   progres: 0,
+  /** When the strip stopped, for the pop and the flash the interface draws from it. */
+  gagneA: 0,
+  /** The last card that crossed the line, so the tick plays once per card. */
+  dernierPas: 0,
   resultat: -1,
   resultatMutation: 0,
   resultatJusqua: 0,
@@ -43,15 +46,23 @@ let sonCoup: Entity
 let sonBurst: Entity
 let sonReveal: Entity
 const eclats: Entity[] = []
-let prochainPas = 0
-let pasCourant = 0
+let sonTic: Entity
 let left = 0
+let reelS = 1
 
-/** Length of the strip, and where the winning card sits in it. */
-const REEL_LEN = 34
-export const REEL_WIN = 28
-/** How long the reel runs, in seconds. Matches the deceleration below. */
-const REEL_S = 2.6
+/**
+ * Length of the strip, where the winning card sits in it, and how long it runs.
+ *
+ * The run is the reward's own drumroll, so it grows with the rarity: a Common is over in three
+ * seconds, a Secret crawls for more than six. Loot-box openings across the genre put their
+ * whole effect in that delay before the reveal, and the reference reels (CS:GO and its clones)
+ * run five to eight seconds over a strip far longer than the window. Forty-four cards at two
+ * hundred pixels is a strip of nine metres of screen for a window that shows eight of them.
+ */
+const REEL_LEN = 44
+export const REEL_WIN = 38
+const REEL_BASE_S = 3.0
+const REEL_PER_RARITY_S = 0.55
 
 /**
  * A plausible strip to scroll past.
@@ -92,6 +103,7 @@ export function setupBox(): void {
   sonCoup = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
+  sonTic = emetteur('assets/sounds/tick.wav', 0.5)
 
   for (let i = 0; i < 14; i++) {
     const e = engine.addEntity()
@@ -116,13 +128,13 @@ export function setupBox(): void {
     boxView.reel = Array.from({ length: REEL_LEN }, () => rareteDecor())
     boxView.reel[REEL_WIN] = d.rarity
     boxView.progres = 0
-    left = REEL_S
-    prochainPas = 0.045
-    pasCourant = 0
+    boxView.dernierPas = 0
+    reelS = REEL_BASE_S + d.rarity * REEL_PER_RARITY_S
+    left = reelS
 
     const depart = lastPosition
     if (depart !== null) {
-      timers.setTimeout(() => sendToHand(depart, d.rarity, d.mutation), 2700)
+      timers.setTimeout(() => sendToHand(depart, d.rarity, d.mutation), Math.round(reelS * 1000) + 120)
     }
   })
 
@@ -165,22 +177,19 @@ export function setupBox(): void {
 
     if (boxView.roule) {
       left -= dt
-      // Cubic ease-out: the strip leaves fast and crawls onto the winning card, which is
+      // Quartic ease-out: the strip leaves fast and crawls onto the winning card, which is
       // the whole tension of the thing. One float, read straight by the interface.
-      const t = Math.min(1, Math.max(0, 1 - left / REEL_S))
-      boxView.progres = (1 - Math.pow(1 - t, 3)) * REEL_WIN
-      pasCourant += dt
-      if (pasCourant >= prochainPas) {
-        pasCourant = 0
-        boxView.index = (boxView.index + 1) % RARITIES.length
-        prochainPas = Math.min(0.34, prochainPas * 1.085)
-      }
+      const t = Math.min(1, Math.max(0, 1 - left / reelS))
+      boxView.progres = (1 - Math.pow(1 - t, 4)) * REEL_WIN
+      // One tick per card crossing the line: the rhythm IS the deceleration.
+      const pas = Math.floor(boxView.progres + 0.5)
+      if (pas !== boxView.dernierPas) { boxView.dernierPas = pas; jouer(sonTic) }
       if (left <= 0) {
         boxView.roule = false
         boxView.progres = REEL_WIN
-        boxView.index = boxView.resultat
+        boxView.gagneA = Date.now()
         jouer(sonReveal)
-        boxView.resultatJusqua = Date.now() + 3200
+        boxView.resultatJusqua = Date.now() + 3600
         console.log(`[CLIENT] crate ouverte -> ${itemName(boxView.resultat, boxView.resultatMutation)}`)
       }
     } else if (boxView.resultat >= 0 && Date.now() > boxView.resultatJusqua) {

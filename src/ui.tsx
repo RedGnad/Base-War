@@ -40,9 +40,11 @@ const INCOME_UI = PRODUCTION_PER_RARITY
  * announcement. It now takes whatever `strip` leaves between the client's own furniture, and
  * the cards came down from 210 so more of the strip fits into it.
  */
-const REEL_W = 178
-const REEL_H = 172
-const REEL_GAP = 12
+const REEL_W = 200
+const REEL_H = 200
+const REEL_GAP = 14
+/** The result line lives inside the reel's panel, above the strip: one vertical budget for the whole reveal. */
+const REEL_TITRE = 48
 
 const ETATS: Record<string, (r: number) => string> = {
   // The item lands in the hand now, so the line under the reveal says what to do with it.
@@ -589,61 +591,117 @@ function Crosshair() {
 }
 
 /**
- * The reel, centred by the layout and measured once per frame instead of three times.
+ * The reel: a strip of cards that decelerates onto the one you won.
  *
- * The cards were placed against `active.w`, half the width of the whole virtual screen, inside
- * a container declared at a hundred percent of the SAFE AREA, which is narrower. The two
- * disagree by half the device's margin, so the whole reel and its marker sat off to one side,
- * on the phone and on the desktop alike. A strip of a width we choose, centred the same way
- * every other bar in this interface is centred, has nothing left to disagree with.
+ * What the genre's openings share, from CS:GO's case to a mobile chest, is the delay: the
+ * reveal is a drumroll, the outcome is decided before it starts, and every second of the
+ * slowdown is the product. So the strip is wide (as much of the screen as the client leaves,
+ * up to eight cards), the cards carry the toy itself rather than a name and a box, the run
+ * grows with the rarity, a tick marks every card crossing the line, and the landing is a
+ * flash in the winner's colour with the winning card popping while the rest go dim. The result
+ * line sits inside the same panel, so the whole moment fits above the controls on a phone.
  *
- * `strip(active.w)` reads the client's canvas component and allocates a result; it was called
- * for the strip, again for every card's placement, and again for the marker. It is one number
- * and it cannot change inside a frame, so it is taken once, here, where there is a scope to
- * hold it. Pulled out of the main tree for that scope and for nothing else.
+ * Width is deliberately NOT `strip()`: that helper keeps clear of the client's furniture for
+ * the full height of the screen, and this panel sits in a band (250 to 506 from the bottom)
+ * where neither the joystick nor the action buttons are. Eighty pixels of margin, and a cap.
  */
+function easeOutBack(t: number): number {
+  const c1 = 1.70158, c3 = c1 + 1
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+}
+
 function Roulette(): ReactEcs.JSX.Element {
-  const large = strip(active.w).width
+  const large = Math.min(active.w - 80, 1700)
+  const fini = !boxView.roule && boxView.resultat >= 0
+  const depuis = fini ? Date.now() - boxView.gagneA : 0
+  const pop = fini ? easeOutBack(Math.min(1, depuis / 280)) : 0
+  const flash = fini ? Math.max(0, 1 - depuis / 750) : 0
+  const gagneHex = fini ? itemColor(boxView.resultat, boxView.resultatMutation) : '#ffffff'
+  const gagne = Color4.fromHexString(gagneHex + 'ff')
+  const mut = mutation(boxView.resultatMutation)
+  const bande = REEL_H + 12
   return (
     <Centre bottom={250}>
       <UiEntity
-        uiTransform={{ width: large, height: REEL_H + 8 }}
+        uiTransform={{ width: large, height: REEL_TITRE + bande, flexDirection: 'column', overflow: 'hidden' }}
         uiBackground={SKIN.panel}
       >
-        {boxView.reel.map((r, i) => {
-          const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-          if (x < -REEL_W || x > large) return null
-          const gagnant = !boxView.roule && i === REEL_WIN
-          const col = Color4.fromHexString(lisible(RARITIES[r]?.color ?? '#ffffff') + 'ff')
-          return (
-            <UiEntity key={i}
-              uiTransform={{
-                width: REEL_W, height: REEL_H, positionType: 'absolute',
-                position: { left: x, top: 4 },
-                flexDirection: 'column', justifyContent: 'space-between', padding: 10
-              }}
-              uiBackground={gagnant ? { ...SKIN.card, color: col } : SKIN.card}
-            >
-              <Label value={RARITIES[r]?.name ?? ''} fontSize={TYPE.caption}
-                color={gagnant ? C.name : col}
-                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-              <UiEntity
-                uiTransform={{ width: '100%', height: 84 }}
-                uiBackground={gagnant ? SKIN.inset : { ...SKIN.inset, color: col }} />
-              <Label value={`+${formatIncome(INCOME_UI[r] ?? 1)}/s`} fontSize={TYPE.caption}
-                color={C.money}
-                uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-            </UiEntity>
-          )
-        })}
+        {flash > 0 && (
+          <UiEntity
+            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+            uiBackground={{ color: Color4.create(gagne.r, gagne.g, gagne.b, 0.5 * flash) }} />
+        )}
 
-        {/* The selector. Whatever sits under it when the strip stops is what was won. */}
-        <UiEntity
-          uiTransform={{
-            width: 5, height: REEL_H + 8, positionType: 'absolute',
-            position: { left: large / 2 - 2.5, top: 0 }
-          }}
-          uiBackground={{ color: C.name }} />
+        <UiEntity uiTransform={{ width: '100%', height: REEL_TITRE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+          {fini && (
+            <Label value={itemName(boxView.resultat, boxView.resultatMutation).toUpperCase()}
+              fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
+              color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
+              uiTransform={{ height: REEL_TITRE, margin: { right: 24 } }} />
+          )}
+          {fini && (
+            <Label value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}
+              fontSize={TYPE.label} textWrap="nowrap" textAlign="middle-center"
+              color={boxView.state === 'expose' ? C.money : C.bonus}
+              uiTransform={{ height: REEL_TITRE }} />
+          )}
+        </UiEntity>
+
+        <UiEntity uiTransform={{ width: '100%', height: bande }}>
+          {boxView.reel.map((r, i) => {
+            const rar = RARITIES[r] ?? RARITIES[0]
+            const gagnant = fini && i === REEL_WIN
+            const s = gagnant ? 1 + 0.14 * pop : 1
+            const w = REEL_W * s, h = REEL_H * s
+            const x = large / 2 - w / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+            if (x < -w || x > large) return null
+            const brut = Color4.fromHexString(rar.color + 'ff')
+            const texte = Color4.fromHexString(lisible(rar.color) + 'ff')
+            // A card carries its rarity as a tint; the winner takes the full colour.
+            const teinte = gagnant
+              ? brut
+              : Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1)
+            const mute = gagnant && mut.mult > 1
+            return (
+              <UiEntity key={i}
+                uiTransform={{
+                  width: w, height: h, positionType: 'absolute',
+                  position: { left: x, top: (bande - h) / 2 },
+                  flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 8,
+                  opacity: fini && !gagnant ? 0.42 : 1
+                }}
+                uiBackground={{ ...SKIN.card, color: teinte }}
+              >
+                <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
+                  color={gagnant ? C.name : texte}
+                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
+                <UiEntity
+                  uiTransform={{ width: 118 * s, height: 118 * s }}
+                  uiBackground={{ texture: { src: `assets/ui/toy-${r}.png` }, textureMode: 'stretch' }} />
+                <Label
+                  value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[r] ?? 1)}/s`}
+                  fontSize={TYPE.caption} textWrap="nowrap"
+                  color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
+                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
+              </UiEntity>
+            )
+          })}
+
+          {/* The strip fades into the panel at both ends: cards arrive from beyond the window. */}
+          <UiEntity
+            uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { left: 0, top: 0 } }}
+            uiBackground={{ texture: { src: 'assets/ui/fade-left.png' }, textureMode: 'stretch' }} />
+          <UiEntity
+            uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { right: 0, top: 0 } }}
+            uiBackground={{ texture: { src: 'assets/ui/fade-right.png' }, textureMode: 'stretch' }} />
+
+          {/* The selector, gone once the strip has stopped: the winner's pop says it instead. */}
+          {!fini && (
+            <UiEntity
+              uiTransform={{ width: 5, height: bande, positionType: 'absolute', position: { left: large / 2 - 2.5, top: 0 } }}
+              uiBackground={{ color: C.name }} />
+          )}
+        </UiEntity>
       </UiEntity>
     </Centre>
   )
@@ -945,26 +1003,6 @@ const uiComponent = () => {
     */}
     {hud() && (boxView.roule || boxView.resultat >= 0) && Roulette()}
 
-    {hud() && !boxView.roule && boxView.resultat >= 0 && (
-      <UiEntity
-        uiTransform={{
-          width: strip(900).width, height: 96, positionType: 'absolute',
-          position: { bottom: 250 + REEL_H + 26, left: '50%' }, margin: strip(900).margin,
-          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
-        }}
-      >
-        <Label
-          uiTransform={{ width: '100%' }}
-          value={itemName(boxView.resultat, boxView.resultatMutation)}
-          fontSize={TYPE.title}
-          color={Color4.fromHexString(lisible(itemColor(boxView.resultat, boxView.resultatMutation)) + 'ff')} />
-        <Label
-          uiTransform={{ width: '100%' }}
-          value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}
-          fontSize={TYPE.label}
-          color={boxView.state === 'expose' ? C.money : C.bonus} />
-      </UiEntity>
-    )}
 
 
     {/*
