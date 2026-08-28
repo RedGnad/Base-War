@@ -40,6 +40,12 @@ GLYPHS = list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.,:+-/%x$!?() ')
 COLS, ROWS = 8, 8
 CELL = 128
 PAD = 10
+# The baked outline, in pixels at cell scale. The reference GUI language sets every label
+# in a light face wrapped in one dark navy contour; without it, white on the gold plate is
+# unreadable and gold on a bright sky is glare. With it, both read anywhere, which is also
+# what retires the old reason the money had to be green.
+STROKE = 7
+NAVY = (0x16, 0x29, 0x4a)
 
 
 def main():
@@ -72,7 +78,7 @@ def main():
     for ch in GLYPHS:
         if ch == ' ':
             continue
-        x0, y0, x1, y1 = draw.textbbox((0, 0), ch, font=probe, anchor='ls')
+        x0, y0, x1, y1 = draw.textbbox((0, 0), ch, font=probe, anchor='ls', stroke_width=STROKE)
         haut = min(haut, y0)
         bas = max(bas, y1)
         large = max(large, x1 - x0)
@@ -87,7 +93,7 @@ def main():
     for ch in GLYPHS:
         if ch == ' ':
             continue
-        _, y0, _, y1 = draw.textbbox((0, 0), ch, font=font, anchor='ls')
+        _, y0, _, y1 = draw.textbbox((0, 0), ch, font=font, anchor='ls', stroke_width=STROKE)
         encre_haut = min(encre_haut, y0)
         encre_bas = max(encre_bas, y1)
     # One baseline for the whole set, so glyphs sit on a line instead of each centring
@@ -95,6 +101,12 @@ def main():
     # exactly PAD below the top of the cell.
     baseline = PAD - encre_haut + (dispo - (encre_bas - encre_haut)) / 2
     assert baseline + encre_bas <= CELL, 'the ink would still cross the cell'
+
+    # A second grid carries the same glyphs wrapped in their stroke. The recolouring pass
+    # keeps only the alpha of what it reads, so the outline has to be its own mask: the
+    # composition below paints stroke pixels navy and fill pixels in the role's colour.
+    atlas2 = Image.new('RGBA', (COLS * CELL, ROWS * CELL), (255, 255, 255, 0))
+    draw2 = ImageDraw.Draw(atlas2)
 
     advance = {}
     for i, ch in enumerate(GLYPHS):
@@ -105,6 +117,9 @@ def main():
         # narrower, so the advance below is what actually spaces them.
         draw.text((cx + (CELL - width) / 2, cy + baseline), ch, font=font,
                   fill=(255, 255, 255, 255), anchor='ls')
+        draw2.text((cx + (CELL - width) / 2, cy + baseline), ch, font=font,
+                   fill=(255, 255, 255, 255), anchor='ls',
+                   stroke_width=STROKE, stroke_fill=(255, 255, 255, 255))
         advance[ch] = round(width / CELL, 4)
 
     # A vertical ramp baked into the ink, so the tint applied at render time comes out as a
@@ -140,18 +155,20 @@ def main():
     # than one. The shadow is a sixth: an offset copy needs to be black, and black is a
     # colour like any other once tinting is off the table.
     ROLES = {
-        'money': (0x6e, 0xf0, 0x7a),
+        'money': (0xff, 0xd2, 0x4a),
         'bonus': (0xff, 0x8a, 0x3d),
         'name': (0xff, 0xff, 0xff),
         'danger': (0xff, 0x5c, 0x5c),
-        'ink': (0x0b, 0x1a, 0x0f),
+        'ink': (0x12, 0x30, 0x5c),
         'shadow': (0, 0, 0)
     }
     # Old files go first: names now carry a content hash, so yesterday's are just litter.
     for vieux in glob.glob(os.path.join(OUT, 'font-*.png')):
         os.remove(vieux)
 
+    px2 = atlas2.load()
     alphas = [[px[gx, gy][3] for gx in range(COLS * CELL)] for gy in range(ROWS * CELL)]
+    alphas2 = [[px2[gx, gy][3] for gx in range(COLS * CELL)] for gy in range(ROWS * CELL)]
     fichiers = {}
     total = 0
     for role, (rr, gg, bb) in ROLES.items():
@@ -162,10 +179,25 @@ def main():
             f = HAUT + (BAS - HAUT) * min(1.0, max(0.0, t))
             r2, g2, b2 = int(rr * f), int(gg * f), int(bb * f)
             ligne = alphas[gy]
+            ligne2 = alphas2[gy]
             for gx in range(COLS * CELL):
-                a = ligne[gx]
-                if a:
-                    q[gx, gy] = (r2, g2, b2, a)
+                af = ligne[gx]
+                ast = ligne2[gx]
+                if role == 'shadow':
+                    # The shadow is cast by the whole letter, contour included.
+                    if ast:
+                        q[gx, gy] = (0, 0, 0, ast)
+                elif role == 'ink':
+                    # A dark face needs no contour; it IS the contour colour.
+                    if af:
+                        q[gx, gy] = (r2, g2, b2, af)
+                elif ast:
+                    # Navy at the edge, the role's colour inside, blended on the fill's own
+                    # antialiasing so the boundary is a curve rather than a staircase.
+                    k = af / 255.0
+                    q[gx, gy] = (int(NAVY[0] + (r2 - NAVY[0]) * k),
+                                 int(NAVY[1] + (g2 - NAVY[1]) * k),
+                                 int(NAVY[2] + (b2 - NAVY[2]) * k), ast)
         # The name carries a hash of the pixels.
         #
         # Changing the money from gold to green rewrote the file and the running client kept

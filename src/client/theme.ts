@@ -59,15 +59,14 @@ export const TYPE = {
  * warning is orange, a name is white, and anything destructive or refused is red. A player
  * who learns the code once reads any new panel without being taught it.
  *
- * Money stays green, and that is a deliberate departure from the coin lying on the ground,
- * which is gold. Gold was tried: it matches the world, and against a bright sky at speed a
- * warm yellow is harder on the eye than a green over the same long session. The reading of
- * the counter as grey was never the hue anyway, it was the tint never arriving; with the
- * colour baked into the atlas the green is finally the green that was asked for. The warning
- * hue stays on the orange it moved to, which now differs from both.
+ * Money is gold, at last. It was green for one measured reason: bare gold over a bright sky
+ * at speed is glare. That objection died the day the atlas baked a dark navy contour around
+ * every glyph (28 Aug), which is the exact device the reference GUI sheets use to put white
+ * on gold and gold on sky; the counter now matches the coin lying on the ground. The warning
+ * hue stays on the orange, which still differs from both.
  */
 export const HUE = {
-  money: '#6ef07a',
+  money: '#ffd24a',
   bonus: '#ff8a3d',
   name: '#ffffff',
   danger: '#ffa3a3',
@@ -155,7 +154,7 @@ export const C = {
   danger: Color4.fromHexString(HUE.danger + 'ff'),
   dim: Color4.fromHexString(HUE.dim + 'ff'),
   /** Label colour for a control on a light plate: the default pink vanishes on green. */
-  ink: Color4.fromHexString('#0b1a0fff'),
+  ink: Color4.fromHexString('#12305cff'),
   plate: Color4.create(0, 0, 0, 0.62),
   inset: Color4.create(0, 0, 0, 0.45)
 }
@@ -211,7 +210,9 @@ export const SKIN = {
   inset: skin('inset'),
   primary: skin('primary'),
   secondary: skin('secondary'),
-  danger: skin('danger')
+  danger: skin('danger'),
+  success: skin('success'),
+  disabled: skin('disabled')
 }
 
 /** The skin a control wears, picked from the same condition that picks its variant. */

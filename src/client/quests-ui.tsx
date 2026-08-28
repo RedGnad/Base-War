@@ -1,5 +1,5 @@
 import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP, SKIN, btn, C, lisible } from './theme'
+import { TYPE, TAP, SKIN, C, lisible } from './theme'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -90,7 +90,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         <Button
           uiTransform={{ width: 187, height: TAP.height }}
           value={fini ? 'CLAIM' : `+1 crate`}
-          variant={fini ? 'primary' : 'secondary'} uiBackground={btn(fini)} color={fini ? C.ink : C.name}
+          variant={fini ? 'primary' : 'secondary'} uiBackground={fini ? SKIN.success : SKIN.secondary} color={C.name}
           fontSize={TYPE.caption}
           onMouseDown={() => { if (fini) claim(i) }} />
       )}
@@ -130,7 +130,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
             uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
         ) : (
           <Button uiTransform={{ width: 187, height: TAP.height }}
-            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} uiBackground={btn(allDone)} color={allDone ? C.ink : C.name} fontSize={TYPE.caption}
+            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} uiBackground={allDone ? SKIN.success : SKIN.disabled} color={C.name} fontSize={TYPE.caption}
             onMouseDown={() => { if (allDone) claim(3) }} />
         )}
     </UiEntity>
@@ -166,13 +166,13 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                 borderWidth: aReclamer ? 3 : actuel ? 2 : 0,
-                borderColor: Color4.fromHexString((aReclamer ? '#ff6b6b' : '#ffd166') + 'ff')
+                borderColor: Color4.fromHexString((aReclamer ? '#a8e86e' : '#ffd166') + 'ff')
               }}
-              uiBackground={{ color: aReclamer ? Color4.create(0.35, 0.12, 0.12, 0.95) : passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
+              uiBackground={{ color: aReclamer ? Color4.create(0.10, 0.28, 0.08, 0.95) : passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
               onMouseDown={aReclamer ? claimDaily : undefined}
             >
               <Label value={aReclamer ? `DAY ${dayN}  ✦` : `DAY ${dayN}`} fontSize={TYPE.caption}
-                color={aReclamer ? Color4.fromHexString('#ff9e9eff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
+                color={aReclamer ? Color4.fromHexString('#c8f0a0ff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
               <Label value={aReclamer ? 'CLAIM' : crate(t).name} fontSize={TYPE.caption}
                 color={aReclamer ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString(lisible(crate(t).color) + 'ff')}

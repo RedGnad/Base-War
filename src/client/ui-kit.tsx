@@ -23,6 +23,8 @@ export const Btn = (props: {
   label: string
   width: number
   primary?: boolean
+  /** A named plate when the role is finer than primary/secondary: a claim, a refusal. */
+  skin?: 'primary' | 'secondary' | 'success' | 'danger' | 'disabled'
   size?: number
   right?: number
   onClick?: () => void
@@ -38,14 +40,14 @@ export const Btn = (props: {
         margin: props.right !== undefined ? { right: props.right } : undefined,
         pointerFilter: 'block'
       }}
-      uiBackground={props.primary === true ? SKIN.primary : SKIN.secondary}
+      uiBackground={SKIN[props.skin ?? (props.primary === true ? 'primary' : 'secondary')]}
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
       onMouseDown={props.onClick}
     >
       <Glyphs
         value={props.label} size={size} align="center" box={props.width}
         top={(TAP.height - size) / 2}
-        role={props.primary === true ? 'ink' : 'name'} />
+        role="name" />
       {/*
         A pip that sits ON the corner, not inside it.
 
