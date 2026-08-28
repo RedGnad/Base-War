@@ -342,11 +342,16 @@ export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number)
 
 /** World position of an entity, up its parent chain; rotation ignored, which is fine for a distance. */
 function positionMonde(e: Entity): Vector3 | null {
+  // The toy itself must have a Transform; if it does not, it is not on screen.
+  if (!Transform.has(e)) return null
   let x = 0, y = 0, z = 0
   let cur: Entity | undefined = e
-  for (let n = 0; n < 8 && cur !== undefined; n++) {
+  for (let n = 0; n < 8 && cur !== undefined && cur !== engine.RootEntity; n++) {
     const t = Transform.getOrNull(cur)
-    if (t === null) return null
+    // The chain ends at the scene root, which has no Transform: STOP with the sum so far,
+    // never return null. Returning null here excluded every toy from the light budget and
+    // took ALL toy lights down with it (tester, 28 Aug: "no glow, we regressed").
+    if (t === null) break
     x += t.position.x; y += t.position.y; z += t.position.z
     cur = t.parent
   }
