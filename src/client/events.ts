@@ -75,12 +75,21 @@ export function setEventFloor(entity: Entity, base: string): void { sol = entity
  * The floor at rest: a matte play mat. Defined once, for the venue that builds it and the event
  * that hands it back.
  *
- * It names a WHITE texture on purpose. A material written without a texture field does not
- * clear the one the client is drawing: after the first Gold rush the floor went back to green
- * and kept its cracks. White times green is green, and naming it is what makes the swap happen.
+ * It names a texture on purpose. A material written without a texture field does not clear
+ * the one the client is drawing: after the first Gold rush the floor went back to green and
+ * kept its cracks. Naming one is what makes the swap happen, and the one named is the quiet
+ * checker: a flat floor gave the eye nothing that moves, so running read as standing still
+ * (tester, 28 Aug). Same recipe as the event mats, a fraction of their contrast.
  */
 export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
-  return { ...plastic(hex), roughness: 0.9, texture: Material.Texture.Common({ src: 'assets/textures/blank.png' }) }
+  return {
+    ...plastic(hex), roughness: 0.9,
+    texture: Material.Texture.Common({
+      src: 'assets/textures/mat-grass.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create(SCENE_SIDE / MAILLE_HERBE, SCENE_SIDE / MAILLE_HERBE)
+    })
+  }
 }
 
 /*
@@ -95,6 +104,8 @@ export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
   tween, so an event that ended leaves neither behind.
 */
 const MAILLE_SOL = 16
+/** The resting checker: two 2 m tiles per repeat, the genre's stride-sized grain. */
+const MAILLE_HERBE = 4
 
 export function setupEvents(): void {
   room.onMessage('rushGift', (d) => {

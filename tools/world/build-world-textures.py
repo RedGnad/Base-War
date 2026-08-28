@@ -76,11 +76,41 @@ def mat(kind):
     return im
 
 
+def grass():
+    """The resting mat: a two-tone checker, quieter than any event.
+
+    A flat colour gives the eye nothing that moves, so running reads as standing still;
+    every reference in the genre keeps a periodic pattern underfoot (Brawl Stars checkers
+    its ground at a whisper of contrast, the Roblox tycoons tile their baseplates) and
+    keeps it QUIET, because a loud grid is a bathroom floor, the same lesson the first
+    event mat taught. Two tiles per image edge, values 0.91..1.0 so the play-mat green
+    stays the colour and the checker only gives the ground a grain: a step between tiles,
+    a soft seam, a sprinkle of blades.
+    """
+    im = Image.new('RGB', (N, N))
+    px = im.load()
+    half = N // 2
+    for j in range(N):
+        for i in range(N):
+            v = 1.0 if ((i // half) + (j // half)) % 2 == 0 else 0.945
+            di = min(i % half, half - 1 - i % half)
+            dj = min(j % half, half - 1 - j % half)
+            if min(di, dj) < 2:
+                v -= 0.035
+            n = math.sin(i * 12.9898 + j * 78.233) * 43758.5453
+            n -= math.floor(n)
+            v += (n - 0.5) * 0.03
+            g = int(round(255 * max(0.0, min(1.0, v))))
+            px[i, j] = (g, g, g)
+    return im
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     belt().save(os.path.join(OUT, 'belt.png'), optimize=True)
     for k in ('gold', 'lava', 'cursed'):
         mat(k).save(os.path.join(OUT, f'mat-{k}.png'), optimize=True)
+    grass().save(os.path.join(OUT, 'mat-grass.png'), optimize=True)
     # A white square: the texture a material names when it wants NO picture. Omitting the
     # texture field leaves the client on whatever it drew last; naming this one replaces it.
     Image.new('RGB', (8, 8), (255, 255, 255)).save(os.path.join(OUT, 'blank.png'), optimize=True)
