@@ -31,10 +31,14 @@ function goUpOneFloor(v: View): void {
   const actuel = moi === null ? 0 : Math.max(0, Math.round(moi.position.y / FLOOR_HEIGHT))
   const cible = actuel + 1 >= open ? 0 : actuel + 1
   const y = cible * FLOOR_HEIGHT + 0.3
-  // Land RIGHT BESIDE the elevator, a step in from its corner, camera on it, so it stays on
-  // screen and the player can spam the click to keep climbing (tester, 28 Aug). Both points
-  // are the elevator's local corner, turned to the base's facing.
-  const pied = tourner(t.position.z, ASC_X - 1.6, ASC_Z + 1.6)
+  // Land on the MAIN slab, camera on the elevator, so it stays on screen and the player can
+  // spam the click to keep climbing (tester, 28 Aug). Not merely beside the elevator: the
+  // stairwell hole spans x in [c/2-STAIRWELL, c/2] with its guard rail a step further in, so
+  // "one step in from the corner" put the player on the narrow strip BEHIND the rail, at the
+  // lip of the very hole left for jumping down (tester, 28 Aug, second pass). The slab proper
+  // ends at the rail, x = c/2 - STAIRWELL_WIDTH = 3.4; land a stride inside it, facing the
+  // elevator across the rail, which a click clears since the pillar is storey-tall.
+  const pied = tourner(t.position.z, ASC_X - 3.5, ASC_Z + 1.6)
   const el = tourner(t.position.z, ASC_X, ASC_Z)
   void movePlayerTo({
     newRelativePosition: Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
