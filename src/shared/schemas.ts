@@ -460,14 +460,14 @@ export const COIL_SHARE = 1.5
   player spawns with; here it is the one a judge understands without being told what a gun does.
 */
 export const SLAP_RANGE = 2.5
-export const SLAP_COOLDOWN_MS = 420
+export const SLAP_COOLDOWN_MS = 220   // snappy melee: the slow 420 made a slap-user's fire feel dead (28 Aug)
 /*
   The taser is the slap's rung at prestige 3, and what it adds is the reference's own effect:
   "stun enemies with a taser to fling them and return your Brainrots". A hit at arm's reach
   freezes the target three seconds and opens their hands at full force.
 */
 export const TASER_FREEZE_MS = 3_000
-export const TASER_COOLDOWN_MS = 900
+export const TASER_COOLDOWN_MS = 220   // the taser replaces the gun; 900 ms capped a p3 player's whole fire feel at one shot a second
 
 /*
   The cloak is a timed state, and the server owns it.

@@ -1,4 +1,4 @@
-import { engine, Transform, MeshRenderer, Material, TextShape, TextAlignMode, Entity } from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, Material, TextShape, TextAlignMode, Entity, Billboard, BillboardMode } from '@dcl/sdk/ecs'
 import { Vector3, Color4, Color3, Quaternion } from '@dcl/sdk/math'
 import { Records, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { formatIncome, nomDuCode } from '../shared/loot-table'
@@ -147,6 +147,10 @@ export function setupRecords(): void {
   // clear the crates passing under it.
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(CENTER.x, BELT_HEIGHT + HAUTEUR / 2 + 2.4, CENTER.z) })
+  // Billboard so it turns to face each viewer wherever they stand (tester preferred this). The
+  // two faces stay: whichever way the billboard turns, one readable face is toward the camera,
+  // which sidesteps the undocumented "which side of a billboard faces you" (advanced-rendering).
+  Billboard.create(racine, { billboardMode: BillboardMode.BM_Y })
 
   const cadre = engine.addEntity()
   Transform.create(cadre, { parent: racine, scale: Vector3.create(LARGEUR + 0.5, HAUTEUR + 0.5, 0.12) })
