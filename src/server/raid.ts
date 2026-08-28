@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS, RAID_ORBIT,
-  RAID_ORBIT_MS, RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE,
+  RAID_ORBIT_MS, RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
   RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, forceDuTir
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -53,23 +53,28 @@ function meneur(): { address: string; name: string } | null {
 }
 
 /**
- * A shot or a blow from `from` toward `vise` hits the boss when the boss's disc lies on that
- * line, in the ground plane. Damage is the shot's own force at that range, so a point-blank
- * shot or a slap is a full point and a shot from across the plaza is a fraction, the same
- * rule the players' pockets already obey. Returns true when the boss took the hit.
+ * A shot or a blow from `from` AIMED at `vise` hits the boss when the boss's disc lies on the
+ * forward ray, within `RAID_HIT_RANGE` of the player, in the ground plane. The ray is used,
+ * not the segment: a taser's aim point is only 2.5 m out, so a segment ending there never
+ * reached a boss orbiting at 4 m, and melee weapons dealt no damage at all (tester, 28 Aug).
+ * The boss is one big target everyone piles onto, so any weapon aimed at it lands, up to the
+ * raid range. Damage is still the shot's force at the real distance. Returns true on a hit.
  */
 export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }): boolean {
   if (boss === null) return false
   const r = Raid.getOrNull(boss)
   if (r === null || !r.active) return false
   const ax = from.x, az = from.z
-  const dx = vise.x - ax, dz = vise.z - az
-  const l2 = dx * dx + dz * dz
-  let t = l2 === 0 ? 0 : ((r.x - ax) * dx + (r.z - az) * dz) / l2
-  t = Math.max(0, Math.min(1, t))
+  let dx = vise.x - ax, dz = vise.z - az
+  const l = Math.hypot(dx, dz)
+  if (l < 0.0001) return false
+  dx /= l; dz /= l                                  // unit forward, so the ray is not capped by the aim point
+  const bossDist = Math.hypot(r.x - ax, r.z - az)
+  if (bossDist > RAID_HIT_RANGE) return false
+  const t = Math.max(0, (r.x - ax) * dx + (r.z - az) * dz)  // distance along the ray to the boss's foot
   const px = ax + t * dx, pz = az + t * dz
   if (Math.hypot(r.x - px, r.z - pz) > RAID_RADIUS) return false
-  const degat = Math.max(0.2, forceDuTir(Math.hypot(r.x - ax, r.z - az)))
+  const degat = Math.max(0.2, forceDuTir(bossDist))
   const m = Raid.getMutableOrNull(boss)
   if (m === null) return false
   m.hp = Math.max(0, m.hp - degat)

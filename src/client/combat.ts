@@ -9,7 +9,7 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS } from '../shared/schemas'
+import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
 import { gearView, tirerLaCape } from './gear'
 import { raidView } from './raid'
 import { room } from '../shared/messages'
@@ -526,7 +526,8 @@ function viser(): void {
     const dx = raidView.x - moiT.position.x
     const dz = raidView.z - moiT.position.z
     const d = Math.sqrt(dx * dx + dz * dz)
-    if (d <= porteeArme() + 1.6 && d >= 0.5 && (dx * ax + dz * az) / d >= SHOT_CONE_DOT && (best === null || d < best.d)) {
+    // The boss locks out to the raid range whatever the weapon: a taser (2.5 m) still aims at it.
+    if (d <= RAID_HIT_RANGE && d >= 0.5 && (dx * ax + dz * az) / d >= SHOT_CONE_DOT && (best === null || d < best.d)) {
       adresseCible = 'raid-boss'
       nomCible = 'RAID BOSS'
       combatView.targetName = nomCible

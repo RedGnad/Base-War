@@ -1032,6 +1032,8 @@ export const RAID_MS = 3 * 60_000
 /** On the plaza side of the belt lane, opposite the board and the fuser. */
 export const RAID_POS = { x: CENTER.x, z: CENTER.z + 7 }
 export const RAID_RADIUS = 1.6
+/** Any weapon aimed at the boss lands within this range, whatever its own anti-player reach. */
+export const RAID_HIT_RANGE = 16
 export const RAID_ORBIT = 4
 export const RAID_ORBIT_MS = 40_000
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
