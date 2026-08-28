@@ -627,12 +627,28 @@ export function advanceQuest(address: string, type: QuestType, n = 1): void {
 export type QuestState = {
   ids: number[]; progres: number[]; cibles: number[]; pris: number[]
   log: number; streak: number; dayClaimed: boolean
+  dailyDispo: boolean
+  prochainJour: number
+}
+
+/** The day number a claim would land on now: the next in the streak, or day 1 after a gap. */
+export function prochainJourDaily(address: string): number {
+  const p = profiles.get(address)
+  if (!p) return 1
+  const hier = new Date(Date.now() - 86400_000)
+  const hierCle = hier.getUTCFullYear() * 10000 + (hier.getUTCMonth() + 1) * 100 + hier.getUTCDate()
+  return p.lastDay === hierCle ? Math.min((p.streak ?? 0) + 1, 7) : 1
+}
+export function dailyDisponible(address: string): boolean {
+  const p = profiles.get(address)
+  return p !== undefined && p.lastDay !== todayKey()
 }
 
 export function questStateOf(address: string): QuestState | null {
   const p = questState(address)
   if (!p) return null
   const ids = questsOfDay(p.questDay ?? 0)
+  const dispo = p.lastDay !== todayKey()
   return {
     ids,
     progres: [...(p.questProgress ?? [0, 0, 0])],
@@ -640,7 +656,9 @@ export function questStateOf(address: string): QuestState | null {
     pris: [...(p.questsClaimed ?? [0, 0, 0, 0])],
     log: p.streak ?? 1,
     streak: p.streak ?? 1,
-    dayClaimed: p.lastDay === todayKey()
+    dayClaimed: p.lastDay === todayKey(),
+    dailyDispo: dispo,
+    prochainJour: prochainJourDaily(address)
   }
 }
 
@@ -674,7 +692,7 @@ export function pushQuests(address: string): void {
   if (q === null) return
   void room.send('quests', {
     ids: q.ids, progres: q.progres, cibles: q.cibles, pris: q.pris,
-    log: q.log, dayClaimed: q.dayClaimed
+    log: q.log, dayClaimed: q.dayClaimed, dailyDispo: q.dailyDispo, prochainJour: q.prochainJour
   }, { to: [address] })
 }
 

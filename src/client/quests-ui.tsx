@@ -15,7 +15,9 @@ export const questsView = {
   cibles: [] as number[],
   pris: [] as number[],
   log: 1,
-  dayClaimed: false
+  dayClaimed: false,
+  dailyDispo: false,
+  prochainJour: 1
 }
 
 export function setupQuests(): void {
@@ -26,10 +28,13 @@ export function setupQuests(): void {
     questsView.pris = [...d.pris]
     questsView.log = d.log
     questsView.dayClaimed = d.dayClaimed
+    questsView.dailyDispo = d.dailyDispo
+    questsView.prochainJour = d.prochainJour
   })
 }
 
 function claim(slot: number): void { void room.send('claimQuest', { slot }) }
+function claimDaily(): void { void room.send('claimDaily', {}) }
 
 export function questsToClaim(): number {
   let n = 0
@@ -37,6 +42,7 @@ export function questsToClaim(): number {
     if (questsView.progres[i] >= questsView.cibles[i] && questsView.pris[i] !== 1) n++
   }
   if (n === 0 && allQuestsDone() && questsView.pris[3] !== 1) n = 1
+  if (questsView.dailyDispo) n += 1     // today's chest is waiting to be claimed
   return n
 }
 
@@ -151,21 +157,25 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
         {DAILY_REWARDS.map((t, j) => {
           const dayN = j + 1
           const passe = dayN < questsView.log || (dayN === questsView.log && questsView.dayClaimed)
-          const actuel = dayN === questsView.log
+          // The day to claim is the next in the streak, offered only when today's chest is waiting.
+          const aReclamer = questsView.dailyDispo && dayN === questsView.prochainJour
+          const actuel = dayN === questsView.log && !aReclamer
           return (
             <UiEntity
               uiTransform={{
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                borderWidth: actuel ? 2 : 0, borderColor: Color4.fromHexString('#ffd166ff')
+                borderWidth: aReclamer ? 3 : actuel ? 2 : 0,
+                borderColor: Color4.fromHexString((aReclamer ? '#ff6b6b' : '#ffd166') + 'ff')
               }}
-              uiBackground={{ color: passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
+              uiBackground={{ color: aReclamer ? Color4.create(0.35, 0.12, 0.12, 0.95) : passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
+              onMouseDown={aReclamer ? claimDaily : undefined}
             >
-              <Label value={`DAY ${dayN}`} fontSize={TYPE.caption}
-                color={passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
+              <Label value={aReclamer ? `DAY ${dayN}  ✦` : `DAY ${dayN}`} fontSize={TYPE.caption}
+                color={aReclamer ? Color4.fromHexString('#ff9e9eff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
-              <Label value={crate(t).name} fontSize={TYPE.caption}
-                color={Color4.fromHexString(lisible(crate(t).color) + 'ff')}
+              <Label value={aReclamer ? 'CLAIM' : crate(t).name} fontSize={TYPE.caption}
+                color={aReclamer ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString(lisible(crate(t).color) + 'ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
             </UiEntity>
           )

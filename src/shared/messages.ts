@@ -34,8 +34,9 @@ export const MESSAGES = {
   quests: Schemas.Map({
     ids: Schemas.Array(Schemas.Int), progres: Schemas.Array(Schemas.Int),
     cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
-    log: Schemas.Int, dayClaimed: Schemas.Boolean
+    log: Schemas.Int, dayClaimed: Schemas.Boolean, dailyDispo: Schemas.Boolean, prochainJour: Schemas.Int
   }),
+  claimDaily: Schemas.Map({}),
   tutorial: Schemas.Map({ etape: Schemas.Int, total: Schemas.Int }),
   timeGift: Schemas.Map({ crate: Schemas.Int, minutes: Schemas.Int }),
 

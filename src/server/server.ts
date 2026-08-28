@@ -2,7 +2,7 @@ import { engine, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, accueillir, auRevoir, cashOfflineEarnings, reclamerQuotidienne, pushQuests, presents as presentsAvecGrace } from './plots'
+import { startPlots, accueillir, auRevoir, cashOfflineEarnings, pushQuests, presents as presentsAvecGrace } from './plots'
 import { arrivee, depart, verifierCadeau } from './onboarding'
 import { runConvoys, balayerConvois } from './convoy'
 import { startCombat } from './combat'
@@ -69,8 +69,8 @@ export function startServer(): void {
         await accueillir(address)
         const hl = cashOfflineEarnings(address)
         if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
-        const dq = reclamerQuotidienne(address)
-        if (dq !== null) void room.send('dailyReward', dq, { to: [address] })
+        // The daily is no longer handed over on join; the player claims it from the day strip,
+        // which is a red dot worth chasing (tester, 28 Aug). We only nudge that it is waiting.
         pushQuests(address)
         arrivee(address)
         lockOnArrival(address)    // grace period on arrival

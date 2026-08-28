@@ -8,9 +8,7 @@ import {
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
-import {
-  advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol, choisirSkin
-} from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol, choisirSkin, reclamerQuotidienne } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
@@ -367,6 +365,16 @@ export function startTheft(): void {
     const r = claimQuestReward(a, d.slot)
     if ('error' in r) { refus(a, 'quest', r.error); return }
     void room.send('questReward', { crate: r.crate }, { to: [a] })
+    void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
+    pushQuests(a)
+  })
+
+  room.onMessage('claimDaily', (_d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    const dq = reclamerQuotidienne(a)
+    if (dq === null) { refus(a, 'daily', 'come back tomorrow'); return }
+    void room.send('dailyReward', dq, { to: [a] })
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     pushQuests(a)
   })
