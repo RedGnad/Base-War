@@ -615,8 +615,17 @@ function viser(): void {
  * offset, and the reticle would stop telling the truth as soon as the player switched view.
  */
 /** Reach and rhythm of whatever is in hand, read in one place so reticle and shot agree. */
-/** The best arm in the pocket decides: taser over slap over gun, the ladder's own order. */
-function armeEnMain(): 'taser' | 'slap' | 'shoot' {
+/** True when the player actually owns that weapon; the gun is always owned. */
+function possedeArme(a: ArmeType): boolean {
+  return a === 'shoot' || (a === 'slap' && gearView.held[2] > 0) || (a === 'taser' && gearView.held[5] > 0)
+}
+/*
+  The player's WIELD choice wins as long as they own it; otherwise fall back to the best owned.
+  Without this the choice was ignored and buying a slap silently overrode the gun for good
+  (tester, 28 Aug: "HOLD GUN and I still hold the slap").
+*/
+function armeEnMain(): ArmeType {
+  if (possedeArme(gearView.armeChoisie)) return gearView.armeChoisie
   return gearView.held[5] > 0 ? 'taser' : gearView.held[2] > 0 ? 'slap' : 'shoot'
 }
 function porteeArme(): number { return armeEnMain() === 'shoot' ? SHOT_RANGE : SLAP_RANGE }
@@ -647,7 +656,9 @@ function tirer(now: number): boolean {
     z: moiT.position.z + (f.z / plat) * portee
   })
 
-  flashScale = 0.5
+  // A gun flashes and cracks; a melee weapon swings. No bullets out of a paddle (tester, 28 Aug).
+  const gun = armeEnMain() === 'shoot'
+  flashScale = gun ? 0.5 : 0
   poserFlash(flashScale)
   recul = 1
   if (vue !== null) {
