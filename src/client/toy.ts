@@ -1,3 +1,4 @@
+import { isMobile } from '@dcl/sdk/platform'
 import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -331,6 +332,10 @@ const LUMIERES_MAX = 16
 const souhaits = new Map<Entity, { hex: string; glow: number }>()
 
 export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {
+  // No point lights on a phone: the client disables scene lights on the mobile preset, so
+  // the budget would sort and create lights nobody renders, spending CPU for nothing (tester,
+  // 28 Aug). The emissive material carries the whole glow there, which is free on every preset.
+  if (isMobile()) return
   if (hex === null) {
     souhaits.delete(parent)
     const cur = lumieres.get(parent)
@@ -516,11 +521,14 @@ export function effacerCaisse(racine: Entity): void {
 }
 
 export function setupToy(): void {
-  let accLumiere = 0
-  engine.addSystem((dt) => {
-    accLumiere += dt
-    if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
-  })
+  // The light budget only runs where there are lights to budget: not on a phone.
+  if (!isMobile()) {
+    let accLumiere = 0
+    engine.addSystem((dt) => {
+      accLumiere += dt
+      if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
+    })
+  }
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
       const st = GltfContainerLoadingState.getOrNull(m.modele)

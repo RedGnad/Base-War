@@ -119,7 +119,7 @@ export const SHOT_RANGE = 28
  * thumb reaches, so what limits the burst is how fast the player taps. The rate still has
  * a floor, because it also caps what a client can ask the server to resolve.
  */
-export const SHOT_COOLDOWN_MS = 180
+export const SHOT_COOLDOWN_MS = 110   // ~9 rounds/s; per-shot yield and boss HP scaled to hold DPS (28 Aug)
 /**
  * Half-angle of the aim cone, as the cosine the server compares against. 0.97 is about 14
  * degrees. The client draws its reticle from this same number, so the crosshair states what
@@ -138,7 +138,7 @@ export const AIM_SPEED_SHARE = 0.5
  * down the most: at eight seconds of income a full burst tops out near forty-four seconds
  * of the target's production, under the sixty-six the slow weapon allowed.
  */
-export const SHOT_DROP_SHARE = 0.03
+export const SHOT_DROP_SHARE = 0.0183
 export const SHOT_DROP_CAP_S = 8
 
 /**
@@ -1037,8 +1037,8 @@ export const RAID_HIT_RANGE = 16
 export const RAID_ORBIT = 4
 export const RAID_ORBIT_MS = 40_000
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
-export const RAID_HP_BASE = 40
-export const RAID_HP_PER_PLAYER = 25
+export const RAID_HP_BASE = 65
+export const RAID_HP_PER_PLAYER = 41
 export const RAID_SWIPE_MS = 5_000
 export const RAID_SWIPE_RANGE = 4
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */
