@@ -6,6 +6,7 @@ import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/re
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { TYPE, C, HUE, TAP, SKIN, btn, lisible, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
+import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
@@ -58,6 +59,30 @@ import { slotView, basculerPose, placeHere } from './client/slots'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
 import { baseIci } from './client/plots'
 import { combatView } from './client/combat'
+
+/**
+ * Thirteen transparent pixels, one per interface texture.
+ *
+ * A texture downloads the first time something on screen references it, and the first
+ * reference used to be the HUD itself: on a cold cache the money was drawn before its atlas
+ * arrived, black-first once the shadow file happened to land early (tester, 28 Aug). This
+ * keeps every atlas and plate referenced from the first frame, so the downloads ride the
+ * loading screen. The shadow atlas is deliberately absent: nothing references it any more.
+ */
+const Prewarm = () => (
+  <UiEntity uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}>
+    {(['money', 'bonus', 'name', 'danger', 'ink'] as const).map((r) => (
+      <UiEntity key={`f${r}`}
+        uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}
+        uiBackground={{ color: Color4.create(1, 1, 1, 0.01), texture: { src: `assets/ui/${FONT_FILES[r]}` }, textureMode: 'stretch' }} />
+    ))}
+    {Object.entries(SKIN).map(([n, sk]) => (
+      <UiEntity key={`s${n}`}
+        uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}
+        uiBackground={{ color: Color4.create(1, 1, 1, 0.01), texture: { src: sk.texture.src }, textureMode: 'stretch' }} />
+    ))}
+  </UiEntity>
+)
 
 export function setupUi() {
   /*
@@ -118,6 +143,7 @@ export function setupUi() {
     console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}'`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
+  ReactEcsRenderer.addUiRenderer(engine.addEntity(), Prewarm)
   engine.addSystem(choose)
 }
 
@@ -900,7 +926,7 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
           value={formatIncome(theftView.coins)}
-          size={TYPE.hero} role="money" align="center" box={strip(760).width} shadow />
+          size={TYPE.hero} role="money" align="center" box={strip(760).width} />
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to
@@ -908,7 +934,7 @@ const uiComponent = () => {
       */}
       <UiEntity uiTransform={{ width: '100%', height: 34 }}>
         <Glyphs
-          size={TYPE.label} align="center" box={strip(760).width} shadow
+          size={TYPE.label} align="center" box={strip(760).width}
           role={
             (!view.serverAlive || !theftView.basePosee || theftView.income === 0)
               ? 'bonus'
