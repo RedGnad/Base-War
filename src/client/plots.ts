@@ -767,7 +767,7 @@ export function setupPlots(): void {
         const c = Color4.fromHexString(hex + 'ff')
         const mutId = mutationDe(code)
         // Gold and Diamond are metal and gem; every other mutation, and rarity itself, glow.
-        const mat = estMetal(mutId) ? matiereMetal(hex, mutId) : plasticDe(c, r.glow)
+        const mat = estMetal(mutId) ? matiereMetal(hex, mutId, r.glow) : plasticDe(c, r.glow)
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
@@ -777,13 +777,14 @@ export function setupPlots(): void {
           bloom halo (both off on a Low preset, which a phone drops to under heat) it glows on
           every device. It is the one glow we fully control (tester, 28 Aug: no bloom at all).
         */
-        // A metal/gem sits on a plain pad and casts no light: only energy mutations glow the floor.
-        const energie = !estMetal(mutId)
-        const padHex = (m.mult > 1 && energie) ? m.color : (energie && r.glow >= LUMIERE_MIN_GLOW) ? hex : null
+        // The pad glows in the mutation's colour if mutated, else in the toy's colour at high
+        // rarity. Metal and gem mutations glow too, by their rarity, so a Mythic Diamond lights
+        // its pad; only their SURFACE differs, not whether they glow.
+        const padHex = m.mult > 1 ? m.color : r.glow >= LUMIERE_MIN_GLOW ? hex : null
         socleDuJouet(ent, size, padHex)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         const eclat = r.glow + (m.mult > 1 ? 1 : 0) + 0.8 * traits
-        lumiereDuJouet(ent, energie && eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
+        lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 

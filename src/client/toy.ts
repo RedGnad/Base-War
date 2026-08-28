@@ -116,11 +116,15 @@ export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
 */
 const METAL = new Set<number>([1, 2])   // Gold, Diamond
 export function estMetal(mut: number): boolean { return METAL.has(mut) }
-export function matiereMetal(hex: string, mut: number): PBMaterial_PbrMaterial {
+export function matiereMetal(hex: string, mut: number, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
-  if (mut === 1) return { albedoColor: c, metallic: 0.95, roughness: 0.3 }               // gold: bright polished metal
-  // diamond: very smooth, a little metallic for the highlight, a touch of emissive for sparkle
-  return { albedoColor: c, metallic: 0.25, roughness: 0.05, emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: 0.5 }
+  // The mutation gives the SURFACE (metal or gem); the RARITY still gives the glow, added on
+  // top. A Mythic Diamond blazes because it is Mythic, not just a dull gem (tester, 28 Aug).
+  const eclat = glow <= 0 ? 0 : Math.pow(glow, 1.5) * 0.9
+  const emis = { emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: eclat }
+  if (mut === 1) return { albedoColor: c, metallic: 0.95, roughness: 0.3, ...emis }        // gold: polished metal + rarity glow
+  // diamond: very smooth, a little metallic for the highlight, a base sparkle plus rarity glow
+  return { albedoColor: c, metallic: 0.25, roughness: 0.05, emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: Math.max(0.4, eclat) }
 }
 
 export function plasticDe(c: Color4, glow = 0): PBMaterial_PbrMaterial {
