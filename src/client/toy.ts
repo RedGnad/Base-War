@@ -1,6 +1,7 @@
 import { isMobile } from '@dcl/sdk/platform'
 import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
+import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
 
@@ -398,14 +399,18 @@ function allumer(parent: Entity, hex: string, glow: number): void {
 function budgetDeLumiere(): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   if (moi === null) return
-  const classes: Array<{ parent: Entity; d: number }> = []
+  // The game is played by floor, so a toy on the player's own storey wins a light before one
+  // a floor up that happens to be nearer in 3D (tester, 28 Aug). Rank by floor gap first,
+  // then by distance within it.
+  const monEtage = Math.round(moi.position.y / FLOOR_HEIGHT)
+  const classes: Array<{ parent: Entity; etage: number; d: number }> = []
   for (const [parent] of souhaits) {
     if (!Transform.has(parent)) { souhaits.delete(parent); continue }
     const p = positionMonde(parent)
     if (p === null) continue
-    classes.push({ parent, d: Vector3.distanceSquared(p, moi.position) })
+    classes.push({ parent, etage: Math.abs(Math.round(p.y / FLOOR_HEIGHT) - monEtage), d: Vector3.distanceSquared(p, moi.position) })
   }
-  classes.sort((a, b) => a.d - b.d)
+  classes.sort((a, b) => a.etage - b.etage || a.d - b.d)
   const garder = new Set(classes.slice(0, LUMIERES_MAX).map((c) => c.parent))
   for (const parent of garder) {
     const s = souhaits.get(parent)
