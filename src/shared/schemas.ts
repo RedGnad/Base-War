@@ -661,7 +661,7 @@ export const BUY_RANGE = 5
 export const CHUTE_FIN = 0.22        // part de course consacree a la chute
 export const FOSSE_PROFONDEUR = 2.4   // from belt height down to the pit floor
 
-export const BELT_HEIGHT = 2.2
+export const BELT_HEIGHT = 1.6   // lowered 28 Aug: crates nearer eye level, more clearance under the board
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const onBelt = Math.min(progres, 1)
@@ -1018,7 +1018,10 @@ export const Raid = engine.defineComponent('basetycoon::raid', {
   topName: Schemas.String,
   lastHitName: Schemas.String,
   hitAtMs: Schemas.Int64,
-  swipeAtMs: Schemas.Int64
+  swipeAtMs: Schemas.Int64,
+  /** Where the boss is looking, a unit direction in the ground plane; the client yaws it to face this. */
+  faceX: Schemas.Float,
+  faceZ: Schemas.Float
 })
 /** The switch. Off, the entity exists and never activates; the HUD shows nothing. */
 export const RAID_ENABLED = true
@@ -1034,8 +1037,16 @@ export const RAID_POS = { x: CENTER.x, z: CENTER.z + 7 }
 export const RAID_RADIUS = 1.6
 /** Any weapon aimed at the boss lands within this range, whatever its own anti-player reach. */
 export const RAID_HIT_RANGE = 16
-export const RAID_ORBIT = 4
-export const RAID_ORBIT_MS = 40_000
+/*
+  A boss, not a carousel. It spawns somewhere random on the map, chases the nearest player it
+  can see, but on a leash so it never crosses the plaza after you; out of range it drifts back
+  to where it appeared. It faces what it chases, and faces where it walks otherwise.
+*/
+export const RAID_SPAWN_MARGIN = 30
+export const RAID_AGGRO_RANGE = 14
+export const RAID_LEASH = 13
+export const RAID_SPEED = 3.0
+export const RAID_TURN = 6
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
 export const RAID_HP_BASE = 120
 export const RAID_HP_PER_PLAYER = 75

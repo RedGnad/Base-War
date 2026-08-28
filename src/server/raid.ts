@@ -2,9 +2,10 @@ import { engine } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS, RAID_ORBIT,
-  RAID_ORBIT_MS, RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
-  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, forceDuTir
+  Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
+  RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
+  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_LEASH, RAID_SPEED, RAID_TURN,
+  SCENE_SIDE, forceDuTir
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
@@ -44,6 +45,12 @@ function prochainCreneau(apres: number): number {
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
 let dernierBalai = 0
+let spawnX = 0, spawnZ = 0
+let faceX = 0, faceZ = 1
+let dernierTick = 0
+let seed = 12345
+/** A pseudo-random in [0,1): the sandbox bans Math.random, so a small LCG seeded from the raid's start. */
+function rnd(): number { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff }
 
 function meneur(): { address: string; name: string } | null {
   let top: string | null = null
@@ -98,8 +105,14 @@ function ouvrir(now: number): void {
   m.hpMax = RAID_HP_BASE + RAID_HP_PER_PLAYER * Math.max(1, ici)
   m.hp = m.hpMax
   m.untilMs = now + RAID_MS
-  m.x = RAID_POS.x + RAID_ORBIT
-  m.z = RAID_POS.z
+  seed = (now & 0x7fffffff) ^ 0x5f3759df
+  spawnX = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
+  spawnZ = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
+  m.x = spawnX
+  m.z = spawnZ
+  faceX = 0; faceZ = 1
+  m.faceX = faceX; m.faceZ = faceZ
+  dernierTick = now
   m.topName = ''
   m.lastHitName = ''
   m.hitAtMs = 0
@@ -141,7 +154,7 @@ export function startRaid(): void {
   prochain = prochainCreneau(Date.now())
   Raid.create(boss, {
     active: false, hp: 0, hpMax: 0, untilMs: 0, nextMs: prochain,
-    x: RAID_POS.x, z: RAID_POS.z, topName: '', lastHitName: '', hitAtMs: 0, swipeAtMs: 0
+    x: RAID_POS.x, z: RAID_POS.z, topName: '', lastHitName: '', hitAtMs: 0, swipeAtMs: 0, faceX: 0, faceZ: 1
   })
   syncEntity(boss, [Raid.componentId])
   if (!RAID_ENABLED) { log('raid: disabled'); return }
@@ -181,12 +194,41 @@ export function startRaid(): void {
 
     if (now >= lu.untilMs) { finir(false); return }
 
-    // It walks a slow circle, so standing still is not a strategy and neither is running.
     const m = Raid.getMutableOrNull(boss)
     if (m === null) return
-    const theta = ((now - debut) / RAID_ORBIT_MS) * Math.PI * 2
-    m.x = RAID_POS.x + Math.cos(theta) * RAID_ORBIT
-    m.z = RAID_POS.z + Math.sin(theta) * RAID_ORBIT
+    const ds = Math.min(1, (now - dernierTick) / 1000)
+    dernierTick = now
+
+    // Aggro: the nearest player within sight is the target; none in sight, drift back to spawn.
+    let cible: { x: number; z: number } | null = null
+    let best = RAID_AGGRO_RANGE
+    for (const addr of presents()) {
+      const p = positionOf(addr)
+      if (p === null) continue
+      const d = Math.hypot(p.x - m.x, p.z - m.z)
+      if (d < best) { best = d; cible = { x: p.x, z: p.z } }
+    }
+    const vers = cible ?? { x: spawnX, z: spawnZ }
+    let vx = vers.x - m.x, vz = vers.z - m.z
+    const vl = Math.hypot(vx, vz)
+    if (vl > 0.05) {
+      vx /= vl; vz /= vl
+      // Face the target/heading, turning at a bounded rate so it reads as a body, not a snap.
+      const desire = Math.atan2(vx, vz)
+      let cur = Math.atan2(faceX, faceZ)
+      let diff = desire - cur
+      while (diff > Math.PI) diff -= 2 * Math.PI
+      while (diff < -Math.PI) diff += 2 * Math.PI
+      cur += Math.max(-RAID_TURN * ds, Math.min(RAID_TURN * ds, diff))
+      faceX = Math.sin(cur); faceZ = Math.cos(cur)
+      m.faceX = faceX; m.faceZ = faceZ
+      // Step toward the target, never past the leash from spawn: a boss, not an endless chase.
+      const pas = Math.min(RAID_SPEED * ds, vl)
+      let nx = m.x + vx * pas, nz = m.z + vz * pas
+      const dl = Math.hypot(nx - spawnX, nz - spawnZ)
+      if (dl > RAID_LEASH) { nx = spawnX + (nx - spawnX) / dl * RAID_LEASH; nz = spawnZ + (nz - spawnZ) / dl * RAID_LEASH }
+      m.x = nx; m.z = nz
+    }
 
     if (now - dernierBalai < RAID_SWIPE_MS) return
     dernierBalai = now

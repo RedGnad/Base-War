@@ -2,7 +2,7 @@ import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode,
   PointerEvents, PointerEventType, InputAction, AudioSource, Entity, ColliderLayer
 } from '@dcl/sdk/ecs'
-import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
+import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Raid } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome, crate } from '../shared/loot-table'
@@ -121,10 +121,15 @@ export function setupRaid(): void {
       const a = AudioSource.getMutableOrNull(son)
       if (a !== null) { a.playing = false; a.playing = true }
     }
-    // Glide toward the last position the server wrote: it moves half a metre a second.
-    vu = { x: vu.x + (r.x - vu.x) * Math.min(1, dt * 4), z: vu.z + (r.z - vu.z) * Math.min(1, dt * 4) }
+    // Glide toward the last position the server wrote.
+    vu = { x: vu.x + (r.x - vu.x) * Math.min(1, dt * 6), z: vu.z + (r.z - vu.z) * Math.min(1, dt * 6) }
     const bob = Math.sin(now / 350) * 0.12
     t.position = Vector3.create(vu.x, HAUTEUR + bob, vu.z)
+    // Face where the server says it looks: the carved face is on the model's -z, so +z points
+    // away, hence atan2(-faceX, -faceZ). The server already turned at a bounded rate.
+    if (Math.hypot(r.faceX, r.faceZ) > 0.01) {
+      t.rotation = Quaternion.fromEulerDegrees(0, Math.atan2(-r.faceX, -r.faceZ) * 180 / Math.PI, 0)
+    }
     const frappe = now - r.hitAtMs < FLASH_MS ? 1.12 : 1
     t.scale = Vector3.create(frappe, frappe, frappe)
 

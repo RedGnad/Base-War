@@ -142,10 +142,11 @@ function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code
 }
 
 export function setupRecords(): void {
-  // Behind the belt, on the side away from the pit, standing along the belt so one face looks
-  // at the plaza and the other at the bases behind it.
+  // Centred OVER the belt line and floating, so it is the same distance from bases on either
+  // side, not planted on one (tester, 28 Aug: "one arbitrary side"). Two-faced, high enough to
+  // clear the crates passing under it.
   const racine = engine.addEntity()
-  Transform.create(racine, { position: Vector3.create(CENTER.x, BELT_HEIGHT + HAUTEUR / 2 + 0.6, CENTER.z - 7) })
+  Transform.create(racine, { position: Vector3.create(CENTER.x, BELT_HEIGHT + HAUTEUR / 2 + 2.4, CENTER.z) })
 
   const cadre = engine.addEntity()
   Transform.create(cadre, { parent: racine, scale: Vector3.create(LARGEUR + 0.5, HAUTEUR + 0.5, 0.12) })
@@ -158,11 +159,6 @@ export function setupRecords(): void {
   Material.setPbrMaterial(plaque, plastic('#12141c'))
   montable(plaque, 'board.glb')
 
-  const pied = engine.addEntity()
-  const hauteurPied = BELT_HEIGHT + 0.6 + HAUTEUR / 2 + 0.2
-  Transform.create(pied, { parent: racine, position: Vector3.create(0, -HAUTEUR / 2 - hauteurPied / 2 + 0.1, 0), scale: Vector3.create(0.6, hauteurPied, 0.6) })
-  MeshRenderer.setBox(pied)
-  Material.setPbrMaterial(pied, plastic(TOY.wallCream))
 
   // Two faces through one layout: the back pivot is the front one turned round, so every
   // child's left stays on the reader's left.
