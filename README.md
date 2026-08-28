@@ -13,6 +13,7 @@ prices and anti-cheat checks run headless and server-side. Clients only send int
 3. **Smash it** to reveal an item: 7 rarities x 14 mutations.
 4. Items on your base **earn coins**, online and offline.
 5. **Take from other bases**, or leave a gift on one. Arm a sentry so they cannot take yours.
+6. Be the TOP on the global leaderboard
 
 ## Run it
 
