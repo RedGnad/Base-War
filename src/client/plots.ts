@@ -1,4 +1,6 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe } from './toy'
+import {
+  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe, estMetal, matiereMetal
+} from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
@@ -759,7 +761,9 @@ export function setupPlots(): void {
         tr.scale = Vector3.create(size, size, size)
         const hex = itemColor(rarityOf(code), mutationDe(code))
         const c = Color4.fromHexString(hex + 'ff')
-        const mat = plasticDe(c, r.glow)
+        const mutId = mutationDe(code)
+        // Gold and Diamond are metal and gem; every other mutation, and rarity itself, glow.
+        const mat = estMetal(mutId) ? matiereMetal(hex, mutId) : plasticDe(c, r.glow)
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
@@ -769,11 +773,13 @@ export function setupPlots(): void {
           bloom halo (both off on a Low preset, which a phone drops to under heat) it glows on
           every device. It is the one glow we fully control (tester, 28 Aug: no bloom at all).
         */
-        const padHex = m.mult > 1 ? m.color : r.glow >= LUMIERE_MIN_GLOW ? hex : null
+        // A metal/gem sits on a plain pad and casts no light: only energy mutations glow the floor.
+        const energie = !estMetal(mutId)
+        const padHex = (m.mult > 1 && energie) ? m.color : (energie && r.glow >= LUMIERE_MIN_GLOW) ? hex : null
         socleDuJouet(ent, size, padHex)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         const eclat = r.glow + (m.mult > 1 ? 1 : 0) + 0.8 * traits
-        lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
+        lumiereDuJouet(ent, energie && eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 

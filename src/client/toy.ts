@@ -104,6 +104,21 @@ export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
 }
 
 /** The same rule for a colour that already exists as a Color4. */
+/*
+  A metal and a gem, for the two mutations that are matter, not energy. Gold reads as metal
+  and Diamond as a cut gem, by roughness and metallic, not by a neon glow (tester's call, 28
+  Aug); the energy mutations (Lava, Galaxy, ...) keep the emissive glow. Same shader, same
+  draw call, same cost as the plastic: this is a look choice, not a performance one.
+*/
+const METAL = new Set<number>([1, 2])   // Gold, Diamond
+export function estMetal(mut: number): boolean { return METAL.has(mut) }
+export function matiereMetal(hex: string, mut: number): PBMaterial_PbrMaterial {
+  const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
+  if (mut === 1) return { albedoColor: c, metallic: 0.95, roughness: 0.3 }               // gold: bright polished metal
+  // diamond: very smooth, a little metallic for the highlight, a touch of emissive for sparkle
+  return { albedoColor: c, metallic: 0.25, roughness: 0.05, emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: 0.5 }
+}
+
 export function plasticDe(c: Color4, glow = 0): PBMaterial_PbrMaterial {
   const hex = '#' + [c.r, c.g, c.b].map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join('')
   const m = plastic(hex, glow)
