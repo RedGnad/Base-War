@@ -84,16 +84,19 @@ export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
   if (glow <= 0) return { albedoColor: c, metallic: 0, roughness: 0.55 }
   /*
-    Barely darkened, strongly emissive. The albedo used to be cut to 0.45 for a Rare with an
-    emissive of 0.8 to make up for it, which only works under bloom; on a phone (no bloom, no
-    scene lights) and on any toy outside the light budget, a Rare read as a DARK toy (tester,
-    28 Aug: "no emission at all any more"). Emission is the workshop's own answer to lights.
+    DARK albedo, bright emissive: the platform's own recipe, "use emissiveColor with a dark
+    albedoColor for maximum glow visibility" (advanced-rendering docs). This is how the toy
+    glows on its own AND how bloom catches it. On 28 Aug I brightened the albedo to fix a
+    "no emission" report, which was really the light budget stripping the point lights, not
+    the albedo; a bright albedo washed the surface pale and matte and gave bloom no saturated
+    colour to bloom (tester screenshot, medium preset, flat yellow toys). Dark albedo carries
+    both: self-glow without a light, and a real bloom halo when the preset runs it.
   */
-  const sombre = 1 / (1 + glow * 0.35)
+  const sombre = 1 / (1 + glow * 1.2)
   return {
     albedoColor: Color4.create(c.r * sombre, c.g * sombre, c.b * sombre, c.a),
     emissiveColor: Color3.create(c.r, c.g, c.b),
-    emissiveIntensity: 0.6 + glow * 2.5,
+    emissiveIntensity: 1.2 + glow * 1.2,
     metallic: 0,
     roughness: 0.45
   }
