@@ -93,7 +93,7 @@ export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }
   return true
 }
 
-function ouvrir(now: number): void {
+function ouvrir(now: number, finMs?: number): void {
   if (boss === null) return
   const m = Raid.getMutableOrNull(boss)
   if (m === null) return
@@ -104,7 +104,7 @@ function ouvrir(now: number): void {
   m.active = true
   m.hpMax = RAID_HP_BASE + RAID_HP_PER_PLAYER * Math.max(1, ici)
   m.hp = m.hpMax
-  m.untilMs = now + RAID_MS
+  m.untilMs = finMs ?? now + RAID_MS
   seed = (now & 0x7fffffff) ^ 0x5f3759df
   spawnX = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
   spawnZ = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
@@ -171,24 +171,18 @@ export function startRaid(): void {
 
     if (!lu.active) {
       if (now < prochain) return
-      // A slot nobody is there for is skipped, not delayed: the next one is at its own time.
-      if (now > prochain + 60_000 || presents().size === 0) {
-        prochain = prochainCreneau(now)
-        const m = Raid.getMutableOrNull(boss)
-        if (m !== null) m.nextMs = prochain
-        return
-      }
-      // Not on top of a rush, and not on the doorstep of the grand one: two countdowns on one
-      // screen is one too many.
+      const finFenetre = prochain + RAID_MS
+      const passe = (): void => { prochain = prochainCreneau(now); if (boss !== null) { const m = Raid.getMutableOrNull(boss); if (m !== null) m.nextMs = prochain } }
+      // The window has run out with nobody there: move on to the next slot.
+      if (now >= finFenetre) { passe(); return }
+      // Still inside the window: a player arriving now gets the boss for the time that is left,
+      // not a skipped slot (tester, 28 Aug). No player yet, keep waiting this window out.
+      if (presents().size === 0) return
+      // Not on top of a rush, nor on the doorstep of the grand one: one countdown at a time.
       for (const [, ev] of engine.getEntitiesWith(Event)) {
-        if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) {
-          prochain = prochainCreneau(now)
-          const m = Raid.getMutableOrNull(boss)
-          if (m !== null) m.nextMs = prochain
-          return
-        }
+        if (ev.theme >= 0 || ev.nextGrandMs - now < RAID_MS + 60_000) { passe(); return }
       }
-      ouvrir(now)
+      ouvrir(now, finFenetre)
       return
     }
 

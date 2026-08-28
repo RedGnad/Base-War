@@ -12,6 +12,9 @@ import {
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
+/** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
+const ASC_X = BASE_SIDE / 2 - 1.1
+const ASC_Z = -BASE_SIDE / 2 + 1.1
 
 
 function goUpOneFloor(v: View): void {
@@ -28,13 +31,14 @@ function goUpOneFloor(v: View): void {
   const actuel = moi === null ? 0 : Math.max(0, Math.round(moi.position.y / FLOOR_HEIGHT))
   const cible = actuel + 1 >= open ? 0 : actuel + 1
   const y = cible * FLOOR_HEIGHT + 0.3
-  // Land on the solid slab, not in the stairwell: the floor stops at dx = +2.5.
-  const SORTIE_DX = 1.96
-  const o1 = tourner(t.position.z, SORTIE_DX, 3.0)
-  const o2 = tourner(t.position.z, -1.2, -2.2)
+  // Land RIGHT BESIDE the elevator, a step in from its corner, camera on it, so it stays on
+  // screen and the player can spam the click to keep climbing (tester, 28 Aug). Both points
+  // are the elevator's local corner, turned to the base's facing.
+  const pied = tourner(t.position.z, ASC_X - 1.6, ASC_Z + 1.6)
+  const el = tourner(t.position.z, ASC_X, ASC_Z)
   void movePlayerTo({
-    newRelativePosition: Vector3.create(t.position.x + o1.dx, y, t.position.z + o1.dz),
-    cameraTarget: Vector3.create(t.position.x + o2.dx, y + 0.8, t.position.z + o2.dz)
+    newRelativePosition: Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
+    cameraTarget: Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
   })
 }
 import { steal, monAdresseClient, alerter } from './theft'
@@ -301,7 +305,7 @@ function createView(x: number, z: number, accent: string): View {
   Transform.create(ascenseur, {
     parent: racine,
     // In the corner, at the foot of the ramp, out of the walking path (tester's placement, 28 Aug).
-    position: Vector3.create(BASE_SIDE / 2 - 1.1, FLOOR_HEIGHT / 2, -BASE_SIDE / 2 + 1.1),
+    position: Vector3.create(ASC_X, FLOOR_HEIGHT / 2, ASC_Z),
     scale: Vector3.create(0.5, FLOOR_HEIGHT, 0.5)
   })
   MeshRenderer.setBox(ascenseur)
