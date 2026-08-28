@@ -1,7 +1,7 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { movePlayerTo } from '~system/RestrictedActions'
-import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT } from '../shared/schemas'
+import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, tourner } from '../shared/schemas'
 import { monAdresseClient } from './theft'
 import { alerter } from './theft'
 
@@ -12,7 +12,10 @@ function maBase(): Vector3 | null {
     if (p.ownerId.toLowerCase() !== moi) continue
     const t = Transform.getOrNull(e)
     if (t === null) return null
-    return Vector3.create(t.position.x, 0, t.position.z + BASE_SIDE / 2 + 1.5)
+    // In front of the DOOR, which faces the belt: a base north of the belt is turned round,
+    // so the door is on the -z side there. `tourner` puts the landing on the right side.
+    const o = tourner(t.position.z, 0, BASE_SIDE / 2 + 1.5)
+    return Vector3.create(t.position.x + o.dx, 0, t.position.z + o.dz)
   }
   return null
 }

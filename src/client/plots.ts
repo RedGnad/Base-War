@@ -15,7 +15,10 @@ const INCOME_UI = PRODUCTION_PER_RARITY
 
 
 function goUpOneFloor(v: View): void {
-  const t = Transform.getOrNull(v.plinth)
+  // The base's WORLD position is the racine's; the plinth is its child at local (0,0,0), so
+  // reading the plinth teleported the player to the scene origin, the far corner of the map
+  // (tester, 28 Aug: "go home sends me to a corner").
+  const t = Transform.getOrNull(v.racine)
   if (t === null) return
   let open = 1
   for (const [, p] of engine.getEntitiesWith(Plot)) {
@@ -297,7 +300,8 @@ function createView(x: number, z: number, accent: string): View {
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
     parent: racine,
-    position: Vector3.create(BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, FLOOR_HEIGHT / 2, 1.4),
+    // In the corner, at the foot of the ramp, out of the walking path (tester's placement, 28 Aug).
+    position: Vector3.create(BASE_SIDE / 2 - 1.1, FLOOR_HEIGHT / 2, -BASE_SIDE / 2 + 1.1),
     scale: Vector3.create(0.5, FLOOR_HEIGHT, 0.5)
   })
   MeshRenderer.setBox(ascenseur)
@@ -590,7 +594,7 @@ export function setupPlots(): void {
         if (ta !== null) {
           const h = p.floors * FLOOR_HEIGHT
           ta.scale = Vector3.create(0.5, h, 0.5)
-          ta.position = Vector3.create(BASE_SIDE / 2 - STAIRWELL_WIDTH / 2, h / 2, 1.4)
+          ta.position = Vector3.create(BASE_SIDE / 2 - 1.1, h / 2, -BASE_SIDE / 2 + 1.1)
         }
         const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
         if (structurel) {

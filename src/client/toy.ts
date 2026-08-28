@@ -94,11 +94,14 @@ export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
     colour to bloom (tester screenshot, medium preset, flat yellow toys). Dark albedo carries
     both: self-glow without a light, and a real bloom halo when the preset runs it.
   */
+  // A curve that starts near nothing and climbs: a Rare barely glows (0.64), a Secret blazes
+  // (7.2). The old 1.2 + 1.2*glow had a 1.2 floor, so a Rare read as bright as a Legendary
+  // (tester, 28 Aug). `glow^1.5` is the slow-start ramp, dark albedo the platform's recipe.
   const sombre = 1 / (1 + glow * 1.2)
   return {
     albedoColor: Color4.create(c.r * sombre, c.g * sombre, c.b * sombre, c.a),
     emissiveColor: Color3.create(c.r, c.g, c.b),
-    emissiveIntensity: 1.2 + glow * 1.2,
+    emissiveIntensity: Math.pow(glow, 1.5) * 0.9,
     metallic: 0,
     roughness: 0.45
   }
@@ -387,11 +390,13 @@ function allumer(parent: Entity, hex: string, glow: number): void {
     lumieres.set(parent, e)
   }
   const c = vif(hex)
+  // Same slow-start ramp as the emissive: a Rare's light is a nightlight (~5700 cd), a Secret's
+  // a floodlight (64000). The old (1 + glow) made a Rare almost as bright as a Legendary.
   LightSource.createOrReplace(e, {
     type: LightSource.Type.Point({}),
     color: Color3.create(c.r, c.g, c.b),
-    intensity: AMPOULE * (1 + glow),
-    range: 1.5 + glow,
+    intensity: AMPOULE * Math.pow(glow, 1.5) * 0.5,
+    range: 0.8 + glow * 0.7,
     shadow: false
   })
 }
