@@ -763,8 +763,14 @@ export function setupPlots(): void {
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
         formeDeRarete(ent, rarityOf(code), mat)
-        // Every toy stands on a pad; a mutation colours it.
-        socleDuJouet(ent, size, m.mult > 1 ? m.color : null)
+        /*
+          Every toy stands on a pad; a mutation colours it, and so does a Rare-or-better even
+          without a mutation. The pad is emissive geometry, so unlike the point light and the
+          bloom halo (both off on a Low preset, which a phone drops to under heat) it glows on
+          every device. It is the one glow we fully control (tester, 28 Aug: no bloom at all).
+        */
+        const padHex = m.mult > 1 ? m.color : r.glow >= LUMIERE_MIN_GLOW ? hex : null
+        socleDuJouet(ent, size, padHex)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         const eclat = r.glow + (m.mult > 1 ? 1 : 0) + 0.8 * traits
         lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)

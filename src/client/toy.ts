@@ -271,7 +271,9 @@ export function socleDuJouet(parent: Entity, size: number, mutationHex: string |
     position: Vector3.create(0, -0.5 - SOCLE_EPAISSEUR / 2 / size, 0),
     scale: Vector3.create(SOCLE_DIAMETRE / size, SOCLE_EPAISSEUR / size, SOCLE_DIAMETRE / size)
   })
-  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 0.9))
+  // The lit pad is an emissive material, not a light: it survives a Low preset, where scene
+  // lights and bloom are both off, so a valuable toy always sits on a visible ring of colour.
+  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8))
 }
 
 export function effacerSocle(parent: Entity): void {
