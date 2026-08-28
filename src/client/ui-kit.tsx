@@ -26,6 +26,7 @@ export const Btn = (props: {
   /** A named plate when the role is finer than primary/secondary: a claim, a refusal. */
   skin?: 'primary' | 'secondary' | 'success' | 'danger' | 'disabled'
   size?: number
+  height?: number
   right?: number
   onClick?: () => void
   bind?: InputAction[]
@@ -33,10 +34,11 @@ export const Btn = (props: {
   badge?: boolean
 }) => {
   const size = props.size ?? TYPE.body
+  const height = props.height ?? TAP.height
   return (
     <UiEntity
       uiTransform={{
-        width: props.width, height: TAP.height,
+        width: props.width, height,
         margin: props.right !== undefined ? { right: props.right } : undefined,
         pointerFilter: 'block'
       }}
@@ -46,7 +48,7 @@ export const Btn = (props: {
     >
       <Glyphs
         value={props.label} size={size} align="center" box={props.width}
-        top={(TAP.height - size) / 2}
+        top={(height - size) / 2}
         role="name" />
       {/*
         A pip that sits ON the corner, not inside it.

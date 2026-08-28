@@ -119,7 +119,7 @@ export const SHOT_RANGE = 28
  * thumb reaches, so what limits the burst is how fast the player taps. The rate still has
  * a floor, because it also caps what a client can ask the server to resolve.
  */
-export const SHOT_COOLDOWN_MS = 60   // ~16 rounds/s, a machine-gun feel; per-shot yield and boss HP scaled to hold DPS. Not lower: each shot is a network message, and 33/s would flood the transport.
+export const SHOT_COOLDOWN_MS = 250  // four rounds a second, the tester's cap on the handset (28 Aug): one tap, one round. Per-hit yield unchanged, so theft DPS is a quarter of the old machine gun's.
 /**
  * Half-angle of the aim cone, as the cosine the server compares against. 0.97 is about 14
  * degrees. The client draws its reticle from this same number, so the crosshair states what
@@ -460,14 +460,14 @@ export const COIL_SHARE = 1.5
   player spawns with; here it is the one a judge understands without being told what a gun does.
 */
 export const SLAP_RANGE = 2.5
-export const SLAP_COOLDOWN_MS = 220   // snappy melee: the slow 420 made a slap-user's fire feel dead (28 Aug)
+export const SLAP_COOLDOWN_MS = 250   // snappy melee: the slow 420 made a slap-user's fire feel dead (28 Aug)
 /*
   The taser is the slap's rung at prestige 3, and what it adds is the reference's own effect:
   "stun enemies with a taser to fling them and return your Brainrots". A hit at arm's reach
   freezes the target three seconds and opens their hands at full force.
 */
 export const TASER_FREEZE_MS = 3_000
-export const TASER_COOLDOWN_MS = 220   // the taser replaces the gun; 900 ms capped a p3 player's whole fire feel at one shot a second
+export const TASER_COOLDOWN_MS = 250   // the taser replaces the gun; 900 ms capped a p3 player's whole fire feel at one shot a second
 
 /*
   The cloak is a timed state, and the server owns it.
@@ -661,7 +661,7 @@ export const BUY_RANGE = 5
 export const CHUTE_FIN = 0.22        // part de course consacree a la chute
 export const FOSSE_PROFONDEUR = 2.4   // from belt height down to the pit floor
 
-export const BELT_HEIGHT = 1.6   // lowered 28 Aug: crates nearer eye level, more clearance under the board
+export const BELT_HEIGHT = 1.35  // lowered twice on 28 Aug, the second time from the handset: crates at chest height read better on a small screen
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const onBelt = Math.min(progres, 1)
@@ -1048,8 +1048,8 @@ export const RAID_LEASH = 13
 export const RAID_SPEED = 3.0
 export const RAID_TURN = 6
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
-export const RAID_HP_BASE = 120
-export const RAID_HP_PER_PLAYER = 75
+export const RAID_HP_BASE = 80    // re-tuned for four rounds a second: about twenty seconds of point-blank fire alone
+export const RAID_HP_PER_PLAYER = 50
 export const RAID_SWIPE_MS = 5_000
 export const RAID_SWIPE_RANGE = 4
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */

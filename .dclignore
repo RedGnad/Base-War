@@ -26,3 +26,9 @@ tools
 ytenv
 local
 dclcontext
+tools
+docs
+*.py
+*.ttf
+*.log
+*.sh

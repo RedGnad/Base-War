@@ -60,30 +60,6 @@ import { carryView, placeDown, dropCarried, vendre } from './client/carry'
 import { baseIci } from './client/plots'
 import { combatView } from './client/combat'
 
-/**
- * Thirteen transparent pixels, one per interface texture.
- *
- * A texture downloads the first time something on screen references it, and the first
- * reference used to be the HUD itself: on a cold cache the money was drawn before its atlas
- * arrived, black-first once the shadow file happened to land early (tester, 28 Aug). This
- * keeps every atlas and plate referenced from the first frame, so the downloads ride the
- * loading screen. The shadow atlas is deliberately absent: nothing references it any more.
- */
-const Prewarm = () => (
-  <UiEntity uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}>
-    {(['money', 'bonus', 'name', 'danger', 'ink'] as const).map((r) => (
-      <UiEntity key={`f${r}`}
-        uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}
-        uiBackground={{ color: Color4.create(1, 1, 1, 0.01), texture: { src: `assets/ui/${FONT_FILES[r]}` }, textureMode: 'stretch' }} />
-    ))}
-    {Object.entries(SKIN).map(([n, sk]) => (
-      <UiEntity key={`s${n}`}
-        uiTransform={{ width: 1, height: 1, positionType: 'absolute', position: { top: 0, left: 0 } }}
-        uiBackground={{ color: Color4.create(1, 1, 1, 0.01), texture: { src: sk.texture.src }, textureMode: 'stretch' }} />
-    ))}
-  </UiEntity>
-)
-
 export function setupUi() {
   /*
     E is the game's action, and the only one.
@@ -143,7 +119,6 @@ export function setupUi() {
     console.log(`[CLIENT] interface ${phone ? '1600x720 (phone)' : '1920x1080'}, screenInset '${inset}'`)
   }
   ReactEcsRenderer.setUiRenderer(uiComponent, { virtualWidth: 1920, virtualHeight: 1080 })
-  ReactEcsRenderer.addUiRenderer(engine.addEntity(), Prewarm)
   engine.addSystem(choose)
 }
 
@@ -356,14 +331,53 @@ const PRECHAUFFE = [
   'icon-build', 'icon-collect', 'icon-crate', 'icon-drop', 'icon-fire', 'icon-give', 'icon-gun',
   'icon-holster', 'icon-menu', 'icon-menu-alert', 'icon-place', 'icon-recover'
 ]
+/*
+  Every interface texture referenced from the first frame: the icons, the five atlases and the
+  eight plates. A texture downloads the first time something on screen names it, and on a cold
+  cache the money was drawn before its atlas arrived (tester, 28 Aug). Two pixels each, off
+  screen, so the downloads ride the loading screen. The shadow atlas is absent on purpose:
+  nothing references it any more.
+*/
+const PRECHAUFFE_FICHIERS: string[] = [
+  ...PRECHAUFFE.map((n) => `${n}.png`),
+  ...(['money', 'bonus', 'name', 'danger', 'ink'] as const).map((r) => FONT_FILES[r]),
+  ...Object.values(SKIN).map((sk) => sk.texture.src.replace('assets/ui/', ''))
+]
 const Prechauffe = () => (
   <UiEntity uiTransform={{ positionType: 'absolute', position: { left: -8, top: -8 }, width: 2, height: 2, overflow: 'hidden' }}>
-    {PRECHAUFFE.map((n) => (
+    {PRECHAUFFE_FICHIERS.map((n) => (
       <UiEntity key={n} uiTransform={{ width: 2, height: 2 }}
-        uiBackground={{ texture: { src: `assets/ui/${n}.png` }, textureMode: 'stretch' }} />
+        uiBackground={{ texture: { src: `assets/ui/${n}` }, textureMode: 'stretch' }} />
     ))}
   </UiEntity>
 )
+
+/**
+ * The phone's own two controls, beside the client's three.
+ *
+ * The client's small buttons are the client's size, and the tester could not hit F or the
+ * menu on a real handset (28 Aug). These two are ours: taller than the desktop row, in the
+ * game's skin, bound to the same actions, with the pip the native menu button could never
+ * carry. The central action stays native, it is already the biggest thing on the screen.
+ */
+const PhoneControls = () => {
+  if (!phone() || !hud()) return null
+  return (
+    <UiEntity
+      uiTransform={{
+        height: TAP.phone, positionType: 'absolute',
+        position: { bottom: BAND.bottom, right: clientEdges().right + 16 },
+        flexDirection: 'row', alignItems: 'center'
+      }}
+    >
+      <SellChip right={TAP.gap * 2} />
+      <Btn label="MENU" width={200} height={TAP.phone} size={38} right={TAP.gap}
+        badge={questsToClaim() > 0} primary={questsToClaim() > 0} onClick={basculerMenu} />
+      <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={240} height={TAP.phone} size={38}
+        primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
+    </UiEntity>
+  )
+}
 
 const DesktopControls = () => {
   if (phone() || !hud()) return null
@@ -834,11 +848,7 @@ const uiComponent = () => {
 
     <Prechauffe />
     <DesktopControls />
-    {phone() && hud() && (
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: BAND.bottom, right: clientEdges().right + 16 } }}>
-        <SellChip />
-      </UiEntity>
-    )}
+    <PhoneControls />
     <WelcomePanel />
     <PrestigePanel />
     <FusionPanel />

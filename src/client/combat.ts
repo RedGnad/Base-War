@@ -437,16 +437,16 @@ function gunSystem(dt: number): void {
     as it does. The interaction button keeps working for anyone who already found it.
   */
   /*
-    Hold to fire, not tap-per-shot. A tap is the down edge; holding the button keeps it
-    pressed, and `tirer` has the cadence, so holding E sprays at the weapon's rate (the gun
-    5.5/s, the taser slower by design). The tester wanted fast fire and got one shot a second
-    because a tap is one edge and the taser's cadence is 900 ms (28 Aug). `isPressed` is the
-    documented "is the button down right now" (advanced-input).
+    One tap, one round. Measured on the handset (28 Aug): `isPressed(IA_POINTER)` stays true
+    for the whole of a camera drag on a touch screen, so a drawn weapon fired on its own every
+    time the player looked around. The trigger is therefore the DOWN EDGE only, and on a phone
+    it is the central button alone, the one wearing the reticle; a touch anywhere else is the
+    camera. On a desktop the click and E both fire. `tirer` holds the cadence, four rounds a
+    second at most, the tester's cap, and the per-hit yield stayed where it was, so theft
+    per second is a quarter of what the machine gun took.
   */
-  const gachette = inputSystem.isPressed(InputAction.IA_POINTER)
-    || inputSystem.isPressed(InputAction.IA_PRIMARY)
-    || inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
-    || inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
+  const gachette = inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
+    || (!isMobile() && inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN))
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
     //

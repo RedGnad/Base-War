@@ -164,7 +164,7 @@ export const C = {
  * is the smallest gap that stops one thumb hitting two things. Divided by the 0.5275 above,
  * that is 84 and 16 virtual pixels; both are rounded up.
  */
-export const TAP = { height: 96, gap: 20 } as const
+export const TAP = { height: 96, gap: 20, phone: 120 } as const   // phone: 63 pt, what the tester's thumb asked for (28 Aug)
 
 /**
  * Draw the interface as a phone would, while sitting at a desk.

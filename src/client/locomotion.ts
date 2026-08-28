@@ -132,12 +132,16 @@ export function setupTouchHud(): void {
     The glyph on it is ours. A control that reads "1" says nothing; the client lets a scene
     replace the picture with an image it ships, so the button says menu without a caption.
   */
-  TouchScreenControls.hide([
-    InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6
-  ])
-  poserIcone(InputAction.IA_ACTION_3, 'icon-menu')
-  setArmeIcone(false)
-  console.log('[CLIENT] touch HUD: 5 direct buttons, menu on IA_ACTION_3, weapon on IA_SECONDARY')
+  /*
+    Three natives now, not five. The client's small buttons cannot be resized, and on a real
+    handset the tester found F and the menu too small to hit (28 Aug). So those two are drawn
+    by the scene, in its own skin and at its own size, bound to the same actions; the client
+    keeps only what the scene cannot draw better: jump, the interaction button, and the big
+    central action. The hidden set is remembered so an icon written later never unhides one.
+  */
+  for (const a of [InputAction.IA_SECONDARY, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
+  TouchScreenControls.hide([...CACHES])
+  console.log('[CLIENT] touch HUD: 3 native buttons (jump, interact, central); menu and draw are scene buttons')
 }
 
 /**
@@ -152,7 +156,11 @@ export function setupTouchHud(): void {
  * picture for ever. Today nothing reaches this before `setupTouchHud`, so it never fires;
  * the callers are written so that reordering them cannot make it fire silently.
  */
+const CACHES = new Set<InputAction>()
+
 function poserIcone(action: InputAction, nom: string | null): boolean {
+  // A button the scene draws itself has no native picture to carry.
+  if (CACHES.has(action)) return true
   const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
   if (ctrl === null) return false
   const autres = ctrl.touchInputs.filter((t) => t.inputAction !== action)
