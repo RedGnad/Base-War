@@ -777,13 +777,14 @@ export function setupPlots(): void {
           bloom halo (both off on a Low preset, which a phone drops to under heat) it glows on
           every device. It is the one glow we fully control (tester, 28 Aug: no bloom at all).
         */
-        // The pad glows in the mutation's colour if mutated, else in the toy's colour at high
-        // rarity. Metal and gem mutations glow too, by their rarity, so a Mythic Diamond lights
-        // its pad; only their SURFACE differs, not whether they glow.
-        const padHex = m.mult > 1 ? m.color : r.glow >= LUMIERE_MIN_GLOW ? hex : null
+        // Glow comes from RARITY, not from the mutation: a Common Candy is matte pink, a Rare
+        // Candy glows (tester, 28 Aug). The mutation only sets the COLOUR of the glow when
+        // there is one. Below the rarity threshold, no pad glow whatever the mutation.
+        const padHex = r.glow >= LUMIERE_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
         socleDuJouet(ent, size, padHex)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
-        const eclat = r.glow + (m.mult > 1 ? 1 : 0) + 0.8 * traits
+        // Rarity drives the light; a trait is earned so it adds; a mutation does not (it is colour).
+        const eclat = r.glow + 0.8 * traits
         lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
