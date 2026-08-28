@@ -384,7 +384,16 @@ function gunSystem(dt: number): void {
     weapon is out it has nothing else to do. So it fires, and it wears a reticle for as long
     as it does. The interaction button keeps working for anyone who already found it.
   */
-  const gachette = inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
+  /*
+    Hold to fire, not tap-per-shot. A tap is the down edge; holding the button keeps it
+    pressed, and `tirer` has the cadence, so holding E sprays at the weapon's rate (the gun
+    5.5/s, the taser slower by design). The tester wanted fast fire and got one shot a second
+    because a tap is one edge and the taser's cadence is 900 ms (28 Aug). `isPressed` is the
+    documented "is the button down right now" (advanced-input).
+  */
+  const gachette = inputSystem.isPressed(InputAction.IA_POINTER)
+    || inputSystem.isPressed(InputAction.IA_PRIMARY)
+    || inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN)
     || inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)
   if (combatView.aiming && gachette && tirer(now)) {
     // The arm keeps its own, slower beat.
