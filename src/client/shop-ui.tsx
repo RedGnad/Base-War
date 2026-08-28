@@ -5,7 +5,7 @@ import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
-import { gearView, acheterGear, acheterLuck, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
+import { gearView, acheterGear, acheterLuck, wield, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -175,15 +175,20 @@ export const ShopContent = () => {
         // Worn gear is bought once and then simply held: the row says so instead of offering it again.
         const porte = !posable && held > 0
         const peutPoserCe = peutPoser(g.id)
+        // The two weapons (slap id 2, taser id 5) are WIELDED from here: tap to hold, tap again for the gun.
+        const armeDeG = g.id === 2 ? 'slap' as const : g.id === 5 ? 'taser' as const : null
+        const estArme = armeDeG !== null && held > 0
+        const tenue = estArme && gearView.armeChoisie === armeDeG
         return (
           <Rang key={g.name}
-            titre={porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
+            titre={estArme ? `${g.name}  ·  ${tenue ? 'WIELDING' : 'OWNED'}` : porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
             detail={debloque ? g.verb : `unlocks at prestige ${g.prestige}  ·  ${g.verb}`}
-            bouton={porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
-            prix={porte || peutPoserCe ? 0 : prix}
-            possible={debloque && !porte && (posable && held > 0 ? peutPoserCe : argent >= prix)}
+            bouton={estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
+            prix={estArme || porte || peutPoserCe ? 0 : prix}
+            possible={debloque && (estArme || (!porte && (posable && held > 0 ? peutPoserCe : argent >= prix)))}
             onClick={() => {
-              if (peutPoserCe) { basculerPosePiege(g.id); closeMenu() }
+              if (estArme) { wield(tenue ? 'shoot' : (armeDeG as 'slap' | 'taser')); closeMenu() }
+              else if (peutPoserCe) { basculerPosePiege(g.id); closeMenu() }
               else if (!porte) acheterGear(g.id)
             }} />
         )

@@ -36,7 +36,7 @@ export function startCombat(): void {
   room.onMessage('aim', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    void room.send('aiming', { addr: a, on: d.on })
+    void room.send('aiming', { addr: a, on: d.on, arme: Number.isInteger(d?.arme) ? d.arme : 0 })
   })
 
   /*

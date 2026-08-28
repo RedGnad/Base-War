@@ -55,7 +55,10 @@ export const combatView = {
   firstPerson: false
 }
 
-type Gun = { racine: Entity; poignee: Entity }
+type ArmeType = 'shoot' | 'slap' | 'taser'
+type Gun = { racine: Entity; poignee: Entity; parts: Entity[]; type: ArmeType }
+const ARME_INT: Record<ArmeType, number> = { shoot: 0, slap: 1, taser: 2 }
+const INT_ARME: ArmeType[] = ['shoot', 'slap', 'taser']
 
 const OR = Color4.fromHexString('#ffd166ff')
 const FLASH = Color4.fromHexString('#ffe9a8ff')
@@ -138,6 +141,7 @@ let zoneVisee: Entity | null = null
 let vueVisibleApres = 0
 let dernierClipTir = 0
 let degainages = 0
+let armeAffichee: ArmeType = 'shoot'
 let enRafale = false
 let rafaleJusqua = 0
 /** Whether first person was the player's own setting when the weapon came out. */
@@ -148,6 +152,7 @@ let adresseCible = ''
 let recul = 0
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
+const armeDe = new Map<string, ArmeType>()
 
 const piles = new Map<number, { chute: Entity; body: Entity; label: Entity }>()
 
@@ -156,17 +161,53 @@ const piles = new Map<number, { chute: Entity; body: Entity; label: Entity }>()
  * The weapon carries no collider at all: it rides a moving avatar, and a collider there
  * would push the third-person camera around and swallow pointer clicks.
  */
-function construireArme(parent: Entity, pos: Vector3, rot: Quaternion): Gun {
-  const poignee = engine.addEntity()
-  Transform.create(poignee, { parent, position: pos, rotation: rot })
-
+/*
+  Three held models from primitives, plus the gun's own GLB. Small parts hung on the grip:
+  the gun stays the authored model; a slap is a flat paddle on a handle; a taser is a rod with
+  two prongs and a lit tip. The player sees which weapon they hold, which is the whole point
+  of a gear that "replaces the gun" (tester, 28 Aug: "I still see a gun").
+*/
+function pieceArme(poignee: Entity, pos: Vector3, scale: Vector3, hex: string, glow = 0, cyl = false): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { parent: poignee, position: pos, scale })
+  if (cyl) MeshRenderer.setCylinder(e, 0.5, 0.5); else MeshRenderer.setBox(e)
+  Material.setPbrMaterial(e, plasticDe(Color4.fromHexString(hex + 'ff'), glow))
+  return e
+}
+function modeleArme(poignee: Entity, type: ArmeType): Entity[] {
+  const V = Vector3.create
+  if (type === 'slap') {
+    return [
+      pieceArme(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#7a4a2a'),                 // handle
+      pieceArme(poignee, V(0, 0.10, 0), V(0.26, 0.20, 0.03), '#f2e9d8'),                  // paddle
+      pieceArme(poignee, V(0, 0.10, 0), V(0.30, 0.04, 0.035), '#e63946')                 // red rim
+    ]
+  }
+  if (type === 'taser') {
+    return [
+      pieceArme(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#2b2d42'),                 // handle
+      pieceArme(poignee, V(0, 0.06, 0), V(0.05, 0.12, 0.05), '#4dabf7'),                  // body
+      pieceArme(poignee, V(-0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),            // prong L
+      pieceArme(poignee, V(0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),             // prong R
+      pieceArme(poignee, V(0, 0.27, 0), V(0.05, 0.05, 0.05), '#7cf0ff', 3, true)          // lit tip
+    ]
+  }
   const modele = engine.addEntity()
   Transform.create(modele, { parent: poignee, position: PIVOT })
-  GltfContainer.create(modele, {
-    src: MODELE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
-  })
-
-  return { racine: parent, poignee }
+  GltfContainer.create(modele, { src: MODELE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  return [modele]
+}
+function construireArme(parent: Entity, pos: Vector3, rot: Quaternion, type: ArmeType = 'shoot'): Gun {
+  const poignee = engine.addEntity()
+  Transform.create(poignee, { parent, position: pos, rotation: rot })
+  return { racine: parent, poignee, parts: modeleArme(poignee, type), type }
+}
+/** Swap the held model to another weapon, keeping the grip and the flash in place. */
+function equiperArme(g: Gun | null, type: ArmeType): void {
+  if (g === null || g.type === type) return
+  for (const e of g.parts) engine.removeEntity(e)
+  g.parts = modeleArme(g.poignee, type)
+  g.type = type
 }
 
 /** Reads before it writes, so calling it every frame costs nothing when nothing changed. */
@@ -263,6 +304,9 @@ export function setupCombat(): void {
   room.onMessage('aiming', (d) => {
     const a = d.addr.toLowerCase()
     if (d.on) enJoue.add(a); else enJoue.delete(a)
+    const t = INT_ARME[d.arme] ?? 'shoot'
+    armeDe.set(a, t)
+    if (a !== moi) equiperArme(armes.get(a) ?? null, t)
   })
 
   engine.addSystem(gunSystem)
@@ -301,7 +345,7 @@ function reconcilierArmes(): void {
     const racine = engine.addEntity()
     Transform.create(racine, {})
     AvatarAttach.create(racine, { avatarId: a, anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
-    const g = construireArme(racine, MAIN_POS, MAIN_ROT)
+    const g = construireArme(racine, MAIN_POS, MAIN_ROT, armeDe.get(a) ?? 'shoot')
     armes.set(a, g)
     montrer(g, false)
   }
@@ -346,6 +390,14 @@ function gunSystem(dt: number): void {
 
   const reste = dernierTir + SHOT_COOLDOWN_MS - now
   combatView.cooldown = reste > 0 ? reste / SHOT_COOLDOWN_MS : 0
+  // Keep the held model in step with the chosen weapon, and tell the room when it changes.
+  const arme = armeEnMain()
+  if (arme !== armeAffichee) {
+    armeAffichee = arme
+    equiperArme(vue, arme)
+    equiperArme(armes.get(moi) ?? null, arme)
+    void room.send('aim', { on: combatView.aiming, arme: ARME_INT[arme] })
+  }
   // The burst is over: the arm returns to the held aim, once.
   if (enRafale && now > rafaleJusqua) {
     enRafale = false
@@ -472,7 +524,7 @@ function degainer(on: boolean): void {
   setArmeIcone(on)
   if (on) enJoue.add(moi)
   else enJoue.delete(moi)
-  void room.send('aim', { on })
+  void room.send('aim', { on, arme: ARME_INT[armeEnMain()] })
   if (on) {
     degainages += 1
     combatView.aideVisee = degainages <= 2

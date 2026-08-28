@@ -23,8 +23,13 @@ export const gearView = {
   /** Which placeable gear is being set right now, or -1: the marker is up while it is not -1. */
   placing: -1,
   /** True while my own cloak is on, so the HUD can say so. */
-  cloaked: false
+  cloaked: false,
+  /** The weapon the player chose to wield: 'shoot' (gun), 'slap' or 'taser'. Gun is always owned. */
+  armeChoisie: 'shoot' as 'shoot' | 'slap' | 'taser'
 }
+
+/** Wield a weapon from the gear menu, or the gun. No HUD button: the held model is the feedback. */
+export function wield(type: 'shoot' | 'slap' | 'taser'): void { gearView.armeChoisie = type }
 
 const PLAQUE = Color4.fromHexString(TOY.trapPlate + 'd9')
 const MIENNE = Color4.create(0.35, 0.95, 0.45, 0.85)
