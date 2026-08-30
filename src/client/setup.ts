@@ -19,6 +19,7 @@ import { setupStress } from './stress'
 import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
+import { setupGuidage } from './guidage'
 import { setupTravel } from './travel'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
@@ -109,6 +110,7 @@ export function startClient(): void {
   setupCombat()
   setupQuests()
   setupTutorial()
+  setupGuidage()
   setupTravel()
 
   let myAddress = ''

@@ -343,7 +343,11 @@ export async function accueillir(address: string): Promise<void> {
     ...(stocke ?? {}),
     coins: stocke?.coins ?? 0,
     items: [...items],
-    crates: stocke?.crates ?? [],
+    // One Basic crate in a brand-new pocket. The tutorial's second step is "Open your
+    // crate", and until now a fresh account owned none: the step named a thing that did
+    // not exist (tester, 30 Aug). The reference solves the first minute with a near-free
+    // buy off its conveyor; ours is a crate already in hand, which the second step opens.
+    crates: stocke?.crates ?? [0],
     itemsFound: stocke?.itemsFound ?? items.length,
     floorsBought: stocke?.floorsBought ?? 0,
     rebirths: stocke?.rebirths ?? 0,

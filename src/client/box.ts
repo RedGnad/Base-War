@@ -408,3 +408,11 @@ export function openBestCrate(): void {
   if (boxView.stock.length === 0) return
   openCrate(Math.max(...boxView.stock))
 }
+
+/** The crate currently standing at the base, if one is being opened: the beacon's target. */
+export function positionCaisse(): Vector3 | null {
+  if (!boxView.opening) return null
+  const t = Transform.getOrNull(crateMesh)
+  if (t === null || t.scale.x <= 0) return null
+  return Vector3.create(t.position.x, t.position.y, t.position.z)
+}
