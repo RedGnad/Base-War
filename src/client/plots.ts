@@ -49,6 +49,7 @@ import { steal, monAdresseClient, alerter } from './theft'
 import { pickUp } from './carry'
 import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
+import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
@@ -277,13 +278,17 @@ function creerSocle(racine: Entity, k: number): Entity {
     scale: Vector3.create(0.45, 0.45, 0.45)
   })
   MeshRenderer.setBox(o)
-  // Pointer only: a toy on a shelf is clicked, never walked into.
-  MeshCollider.setBox(o, ColliderLayer.CL_POINTER)
-  PointerEvents.create(o, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
-    ]
-  })
+  // Pointer only: a toy on a shelf is clicked, never walked into. And on a phone not even
+  // that: the contextual button takes the pedestal in front of the player (`padEnFace`),
+  // so a handset carries no collider per displayed toy at all (tester's ask, 30 Aug).
+  if (!isMobile()) {
+    MeshCollider.setBox(o, ColliderLayer.CL_POINTER)
+    PointerEvents.create(o, {
+      pointerEvents: [
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Steal' } }
+      ]
+    })
+  }
   return o
 }
 
@@ -822,4 +827,80 @@ export function setupPlots(): void {
       views.delete(id)
     }
   })
+}
+
+/**
+ * The pedestal the player is facing, on the nearest base, or null.
+ *
+ * The contextual button's version of the click on a toy. Two conditions, both about the
+ * body: within a stride of the pedestal, and facing it, so a player merely walking down a
+ * shelf is not offered the toy at their elbow. Of the pedestals that pass, the nearest.
+ */
+export const PAD_REACH = 2.4
+export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: string } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  let base: { p: ReturnType<typeof Plot.get>; x: number; z: number } | null = null
+  let distance = PLACE_RANGE
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    const bt = Transform.getOrNull(e)
+    if (bt === null) continue
+    const d = Math.hypot(t.position.x - bt.position.x, t.position.z - bt.position.z)
+    if (d > distance) continue
+    distance = d
+    base = { p, x: bt.position.x, z: bt.position.z }
+  }
+  if (base === null) return null
+  const f = Vector3.rotate(Vector3.create(0, 0, 1), t.rotation)
+  const fl = Math.hypot(f.x, f.z)
+  let choisi = -1
+  let meilleur = PAD_REACH
+  for (let k = 0; k < base.p.items.length; k++) {
+    if (base.p.items[k] === VIDE) continue
+    const s = slotPosition(k)
+    if (Math.abs(s.dy - t.position.y) > FLOOR_HEIGHT / 2) continue     // this storey only
+    const o = tourner(base.z, s.dx, s.dz)
+    const dx = base.x + o.dx - t.position.x, dz = base.z + o.dz - t.position.z
+    const d = Math.hypot(dx, dz)
+    if (d >= meilleur) continue
+    if (fl > 0.001 && d > 0.3 && (dx * f.x + dz * f.z) / (d * fl) < 0.35) continue   // behind or beside
+    meilleur = d
+    choisi = k
+  }
+  if (choisi < 0) return null
+  return {
+    ownerId: base.p.ownerId, k: choisi,
+    mine: base.p.ownerId.toLowerCase() === monAdresseClient(),
+    nom: nomDuCode(base.p.items[choisi])
+  }
+}
+
+/** The button's act on that pedestal: lift your own, steal anyone else's. */
+export function agirSurPad(pad: { ownerId: string; k: number; mine: boolean }): void {
+  if (pad.mine) pickUp(pad.k)
+  else steal(pad.ownerId, pad.k)
+}
+
+/**
+ * Your own elevator within reach. Reach covers the landing spot the elevator itself puts
+ * the player on (about four metres, facing it), so the spam-press climb keeps working.
+ */
+export const ELEVATOR_REACH = 4.4
+function monAscenseur(): View | null {
+  const moi = monAdresseClient()
+  for (const v of views.values()) if (v.ownerId.toLowerCase() === moi) return v
+  return null
+}
+export function ascenseurAPortee(): boolean {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  const v = monAscenseur()
+  if (t === null || v === null) return false
+  const r = Transform.getOrNull(v.racine)
+  if (r === null) return false
+  const el = tourner(r.position.z, ASC_X, ASC_Z)
+  return Math.hypot(t.position.x - (r.position.x + el.dx), t.position.z - (r.position.z + el.dz)) <= ELEVATOR_REACH
+}
+export function monterIci(): void {
+  const v = monAscenseur()
+  if (v !== null) goUpOneFloor(v)
 }

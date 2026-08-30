@@ -241,3 +241,27 @@ export function setupBelt(): void {
     console.log(`[CLIENT] ${d.byName} grabbed a ${crate(d.crateTier).name} for ${d.price}`)
   })
 }
+
+/**
+ * The belt crate within reach of the player, or null.
+ *
+ * The contextual button's version of the click on a crate: standing at the belt is the
+ * intent, the nearest crate is the target, and the hint names it and its price so the
+ * player knows which one a press buys before pressing. Reach is one crate's width, so a
+ * player walking past the belt is never offered a purchase they did not come for.
+ */
+export const BELT_REACH = 2.6
+export function caisseAPortee(): { articleId: number; price: number; crateTier: number } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  let best: { articleId: number; price: number; crateTier: number } | null = null
+  let dist = BELT_REACH
+  for (const [, b] of engine.getEntitiesWith(Belt)) {
+    if (b.buyerName !== '') continue
+    const p = beltPosition(b.progres)
+    const d = Math.hypot(t.position.x - p.x, t.position.z - p.z)
+    if (d < dist) { dist = d; best = { articleId: b.articleId, price: b.price, crateTier: b.crateTier } }
+  }
+  return best
+}
+export function acheterCaisse(articleId: number): void { void room.send('buyBelt', { articleId }) }

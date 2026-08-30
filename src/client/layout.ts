@@ -208,7 +208,7 @@ export const COIN_HAUT_DROIT = 96
  * interaction button. A line of text, never a control.
  */
 export const NATIVE = {
-  interact: 'acts on the reticle target, fires while drawn',
+  interact: 'hidden on the phone since 30 Aug: every world click has a contextual twin on the central button',
   primary: 'the contextual game action',
   secondary: 'draw and holster',
   jump: 'jump'

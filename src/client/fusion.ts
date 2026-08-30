@@ -129,3 +129,15 @@ export function setupFusion(): void {
     }
   })
 }
+
+/** Standing at the fuser: empty hands open the panel, a toy in hand feeds the machine. */
+export const FUSER_REACH = 3
+export function fuserAPortee(): boolean {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return false
+  return Math.hypot(t.position.x - FUSION_POS.x, t.position.z - FUSION_POS.z) <= FUSER_REACH
+}
+export function agirSurFuser(): void {
+  if (carryView.code < 0) openFusion()
+  else void room.send('feedFusion', {})
+}

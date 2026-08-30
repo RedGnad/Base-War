@@ -139,9 +139,11 @@ export function setupTouchHud(): void {
     keeps only what the scene cannot draw better: jump, the interaction button, and the big
     central action. The hidden set is remembered so an icon written later never unhides one.
   */
-  for (const a of [InputAction.IA_SECONDARY, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
+  // The interaction button goes too (30 Aug): every click in the world now has a contextual
+  // equivalent on the central button, so the small pointing hand had nothing left to do.
+  for (const a of [InputAction.IA_POINTER, InputAction.IA_SECONDARY, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
   TouchScreenControls.hide([...CACHES])
-  console.log('[CLIENT] touch HUD: 3 native buttons (jump, interact, central); menu and draw are scene buttons')
+  console.log('[CLIENT] touch HUD: 2 native buttons (jump, central); menu and draw are scene buttons, every world click is contextual')
 }
 
 /**

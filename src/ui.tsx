@@ -18,7 +18,9 @@ import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/loco
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
 import { ligneDuBandeau, prochainGrandTexte } from './client/events'
-import { beltView } from './client/belt'
+import { beltView, caisseAPortee, acheterCaisse } from './client/belt'
+import { convoiAPortee, surencherir } from './client/convoy'
+import { fuserAPortee, agirSurFuser } from './client/fusion'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
@@ -28,7 +30,7 @@ import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
-import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente } from './shared/loot-table'
+import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 
@@ -57,7 +59,7 @@ const ETATS: Record<string, (r: number) => string> = {
 }
 import { slotView, basculerPose, placeHere } from './client/slots'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
-import { baseIci } from './client/plots'
+import { baseIci, padEnFace, agirSurPad, ascenseurAPortee, monterIci } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -464,6 +466,8 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     picture on the button beats a plate on the screen every time.
   */
   if (carryView.code >= 0) {
+    // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
+    if (fuserAPortee()) return { label: 'FEED THE FUSER', action: agirSurFuser }
     const ou = baseIci()
     if (ou === null) return { label: 'DROP', icon: 'icon-drop', action: dropCarried }
     return ou.mienne
@@ -479,9 +483,32 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   */
   if (gearView.placing >= 0) return { label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'icon-build', action: poserPiege }
   if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
+  /*
+    What the place offers, so the phone needs no interaction button at all.
+
+    Every one of these was a click on a thing in the world, which on a handset is a hunt for
+    a small pointer button and then a small target. The genre's mobile answer is the
+    proximity prompt: stand at the thing and one button does it. So standing at the belt
+    offers the nearest crate, by name and price; beside a convoy, the outbid; at the fuser,
+    the fuser; near your own elevator, the climb; facing a shelf, the toy on it. The desktop
+    keeps its clicks as well. Ordered by how deliberate the standing is: a belt or a convoy
+    you walked to, an elevator you spam, a shelf you happen to face.
+  */
+  const caisse = caisseAPortee()
+  if (caisse !== null) {
+    return { label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: 'icon-crate', action: () => acheterCaisse(caisse.articleId) }
+  }
+  const convoi = convoiAPortee()
+  if (convoi !== null && !convoi.mine) return { label: `OUTBID  ${formatIncome(convoi.price)}`, action: () => surencherir(convoi.convoyId) }
+  if (fuserAPortee()) return { label: 'FUSER', action: agirSurFuser }
+  if (ascenseurAPortee()) return { label: 'GO UP', action: monterIci }
+  const pad = padEnFace()
+  if (pad !== null && !pad.mine) return { label: `STEAL ${pad.nom}`, action: () => agirSurPad(pad) }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
     return { label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }
   }
+  // Your own shelf, below opening crates: at home the crate you carry is the louder intent.
+  if (pad !== null && pad.mine) return { label: `PICK UP ${pad.nom}`, action: () => agirSurPad(pad) }
   /*
     No purchase past this point, and that is the whole rule.
 

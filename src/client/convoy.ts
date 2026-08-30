@@ -91,3 +91,23 @@ export function setupConvoy(): void {
     }
   })
 }
+
+/** The convoy within reach of the player, with the price it would take to outbid it. */
+export const CONVOY_REACH = 3
+export function convoiAPortee(): { convoyId: number; price: number; mine: boolean } | null {
+  const t = Transform.getOrNull(engine.PlayerEntity)
+  if (t === null) return null
+  const moi = monAdresseClient()
+  let best: { convoyId: number; price: number; mine: boolean } | null = null
+  let dist = CONVOY_REACH
+  for (const [, c] of engine.getEntitiesWith(Convoy)) {
+    const v = views.get(c.convoyId)
+    if (v === undefined) continue
+    const bt = Transform.getOrNull(v.body)
+    if (bt === null) continue
+    const d = Math.hypot(t.position.x - bt.position.x, t.position.z - bt.position.z)
+    if (d < dist) { dist = d; best = { convoyId: c.convoyId, price: Math.ceil(c.pricePaid * CONVOY_OUTBID), mine: c.owner.toLowerCase() === moi } }
+  }
+  return best
+}
+export function surencherir(convoyId: number): void { void room.send('outbid', { convoyId }) }
