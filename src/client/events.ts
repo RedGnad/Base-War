@@ -1,5 +1,6 @@
 import { engine, Material, SkyboxTime, TransitionMode, Entity, AudioSource, Transform, Tween, TextureWrapMode, TextureMovementType, PBMaterial_PbrMaterial } from '@dcl/sdk/ecs'
 import { Vector2, Vector3, Color4 } from '@dcl/sdk/math'
+import { isMobile } from '@dcl/sdk/platform'
 import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
@@ -158,7 +159,10 @@ export function setupEvents(): void {
           metallic: 0,
           roughness: 0.95
         })
-        Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.015, TextureMovementType.TMT_OFFSET)
+        // Not on the handset: its texture tweens overwrite the material's tiling with (1, 1)
+        // (godot-explorer tween.rs, 30 Aug), which would stretch one mat cell over the venue.
+        // The phone keeps a still mat at the right scale; the flow is a desktop flourish.
+        if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
       SkyboxTime.deleteFrom(engine.RootEntity)

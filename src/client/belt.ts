@@ -70,18 +70,28 @@ export function setupBelt(): void {
     rotation: Quaternion.fromEulerDegrees(-90, 0, 0)
   })
   MeshRenderer.setPlane(tapis)
+  /*
+    The tread is one image of sixteen cells and the material's tiling is (1, 1), on purpose.
+
+    It used to be one cell tiled ten times, and on the handset the tread slid much faster than
+    the crates while the desktop was fine (tester, 30 Aug). Read in the mobile client: its
+    texture tweens apply their own UV scale, (1, 1) by default, over the material's tiling
+    (godot-explorer, scene_runner/components/tween.rs). One cell stretched over the plane,
+    moving at the cell rate, is eleven times too fast. With the repetition baked into the
+    image, tiling 1 is the truth everywhere, and the offset's unit is one belt length: the
+    speed is the crates' metres per second over the plane's length.
+  */
   Material.setPbrMaterial(tapis, {
     texture: Material.Texture.Common({
-      src: 'assets/textures/belt.png',
+      src: 'assets/textures/belt-strip.png',
       wrapMode: TextureWrapMode.TWM_REPEAT,
-      tiling: Vector2.create((BELT_LENGTH + 2) / MAILLE, 1)
+      tiling: Vector2.create(1, 1)
     }),
     albedoColor: Color4.White(),
     metallic: 0,
     roughness: 0.55
   })
-  // Offset units are tread cells: the crates' metres per second, divided by the cell's width.
-  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), BELT_LENGTH / BELT_DURATION_S / MAILLE, TextureMovementType.TMT_OFFSET)
+  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), (BELT_LENGTH / BELT_DURATION_S) / (BELT_LENGTH + 2), TextureMovementType.TMT_OFFSET)
 
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()

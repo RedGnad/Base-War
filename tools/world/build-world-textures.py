@@ -76,6 +76,26 @@ def mat(kind):
     return im
 
 
+def belt_strip(cells=16, w=128):
+    """The whole belt in one image, so the material's tiling can be (1, 1).
+
+    The mobile client's texture tweens write their own UV scale, (1, 1) by default, over the
+    material's tiling (godot-explorer, scene_runner/components/tween.rs and scene.rs, read
+    30 Aug): a tread tiled ten times over the plane became one cell stretched across it,
+    sliding eleven times faster than the crates. Baking the repetition into the image makes
+    tiling 1 the truth on every client, and the offset's unit is then one belt length.
+    Sixteen cells over the 28 m plane, 1.75 m each; 2048 wide keeps it a power of two.
+    """
+    im = Image.new('RGB', (cells * w, w), BELT)
+    d = ImageDraw.Draw(im)
+    for c in range(cells):
+        x = c * w
+        for x0 in (int(40 * w / 256), int(168 * w / 256)):
+            d.rectangle([x + x0 - 2, 0, x + x0 + int(51 * w / 256), w - 1], fill=SEAM)
+            d.rectangle([x + x0, 0, x + x0 + int(47 * w / 256), w - 1], fill=TREAD)
+    return im
+
+
 def grass():
     """The resting mat: a two-tone checker, quieter than any event.
 
@@ -108,6 +128,7 @@ def grass():
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     belt().save(os.path.join(OUT, 'belt.png'), optimize=True)
+    belt_strip().save(os.path.join(OUT, 'belt-strip.png'), optimize=True)
     for k in ('gold', 'lava', 'cursed'):
         mat(k).save(os.path.join(OUT, f'mat-{k}.png'), optimize=True)
     grass().save(os.path.join(OUT, 'mat-grass.png'), optimize=True)
