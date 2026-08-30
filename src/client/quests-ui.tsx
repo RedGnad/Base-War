@@ -1,5 +1,6 @@
-import ReactEcs, { Button, Label, UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, SKIN, C, lisible } from './theme'
+import { Btn } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -87,12 +88,9 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
           uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
       ) : (
-        <Button
-          uiTransform={{ width: 187, height: TAP.height }}
-          value={fini ? 'CLAIM' : `+1 crate`}
-          variant={fini ? 'primary' : 'secondary'} uiBackground={fini ? SKIN.success : SKIN.secondary} color={C.name}
-          fontSize={TYPE.caption}
-          onMouseDown={() => { if (fini) claim(i) }} />
+        <Btn label={fini ? 'CLAIM' : '+1 CRATE'} width={187} size={TYPE.caption}
+          skin={fini ? 'success' : 'secondary'}
+          onClick={fini ? () => claim(i) : undefined} />
       )}
     </UiEntity>
   )
@@ -129,9 +127,9 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
             uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
         ) : (
-          <Button uiTransform={{ width: 187, height: TAP.height }}
-            value={allDone ? 'CLAIM' : 'LOCKED'} variant={allDone ? 'primary' : 'secondary'} uiBackground={allDone ? SKIN.success : SKIN.disabled} color={C.name} fontSize={TYPE.caption}
-            onMouseDown={() => { if (allDone) claim(3) }} />
+          <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} size={TYPE.caption}
+            skin={allDone ? 'success' : 'disabled'}
+            onClick={allDone ? () => claim(3) : undefined} />
         )}
     </UiEntity>
 

@@ -1,4 +1,5 @@
-import { InputAction } from '@dcl/sdk/ecs'
+import { engine, Transform, AudioSource, Entity, InputAction } from '@dcl/sdk/ecs'
+import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
@@ -18,6 +19,29 @@ import { Glyphs } from './glyphs'
  * A control is therefore built here rather than with the platform Button, which can only
  * hold a string of its own.
  */
+/*
+  The press answered, on every control at once.
+
+  The organisers' one repeated note at the Show & Tell (28 Aug) was tap feedback: "most apps,
+  when you click a button..." and the written recap says "give players clear feedback when
+  they tap something". Every control in the game goes through this component, so the answer
+  lives here and nowhere else: for 130 ms after the touch, a dark film over the plate and the
+  label pressed down two pixels, and one short tick through the speaker. An inert control (no
+  action, no binding) stays silent, because a dead button that clicks reads as a broken one.
+*/
+const PRESSE_MS = 130
+const presse = new Map<string, number>()
+let sonClic: Entity | null = null
+function tic(): void {
+  if (sonClic === null) {
+    sonClic = engine.addEntity()
+    Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+    AudioSource.create(sonClic, { audioClipUrl: 'assets/sounds/tick.wav', playing: false, loop: false, volume: 0.55 })
+  }
+  const a = AudioSource.getMutableOrNull(sonClic)
+  if (a !== null) { a.playing = false; a.playing = true }
+}
+
 export const Btn = (props: {
   key?: string
   label: string
@@ -35,6 +59,9 @@ export const Btn = (props: {
 }) => {
   const size = props.size ?? TYPE.body
   const height = props.height ?? TAP.height
+  const actif = props.onClick !== undefined || props.bind !== undefined
+  const cle = `${props.label}|${props.width}`
+  const enfonce = actif && Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   return (
     <UiEntity
       uiTransform={{
@@ -44,12 +71,20 @@ export const Btn = (props: {
       }}
       uiBackground={SKIN[props.skin ?? (props.primary === true ? 'primary' : 'secondary')]}
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
-      onMouseDown={props.onClick}
+      onMouseDown={actif ? () => { presse.set(cle, Date.now()); tic(); props.onClick?.() } : undefined}
     >
       <Glyphs
         value={props.label} size={size} align="center" box={props.width}
-        top={(height - size) / 2}
+        top={(height - size) / 2 + (enfonce ? 3 : 0)}
         role="name" />
+      {enfonce && (
+        <UiEntity
+          uiTransform={{
+            width: props.width, height, positionType: 'absolute', position: { top: 0, left: 0 },
+            borderRadius: 26
+          }}
+          uiBackground={{ color: Color4.create(0.03, 0.08, 0.17, 0.30) }} />
+      )}
       {/*
         A pip that sits ON the corner, not inside it.
 
