@@ -136,7 +136,5 @@ export function setupDecor(): void {
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
 
-  // TEMP-TEST-BALLON: un GLB pose au centre pour l'experience A/B de rotation camera.
-  pose('assets/Models/balloon001.glb', CENTER.x + 4, 2.2, CENTER.z + 3, 1.2, 0)
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons placed')
 }

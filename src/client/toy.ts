@@ -172,12 +172,12 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
   not listed mounts at identity, which is the contract's default.
 */
 const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
-  'item-0.glb': { scale: 0.866, dy: -0.75, rotX: 0 },  // piece (coin): 1.11 x 1.11 x 0.32 m
-  'item-1.glb': { scale: 0.707, dy: -0.473, rotX: 0 },  // eclat (crystal-05): 0.50 x 1.36 x 0.50 m
-  'item-2.glb': { scale: 0.653, dy: -0.49, rotX: 0 },  // coffre (chest-pirates): 1.47 x 0.66 x 0.97 m
-  'item-3.glb': { scale: 0.96, dy: -0.49, rotX: 0 },  // gemme (crystal): 0.95 x 1.00 x 0.93 m
-  'item-4.glb': { scale: 0.085, dy: -0.405, rotX: 0 },  // pile (money): 6.85 x 5.39 x 11.34 m
-  'item-5.glb': { clip: 'Spinning', scale: 0.479, dy: -0.49, rotX: 0 },  // couronne (crown): 2.01 x 1.08 x 2.01 m
+  'item-0.glb': { scale: 5.545, dy: -0.49, rotX: 0 },  // pion: 0.09 x 0.17 x 0.09 m (noeud applique)
+  'item-1.glb': { scale: 5.814, dy: -0.49, rotX: 0 },  // tour: 0.09 x 0.17 x 0.09 m (noeud applique)
+  'item-2.glb': { scale: 4.885, dy: -0.49, rotX: 0 },  // cavalier: 0.07 x 0.20 x 0.12 m (noeud applique)
+  'item-3.glb': { scale: 4.455, dy: -0.49, rotX: 0 },  // fou: 0.09 x 0.22 x 0.10 m (noeud applique)
+  'item-4.glb': { scale: 4.127, dy: -0.49, rotX: 0 },  // dame: 0.10 x 0.23 x 0.10 m (noeud applique)
+  'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
 }
 
 function poserFit(modele: Entity, fichier: string): void {
@@ -204,8 +204,6 @@ export function montable(primitive: Entity, fichier: string): void {
   const fit = FIT[fichier]
   if (fit?.clip !== undefined) {
     Animator.create(modele, { states: [{ clip: fit.clip, playing: true, loop: true }] })
-  } else if (fichier === 'item-2.glb') {
-    Animator.create(modele, { states: [{ clip: 'main', playing: false, loop: false }] })
   }
   montages.set(primitive, { modele, fichier })
 }
