@@ -36,24 +36,22 @@ const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
   A digit stays out: a 9 floating over a plaza is a question nobody should be asking.
 */
 /*
-  Our balloons, for good this time. The marketplace pack cost five rounds of tester time
-  (number shapes, then inverted faces that showed only the inside of the back), and nine
-  decorative balloons do not get a sixth. These are our spheres wearing our baked skins,
-  polka dots or stripes tinted by the party colour, a shine that says latex, a knot and a
-  string. Every triangle and every texel is ours; there is nothing left to be haunted by.
+  The marketplace balloons, by the owner's call. They carry a rendering quirk nobody has
+  fully pinned down (a hollow-ish read under an orbiting camera survived the winding
+  mirror), and the tester weighed it against their style and realism and chose the style:
+  "je prefere le pack qu'on avait, meme bugge". So they stand, in their original
+  orientation, with a knot and a string under each for anchoring and anatomy. The quirk's
+  autopsy waits for a ten-second video, whenever curiosity outbids polish time.
 */
-const FETE = ['#ff6b9d', '#ffd23f', '#4ec9f5', '#8ade4a', '#ff9f43', '#c78bfa']
-const PEAUX = ['assets/textures/ballon-pois.png', 'assets/textures/ballon-rayures.png']
+const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb', 'assets/Models/balloon006.glb']
+const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
-function pose(src: string, x: number, y: number, z: number, sc: number, ry: number, miroir = false): Entity {
+function pose(src: string, x: number, y: number, z: number, sc: number, ry: number): Entity {
   const e = engine.addEntity()
   Transform.create(e, {
     position: Vector3.create(x, y, z),
-    // A negative axis flips the triangle winding. The balloon pack ships its faces inside
-    // out: the camera only ever saw the BACK surface, the hollow-mask that read as reverse
-    // rotation (found by the tester, 31 Aug). Mirrored, the true front faces the world.
-    scale: Vector3.create(miroir ? -sc : sc, sc, sc),
+    scale: Vector3.create(sc, sc, sc),
     rotation: Quaternion.fromEulerDegrees(0, ry, 0)
   })
   GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
@@ -64,28 +62,6 @@ function surSpawn(x: number, z: number): boolean {
   return x > 88 && x < 104 && z > 92 && z < 108
 }
 
-/** One party balloon: our sphere in our baked skin, a shine, a knot, a string. */
-function ballon(x: number, y: number, z: number, sc: number): void {
-  const teinte = FETE[Math.floor(alea() * FETE.length)]
-  const peau = PEAUX[alea() < 0.6 ? 0 : 1]
-  const corps = engine.addEntity()
-  Transform.create(corps, { position: Vector3.create(x, y, z), scale: Vector3.create(0.82 * sc, sc, 0.82 * sc), rotation: Quaternion.fromEulerDegrees(0, alea() * 360, 0) })
-  MeshRenderer.setSphere(corps)
-  Material.setPbrMaterial(corps, {
-    texture: Material.Texture.Common({ src: peau, wrapMode: TextureWrapMode.TWM_REPEAT, tiling: Vector2.create(2, 1) }),
-    albedoColor: Color4.fromHexString(teinte + 'ff'),
-    metallic: 0.05, roughness: 0.25,
-    emissiveColor: Color3.fromHexString(teinte), emissiveIntensity: 0.06
-  })
-  const noeud = engine.addEntity()
-  Transform.create(noeud, { parent: corps, position: Vector3.create(0, -0.56, 0), scale: Vector3.create(0.15, 0.13, 0.15) })
-  MeshRenderer.setCylinder(noeud, 0.5, 0.2)
-  Material.setPbrMaterial(noeud, plastic(teinte))
-  const fil = engine.addEntity()
-  Transform.create(fil, { parent: corps, position: Vector3.create(0.03, -1.05, 0), scale: Vector3.create(0.02, 0.85, 0.02) })
-  MeshRenderer.setCylinder(fil, 0.5, 0.5)
-  Material.setPbrMaterial(fil, plastic('#f2e9d8'))
-}
 
 
 export function setupDecor(): void {
@@ -164,15 +140,18 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      ballon(bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.85 + alea() * 0.45)
+      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      const noeud = engine.addEntity()
+      Transform.create(noeud, { parent: b, position: Vector3.create(0, -0.78, 0), scale: Vector3.create(0.16, 0.14, 0.16) })
+      MeshRenderer.setCylinder(noeud, 0.5, 0.2)
+      Material.setPbrMaterial(noeud, plastic('#f2e9d8'))
+      const fil = engine.addEntity()
+      Transform.create(fil, { parent: b, position: Vector3.create(0.04, -1.5, 0), scale: Vector3.create(0.02, 1.3, 0.02) })
+      MeshRenderer.setCylinder(fil, 0.5, 0.5)
+      Material.setPbrMaterial(fil, plastic('#f2e9d8'))
     }
   }
-  // The landmark: a helix of party balloons climbing over the plaza.
-  for (let k = 0; k < 16; k++) {
-    const a = k * 0.9
-    const r = 4.2 - k * 0.18
-    ballon(CENTER.x + Math.cos(a) * r, 23 + k * 0.55, CENTER.z + Math.sin(a) * r, 1.1 + alea() * 0.5)
-  }
+  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
 
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons placed')
 }
