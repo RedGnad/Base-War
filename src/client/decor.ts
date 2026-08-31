@@ -138,8 +138,14 @@ export function setupDecor(): void {
     [CENTER.x - 13, CENTER.z + 6.5]
   ]
   for (const [bx, bz] of bouquets) {
+    // A ring, not a dice roll: these shapes run up to two metres wide and a random jitter
+    // of +/-1.1 m stacked them into each other (owner, 1 Sep). Three points 120 degrees
+    // apart on a 1.7 m radius sit 2.9 m apart at worst, clear by construction, and the
+    // staggered heights keep them from ever reading as a row from any side.
+    const phase = alea() * 360
     for (let k = 0; k < 3; k++) {
-      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      const a = ((phase + k * 120) * Math.PI) / 180
+      pose(BALLONS[k % BALLONS.length], bx + Math.cos(a) * 1.7, 1.2 + k * 0.7 + alea() * 0.3, bz + Math.sin(a) * 1.7, 0.9 + alea() * 0.4, alea() * 360)
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
