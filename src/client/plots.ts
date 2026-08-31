@@ -10,10 +10,9 @@ import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
+import { poserTexte3D, Segment3D } from './texte3d'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
-const OR_PLAQUE = Color4.fromHexString('#ffd24aff')
-const NAVY_PLAQUE = Color4.fromHexString('#16233fff')
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
 const ASC_X = BASE_SIDE / 2 - 1.1
 const ASC_Z = -BASE_SIDE / 2 + 1.1
@@ -55,7 +54,7 @@ import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
-  plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity
+  plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
@@ -441,9 +440,6 @@ function createView(x: number, z: number, accent: string): View {
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
     scale: Vector3.create(0.9, 0.9, 0.9)
   })
-  TextShape.create(plaque, {
-    text: '', fontSize: 3.4, textColor: OR_PLAQUE, outlineWidth: 0.26, outlineColor: NAVY_PLAQUE
-  })
   // The sign behind the name: the HUD's own navy plate, so the facade speaks the same UI
   // language as the buttons. A child, so it turns and dies with the text.
   const enseigne = engine.addEntity()
@@ -470,7 +466,7 @@ function createView(x: number, z: number, accent: string): View {
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
@@ -682,7 +678,7 @@ export function setupPlots(): void {
         What stays per-frame is what genuinely ticks: the LOCKED countdown on the nameplate and
         the shield, which is why neither of them is behind this flag.
       */
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}`
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}|${p.rebirths}`
       const structurel = sig !== v.signature
       const txt = TextShape.getMutableOrNull(v.label)
       if (txt !== null) {
@@ -723,16 +719,21 @@ export function setupPlots(): void {
           round on both counts. It joins the name line rather than taking one of its own,
           since a plate read from a few metres away can carry a rank but not a fourth row.
         */
-        const rang = p.rebirths > 0 ? `  ·  PRESTIGE ${p.rebirths}` : ''
+        const rang = p.rebirths > 0 ? `  ·  x${p.rebirths + 1} PRESTIGE` : ''
         txt.text = `${p.ownerName}${rang}${state}${guard}${ledger}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
         if (structurel) {
-          const tp = TextShape.getMutableOrNull(v.plaque)
-          if (tp !== null) {
-            const rangCourt = p.rebirths > 0 ? `  ·  P${p.rebirths}` : ''
-            tp.text = `${p.ownerName.slice(0, 14).toUpperCase()}${rangCourt}`
-            tp.textColor = p.ownerPresent ? OR_PLAQUE : Color4.fromHexString('#9aa4b2ff')
-          }
+          /*
+            The facade speaks the HUD's numbers and the HUD's typeface. The number is the
+            MULTIPLIER, rebirths plus one, because that is what the counter over the score
+            says (x3 PRESTIGE) and what a player calls their prestige; the plate said P2 to
+            a player the HUD had told x3 (owner, 1 Sep). The letters are glyph quads from
+            the Baloo atlas, name in white, rank in the money gold.
+          */
+          if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
+          const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
+          if (p.rebirths > 0) segs.push({ texte: `  x${p.rebirths + 1}`, role: 'money', taille: 0.78 })
+          v.plaqueGlyphes = p.ownerName === '' ? null : poserTexte3D(v.plaque, segs, !p.ownerPresent)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {
