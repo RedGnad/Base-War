@@ -180,6 +180,15 @@ const FIT: Record<string, { scale: number; dy: number; rotX: number }> = {
   'item-5.glb': { scale: 4.085, dy: -0.49, rotX: 90 },  // roi: axe z, base haut, ratio 3.2
 }
 
+function poserFit(modele: Entity, fichier: string): void {
+  const f = FIT[fichier]
+  const t = Transform.getMutableOrNull(modele)
+  if (t === null) return
+  t.position = Vector3.create(0, f?.dy ?? 0, 0)
+  t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
+  t.rotation = Quaternion.fromEulerDegrees(f?.rotX ?? 0, 0, 0)
+}
+
 export function montable(primitive: Entity, fichier: string): void {
   const modele = engine.addEntity()
   // Child of the stand-in: it inherits position, rotation and scale, then the fit above.
