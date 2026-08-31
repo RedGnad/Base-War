@@ -171,21 +171,13 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
   the unit height, an offset that puts the base on the stand-in's floor at -0.5. A file
   not listed mounts at identity, which is the contract's default.
 */
-const FIT: Record<string, { scale: number; dy: number; zUp: boolean }> = {
-  'item-0.glb': { scale: 5.66, dy: 0.49, zUp: true },
-  'item-1.glb': { scale: 5.935, dy: 0.49, zUp: true },
-  'item-2.glb': { scale: 4.987, dy: -0.49, zUp: false },
-  'item-3.glb': { scale: 4.548, dy: 0.49, zUp: true },
-  'item-4.glb': { scale: 4.213, dy: -0.49, zUp: false },
-  'item-5.glb': { scale: 4.085, dy: 0.49, zUp: true },}
-
-function poserFit(modele: Entity, fichier: string): void {
-  const f = FIT[fichier]
-  const t = Transform.getMutableOrNull(modele)
-  if (t === null) return
-  t.position = Vector3.create(0, f?.dy ?? 0, 0)
-  t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
-  t.rotation = Quaternion.fromEulerDegrees(f?.rotX ?? 0, 0, 0)
+const FIT: Record<string, { scale: number; dy: number; rotX: number }> = {
+  'item-0.glb': { scale: 5.66, dy: -0.49, rotX: 90 },  // pion: axe z, base haut, ratio 2.2
+  'item-1.glb': { scale: 5.935, dy: -0.49, rotX: 90 },  // tour: axe z, base haut, ratio 1.5
+  'item-2.glb': { scale: 4.987, dy: -0.49, rotX: 0 },  // cavalier: axe y, base bas, ratio 1.6
+  'item-3.glb': { scale: 4.548, dy: -0.49, rotX: 90 },  // fou: axe z, base haut, ratio 2.2
+  'item-4.glb': { scale: 4.213, dy: -0.49, rotX: 0 },  // dame: axe y, base bas, ratio 1.8
+  'item-5.glb': { scale: 4.085, dy: -0.49, rotX: 90 },  // roi: axe z, base haut, ratio 3.2
 }
 
 export function montable(primitive: Entity, fichier: string): void {
