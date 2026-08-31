@@ -327,6 +327,25 @@ const SellChip = (props: { right?: number }) => {
   flash, and nothing while loading "doesn't read as long, it reads as broken". The button
   icons were missing from this list; the first draw of the gun or the menu badge flashed.
 */
+/*
+  The living counter's state: what is drawn chases what is true, and each arrival is kept
+  long enough to float up and disappear. Module state, read by pure render functions.
+*/
+let compteurVu = -1
+let gainA = 0
+let gainMontant = 0
+function compteurAffiche(): number {
+  const vrai = theftView.coins
+  if (compteurVu < 0 || Math.abs(vrai - compteurVu) > Math.max(1000, vrai * 0.5)) { compteurVu = vrai; return vrai }
+  if (vrai > compteurVu) { gainMontant = gainMontant > 0 && Date.now() - gainA < 700 ? gainMontant + (vrai - compteurVu) : vrai - compteurVu; gainA = Date.now() }
+  compteurVu = compteurVu + (vrai - compteurVu) * 0.16
+  if (Math.abs(vrai - compteurVu) < Math.max(2, vrai * 0.0002)) compteurVu = vrai
+  return Math.round(compteurVu)
+}
+function poussee(): number { return Math.max(0, 1 - (Date.now() - gainA) / 260) }
+function gainMonte(): number { return Math.min(1, (Date.now() - gainA) / 900) }
+function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 900 ? `+${formatIncome(gainMontant)}` : '' }
+
 const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
@@ -689,7 +708,16 @@ function Crosshair() {
     about the only thing it needed to say.
   */
   const force = locked ? forceDuTir(combatView.targetDist) : 1
-  const gap = Math.round(8 + (1 - force) * 22)
+  /*
+    The kick and the marker, the two heartbeats every mobile shooter gives its sight. The
+    arms jump outward for 120 ms after each round leaves; four gold points flash on the
+    diagonals for 160 ms when a round LANDS. Both read from timestamps the combat layer
+    stamps, so the reticle stays a pure function of state.
+  */
+  const now = Date.now()
+  const kick = Math.max(0, 1 - (now - combatView.lastShotAt) / 120)
+  const touche = now - combatView.lastHitAt < 160
+  const gap = Math.round(8 + (1 - force) * 22 + kick * 7)
   const len = 12
   const th = 2
   const col = cold
@@ -709,6 +737,14 @@ function Crosshair() {
 
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
+      {touche && [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([dx, dy], i) => (
+        <UiEntity key={'hm' + i}
+          uiTransform={{
+            width: 7, height: 7, positionType: 'absolute',
+            position: { left: `${50 + dx * 2.2}%`, top: `${50 + dy * 3.4}%` }
+          }}
+          uiBackground={{ color: Color4.fromHexString('#ffd166ff') }} />
+      ))}
       {bar(-th / 2, -(gap + len), th, len, 'up')}
       {bar(-th / 2, gap, th, len, 'down')}
       {bar(-(gap + len), -th / 2, len, th, 'left')}
@@ -960,10 +996,24 @@ const uiComponent = () => {
         quad per digit, each showing its cell of an atlas. Glyphs place themselves, so they
         need a box of their own in the column or the line under them is walked over.
       */}
+      {/*
+        A live counter, not a teleprompter. The displayed value chases the real one (fast
+        lerp, snapped when close), the digits swell for a beat when money arrives, and the
+        gain itself floats up beside them and vanishes: the standard grammar of every 2026
+        mobile earner, built from the pieces already on screen.
+      */}
       <UiEntity uiTransform={{ width: '100%', height: TYPE.hero + 6 }}>
         <Glyphs
-          value={formatIncome(theftView.coins)}
-          size={TYPE.hero} role="money" align="center" box={strip(760).width} />
+          value={formatIncome(compteurAffiche())}
+          size={Math.round(TYPE.hero * (1 + poussee() * 0.09))} role="money" align="center" box={strip(760).width} />
+        {gainRecent() !== '' && (
+          <UiEntity uiTransform={{
+            width: 300, height: 40, positionType: 'absolute',
+            position: { top: -26 - gainMonte() * 26, left: '50%' }, margin: { left: 170 }
+          }}>
+            <Glyphs value={gainRecent()} size={30} role="money" align="left" box={300} />
+          </UiEntity>
+        )}
       </UiEntity>
       {/*
         The line under it, in the same face for the same reason: no plate, so it has to

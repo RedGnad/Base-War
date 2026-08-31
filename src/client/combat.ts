@@ -52,7 +52,10 @@ export const combatView = {
   targetDist: 0,
   /** 0 when ready, 1 right after a shot. */
   cooldown: 0,
-  firstPerson: false
+  firstPerson: false,
+  /** Le depart et l'impact du dernier coup, pour le kick et le hit-marker du reticule. */
+  lastShotAt: 0,
+  lastHitAt: 0
 }
 
 type ArmeType = 'shoot' | 'slap' | 'taser'
@@ -284,6 +287,7 @@ export function setupCombat(): void {
     if (d.reason === 'boss') return
     // One shot, one line. What it did to their hands leads, because that is the bigger prize.
     const qui = d.hitName.toUpperCase()
+    if (d.loot > 0) combatView.lastHitAt = Date.now()
     if (d.loot === 3) {
       alerter(`${qui} LOST THEIR GRIP, THE THEFT IS OFF`, '#8fe08f', 3200)
     } else if (d.loot === 2) {
@@ -291,6 +295,7 @@ export function setupCombat(): void {
     } else if (d.loot === 1) {
       alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', 2600)
     } else if (d.reason === 'hit') {
+      combatView.lastHitAt = Date.now()
       alerter(`HIT ${qui}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', 3500)
     } else if (d.reason === 'nothing to drop') {
       alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
@@ -309,7 +314,9 @@ export function setupCombat(): void {
     if (a !== moi) equiperArme(armes.get(a) ?? null, t)
   })
 
+  creerTraceurs()
   engine.addSystem(gunSystem)
+  engine.addSystem(traceurSystem)
   engine.addSystem(pileSystem)
 }
 
@@ -661,11 +668,53 @@ function tirer(now: number): boolean {
   flashScale = gun ? 0.5 : 0
   poserFlash(flashScale)
   recul = 1
+  combatView.lastShotAt = now
+  /*
+    The tracer: the streak every mobile shooter draws between muzzle and aim. A thin emissive
+    box laid along the camera ray for seventy milliseconds, from a pool of three, so holding
+    the trigger reads as a line of fire and a miss still SHOWS where the round went.
+  */
+  if (gun && cam !== null) {
+    const debut = Vector3.create(cam.position.x + f.x * 0.7, cam.position.y - 0.12 + f.y * 0.7, cam.position.z + f.z * 0.7)
+    const long = SHOT_RANGE * 0.9
+    const t = traceurs[traceurSuivant]
+    traceurSuivant = (traceurSuivant + 1) % traceurs.length
+    const tt = Transform.getMutableOrNull(t.e)
+    if (tt !== null) {
+      tt.position = Vector3.create(debut.x + f.x * long / 2, debut.y + f.y * long / 2, debut.z + f.z * long / 2)
+      tt.rotation = cam.rotation
+      tt.scale = Vector3.create(0.025, 0.025, long)
+    }
+    t.jusqua = now + 70
+  }
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)
     if (s !== null) { s.playing = false; s.playing = true }
   }
   return true
+}
+
+/** The tracer pool: three streaks, reused round-robin, hidden by scale when their time is up. */
+const traceurs: Array<{ e: Entity; jusqua: number }> = []
+let traceurSuivant = 0
+function creerTraceurs(): void {
+  for (let i = 0; i < 3; i++) {
+    const e = engine.addEntity()
+    Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
+    MeshRenderer.setBox(e)
+    Material.setPbrMaterial(e, plasticDe(Color4.create(1, 0.85, 0.45, 1), 3))
+    traceurs.push({ e, jusqua: 0 })
+  }
+}
+function traceurSystem(): void {
+  const now = Date.now()
+  for (const t of traceurs) {
+    if (t.jusqua !== 0 && now > t.jusqua) {
+      t.jusqua = 0
+      const tt = Transform.getMutableOrNull(t.e)
+      if (tt !== null) tt.scale = Vector3.Zero()
+    }
+  }
 }
 
 /** Dropped piles: the server owns them, the client only draws what it publishes. */
