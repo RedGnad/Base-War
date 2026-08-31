@@ -12,6 +12,8 @@ import {
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
+const OR_PLAQUE = Color4.fromHexString('#ffd24aff')
+const NAVY_PLAQUE = Color4.fromHexString('#16233fff')
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
 const ASC_X = BASE_SIDE / 2 - 1.1
 const ASC_Z = -BASE_SIDE / 2 + 1.1
@@ -223,27 +225,28 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
     landing. Two short guards fence exactly that shaft and nothing else. The fillers sit
     past index 9 in `walls`, where `repeindre` never reaches, so skins stay intact.
   */
-  const RAIL_HEIGHT = 1.1
   const bande = c / 2 - STAIRWELL_WIDTH / 2          // strip centre line, x = 5.2
   const haut = course / 2                            // where the ramp below tops out, z = 3.2
   const finPalier = haut + 2.4                       // the landing covers [haut, finPalier]
-  const debutPuits = 1.0                             // head-room begins here on upper storeys
   if (floor === 0) {
     const plein = bloc(x + bande, y + SLAB_THICKNESS / 2, z, STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
     Material.setPbrMaterial(plein, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c))
     walls.push(plein)
   } else {
-    const a = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (-c / 2 + debutPuits) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, debutPuits + c / 2, FLOOR_COLOR)
-    Material.setPbrMaterial(a, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, debutPuits + c / 2))
+    /*
+      Basic architecture, the owner's words (1 Sep) after the first cut of this hole put a
+      metre of ceiling over the climb: a climber's head reaches the slab above at z = 0.16,
+      and the opening began at 1.0. So the strip on upper storeys is now three dumb pieces:
+      solid floor behind the ramp's own start, the whole middle left OPEN above the climb,
+      solid floor between landing and front wall. No rails anywhere: a misstep drops you
+      onto the ramp below, which is the genre's answer, not a fence.
+    */
+    const finArriere = -1.2
+    const a = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (-c / 2 + finArriere) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, finArriere + c / 2, FLOOR_COLOR)
+    Material.setPbrMaterial(a, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, finArriere + c / 2))
     const b = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (finPalier + c / 2) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, c / 2 - finPalier, FLOOR_COLOR)
     Material.setPbrMaterial(b, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c / 2 - finPalier))
-    walls.push(
-      a, b,
-      // Two short guards around the shaft the ramp rises through: the slab-side edge and
-      // the cross edge a walker would otherwise step off. Nothing else is fenced.
-      bloc(x + c / 2 - STAIRWELL_WIDTH, y + RAIL_HEIGHT / 2, z + (debutPuits + haut) / 2, 0.12, RAIL_HEIGHT, haut - debutPuits, '#7d8698'),
-      bloc(x + bande, y + RAIL_HEIGHT / 2, z + debutPuits - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698')
-    )
+    walls.push(a, b)
   }
 
   /*
@@ -433,10 +436,29 @@ function createView(x: number, z: number, accent: string): View {
   Transform.create(plaque, {
     parent: racine,
     position: Vector3.create(0, WALL_HEIGHT + 0.62, BASE_SIDE / 2 + 0.12),
+    // A TextShape reads correctly from its local -z side, so unrotated over the door it
+    // greeted the street with MIRRORED letters (owner, 1 Sep). Half a turn faces it out.
+    rotation: Quaternion.fromEulerDegrees(0, 180, 0),
     scale: Vector3.create(0.9, 0.9, 0.9)
   })
   TextShape.create(plaque, {
-    text: '', fontSize: 4.2, textColor: Color4.White(), outlineWidth: 0.24, outlineColor: NOIR
+    text: '', fontSize: 3.4, textColor: OR_PLAQUE, outlineWidth: 0.26, outlineColor: NAVY_PLAQUE
+  })
+  // The sign behind the name: the HUD's own navy plate, so the facade speaks the same UI
+  // language as the buttons. A child, so it turns and dies with the text.
+  const enseigne = engine.addEntity()
+  Transform.create(enseigne, {
+    parent: plaque,
+    position: Vector3.create(0, 0.02, 0.05),
+    scale: Vector3.create(6.4, 1.5, 1)
+  })
+  MeshRenderer.setPlane(enseigne)
+  Material.setPbrMaterial(enseigne, {
+    texture: Material.Texture.Common({ src: 'assets/ui/panel.png' }),
+    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/panel.png' }),
+    emissiveColor: Color3.White(), emissiveIntensity: 0.3,
+    metallic: 0, roughness: 1, specularIntensity: 0,
+    transparencyMode: 2, alphaTest: 0.4
   })
 
   /*
@@ -455,7 +477,7 @@ function destroyView(v: View): void {
   engine.removeEntity(v.plinth)
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
-  engine.removeEntity(v.plaque)
+  engine.removeEntityWithChildren(v.plaque)
   engine.removeEntity(v.door)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
@@ -707,8 +729,9 @@ export function setupPlots(): void {
         if (structurel) {
           const tp = TextShape.getMutableOrNull(v.plaque)
           if (tp !== null) {
-            tp.text = `${p.ownerName.toUpperCase()}${rang}`
-            tp.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+            const rangCourt = p.rebirths > 0 ? `  ·  P${p.rebirths}` : ''
+            tp.text = `${p.ownerName.slice(0, 14).toUpperCase()}${rangCourt}`
+            tp.textColor = p.ownerPresent ? OR_PLAQUE : Color4.fromHexString('#9aa4b2ff')
           }
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
