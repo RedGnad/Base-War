@@ -1,5 +1,5 @@
 import { isMobile } from '@dcl/sdk/platform'
-import { GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -171,13 +171,13 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
   the unit height, an offset that puts the base on the stand-in's floor at -0.5. A file
   not listed mounts at identity, which is the contract's default.
 */
-const FIT: Record<string, { scale: number; dy: number; rotX: number }> = {
-  'item-0.glb': { scale: 5.66, dy: -0.49, rotX: 90 },  // pion: axe z, base haut, ratio 2.2
-  'item-1.glb': { scale: 5.935, dy: -0.49, rotX: 90 },  // tour: axe z, base haut, ratio 1.5
-  'item-2.glb': { scale: 4.987, dy: -0.49, rotX: 0 },  // cavalier: axe y, base bas, ratio 1.6
-  'item-3.glb': { scale: 4.548, dy: -0.49, rotX: 90 },  // fou: axe z, base haut, ratio 2.2
-  'item-4.glb': { scale: 4.213, dy: -0.49, rotX: 0 },  // dame: axe y, base bas, ratio 1.8
-  'item-5.glb': { scale: 4.085, dy: -0.49, rotX: 90 },  // roi: axe z, base haut, ratio 3.2
+const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
+  'item-0.glb': { scale: 0.866, dy: -0.75, rotX: 0 },  // piece (coin): 1.11 x 1.11 x 0.32 m
+  'item-1.glb': { scale: 0.707, dy: -0.473, rotX: 0 },  // eclat (crystal-05): 0.50 x 1.36 x 0.50 m
+  'item-2.glb': { scale: 0.653, dy: -0.49, rotX: 0 },  // coffre (chest-pirates): 1.47 x 0.66 x 0.97 m
+  'item-3.glb': { scale: 0.96, dy: -0.49, rotX: 0 },  // gemme (crystal): 0.95 x 1.00 x 0.93 m
+  'item-4.glb': { scale: 0.085, dy: -0.405, rotX: 0 },  // pile (money): 6.85 x 5.39 x 11.34 m
+  'item-5.glb': { clip: 'Spinning', scale: 0.479, dy: -0.49, rotX: 0 },  // couronne (crown): 2.01 x 1.08 x 2.01 m
 }
 
 function poserFit(modele: Entity, fichier: string): void {
@@ -195,6 +195,18 @@ export function montable(primitive: Entity, fichier: string): void {
   Transform.create(modele, { parent: primitive })
   poserFit(modele, fichier)
   GltfContainer.create(modele, { src: TOY_DIR + fichier, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  /*
+    Animation policy lives in the FIT table. A clip named there loops (the crown spins,
+    which is what a Mythic does anyway); a file with clips but no entry gets an Animator
+    holding everything OFF, because a model with clips and no Animator autoplays its first
+    one, and the treasure chest's first clip is 'close' played at a random moment.
+  */
+  const fit = FIT[fichier]
+  if (fit?.clip !== undefined) {
+    Animator.create(modele, { states: [{ clip: fit.clip, playing: true, loop: true }] })
+  } else if (fichier === 'item-2.glb') {
+    Animator.create(modele, { states: [{ clip: 'main', playing: false, loop: false }] })
+  }
   montages.set(primitive, { modele, fichier })
 }
 
