@@ -128,11 +128,18 @@ export function matiereMetal(hex: string, mut: number, glow = 0): PBMaterial_Pbr
     bronze (tester, 31 Aug). Same cure that already works for Diamond: a lighter albedo and
     a warm emissive FLOOR under the rarity glow, so even a Common Gold glints.
   */
+  /*
+    The placeholder-era gold, which the tester validated, then a whisper of emissive.
+
+    Two swings taught the window: pure #ffd700 metal under our weak image lighting reads
+    copper, and a lightened albedo with a strong emissive floor reads butter, worse still
+    on the Low preset. So: the deep gold tone itself, full metal, and an emissive FLOOR low
+    enough to anchor the hue on Low without ever washing it (0.18; rarity glow still adds).
+  */
   if (mut === 1) {
-    const dore = Color4.fromHexString('#ffdf7aff')
     return {
-      albedoColor: dore, metallic: 0.85, roughness: 0.22,
-      emissiveColor: Color3.create(1.0, 0.78, 0.28), emissiveIntensity: Math.max(0.35, eclat)
+      albedoColor: Color4.fromHexString('#f5c518ff'), metallic: 0.9, roughness: 0.32,
+      emissiveColor: Color3.create(0.72, 0.52, 0.10), emissiveIntensity: Math.max(0.18, eclat)
     }
   }
   // diamond: very smooth, a little metallic for the highlight, a base sparkle plus rarity glow

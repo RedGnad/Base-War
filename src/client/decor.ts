@@ -39,11 +39,14 @@ const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb',
 const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
-function pose(src: string, x: number, y: number, z: number, sc: number, ry: number): Entity {
+function pose(src: string, x: number, y: number, z: number, sc: number, ry: number, miroir = false): Entity {
   const e = engine.addEntity()
   Transform.create(e, {
     position: Vector3.create(x, y, z),
-    scale: Vector3.create(sc, sc, sc),
+    // A negative axis flips the triangle winding. The balloon pack ships its faces inside
+    // out: the camera only ever saw the BACK surface, the hollow-mask that read as reverse
+    // rotation (found by the tester, 31 Aug). Mirrored, the true front faces the world.
+    scale: Vector3.create(miroir ? -sc : sc, sc, sc),
     rotation: Quaternion.fromEulerDegrees(0, ry, 0)
   })
   GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
@@ -131,7 +134,7 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360, true)
       /*
         A knot and a string under each balloon. Not decoration: the anchor that breaks an
         illusion. A symmetric balloon with a repeating pattern gives the eye no silhouette
@@ -149,7 +152,7 @@ export function setupDecor(): void {
       Material.setPbrMaterial(fil, plastic('#f2e9d8'))
     }
   }
-  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
+  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0, true)
 
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons placed')
 }
