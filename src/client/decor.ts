@@ -140,15 +140,7 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
-      const noeud = engine.addEntity()
-      Transform.create(noeud, { parent: b, position: Vector3.create(0, -0.78, 0), scale: Vector3.create(0.16, 0.14, 0.16) })
-      MeshRenderer.setCylinder(noeud, 0.5, 0.2)
-      Material.setPbrMaterial(noeud, plastic('#f2e9d8'))
-      const fil = engine.addEntity()
-      Transform.create(fil, { parent: b, position: Vector3.create(0.04, -1.5, 0), scale: Vector3.create(0.02, 1.3, 0.02) })
-      MeshRenderer.setCylinder(fil, 0.5, 0.5)
-      Material.setPbrMaterial(fil, plastic('#f2e9d8'))
+      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
