@@ -145,26 +145,16 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
+      /*
+        No tint override any more: the flat dye erased the baked shading and made rich
+        latex read as plastic (tester, 31 Aug). The brand was cut out of the FILES instead
+        (the Logo primitive was its own material) and the party colours are baseColorFactor
+        edits that MULTIPLY the texture, so the realism survives. And a quarter of the old
+        scale: the photo showed balloons taller than the player.
+      */
       const b = BALLONS[k % BALLONS.length]
-      const sc = 0.085 + alea() * 0.035
-      const e = pose(b.src, bx + (alea() - 0.5) * 2.2, 0.4 + alea() * 0.9 - b.minY * sc, bz + (alea() - 0.5) * 2.2, sc, alea() * 360)
-      const teinte = FETE[Math.floor(alea() * FETE.length)]
-      GltfNodeModifiers.create(e, {
-        modifiers: [{
-          path: '',
-          material: {
-            material: {
-              $case: 'pbr',
-              pbr: {
-                albedoColor: Color4.fromHexString(teinte + 'ff'),
-                metallic: 0.05, roughness: 0.2,
-                emissiveColor: Color3.fromHexString(teinte), emissiveIntensity: 0.05,
-                texture: Material.Texture.Common({ src: 'assets/textures/blank.png' })
-              }
-            }
-          }
-        }]
-      })
+      const sc = 0.038 + alea() * 0.016
+      pose(b.src, bx + (alea() - 0.5) * 2.2, 0.35 + alea() * 0.7 - b.minY * sc, bz + (alea() - 0.5) * 2.2, sc, alea() * 360)
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)

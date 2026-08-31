@@ -21,7 +21,7 @@ import { HUE } from './theme'
  */
 export const TOY = {
   /** The ground: a play-mat green, matte, the table the toys stand on. */
-  ground: '#6cc47a',
+  ground: '#74d083',   // a notch more saturated: the genre's daylight grass, judged too muted (tester, 31 Aug)
   groundEvent: { gold: '#b89a3a', lava: '#b4523a', cursed: '#6a4a8f' },
   /** Bases: cream plastic walls, a brighter roof line, primary-colour accents. */
   wallCream: '#f2e9d8',
