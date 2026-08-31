@@ -7,9 +7,9 @@
     "navmapThumbnail": "images/base-war-thumbnail.png",
     "favicon": "favicon_asset"
   },
-  "owner": "",
+  "owner": "Red.G",
   "contact": {
-    "name": "SDK",
+    "name": "Red.G",
     "email": ""
   },
   "main": "bin/index.js",

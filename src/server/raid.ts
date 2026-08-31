@@ -130,6 +130,22 @@ function finir(vaincu: boolean): void {
   prochain = prochainCreneau(now)
   m.nextMs = prochain
   if (vaincu) {
+    /*
+      The corpse rains coins, and the rain is for the crowd.
+
+      The crate goes to whoever dealt the most; that is the trophy. The coins on the floor
+      are the party: one drop per damage dealer, scaled to THEIR income (forty-five seconds
+      of it, so it matters to the rich and to the new alike), scattered in a ring around
+      where the boss fell, and anyone may scoop anyone's pile. Same drop machinery as the
+      swipe, so the client already knows how to draw and grab them.
+    */
+    let k = 0
+    for (const [addr] of degats) {
+      const pluie = Math.floor(incomePerSecond(addr) * 45 + 500)
+      const a2 = (k / Math.max(1, degats.size)) * Math.PI * 2 + rnd()
+      dropAt(addr, pluie, { x: m.x + Math.cos(a2) * 3, y: 0.6, z: m.z + Math.sin(a2) * 3 })
+      k += 1
+    }
     const top = meneur()
     if (top !== null) {
       addCrate(top.address, RAID_REWARD_CRATE)
@@ -137,7 +153,7 @@ function finir(vaincu: boolean): void {
       void room.send('raidWon', { crate: RAID_REWARD_CRATE }, { to: [top.address] })
       noter('raid', top.name, '', encoder(4, 0))
       void room.send('raidOver', { winner: top.name, slain: true })
-      log(`raid: slain, ${top.name} dealt the most and takes the crate`)
+      log(`raid: slain, ${top.name} takes the crate; ${degats.size} dealers rained on`)
       return
     }
   }
