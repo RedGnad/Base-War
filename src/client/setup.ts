@@ -20,6 +20,7 @@ import { setupSlots } from './slots'
 import { setupQuests } from './quests-ui'
 import { setupTutorial } from './tutorial'
 import { setupGuidage } from './guidage'
+import { setupDecor } from './decor'
 import { setupTravel } from './travel'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
@@ -111,6 +112,7 @@ export function startClient(): void {
   setupQuests()
   setupTutorial()
   setupGuidage()
+  setupDecor()
   setupTravel()
 
   let myAddress = ''
