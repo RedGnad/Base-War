@@ -1,5 +1,5 @@
 import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
+import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
 import { tutoView } from './tutorial'
@@ -21,8 +21,9 @@ import { monAdresseClient } from './theft'
  * of free. Hidden by scale, parked underground, like every other transient in the scene.
  */
 const OR = '#ffd23f'
-let colonne: Entity | null = null
+let anneau: Entity | null = null
 let fleche: Entity | null = null
+let filage = 0
 
 function cible(): Vector3 | null {
   if (tutoView.etape >= tutoView.total) return null
@@ -60,10 +61,16 @@ function cible(): Vector3 | null {
 }
 
 export function setupGuidage(): void {
-  colonne = engine.addEntity()
-  Transform.create(colonne, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
-  MeshRenderer.setCylinder(colonne, 0.22, 0.22)
-  Material.setPbrMaterial(colonne, plastic(OR, 2.0))
+  /*
+    The genre's marker, not a surveyor's pole. A solid gold column read as amateur noise
+    (tester, 31 Aug), and no reference game plants a cylinder: they float a bouncing,
+    slowly turning chevron over the target and pulse a flat ring on the ground under it.
+    Both ours: emissive plastic, no alpha, no light, two entities as before.
+  */
+  anneau = engine.addEntity()
+  Transform.create(anneau, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+  MeshRenderer.setCylinder(anneau, 0.5, 0.5)
+  Material.setPbrMaterial(anneau, plastic(OR, 2.2))
   fleche = engine.addEntity()
   Transform.create(fleche, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   // A cone with its apex at the bottom: an arrowhead pointing at the spot.
@@ -76,7 +83,7 @@ export function setupGuidage(): void {
     acc += dt
     if (acc < 0.2) return
     acc = 0
-    const c = colonne === null ? null : Transform.getMutableOrNull(colonne)
+    const c = anneau === null ? null : Transform.getMutableOrNull(anneau)
     const f = fleche === null ? null : Transform.getMutableOrNull(fleche)
     if (c === null || f === null) return
     const ou = cible()
@@ -84,10 +91,16 @@ export function setupGuidage(): void {
       if (c.scale.x !== 0) { c.scale = Vector3.Zero(); f.scale = Vector3.Zero() }
       return
     }
-    const bob = Math.sin(Date.now() / 320) * 0.3
-    c.position = Vector3.create(ou.x, ou.y + 3.4, ou.z)
-    c.scale = Vector3.create(1, 4.4, 1)
-    f.position = Vector3.create(ou.x, ou.y + 6.2 + bob, ou.z)
-    f.scale = Vector3.create(1.1, 0.9, 1.1)
+    const t = Date.now()
+    // The ring breathes on the ground; the chevron bobs and slowly turns above the spot.
+    const souffle = 1.5 + Math.sin(t / 420) * 0.35
+    c.position = Vector3.create(ou.x, ou.y + 0.06, ou.z)
+    c.scale = Vector3.create(souffle, 0.04, souffle)
+    const bob = Math.sin(t / 320) * 0.35
+    filage = (filage + 4.2) % 360
+    f.position = Vector3.create(ou.x, ou.y + 2.6 + bob, ou.z)
+    f.scale = Vector3.create(0.9, 0.75, 0.9)
+    const ft = Transform.getMutableOrNull(fleche as Entity)
+    if (ft !== null) ft.rotation = Quaternion.fromEulerDegrees(0, filage, 0)
   })
 }

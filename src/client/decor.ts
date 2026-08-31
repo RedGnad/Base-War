@@ -1,4 +1,4 @@
-import { TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, Animator, ColliderLayer, Entity } from '@dcl/sdk/ecs'
+import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, Animator, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE, EDGE_MARGIN, BELT_CLEARANCE, BELT_LENGTH, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
@@ -36,14 +36,19 @@ const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
   A digit stays out: a 9 floating over a plaza is a question nobody should be asking.
 */
 /*
-  The marketplace balloons, by the owner's call. They carry a rendering quirk nobody has
-  fully pinned down (a hollow-ish read under an orbiting camera survived the winding
-  mirror), and the tester weighed it against their style and realism and chose the style:
-  "je prefere le pack qu'on avait, meme bugge". So they stand, in their original
-  orientation, with a knot and a string under each for anchoring and anatomy. The quirk's
-  autopsy waits for a ten-second video, whenever curiosity outbids polish time.
+  Real latex balloons, at last: teardrop, shine, and the fine string modelled in. A third
+  pack, after the number balloons and their haunted cousins. They ship with event branding
+  baked into the texture, so every instance is tinted over a blank white texture in one of
+  the party colours: the same override that dyes the chess pieces, which erases the brand
+  and gives each balloon its own colour in the bargain. Their pivot floats far below the
+  mesh (minY 11 to 28 metres at native scale), so placement subtracts it per file.
 */
-const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb', 'assets/Models/balloon006.glb']
+const BALLONS: Array<{ src: string; minY: number }> = [
+  { src: 'assets/Models/balloon1.glb', minY: 11.1 },
+  { src: 'assets/Models/balloon2.glb', minY: 28.0 },
+  { src: 'assets/Models/balloon3.glb', minY: 19.3 }
+]
+const FETE = ['#ff6b9d', '#ffd23f', '#4ec9f5', '#8ade4a', '#ff9f43', '#c78bfa']
 const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
@@ -140,7 +145,26 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      const b = BALLONS[k % BALLONS.length]
+      const sc = 0.085 + alea() * 0.035
+      const e = pose(b.src, bx + (alea() - 0.5) * 2.2, 0.4 + alea() * 0.9 - b.minY * sc, bz + (alea() - 0.5) * 2.2, sc, alea() * 360)
+      const teinte = FETE[Math.floor(alea() * FETE.length)]
+      GltfNodeModifiers.create(e, {
+        modifiers: [{
+          path: '',
+          material: {
+            material: {
+              $case: 'pbr',
+              pbr: {
+                albedoColor: Color4.fromHexString(teinte + 'ff'),
+                metallic: 0.05, roughness: 0.2,
+                emissiveColor: Color3.fromHexString(teinte), emissiveIntensity: 0.05,
+                texture: Material.Texture.Common({ src: 'assets/textures/blank.png' })
+              }
+            }
+          }
+        }]
+      })
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
