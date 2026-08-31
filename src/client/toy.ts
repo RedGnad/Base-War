@@ -122,7 +122,19 @@ export function matiereMetal(hex: string, mut: number, glow = 0): PBMaterial_Pbr
   // top. A Mythic Diamond blazes because it is Mythic, not just a dull gem (tester, 28 Aug).
   const eclat = glow <= 0 ? 0 : Math.pow(glow, 1.5) * 0.9
   const emis = { emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: eclat }
-  if (mut === 1) return { albedoColor: c, metallic: 0.95, roughness: 0.3, ...emis }        // gold: polished metal + rarity glow
+  /*
+    Gold reads as gold, not as copper. A pure metal's colour is carried by its reflections,
+    and our clients' image lighting is weak, so #ffd700 at metallic 0.95 came out dark
+    bronze (tester, 31 Aug). Same cure that already works for Diamond: a lighter albedo and
+    a warm emissive FLOOR under the rarity glow, so even a Common Gold glints.
+  */
+  if (mut === 1) {
+    const dore = Color4.fromHexString('#ffdf7aff')
+    return {
+      albedoColor: dore, metallic: 0.85, roughness: 0.22,
+      emissiveColor: Color3.create(1.0, 0.78, 0.28), emissiveIntensity: Math.max(0.35, eclat)
+    }
+  }
   // diamond: very smooth, a little metallic for the highlight, a base sparkle plus rarity glow
   return { albedoColor: c, metallic: 0.25, roughness: 0.05, emissiveColor: Color3.create(c.r, c.g, c.b), emissiveIntensity: Math.max(0.4, eclat) }
 }

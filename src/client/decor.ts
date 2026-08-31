@@ -131,7 +131,22 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
+      /*
+        A knot and a string under each balloon. Not decoration: the anchor that breaks an
+        illusion. A symmetric balloon with a repeating pattern gives the eye no silhouette
+        to hold while the camera orbits, and the surface reads as counter-rotating (the
+        tester's "they turn the wrong way"). An asymmetric tail under it pins the object's
+        orientation, which is also simply what a party balloon looks like.
+      */
+      const noeud = engine.addEntity()
+      Transform.create(noeud, { parent: b, position: Vector3.create(0, -0.78, 0), scale: Vector3.create(0.16, 0.14, 0.16) })
+      MeshRenderer.setCylinder(noeud, 0.5, 0.2)
+      Material.setPbrMaterial(noeud, plastic('#f2e9d8'))
+      const fil = engine.addEntity()
+      Transform.create(fil, { parent: b, position: Vector3.create(0.04, -1.5, 0), scale: Vector3.create(0.02, 1.3, 0.02) })
+      MeshRenderer.setCylinder(fil, 0.5, 0.5)
+      Material.setPbrMaterial(fil, plastic('#f2e9d8'))
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
