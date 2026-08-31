@@ -209,13 +209,42 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
     STAIRWELL_WIDTH, SLAB_THICKNESS, 2.4, FLOOR_COLOR
   )
 
+  /*
+    The stairwell strip is FLOOR now, not a fenced pit.
+
+    What stood here: a guard rail along the strip's whole fourteen metres, plus the strip
+    itself left open wherever the ramp was not. A tester walked up the ramp and was fenced
+    off the slab at every storey by a rail built for the full length of a hole that no
+    longer needed guarding (31 Aug: "impossible de monter, une rambarde bloque a chaque
+    etage"). We never felt it because we click the elevator.
+
+    Now the strip is filled flush with the slab, except the one opening each storey truly
+    needs: the shaft where the ramp from below rises through, plus head-room before its
+    landing. Two short guards fence exactly that shaft and nothing else. The fillers sit
+    past index 9 in `walls`, where `repeindre` never reaches, so skins stay intact.
+  */
   const RAIL_HEIGHT = 1.1
-  const stairwellEdge = c / 2 - STAIRWELL_WIDTH
-  walls.push(
-    bloc(x + stairwellEdge, y + RAIL_HEIGHT / 2, z, 0.12, RAIL_HEIGHT, c, '#7d8698'),
-    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z - c / 2 + 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698', false),
-    bloc(x + c / 2 - STAIRWELL_WIDTH / 2, y + RAIL_HEIGHT / 2, z + c / 2 - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698', false)
-  )
+  const bande = c / 2 - STAIRWELL_WIDTH / 2          // strip centre line, x = 5.2
+  const haut = course / 2                            // where the ramp below tops out, z = 3.2
+  const finPalier = haut + 2.4                       // the landing covers [haut, finPalier]
+  const debutPuits = 1.0                             // head-room begins here on upper storeys
+  if (floor === 0) {
+    const plein = bloc(x + bande, y + SLAB_THICKNESS / 2, z, STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
+    Material.setPbrMaterial(plein, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c))
+    walls.push(plein)
+  } else {
+    const a = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (-c / 2 + debutPuits) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, debutPuits + c / 2, FLOOR_COLOR)
+    Material.setPbrMaterial(a, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, debutPuits + c / 2))
+    const b = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (finPalier + c / 2) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, c / 2 - finPalier, FLOOR_COLOR)
+    Material.setPbrMaterial(b, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c / 2 - finPalier))
+    walls.push(
+      a, b,
+      // Two short guards around the shaft the ramp rises through: the slab-side edge and
+      // the cross edge a walker would otherwise step off. Nothing else is fenced.
+      bloc(x + c / 2 - STAIRWELL_WIDTH, y + RAIL_HEIGHT / 2, z + (debutPuits + haut) / 2, 0.12, RAIL_HEIGHT, haut - debutPuits, '#7d8698'),
+      bloc(x + bande, y + RAIL_HEIGHT / 2, z + debutPuits - 0.06, STAIRWELL_WIDTH, RAIL_HEIGHT, 0.12, '#7d8698')
+    )
+  }
 
   /*
     One turret per storey, born with the storey it defends.
