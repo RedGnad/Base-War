@@ -185,7 +185,7 @@ function poserFit(modele: Entity, fichier: string): void {
   if (t === null) return
   t.position = Vector3.create(0, f?.dy ?? 0, 0)
   t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
-  t.rotation = f?.zUp === true ? Quaternion.fromEulerDegrees(-90, 0, 0) : Quaternion.Identity()
+  t.rotation = f?.zUp === true ? Quaternion.fromEulerDegrees(90, 0, 0) : Quaternion.Identity()
 }
 
 export function montable(primitive: Entity, fichier: string): void {
