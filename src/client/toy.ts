@@ -630,17 +630,9 @@ export function setupToy(): void {
       if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
     })
   }
-  const etatsVus = new Map<Entity, number>()
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
       const st = GltfContainerLoadingState.getOrNull(m.modele)
-      // Say what each mount sees, once per change: the erase step depends on this state,
-      // and when it silently never arrives the stand-ins simply stay (tester, 31 Aug).
-      const vu = st === null ? -1 : st.currentState
-      if (etatsVus.get(m.modele) !== vu) {
-        etatsVus.set(m.modele, vu)
-        console.log(`[CLIENT] mount ${m.fichier}: state ${vu}`)
-      }
       if (st === null) continue
       if (st.currentState === LoadingState.FINISHED) {
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
