@@ -29,13 +29,14 @@ const ARBRE = 'assets/Models/tree.glb'
 const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
 
 /*
-  The balloons are ours, drawn from primitives, after two marketplace packs both did
-  something no static glTF should: turn against the camera (tester, 31 Aug, twice). No
-  animation, no skin, no camera, matte materials: whatever those files carry, the decisive
-  experiment is geometry that CANNOT rotate. A squashed sphere, a knot, a string: sixty
-  triangles of our own plastic, in party colours, and the download loses six megabytes.
+  The balloon mystery, solved by the tester's own eye: "one of the balloons was a 9". The
+  pack is NUMBER balloons, and a flat digit orbited around shows its mirror: that was the
+  whole "turns against the camera". So the rich textured balloons come back, restricted to
+  the shapes that cannot mirror: the star, the flower, the sphere, and the spiral landmark.
+  A digit stays out: a 9 floating over a plaza is a question nobody should be asking.
 */
-const FETE = ['#ff6b9d', '#ffd23f', '#4ec9f5', '#8ade4a', '#ff9f43', '#c78bfa']
+const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb', 'assets/Models/balloon006.glb']
+const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
 function pose(src: string, x: number, y: number, z: number, sc: number, ry: number): Entity {
@@ -53,22 +54,6 @@ function surSpawn(x: number, z: number): boolean {
   return x > 88 && x < 104 && z > 92 && z < 108
 }
 
-/** One party balloon: squashed sphere, a knot, a string. Our plastic; nothing to load. */
-function ballon(x: number, y: number, z: number, sc: number): void {
-  const teinte = FETE[Math.floor(alea() * FETE.length)]
-  const corps = engine.addEntity()
-  Transform.create(corps, { position: Vector3.create(x, y, z), scale: Vector3.create(0.8 * sc, sc, 0.8 * sc) })
-  MeshRenderer.setSphere(corps)
-  Material.setPbrMaterial(corps, plastic(teinte, 0.12))
-  const noeud = engine.addEntity()
-  Transform.create(noeud, { parent: corps, position: Vector3.create(0, -0.55, 0), scale: Vector3.create(0.16, 0.14, 0.16) })
-  MeshRenderer.setCylinder(noeud, 0.5, 0.2)
-  Material.setPbrMaterial(noeud, plastic(teinte))
-  const fil = engine.addEntity()
-  Transform.create(fil, { parent: corps, position: Vector3.create(0, -1.05, 0), scale: Vector3.create(0.02, 0.9, 0.02) })
-  MeshRenderer.setCylinder(fil, 0.5, 0.5)
-  Material.setPbrMaterial(fil, plastic('#f2e9d8'))
-}
 
 export function setupDecor(): void {
   // The rim: four walls just inside the scene edge, cream with a yellow lip, like the side
@@ -146,15 +131,10 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      ballon(bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.8 + alea() * 0.4)
+      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
     }
   }
-  // The landmark: a helix of party balloons over the plaza, where the spiral pack was.
-  for (let k = 0; k < 16; k++) {
-    const a = k * 0.9
-    const r = 4.2 - k * 0.18
-    ballon(CENTER.x + Math.cos(a) * r, 23 + k * 0.55, CENTER.z + Math.sin(a) * r, 1.1 + alea() * 0.5)
-  }
+  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
 
   // TEMP-TEST-BALLON: un GLB pose au centre pour l'experience A/B de rotation camera.
   pose('assets/Models/balloon001.glb', CENTER.x + 4, 2.2, CENTER.z + 3, 1.2, 0)
