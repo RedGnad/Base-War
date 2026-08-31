@@ -53,7 +53,7 @@ import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
-  plinth: Entity; label: Entity; gain: Entity; door: Entity
+  plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
@@ -380,17 +380,34 @@ function createView(x: number, z: number, accent: string): View {
   // both outlined so they hold over sky, grass or a wall. One TextShape carries one colour,
   // which is why this is two entities and not two lines of one.
   const gain = engine.addEntity()
-  Transform.create(gain, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.62, z), scale: Vector3.create(0.6, 0.6, 0.6) })
+  Transform.create(gain, { position: Vector3.create(x, FLOOR_HEIGHT + 1.82, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(gain, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(gain, {
     text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR
   })
 
   const label = engine.addEntity()
-  Transform.create(label, { position: Vector3.create(x, MAX_FLOORS * FLOOR_HEIGHT + 1.0, z), scale: Vector3.create(0.6, 0.6, 0.6) })
+  Transform.create(label, { position: Vector3.create(x, FLOOR_HEIGHT + 1.15, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(label, {
     text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
+  })
+
+  /*
+    The reference writes the owner on the building itself: a sign over the entrance, facing
+    the belt everyone walks, part of the facade rather than a satellite. The floating pair
+    used to hang at the FULL possible height, twenty-two metres up on a one-storey base:
+    correct for nobody. It now rides just above what is actually built (adjusted with the
+    storeys, below), and this plate answers "whose is this" from the street.
+  */
+  const plaque = engine.addEntity()
+  Transform.create(plaque, {
+    parent: racine,
+    position: Vector3.create(0, WALL_HEIGHT + 0.62, BASE_SIDE / 2 + 0.12),
+    scale: Vector3.create(0.9, 0.9, 0.9)
+  })
+  TextShape.create(plaque, {
+    text: '', fontSize: 4.2, textColor: Color4.White(), outlineWidth: 0.24, outlineColor: NOIR
   })
 
   /*
@@ -402,13 +419,14 @@ function createView(x: number, z: number, accent: string): View {
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
   engine.removeEntity(v.plinth)
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
+  engine.removeEntity(v.plaque)
   engine.removeEntity(v.door)
   engine.removeEntity(v.ascenseur)
   for (const e of v.floors) {
@@ -657,6 +675,22 @@ export function setupPlots(): void {
         const rang = p.rebirths > 0 ? `  ·  PRESTIGE ${p.rebirths}` : ''
         txt.text = `${p.ownerName}${rang}${state}${guard}${ledger}`
         txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+        if (structurel) {
+          const tp = TextShape.getMutableOrNull(v.plaque)
+          if (tp !== null) {
+            tp.text = `${p.ownerName.toUpperCase()}${rang}`
+            tp.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+          }
+          // The floating pair rides just above the storeys that exist, not the theoretical top.
+          const rp = Transform.getOrNull(v.racine)
+          if (rp !== null) {
+            const haut = Math.min(p.floors, MAX_FLOORS) * FLOOR_HEIGHT
+            const tl = Transform.getMutableOrNull(v.label)
+            if (tl !== null) tl.position = Vector3.create(rp.position.x, haut + 1.15, rp.position.z)
+            const tg2 = Transform.getMutableOrNull(v.gain)
+            if (tg2 !== null) tg2.position = Vector3.create(rp.position.x, haut + 1.82, rp.position.z)
+          }
+        }
 
         // What the base earns, read off its own items, so a passer-by can price a target
         // without opening anything.
