@@ -8,6 +8,7 @@ import { tutoView } from './tutorial'
 import { envoyerOuAttendre } from './intent'
 
 export const theftView = {
+  alertes: [] as Array<{ t: string; c: string; ne: number; jusqua: number }>,
   stealing: false,
   stealTarget: '',
   stealLeftMs: 0,
@@ -57,10 +58,24 @@ export function alerterEnFile(texte: string, color: string, durationMs = 6000): 
   file.push({ t: texte, c: color, ms: durationMs })
 }
 
+/*
+  Two toasts, never more, newest on top. One slot meant a sentry warning ERASED the theft
+  result that arrived the same second; three or more is a chat log. Each entry keeps its
+  birth for the slide-in and its expiry for the fade-out; the legacy single-alert fields
+  stay written so nothing else changes.
+*/
 export function alerter(texte: string, color: string, durationMs = 6000): void {
+  const now = Date.now()
+  theftView.alertes.unshift({ t: texte, c: color, ne: now, jusqua: now + durationMs })
+  if (theftView.alertes.length > 2) theftView.alertes.length = 2
   theftView.alert = texte
   theftView.alertColor = color
-  theftView.alerteJusqua = Date.now() + durationMs
+  theftView.alerteJusqua = now + durationMs
+}
+export function alertesVisibles(): Array<{ t: string; c: string; ne: number; jusqua: number }> {
+  const now = Date.now()
+  while (theftView.alertes.length > 0 && theftView.alertes[theftView.alertes.length - 1].jusqua <= now) theftView.alertes.pop()
+  return theftView.alertes
 }
 
 /*

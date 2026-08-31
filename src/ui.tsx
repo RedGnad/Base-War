@@ -12,10 +12,10 @@ import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS } from './shared/schemas'
-import { Btn } from './client/ui-kit'
+import { Btn, pctAnime } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
-import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible } from './client/theft'
+import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, poserPiege } from './client/gear'
 import { ligneDuBandeau, prochainGrandTexte } from './client/events'
 import { beltView, caisseAPortee, acheterCaisse } from './client/belt'
@@ -904,7 +904,7 @@ const uiComponent = () => {
   */
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
-    ['opening', boxView.opening, 54],
+    ['opening', boxView.opening, 76],
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
@@ -1218,13 +1218,21 @@ const uiComponent = () => {
     {hud() && boxView.opening && (
       <UiEntity
         uiTransform={{
-          width: strip(320).width, height: 54, positionType: 'absolute',
+          width: strip(320).width, height: 76, positionType: 'absolute',
+          flexDirection: 'column', padding: { top: 6, bottom: 6 },
           position: { bottom: notice.opening, left: '50%' }, margin: strip(320).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
       >
-        <Label uiTransform={{ width: '100%' }} textWrap="nowrap" value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} />
+        <Label uiTransform={{ width: '100%', height: 30 }} textWrap="nowrap" value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} textAlign="middle-center" />
+        {/* Three segments that fill as the blows land: the chest-tap bar every reference shows. */}
+        <UiEntity uiTransform={{ width: '86%', height: 10, margin: { top: 2 }, flexDirection: 'row', justifyContent: 'space-between' }}>
+          {[0, 1, 2].map((k) => (
+            <UiEntity key={`seg${k}`} uiTransform={{ width: '31%', height: 10 }}
+              uiBackground={{ color: pctAnime(`smash${k}`, boxView.coups > k ? 100 : 0) > 50 ? C.bonus : Color4.create(1, 1, 1, 0.16) }} />
+          ))}
+        </UiEntity>
       </UiEntity>
     )}
 
@@ -1261,20 +1269,42 @@ const uiComponent = () => {
       third, when there was one, was simply not on screen. One line of height per line of
       text, and wide enough that a sum and a name fit on the first.
     */}
-    {hud() && theftView.alert !== '' && (
+    {/*
+      The toast stack: two at most, newest first, each sliding down into place and fading
+      out at the end of its life, with its severity as a left accent bar. The colours were
+      already the hierarchy (gold gain, red danger, grey info); the anatomy and the motion
+      are what make it read as a system rather than a message that teleports.
+    */}
+    {hud() && alertesVisibles().length > 0 && (
       <UiEntity
         uiTransform={{
-          width: strip(820).width,
-          height: 58 + (theftView.alert.split('\n').length - 1) * Math.round(TYPE.body * 1.35),
-          positionType: 'absolute',
-          // Above the middle, at body size: it must be read, not stood in front of (tester, 27 Aug).
+          width: strip(820).width, positionType: 'absolute',
           position: { top: '28%', left: '50%' }, margin: strip(820).margin,
-          justifyContent: 'center', alignItems: 'center'
+          flexDirection: 'column', alignItems: 'center'
         }}
-        uiBackground={SKIN.panel}
       >
-        <Label uiTransform={{ width: '100%' }} value={theftView.alert} fontSize={TYPE.body} textAlign="middle-center"
-          color={Color4.fromHexString(theftView.alertColor + 'ff')} />
+        {alertesVisibles().map((a) => {
+          const now = Date.now()
+          const entree = Math.min(1, (now - a.ne) / 160)
+          const sortie = Math.min(1, Math.max(0, (a.jusqua - now) / 250))
+          const lignes = a.t.split('\n').length
+          const h = 58 + (lignes - 1) * Math.round(TYPE.body * 1.35)
+          return (
+            <UiEntity key={`toast${a.ne}`}
+              uiTransform={{
+                width: '100%', height: h,
+                margin: { top: Math.round(-(1 - entree) * 14), bottom: 10 },
+                justifyContent: 'center', alignItems: 'center'
+              }}
+              uiBackground={SKIN.panel}
+            >
+              <UiEntity uiTransform={{ width: 5, height: h - 16, positionType: 'absolute', position: { left: 6, top: 8 } }}
+                uiBackground={{ color: Color4.fromHexString(a.c + 'ff') }} />
+              <Label uiTransform={{ width: '96%' }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
+                color={(() => { const c = Color4.fromHexString(a.c + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
+            </UiEntity>
+          )
+        })}
       </UiEntity>
     )}
 

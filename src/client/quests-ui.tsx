@@ -1,6 +1,6 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, SKIN, C, lisible } from './theme'
-import { Btn } from './ui-kit'
+import { Btn, pctAnime, flashDe } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -75,9 +75,14 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           uiTransform={{ width: 493, height: 20, margin: { top: 3 } }}
           uiBackground={{ color: Color4.create(1, 1, 1, 0.12) }}
         >
+          {/* The fill glides to its value and flashes white the moment it completes. */}
           <UiEntity
-            uiTransform={{ width: `${pct}%`, height: 20 }}
-            uiBackground={{ color: fini ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#4dd2ffff') }}
+            uiTransform={{ width: `${pctAnime(`quete${i}`, pct)}%`, height: 20 }}
+            uiBackground={{ color: (() => {
+              const f = flashDe(`quete${i}`)
+              const base = fini ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#4dd2ffff')
+              return f > 0 ? Color4.create(base.r + (1 - base.r) * f, base.g + (1 - base.g) * f, base.b + (1 - base.b) * f, 1) : base
+            })() }}
           />
         </UiEntity>
       </UiEntity>

@@ -117,3 +117,25 @@ export const Btn = (props: {
     </UiEntity>
   )
 }
+
+/*
+  The animated fill every bar shares: the drawn percentage chases the real one, and the
+  moment a bar completes it flashes once. Keyed module state read by pure renders, the same
+  pattern as the living counter. `flashDe` returns the white overlay's alpha for ~220 ms
+  after completion; both are cheap enough to call every frame from any list row.
+*/
+const barres = new Map<string, { vu: number; finiA: number }>()
+export function pctAnime(cle: string, cible: number): number {
+  const b = barres.get(cle) ?? { vu: cible, finiA: 0 }
+  if (cible < b.vu - 30) b.vu = cible                        // a reset (new quest day) snaps down
+  else b.vu = b.vu + (cible - b.vu) * 0.22
+  if (cible >= 100 && b.vu > 99 && b.finiA === 0) b.finiA = Date.now()
+  if (cible < 100) b.finiA = 0
+  barres.set(cle, b)
+  return Math.max(0, Math.min(100, b.vu))
+}
+export function flashDe(cle: string): number {
+  const b = barres.get(cle)
+  if (b === undefined || b.finiA === 0) return 0
+  return Math.max(0, 1 - (Date.now() - b.finiA) / 220)
+}
