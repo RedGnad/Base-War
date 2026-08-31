@@ -1,5 +1,5 @@
-import { engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, Animator, ColliderLayer, Entity } from '@dcl/sdk/ecs'
-import { Vector3, Quaternion } from '@dcl/sdk/math'
+import { TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, Animator, ColliderLayer, Entity } from '@dcl/sdk/ecs'
+import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE, EDGE_MARGIN, BELT_CLEARANCE, BELT_LENGTH, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
 
@@ -35,8 +35,15 @@ const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
   the shapes that cannot mirror: the star, the flower, the sphere, and the spiral landmark.
   A digit stays out: a 9 floating over a plaza is a question nobody should be asking.
 */
-const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb', 'assets/Models/balloon006.glb']
-const SPIRALE = 'assets/Models/balloon-group01.glb'
+/*
+  Our balloons, for good this time. The marketplace pack cost five rounds of tester time
+  (number shapes, then inverted faces that showed only the inside of the back), and nine
+  decorative balloons do not get a sixth. These are our spheres wearing our baked skins,
+  polka dots or stripes tinted by the party colour, a shine that says latex, a knot and a
+  string. Every triangle and every texel is ours; there is nothing left to be haunted by.
+*/
+const FETE = ['#ff6b9d', '#ffd23f', '#4ec9f5', '#8ade4a', '#ff9f43', '#c78bfa']
+const PEAUX = ['assets/textures/ballon-pois.png', 'assets/textures/ballon-rayures.png']
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
 function pose(src: string, x: number, y: number, z: number, sc: number, ry: number, miroir = false): Entity {
@@ -55,6 +62,29 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
 
 function surSpawn(x: number, z: number): boolean {
   return x > 88 && x < 104 && z > 92 && z < 108
+}
+
+/** One party balloon: our sphere in our baked skin, a shine, a knot, a string. */
+function ballon(x: number, y: number, z: number, sc: number): void {
+  const teinte = FETE[Math.floor(alea() * FETE.length)]
+  const peau = PEAUX[alea() < 0.6 ? 0 : 1]
+  const corps = engine.addEntity()
+  Transform.create(corps, { position: Vector3.create(x, y, z), scale: Vector3.create(0.82 * sc, sc, 0.82 * sc), rotation: Quaternion.fromEulerDegrees(0, alea() * 360, 0) })
+  MeshRenderer.setSphere(corps)
+  Material.setPbrMaterial(corps, {
+    texture: Material.Texture.Common({ src: peau, wrapMode: TextureWrapMode.TWM_REPEAT, tiling: Vector2.create(2, 1) }),
+    albedoColor: Color4.fromHexString(teinte + 'ff'),
+    metallic: 0.05, roughness: 0.25,
+    emissiveColor: Color3.fromHexString(teinte), emissiveIntensity: 0.06
+  })
+  const noeud = engine.addEntity()
+  Transform.create(noeud, { parent: corps, position: Vector3.create(0, -0.56, 0), scale: Vector3.create(0.15, 0.13, 0.15) })
+  MeshRenderer.setCylinder(noeud, 0.5, 0.2)
+  Material.setPbrMaterial(noeud, plastic(teinte))
+  const fil = engine.addEntity()
+  Transform.create(fil, { parent: corps, position: Vector3.create(0.03, -1.05, 0), scale: Vector3.create(0.02, 0.85, 0.02) })
+  MeshRenderer.setCylinder(fil, 0.5, 0.5)
+  Material.setPbrMaterial(fil, plastic('#f2e9d8'))
 }
 
 
@@ -134,25 +164,15 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      const b = pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.4 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360, true)
-      /*
-        A knot and a string under each balloon. Not decoration: the anchor that breaks an
-        illusion. A symmetric balloon with a repeating pattern gives the eye no silhouette
-        to hold while the camera orbits, and the surface reads as counter-rotating (the
-        tester's "they turn the wrong way"). An asymmetric tail under it pins the object's
-        orientation, which is also simply what a party balloon looks like.
-      */
-      const noeud = engine.addEntity()
-      Transform.create(noeud, { parent: b, position: Vector3.create(0, -0.78, 0), scale: Vector3.create(0.16, 0.14, 0.16) })
-      MeshRenderer.setCylinder(noeud, 0.5, 0.2)
-      Material.setPbrMaterial(noeud, plastic('#f2e9d8'))
-      const fil = engine.addEntity()
-      Transform.create(fil, { parent: b, position: Vector3.create(0.04, -1.5, 0), scale: Vector3.create(0.02, 1.3, 0.02) })
-      MeshRenderer.setCylinder(fil, 0.5, 0.5)
-      Material.setPbrMaterial(fil, plastic('#f2e9d8'))
+      ballon(bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.85 + alea() * 0.45)
     }
   }
-  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0, true)
+  // The landmark: a helix of party balloons climbing over the plaza.
+  for (let k = 0; k < 16; k++) {
+    const a = k * 0.9
+    const r = 4.2 - k * 0.18
+    ballon(CENTER.x + Math.cos(a) * r, 23 + k * 0.55, CENTER.z + Math.sin(a) * r, 1.1 + alea() * 0.5)
+  }
 
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons placed')
 }

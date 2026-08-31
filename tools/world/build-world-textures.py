@@ -122,6 +122,30 @@ def wall_panel():
     return im
 
 
+def ballon(kind):
+    """Party-balloon skins: white base, soft pattern, tinted by the material's albedo.
+
+    The marketplace balloon pack was retired (inverted faces, five rounds of tester time);
+    these give our own spheres the richness the plain plastic lacked. White base so one
+    image serves every party colour; the pattern sits at two depths so it reads at range.
+    """
+    im = Image.new('RGB', (N, N), (255, 255, 255))
+    d = ImageDraw.Draw(im)
+    if kind == 'pois':
+        for gy in range(4):
+            for gx in range(8):
+                x = gx * 32 + (16 if gy % 2 else 0)
+                y = gy * 64 + 32
+                r = 13
+                d.ellipse([x - r, y - r, x + r, y + r], fill=(228, 228, 228))
+                d.ellipse([x - r + 3, y - r + 3, x + r - 3, y + r - 3], fill=(214, 214, 214))
+    else:
+        for x0 in range(0, N, 64):
+            d.rectangle([x0, 0, x0 + 30, N - 1], fill=(222, 222, 222))
+            d.rectangle([x0 + 8, 0, x0 + 22, N - 1], fill=(210, 210, 210))
+    return im
+
+
 def grass():
     """The resting mat: a two-tone checker, quieter than any event.
 
@@ -158,6 +182,8 @@ if __name__ == '__main__':
     for k in ('gold', 'lava', 'cursed'):
         mat(k).save(os.path.join(OUT, f'mat-{k}.png'), optimize=True)
     grass().save(os.path.join(OUT, 'mat-grass.png'), optimize=True)
+    ballon('pois').save(os.path.join(OUT, 'ballon-pois.png'), optimize=True)
+    ballon('rayures').save(os.path.join(OUT, 'ballon-rayures.png'), optimize=True)
     wall_panel().save(os.path.join(OUT, 'mat-wall.png'), optimize=True)
     # A white square: the texture a material names when it wants NO picture. Omitting the
     # texture field leaves the client on whatever it drew last; naming this one replaces it.
