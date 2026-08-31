@@ -105,6 +105,15 @@ export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
   tween, so an event that ended leaves neither behind.
 */
 const MAILLE_SOL = 16
+/*
+  The venue lives in permanent late morning, like the genre it belongs to: the references
+  play in fixed daylight because night desaturates a colourful game into grey (the tester
+  judged the grass "too muted" at night, 31 Aug, and he was right about the cause). The
+  world config pins the same hour for production; this component covers the local preview
+  and gives the rushes something to RESTORE, where they used to hand the sky back to the
+  global clock and whatever hour it happened to be.
+*/
+const JOUR_DE_BASE = 37_800
 /** The resting checker: two 2 m tiles per repeat, the genre's stride-sized grain. */
 const MAILLE_HERBE = 4
 
@@ -165,7 +174,7 @@ export function setupEvents(): void {
         if (!isMobile()) Tween.setTextureMoveContinuous(sol, Vector2.create(1, 0.6), 0.015, TextureMovementType.TMT_OFFSET)
       }
     } else {
-      SkyboxTime.deleteFrom(engine.RootEntity)
+      SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: JOUR_DE_BASE, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null && solCouleur !== '') {
         Material.setPbrMaterial(sol, materiauDuSol(solCouleur))
         Tween.deleteFrom(sol)

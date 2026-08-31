@@ -217,6 +217,9 @@
   ],
   "rating": "A",
   "worldConfiguration": {
-    "name": "basewar.dcl.eth"
+    "name": "basewar.dcl.eth",
+    "skyboxConfig": {
+      "fixedTime": 37800
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { engine, Transform, MeshRenderer, MeshCollider, Material, TextureWrapMode } from '@dcl/sdk/ecs'
+import { TransitionMode, SkyboxTime, engine, Transform, MeshRenderer, MeshCollider, Material, TextureWrapMode } from '@dcl/sdk/ecs'
 import { Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE } from '../shared/schemas'
 import { setEventFloor, materiauDuSol } from './events'
@@ -21,6 +21,7 @@ export function setupVenue(): void {
   // A play mat: matte green, the table every toy stands on.
   Material.setPbrMaterial(sol, materiauDuSol(TOY.ground))
   setEventFloor(sol, TOY.ground)
+  SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 37_800, transitionMode: TransitionMode.TM_FORWARD })
 
   // The event floors' textures, fetched now rather than at the first event: a texture is
   // requested when a material first names it, and an event floor that appears untextured
