@@ -3,7 +3,7 @@ import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S } from '../shared/schemas'
+import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , CHUTE_FIN} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome, ligneDeCaisse } from '../shared/loot-table'
 import { HUE } from './theme'
@@ -41,7 +41,7 @@ const MAILLE = 2.6
  */
 const SENS_DU_TAPIS = -1
 
-type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number }
+type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number; tombe: boolean }
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
@@ -190,7 +190,7 @@ export function setupBelt(): void {
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
         TextShape.create(rendement, { text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
-        v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres }
+        v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres, tombe: false }
         views.set(b.articleId, v)
       }
 
@@ -206,6 +206,20 @@ export function setupBelt(): void {
       if (tr !== null) {
         const p = beltPosition(v.progres)
         tr.position = Vector3.create(p.x, p.y, p.z)
+        // Off the end, the crate TUMBLES: a turn and a half nose-first over the edge, the
+        // little show a conveyor owes its spectators. The price tags vanish at the lip,
+        // because a thing falling into a pit is no longer for sale.
+        if (v.progres > 1) {
+          const t = Math.min((v.progres - 1) / CHUTE_FIN, 1)
+          tr.rotation = Quaternion.fromEulerDegrees(0, 0, -t * 540)
+          if (!v.tombe) {
+            v.tombe = true
+            for (const e of [v.label, v.nom, v.rendement]) {
+              const te = Transform.getMutableOrNull(e)
+              if (te !== null) te.scale = Vector3.Zero()
+            }
+          }
+        }
       }
 
       if (

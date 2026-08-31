@@ -659,16 +659,26 @@ export const BELT_INTERVAL_S = 5      // un article toutes les 5 s
 export const BUY_RANGE = 5
 
 export const CHUTE_FIN = 0.22        // part de course consacree a la chute
-export const FOSSE_PROFONDEUR = 2.4   // from belt height down to the pit floor
+/*
+  An unsold crate is CARRIED off the end, it does not sink where the tread stops.
 
+  The frame overhangs the travel end by a metre and the pit is centred 1.3 m past it, so a
+  fall with a clamped x dropped the crate THROUGH the overhang and buried it at y = -0.6
+  (owner, 1 Sep: "les coffres passent au travers du belt"). Now the fall keeps the belt's
+  momentum: x runs on to the pit's centre while y drops with a t-squared ease, and the drop
+  is sized so the crate's underside comes to REST on the pit floor (top face 0.2, box
+  bottom 0.27 under the root) instead of passing it.
+*/
 export const BELT_HEIGHT = 1.35  // lowered twice on 28 Aug, the second time from the handset: crates at chest height read better on a small screen
+export const PORTEE_FOSSE = 1.3
+export const FOSSE_PROFONDEUR = BELT_HEIGHT + 0.45 - 0.47
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const onBelt = Math.min(progres, 1)
   const x = CENTER.x - BELT_LENGTH / 2 + onBelt * BELT_LENGTH
   if (progres <= 1) return { x, y: BELT_HEIGHT + 0.45, z: CENTER.z }
   const t = Math.min((progres - 1) / CHUTE_FIN, 1)
-  return { x, y: BELT_HEIGHT + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTER.z }
+  return { x: x + t * PORTEE_FOSSE, y: BELT_HEIGHT + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTER.z }
 }
 
 /*
