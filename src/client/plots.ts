@@ -2,10 +2,10 @@ import {
   TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe, estMetal, matiereMetal
 } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import {
+import { PBMaterial_PbrMaterial, TextureWrapMode,
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
 } from '@dcl/sdk/ecs'
-import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
@@ -70,6 +70,23 @@ const VERT = Color4.fromHexString(HUE.money + 'ff')
 const GRIS = TOY.post
 const GRIS_CLAIR = TOY.lintel
 const FLOOR_COLOR = TOY.slab
+
+/**
+ * The moulded-plastic finish for a base's big flat surfaces: the slab texture tiled at one
+ * metre, tinted by the same hex the plain plastic wore. Only the slab and the plinth get
+ * it: they are the surfaces a player actually looks at, and a texture on every post and
+ * lintel would be texture cost for faces nobody sees.
+ */
+function plastiqueMoule(hex: string, sx: number, sz: number): PBMaterial_PbrMaterial {
+  return {
+    ...plastic(hex),
+    texture: Material.Texture.Common({
+      src: 'assets/textures/mat-wall.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create(Math.max(1, Math.round(sx / 4)), Math.max(1, Math.round(sz / 4)))
+    })
+  }
+}
 /** Air between a toy's underside and the slab it stands on. */
 const JEU = 0.02
 
@@ -127,6 +144,7 @@ function buildFloor(x: number, z: number, floor: number, accent: string): Floor 
   const ep = WALL_THICKNESS
 
   const floorSlab = bloc(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
+  Material.setPbrMaterial(floorSlab, plastiqueMoule(FLOOR_COLOR, c - STAIRWELL_WIDTH, c))
   const walls: Entity[] = [
     vitre(x, y + h / 2, z - c / 2, c, h, ep),                            // fond
     vitre(x - c / 2, y + h / 2, z, ep, h, c),                            // gauche
@@ -298,6 +316,7 @@ function createView(x: number, z: number, accent: string): View {
   Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
   parentCourant = racine
   const plinth = bloc(0, 0.06, 0, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
+  Material.setPbrMaterial(plinth, plastiqueMoule(TOY.plinth, BASE_SIDE + 1.6, BASE_SIDE + 1.6))
 
   /*
     Only the ground floor is built here; the rest appear when they are bought.
@@ -649,7 +668,7 @@ export function setupPlots(): void {
         }
       }
       if (structurel) {
-        Material.setPbrMaterial(v.plinth, plastic(p.ownerPresent ? TOY.plinth : TOY.plinthAway))
+        Material.setPbrMaterial(v.plinth, plastiqueMoule(p.ownerPresent ? TOY.plinth : TOY.plinthAway, BASE_SIDE + 1.6, BASE_SIDE + 1.6))
         repeindre(v, p)
       }
 

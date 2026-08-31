@@ -2,7 +2,7 @@ import { isMobile } from '@dcl/sdk/platform'
 import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
-import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
+import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
 
 /**
@@ -161,10 +161,38 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
   a cube drawn back over its toy every time the rarity was mounted (invariant 184: one owner
   per fact).
 */
+/*
+  Per-file normalisation, measured from the GLBs, not assumed.
+
+  The artist contract asks for a unit cube at identity, and the chess set that finally
+  filled the item slots (31 Aug) is a marketplace set: pieces about twenty centimetres
+  tall, pivot at the base, half of them exported Z-up. The numbers below are computed from
+  each file's accessors (audit in tools history): a rotation for the Z-up ones, a scale to
+  the unit height, an offset that puts the base on the stand-in's floor at -0.5. A file
+  not listed mounts at identity, which is the contract's default.
+*/
+const FIT: Record<string, { scale: number; dy: number; zUp: boolean }> = {
+  'item-0.glb': { scale: 5.66, dy: 0.49, zUp: true },
+  'item-1.glb': { scale: 5.935, dy: 0.49, zUp: true },
+  'item-2.glb': { scale: 4.987, dy: -0.49, zUp: false },
+  'item-3.glb': { scale: 4.548, dy: 0.49, zUp: true },
+  'item-4.glb': { scale: 4.213, dy: -0.49, zUp: false },
+  'item-5.glb': { scale: 4.085, dy: 0.49, zUp: true },}
+
+function poserFit(modele: Entity, fichier: string): void {
+  const f = FIT[fichier]
+  const t = Transform.getMutableOrNull(modele)
+  if (t === null) return
+  t.position = Vector3.create(0, f?.dy ?? 0, 0)
+  t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
+  t.rotation = f?.zUp === true ? Quaternion.fromEulerDegrees(-90, 0, 0) : Quaternion.Identity()
+}
+
 export function montable(primitive: Entity, fichier: string): void {
   const modele = engine.addEntity()
-  // Child at identity: the model inherits the primitive's position, rotation and scale.
+  // Child of the stand-in: it inherits position, rotation and scale, then the fit above.
   Transform.create(modele, { parent: primitive })
+  poserFit(modele, fichier)
   GltfContainer.create(modele, { src: TOY_DIR + fichier, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   montages.set(primitive, { modele, fichier })
 }
@@ -179,6 +207,7 @@ export function remonter(primitive: Entity, fichier: string): void {
   if (m === undefined) { montable(primitive, fichier); return }
   if (m.fichier === fichier) return
   m.fichier = fichier
+  poserFit(m.modele, fichier)
   const g = GltfContainer.getMutableOrNull(m.modele)
   if (g !== null) g.src = TOY_DIR + fichier
 }

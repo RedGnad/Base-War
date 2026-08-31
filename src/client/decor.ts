@@ -88,11 +88,11 @@ export function setupDecor(): void {
       void r
     }
   }
-  // The sway is a real clip, and a model with clips needs its Animator or the renderer
-  // picks for you. One state, looping, its own small phase in speed so the wood is not
-  // a corps de ballet all bowing together.
+  // Still, on purpose. The clip turned out to spin the canopy (tester, 31 Aug: "the models
+  // rotate to face you"), and decor that tracks the player is a billboard, not a wood. The
+  // Animator stays, holding the clip OFF: a model with clips and no Animator autoplays.
   for (const a of arbres) {
-    Animator.create(a, { states: [{ clip: 'Tree_Action', playing: true, loop: true, speed: 0.85 + alea() * 0.3 }] })
+    Animator.create(a, { states: [{ clip: 'Tree_Action', playing: false, loop: false }] })
   }
 
   // Bushes: the belt lane's clearance band, forbidden to bases, walked by everyone: the

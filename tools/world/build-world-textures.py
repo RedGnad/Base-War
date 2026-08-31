@@ -96,6 +96,32 @@ def belt_strip(cells=16, w=128):
     return im
 
 
+def wall_panel():
+    """Toy-plastic panelling for the base slabs and plinths: a whisper of a bevel grid.
+
+    Same doctrine as the grass: the tint carries the colour, the pattern only breathes.
+    One metre panels (64 px at 2.6 m cells... the cell here is simply a quarter of the
+    image), values 0.94..1.0, a soft seam and a corner highlight so the plastic reads
+    moulded rather than painted.
+    """
+    im = Image.new('RGB', (N, N))
+    px = im.load()
+    q = N // 4
+    for j in range(N):
+        for i in range(N):
+            di = min(i % q, q - 1 - i % q)
+            dj = min(j % q, q - 1 - j % q)
+            v = 1.0
+            if min(di, dj) < 2: v -= 0.06
+            elif min(di, dj) < 5: v -= 0.02
+            n2 = math.sin(i * 7.13 + j * 3.71) * 43758.5453
+            n2 -= math.floor(n2)
+            v += (n2 - 0.5) * 0.015
+            g = int(round(255 * max(0.0, min(1.0, v))))
+            px[i, j] = (g, g, g)
+    return im
+
+
 def grass():
     """The resting mat: a two-tone checker, quieter than any event.
 
@@ -132,6 +158,7 @@ if __name__ == '__main__':
     for k in ('gold', 'lava', 'cursed'):
         mat(k).save(os.path.join(OUT, f'mat-{k}.png'), optimize=True)
     grass().save(os.path.join(OUT, 'mat-grass.png'), optimize=True)
+    wall_panel().save(os.path.join(OUT, 'mat-wall.png'), optimize=True)
     # A white square: the texture a material names when it wants NO picture. Omitting the
     # texture field leaves the client on whatever it drew last; naming this one replaces it.
     Image.new('RGB', (8, 8), (255, 255, 255)).save(os.path.join(OUT, 'blank.png'), optimize=True)
