@@ -1,5 +1,5 @@
 import { isMobile } from '@dcl/sdk/platform'
-import { engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -273,9 +273,51 @@ function silhouette(parent: Entity, rarete: number): Entity[] {
 }
 
 /** Give a pedestal (or a hand, or a belt crate) the toy of a rarity, rebuilt only if it changed. */
+/*
+  The mounted model wears the stand-in's exact material, painted over the whole GLB.
+
+  The chess set is black with a dark baked texture, so mounted pieces lost the one thing
+  the silhouettes carried: colour as meaning: rarity's hue, a mutation's dye, gold and
+  diamond as metal (tester, 31 Aug: "all the toys are black"). `GltfNodeModifiers` with an
+  empty path overrides every node's material, so the same PBR object the silhouette wore
+  goes onto the piece. Cached by its own JSON: the writer runs on every pass of the shelf
+  loop and the override must not be re-sent for an unchanged toy.
+*/
+const teintes = new Map<Entity, string>()
+/*
+  The material each pedestal last asked for, remembered for the load system.
+
+  `formeDeRarete` runs when the Plot CHANGES, and the GLB finishes seconds later: at flip
+  time nobody calls it again, so painting from there alone left every piece black (31 Aug,
+  read in the mount logs: the tint line never printed). The shelf loop writes the wish
+  here; whoever erases the stand-in paints the model with it.
+*/
+const dernierMateriau = new Map<Entity, PBMaterial_PbrMaterial>()
+function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial): void {
+  const cle = JSON.stringify(materiau)
+  if (teintes.get(modele) === cle) return
+  teintes.set(modele, cle)
+  // The baked texture is dark; a multiply would keep every piece black. Overriding the
+  // texture with the flat white square makes the albedo colour the whole story.
+  GltfNodeModifiers.createOrReplace(modele, {
+    modifiers: [{
+      path: '',
+      material: {
+        material: {
+          $case: 'pbr',
+          pbr: { ...materiau, texture: Material.Texture.Common({ src: 'assets/textures/blank.png' }) }
+        }
+      }
+    }]
+  })
+}
+
 export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
-  // A loaded model is the body; the silhouette only stands in while there is none.
-  if (montages.get(parent)?.charge === true) { effacerForme(parent); return }
+  // A loaded model is the body; the silhouette only stands in while there is none, and the
+  // body takes the silhouette's colours: rarity, mutation, metal and glow survive the swap.
+  dernierMateriau.set(parent, materiau)
+  const monte = montages.get(parent)
+  if (monte?.charge === true) { teindreModele(monte.modele, materiau); effacerForme(parent); return }
   const cur = formes.get(parent)
   if (cur !== undefined && cur.rarete === rarete) {
     for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
@@ -587,15 +629,26 @@ export function setupToy(): void {
       if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
     })
   }
+  const etatsVus = new Map<Entity, number>()
   engine.addSystem(() => {
     for (const [primitive, m] of montages) {
       const st = GltfContainerLoadingState.getOrNull(m.modele)
+      // Say what each mount sees, once per change: the erase step depends on this state,
+      // and when it silently never arrives the stand-ins simply stay (tester, 31 Aug).
+      const vu = st === null ? -1 : st.currentState
+      if (etatsVus.get(m.modele) !== vu) {
+        etatsVus.set(m.modele, vu)
+        console.log(`[CLIENT] mount ${m.fichier}: state ${vu}`)
+      }
       if (st === null) continue
       if (st.currentState === LoadingState.FINISHED) {
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
         effacerForme(primitive)
         montages.set(primitive, { ...m, charge: true })
+        // And it takes the colours the shelf asked for while it was still loading.
+        const voulu = dernierMateriau.get(primitive)
+        if (voulu !== undefined) teindreModele(m.modele, voulu)
       }
     }
   })
