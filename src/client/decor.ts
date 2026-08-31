@@ -36,19 +36,13 @@ const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
   A digit stays out: a 9 floating over a plaza is a question nobody should be asking.
 */
 /*
-  Real latex balloons, at last: teardrop, shine, and the fine string modelled in. A third
-  pack, after the number balloons and their haunted cousins. They ship with event branding
-  baked into the texture, so every instance is tinted over a blank white texture in one of
-  the party colours: the same override that dyes the chess pieces, which erases the brand
-  and gives each balloon its own colour in the bargain. Their pivot floats far below the
-  mesh (minY 11 to 28 metres at native scale), so placement subtracts it per file.
+  The fancy trio, by the owner's third and final word: the spiky star, the flower, the
+  bright sphere. Not realism: SHAPES and vivid colour are the point ("des ballons fancy
+  avec des couleurs vives et des formes differentes"). The classic latex teardrops bored
+  him however well they were shaded, and the star's oddball camera read is a price he
+  accepts. This preference is settled; do not relitigate it through another swap.
 */
-const BALLONS: Array<{ src: string; minY: number }> = [
-  { src: 'assets/Models/balloon1.glb', minY: 11.1 },
-  { src: 'assets/Models/balloon2.glb', minY: 28.0 },
-  { src: 'assets/Models/balloon3.glb', minY: 19.3 }
-]
-const FETE = ['#ff6b9d', '#ffd23f', '#4ec9f5', '#8ade4a', '#ff9f43', '#c78bfa']
+const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb', 'assets/Models/balloon006.glb']
 const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
@@ -145,16 +139,7 @@ export function setupDecor(): void {
   ]
   for (const [bx, bz] of bouquets) {
     for (let k = 0; k < 3; k++) {
-      /*
-        No tint override any more: the flat dye erased the baked shading and made rich
-        latex read as plastic (tester, 31 Aug). The brand was cut out of the FILES instead
-        (the Logo primitive was its own material) and the party colours are baseColorFactor
-        edits that MULTIPLY the texture, so the realism survives. And a quarter of the old
-        scale: the photo showed balloons taller than the player.
-      */
-      const b = BALLONS[k % BALLONS.length]
-      const sc = 0.038 + alea() * 0.016
-      pose(b.src, bx + (alea() - 0.5) * 2.2, 0.35 + alea() * 0.7 - b.minY * sc, bz + (alea() - 0.5) * 2.2, sc, alea() * 360)
+      pose(BALLONS[k % BALLONS.length], bx + (alea() - 0.5) * 2.2, 1.5 + alea() * 1.4, bz + (alea() - 0.5) * 2.2, 0.9 + alea() * 0.5, alea() * 360)
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
