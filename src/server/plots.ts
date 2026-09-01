@@ -102,6 +102,8 @@ type Profil = {
 const bases = new Map<string, Base>()
 const profiles = new Map<string, Profil>()
 const dirtyBases = new Set<string>()
+/** Une semaine sans venir et la base sort du terrain, sans rien perdre de son contenu. */
+const BASE_FRAICHEUR_MS = 7 * 24 * 60 * 60 * 1000
 const dirtyProfiles = new Set<string>()
 
 
@@ -330,6 +332,22 @@ async function loadBases(): Promise<void> {
         }
       })
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
+      /*
+        La rue montre les joueurs qui jouent, pas l'archive de tous les passages.
+
+        Tant que les bases etaient posees ou leur proprietaire les avait posees, elles etaient
+        eparpillees sur cent quatre-vingt-douze metres et personne ne croisait les anciennes.
+        Depuis qu'elles tiennent sur seize emplacements au milieu de la carte, TOUTES sont
+        visibles d'un coup, et un monde qui montrait trois bases s'est mis a en aligner seize,
+        dont des comptes invites d'un seul passage: le testeur y a vu des bots (1 Sep). Ce
+        n'etait pas des bots, c'etaient de vrais visiteurs, mais l'effet est le meme et il est
+        pire: la rue raconte une frequentation qui n'existe pas.
+
+        Une base absente depuis plus d'une semaine reste enregistree, avec ses objets, ses
+        etages et son prestige; elle n'occupe simplement plus le terrain, et se releve au
+        retour de son proprietaire.
+      */
+      .filter((l) => Date.now() - l.lastSeen < BASE_FRAICHEUR_MS)
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, MAX_BASES_AFFICHEES)
     /*
