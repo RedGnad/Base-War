@@ -140,21 +140,21 @@ def fond_compose():
     # Two plots on the left, a belt of crates across the middle: the loop in one picture.
     base(im, d, 372, horizon + 104, 150, (0x3f, 0x86, 0xd6), 2)
     base(im, d, 165, horizon + 132, 214, (0xff, 0xc6, 0x3f), 5)
-    # Le tapis traverse toute la scene a l'HORIZONTALE.
+    # Le tapis, sur le cote droit, et DROIT.
     #
-    # Il etait dessine en bande oblique partant du milieu de l'image: une pente qui ne
-    # suivait ni la grille du sol ni l'axonometrie des parcelles, donc tout paraissait de
-    # travers (proprietaire, 1 Sep). Un objet pose au sol dans un decor a fuite centrale se
-    # lit droit quand il est perpendiculaire au regard; c'est aussi ce que fait le jeu.
-    by = horizon + 172
-    ep = 44
-    d.rectangle((0, by, W, by + ep), fill=(0xc9, 0x5f, 0x5f))
-    d.rectangle((0, by, W, by + 15), fill=(0xe8, 0xa9, 0x5c))
-    for k in range(0, W, 54):
+    # Il etait dessine en bande oblique: une pente inventee qui ne suivait ni la grille du
+    # sol ni l'axonometrie des parcelles, donc l'image entiere paraissait de travers
+    # (proprietaire, 1 Sep). Corrige, et corrige SEULEMENT: le cadrage sur la droite se lit
+    # mieux qu'une bande qui coupe toute la largeur, et c'etait le choix du proprietaire.
+    by = horizon + 176
+    ep = 46
+    d.rectangle((432, by, W, by + ep), fill=(0xc9, 0x5f, 0x5f))
+    d.rectangle((432, by, W, by + 15), fill=(0xe8, 0xa9, 0x5c))
+    for k in range(438, W, 54):
         d.rectangle((k, by + 3, k + 26, by + 12), fill=(0xf2, 0xd0, 0xa8))
     for i, c in enumerate([(0x9a, 0xa3, 0xad), (0x4e, 0xc0, 0x4e), (0x3d, 0x8e, 0xf0), (0xa8, 0x55, 0xf7),
                            (0xf5, 0xa5, 0x24)]):
-        caisse(d, 118 + i * 268, by + 6, 92, c)
+        caisse(d, 520 + i * 196, by + 8, 90, c)
     return im
 
 
