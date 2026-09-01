@@ -150,6 +150,35 @@ def icon(k, hexcol, glow):
     return Image.alpha_composite(halo, body)
 
 
+def enseigne():
+    """The facade sign plate, 4:1, in the HUD panel's navy.
+
+    The first sign stretched the square 128 px panel texture six times wider than tall,
+    which turned its corner radius into a great dark pill hanging on the building. A sign
+    is its own drawing at its own aspect: small corners, the dark outline every control
+    shares, the two-stop body, a gloss band, all baked, fully opaque so the renderer can
+    alpha-test it and never fight the glazing over draw order.
+    """
+    W, H, R, OW = 768, 192, 30, 7
+    out, top, mid, bot = rgb('#0a1428'), rgb('#26406e'), rgb('#1b3054'), rgb('#152743')
+    im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, W - 1, H - 1), radius=R, fill=out + (255,))
+    for y in range(OW, H - OW):
+        t = (y - OW) / (H - 2 * OW)
+        col = mix(top, mid, min(1.0, t / 0.42)) if t < 0.42 else mix(mid, bot, (t - 0.42) / 0.58)
+        d.line([(OW, y), (W - OW - 1, y)], fill=col + (255,))
+    corps = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(corps).rounded_rectangle((OW, OW, W - OW - 1, H - OW - 1), radius=R - OW // 2, fill=255)
+    fond = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d2 = ImageDraw.Draw(fond)
+    d2.rounded_rectangle((0, 0, W - 1, H - 1), radius=R, fill=out + (255,))
+    im = Image.composite(im, fond, corps)
+    gloss = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(gloss).rounded_rectangle((OW + 4, OW + 4, W - OW - 5, int(H * 0.30)), radius=R - OW, fill=(255, 255, 255, 26))
+    return Image.alpha_composite(im, Image.composite(gloss, Image.new('RGBA', (W, H), (0, 0, 0, 0)), corps))
+
+
 def fade(left):
     im = Image.new('RGBA', (120, 8), (0, 0, 0, 0))
     px = im.load()
@@ -166,6 +195,7 @@ if __name__ == '__main__':
     for k, (hexcol, glow) in enumerate(RARITIES):
         icone_glyphe(k, hexcol, glow).save(os.path.join(OUT, f'toy-{k}.png'), optimize=True)
     burst().save(os.path.join(OUT, 'burst.png'), optimize=True)
+    enseigne().save(os.path.join(OUT, 'sign.png'), optimize=True)
     fade(True).save(os.path.join(OUT, 'fade-left.png'), optimize=True)
     fade(False).save(os.path.join(OUT, 'fade-right.png'), optimize=True)
     print('wrote', OUT)

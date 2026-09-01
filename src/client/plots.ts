@@ -438,7 +438,7 @@ function createView(x: number, z: number, accent: string): View {
     // plate hangs at +0.05 LOCAL, which the half-turn below sends TOWARD the wall: the
     // sign was inside the glazing (owner, 1 Sep: "fondu dans la vitre"). A hand's width
     // of air keeps plate and letters in front of the reflections.
-    position: Vector3.create(0, WALL_HEIGHT + 0.62, BASE_SIDE / 2 + 0.45),
+    position: Vector3.create(0, WALL_HEIGHT + 0.35, BASE_SIDE / 2 + 0.22),
     // A TextShape reads correctly from its local -z side, so unrotated over the door it
     // greeted the street with MIRRORED letters (owner, 1 Sep). Half a turn faces it out.
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
@@ -450,15 +450,22 @@ function createView(x: number, z: number, accent: string): View {
   Transform.create(enseigne, {
     parent: plaque,
     position: Vector3.create(0, 0.02, 0.05),
-    scale: Vector3.create(6.4, 1.5, 1)
+    scale: Vector3.create(5.1, 1.28, 1)
   })
   MeshRenderer.setPlane(enseigne)
+  /*
+    Alpha TEST, not blend. The glazing is alpha blended, and two blended surfaces resolve
+    their order per frame by distance: from some angles the wall drew over the sign and
+    the plate melted into the glass (owner, 1 Sep, two screenshots). A tested cutout
+    writes depth and wins every angle. The texture is the sign's own 4:1 drawing; the
+    stretched square panel read as a pill.
+  */
   Material.setPbrMaterial(enseigne, {
-    texture: Material.Texture.Common({ src: 'assets/ui/panel.png' }),
-    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/panel.png' }),
+    texture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
+    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
     emissiveColor: Color3.White(), emissiveIntensity: 0.3,
     metallic: 0, roughness: 1, specularIntensity: 0,
-    transparencyMode: 2, alphaTest: 0.4
+    transparencyMode: 1, alphaTest: 0.5
   })
 
   /*
