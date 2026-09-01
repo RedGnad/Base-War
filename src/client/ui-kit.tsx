@@ -64,6 +64,29 @@ export const SURF = {
   voile: Color4.create(0, 0, 0, 0.7)
 } as const
 
+/**
+ * A chip: the flat surface an inert state or a piece of information sits on.
+ *
+ * SAME FOOTPRINT AS THE PLATE IT STANDS IN FOR. Two states of one slot must occupy the
+ * same box, or the row changes shape as the game goes on and the eye reads a movement
+ * where there is only a state (owner, 1 Sep: "une puce et une plate au meme endroit
+ * doivent avoir la meme taille"). What makes a chip quiet is that it has no gloss, no
+ * outline and no lift, never that it is smaller. Navigation plates are free to be bigger:
+ * nothing else ever takes their place.
+ */
+export const Puce = (props: { width: number; height?: number; right?: number; children?: unknown }) => (
+  <UiEntity
+    uiTransform={{
+      width: props.width, height: props.height ?? TAP.height,
+      borderRadius: RAD.card, justifyContent: 'center', alignItems: 'center',
+      margin: props.right !== undefined ? { right: props.right } : undefined
+    }}
+    uiBackground={{ color: SURF.puce }}
+  >
+    {props.children}
+  </UiEntity>
+)
+
 /** A row inside a panel: the wash, the radius, the padding, decided once. */
 export const Carte = (props: { hauteur: number; bas?: number; children?: unknown }) => (
   <UiEntity
@@ -133,25 +156,13 @@ export const Btn = (props: {
     that answer a tap. The chip is the owner's own pick for the inside of a panel.
   */
   if (props.skin === 'disabled') {
-    const hPuce = Math.min(height, 64)
     return (
-      <UiEntity
-        uiTransform={{
-          width: props.width, height, justifyContent: 'center', alignItems: 'center',
-          margin: props.right !== undefined ? { right: props.right } : undefined
-        }}
-      >
-        <UiEntity
-          uiTransform={{
-            width: props.width, height: hPuce, borderRadius: RAD.card, opacity: 0.7,
-            justifyContent: 'center', alignItems: 'center'
-          }}
-          uiBackground={{ color: SURF.puce }}
-        >
+      <Puce width={props.width} height={height} right={props.right}>
+        <UiEntity uiTransform={{ width: props.width, height, opacity: 0.62 }}>
           <Glyphs value={props.label} size={size} align="center" box={props.width}
-            top={(hPuce - size) / 2} role="name" />
+            top={(height - size) / 2} role="name" />
         </UiEntity>
-      </UiEntity>
+      </Puce>
     )
   }
   return (

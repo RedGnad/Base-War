@@ -1,6 +1,6 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, C, RAD, lisible } from './theme'
-import { Btn, Barre, SURF, pctAnime, flashDe, tic } from './ui-kit'
+import { Btn, Barre, Puce, SURF, pctAnime, flashDe, tic } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -110,13 +110,12 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           player the interface lies (owner, 1 Sep). A quiet chip with the crate icon says
           "this is what you are earning", and only CLAIM ever looks pressable.
         */
-        <UiEntity uiTransform={{ width: 187, height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: RAD.card }}
-          uiBackground={{ color: SURF.puce }}>
-          <UiEntity uiTransform={{ width: 34, height: 34, margin: { right: 8 } }}
+        <Puce width={187}>
+          <UiEntity uiTransform={{ width: 44, height: 44, margin: { right: 8 } }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
           <Label value="+1" fontSize={TYPE.label} color={C.money}
-            uiTransform={{ width: 44, height: 40 }} textAlign="middle-left" />
-        </UiEntity>
+            uiTransform={{ width: 44, height: 44 }} textAlign="middle-left" />
+        </Puce>
       )}
       </UiEntity>
     </UiEntity>
