@@ -1,5 +1,5 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP, SKIN, C, lisible } from './theme'
+import { TYPE, TAP, C, lisible } from './theme'
 import { Btn, pctAnime, flashDe } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
@@ -65,7 +65,11 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   const pct = Math.min(100, Math.round((fait / cible) * 100))
   return (
     <UiEntity
-      uiTransform={{ width: '100%', height: 84, flexDirection: 'row', alignItems: 'center', margin: { bottom: 10 } }}
+      uiTransform={{
+        width: '100%', height: 84, flexDirection: 'row', alignItems: 'center',
+        margin: { bottom: 10 }, padding: { left: 16, right: 10 }, borderRadius: 14
+      }}
+      uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
     >
       <UiEntity uiTransform={{ width: 510, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
         <Label value={q?.texte ?? ''} fontSize={TYPE.label}
@@ -92,10 +96,22 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
       {pris ? (
         <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
           uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
+      ) : fini ? (
+        <Btn label="CLAIM" width={187} size={TYPE.caption} skin="success" onClick={() => claim(i)} />
       ) : (
-        <Btn label={fini ? 'CLAIM' : '+1 CRATE'} width={187} size={TYPE.caption}
-          skin={fini ? 'success' : 'secondary'}
-          onClick={fini ? () => claim(i) : undefined} />
+        /*
+          The reward, shown as a REWARD. It sat on a button plate reading "+1 CRATE" that
+          did nothing until the quest finished: a control that ignores taps teaches the
+          player the interface lies (owner, 1 Sep). A quiet chip with the crate icon says
+          "this is what you are earning", and only CLAIM ever looks pressable.
+        */
+        <UiEntity uiTransform={{ width: 187, height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: 12 }}
+          uiBackground={{ color: Color4.create(1, 1, 1, 0.06) }}>
+          <UiEntity uiTransform={{ width: 34, height: 34, margin: { right: 8 } }}
+            uiBackground={{ texture: { src: 'assets/ui/icon-crate.png' }, textureMode: 'stretch' }} />
+          <Label value="+1" fontSize={TYPE.label} color={C.money}
+            uiTransform={{ width: 44, height: 40 }} textAlign="middle-left" />
+        </UiEntity>
       )}
     </UiEntity>
   )
@@ -107,7 +123,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
  * Added up rather than guessed: title, subtitle, three rows with their gaps, the
  * all-three strip, the streak heading and the streak cards.
  */
-const STREAK_H = 64
+const STREAK_H = 92
 
 export const HAUTEUR_GOALS = 3 * (84 + 10) + (70 + 6) + (30 + 10) + STREAK_H
 
@@ -168,6 +184,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
               uiTransform={{
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                borderRadius: 14,
                 borderWidth: aReclamer ? 3 : actuel ? 2 : 0,
                 borderColor: Color4.fromHexString((aReclamer ? '#a8e86e' : '#ffd166') + 'ff')
               }}
@@ -177,7 +194,10 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
               <Label value={aReclamer ? `DAY ${dayN}  ✦` : `DAY ${dayN}`} fontSize={TYPE.caption}
                 color={aReclamer ? Color4.fromHexString('#c8f0a0ff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
-              <Label value={aReclamer ? 'CLAIM' : crate(t).name} fontSize={TYPE.caption}
+              {/* One word: "Basic Crate" wrapped into a third line the card never budgeted,
+                  which is the clipped text the photographs showed. Every reward here IS a
+                  crate; the card only has to say which. */}
+              <Label value={aReclamer ? 'CLAIM' : crate(t).name.split(' ')[0].toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
                 color={aReclamer ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString(lisible(crate(t).color) + 'ff')}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
             </UiEntity>

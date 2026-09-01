@@ -74,9 +74,10 @@ const Rang = (props: {
 }) => (
   <UiEntity
     uiTransform={{
-      width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center',
-      margin: { bottom: ENTRE }
+      width: '100%', height: RANG + 14, flexDirection: 'row', alignItems: 'center',
+      margin: { bottom: ENTRE - 6 }, padding: { left: 16, right: 10 }, borderRadius: 14
     }}
+    uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
   >
     {/*
       What is dimmed is the button, and nothing else.
@@ -97,7 +98,9 @@ const Rang = (props: {
       color={C.money}
       uiTransform={{ width: '18%', height: RANG }} textAlign="middle-center" textWrap="nowrap" />
     <UiEntity uiTransform={{ width: '24%', height: TAP.height, justifyContent: 'flex-end' }}>
+      {/* A lock must not dress as a button: LOCKED and OWNED take the greyed plate. */}
       <Btn label={props.bouton} width={200} primary={props.possible}
+        skin={props.bouton === 'LOCKED' || props.bouton === 'OWNED' ? 'disabled' : undefined}
         onClick={() => { if (props.possible) props.onClick() }} />
     </UiEntity>
   </UiEntity>
@@ -109,7 +112,7 @@ const ECHELLE = [...GEARS].sort((a, b) => a.prestige - b.prestige || a.id - b.id
 function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
 /** Four family headers, the fixed rows, the gear ladder and the charm. The window scrolls past the dialog cap. */
-export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (6 + GEARS.length) * (RANG + ENTRE)
+export const HAUTEUR_SHOP = 4 * (TITRE_FAMILLE + 16) + (6 + GEARS.length) * (RANG + 14 + ENTRE - 6)
 
 export const ShopContent = () => {
   if (!shopView.open) return null

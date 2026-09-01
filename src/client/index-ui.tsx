@@ -31,7 +31,8 @@ const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 /** The grid plus its two labels, which is what the window is asked to make room for. */
 /** The skin row under the grid: the buttons for the columns that are full, the count for the nearest ones. */
 const SKINS_H = TAP.height + 16
-export const HAUTEUR_INDEX = TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H + SKINS_H
+const DOTS_H = 20
+export const HAUTEUR_INDEX = TITRE_H + DOTS_H + RARITIES.length * (CASE + GAP) + PIED_H + SKINS_H
 
 export const IndexContent = () => {
   if (!indexView.open) return null
@@ -46,6 +47,15 @@ export const IndexContent = () => {
         fontSize={TYPE.body}
         color={Color4.fromHexString('#ffd166ff')} />
 
+      {/* The columns wear their own colours, so "columns: mutation" is visible, not a footnote. */}
+      <UiEntity uiTransform={{ width: '100%', height: DOTS_H, flexDirection: 'row', alignItems: 'center' }}>
+        <UiEntity uiTransform={{ width: LABEL_W, height: DOTS_H }} />
+        {MUTATIONS.map((m) => (
+          <UiEntity key={`h${m.id}`}
+            uiTransform={{ width: CASE, height: 10, margin: { right: GAP }, borderRadius: 5 }}
+            uiBackground={{ color: Color4.fromHexString(lisible(m.color) + 'ff') }} />
+        ))}
+      </UiEntity>
       {RARITIES.map((r) => (
         <UiEntity key={r.id} uiTransform={{ height: CASE + GAP, flexDirection: 'row', alignItems: 'center' }}>
           <Label
@@ -74,23 +84,41 @@ export const IndexContent = () => {
         value={`rows: rarity   ·   columns: mutation   ·   ${SKIN_NEEDS} of ${RARITIES.length} in a column unlocks that base skin`}
         fontSize={TYPE.caption}
         color={Color4.fromHexString('#7d8798ff')} />
+      {/*
+        One family of chips, unlocked and locked alike, because two different species on one
+        line read as clutter (owner, 1 Sep: a mystery DIAMOND SKIN button beside bare text).
+        Every chip is a plate: BASE SKIN leads the row as its label, an unlocked chip is
+        pressable and says ON when worn, a locked one wears the greyed plate with its x/7.
+        The worn skin flips LOCALLY before the server answers: the old round trip was the
+        "several taps to change state" the owner reported.
+      */}
       <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', alignItems: 'center' }}>
-        {MUTATIONS.filter((m) => m.id > 0 && skinDebloque(indexView.vus, m.id)).map((m) => (
-          <Btn key={`s${m.id}`}
-            label={indexView.skin === m.id ? `${m.name.toUpperCase()} SKIN  ·  ON` : `${m.name.toUpperCase()} SKIN`}
-            width={250} primary={indexView.skin === m.id} right={TAP.gap}
-            onClick={() => { void room.send('setSkin', { mutation: indexView.skin === m.id ? 0 : m.id }) }} />
-        ))}
-        {[...MUTATIONS]
-          .filter((m) => m.id > 0 && !skinDebloque(indexView.vus, m.id))
-          .sort((a, b) => progresDuSkin(indexView.vus, b.id) - progresDuSkin(indexView.vus, a.id))
-          .slice(0, 3)
-          .map((m) => (
-            <Label key={`p${m.id}`}
-              value={`${m.name} skin  ${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`}
-              fontSize={TYPE.caption} color={Color4.fromHexString(lisible(m.color) + 'ff')}
-              uiTransform={{ width: 210, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
-          ))}
+        <Label value="BASE SKIN" fontSize={TYPE.caption} color={Color4.fromHexString('#7d8798ff')}
+          uiTransform={{ width: 150, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
+        {(() => {
+          const ouverts = MUTATIONS.filter((m) => m.id > 0 && skinDebloque(indexView.vus, m.id))
+          const fermes = [...MUTATIONS]
+            .filter((m) => m.id > 0 && !skinDebloque(indexView.vus, m.id))
+            .sort((a, b) => progresDuSkin(indexView.vus, b.id) - progresDuSkin(indexView.vus, a.id))
+            .slice(0, Math.max(0, 4 - ouverts.length))
+          return [
+            ...ouverts.map((m) => (
+              <Btn key={`s${m.id}`}
+                label={indexView.skin === m.id ? `${m.name.toUpperCase()}  ·  ON` : m.name.toUpperCase()}
+                width={220} size={TYPE.caption} primary={indexView.skin === m.id} right={TAP.gap}
+                onClick={() => {
+                  const cible = indexView.skin === m.id ? 0 : m.id
+                  indexView.skin = cible
+                  void room.send('setSkin', { mutation: cible })
+                }} />
+            )),
+            ...fermes.map((m) => (
+              <Btn key={`p${m.id}`}
+                label={`${m.name.toUpperCase()}  ${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`}
+                width={220} size={TYPE.caption} skin="disabled" right={TAP.gap} />
+            ))
+          ]
+        })()}
       </UiEntity>
     </UiEntity>
   )
