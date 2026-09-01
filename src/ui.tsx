@@ -12,7 +12,7 @@ import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, Barre, SURF, pctAnime } from './client/ui-kit'
+import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
@@ -29,6 +29,7 @@ import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
+import { volView } from './client/locomotion'
 import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
@@ -408,17 +409,35 @@ const Prechauffe = () => (
  */
 const PhoneControls = () => {
   if (!phone() || !hud()) return null
+  const a = nextAction()
+  /*
+    Nos quatre commandes de pouce, dans l'ordre demande: saut, arme, menu, et l'action au
+    dessous parce qu'elle est la plus grosse et la plus souvent pressee.
+
+    Le saut porte l'icone du parapente des que le joueur descend en l'air, ce que le client
+    faisait tout seul sur son propre bouton et qu'un bouton a nous doit reproduire.
+  */
   return (
     <UiEntity
       uiTransform={{
-        height: TAP.phone, positionType: 'absolute',
+        positionType: 'absolute',
         position: { bottom: BAND.bottom, right: clientEdges().right + 16 },
-        flexDirection: 'row', alignItems: 'center'
+        flexDirection: 'column', alignItems: 'flex-end'
       }}
     >
-      {/* Le menu et la visee sont les boutons natifs du client, faits pour le pouce et
-          places par lui. Il ne reste ici que ce que le client ne sait pas dessiner. */}
-      <SellChip right={TAP.gap * 2} />
+      <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', margin: { bottom: 14 } }}>
+        <SellChip right={TAP.gap * 2} />
+        <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE} right={TAP.gap}
+          actions={[InputAction.IA_JUMP]} />
+        <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE} right={TAP.gap}
+          primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
+        <Pouce icone={questsToClaim() > 0 ? 'icon-menu-alert' : 'icon-menu'} taille={POUCE}
+          badge={questsToClaim() > 0} onClick={basculerMenu} />
+      </UiEntity>
+      {a !== null && (
+        <Pouce icone={combatView.aiming ? 'icon-fire' : (a.icon ?? 'icon-collect')} taille={POUCE_GROS}
+          primaire actions={[InputAction.IA_PRIMARY]} />
+      )}
     </UiEntity>
   )
 }
@@ -446,6 +465,10 @@ const DesktopControls = () => {
     </UiEntity>
   )
 }
+
+/** Un pouce mesure environ 9 mm; ces tailles sont celles que le testeur a pu viser sans rater. */
+const POUCE = 118
+const POUCE_GROS = 168
 
 /** A handset, or the desktop preview asked to measure like one. */
 function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }

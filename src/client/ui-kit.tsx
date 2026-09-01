@@ -121,6 +121,64 @@ export const Barre = (props: { pct: number; hauteur: number; couleur: Color4; la
   </UiEntity>
 )
 
+/**
+ * Une commande de pouce: ronde, grande, une image et rien d'autre.
+ *
+ * Le client ne laisse pas choisir la position de ses boutons tactiles, seulement les cacher ou
+ * changer leur image. La seule facon documentee de decider de la disposition est de remplacer
+ * les natifs par notre interface (doc officielle, "Input on Mobile": *hide any button
+ * (including jump) [...] or replace the native controls entirely with custom UI*). Ces boutons
+ * sont donc les notres, lies aux memes actions par `uiInputBinding`, ronds et dimensionnes
+ * pour un pouce plutot que pour un curseur.
+ *
+ * La pastille mord sur le bord, elle ne flotte pas a cote: c'est cette position qui dit "il y a
+ * quelque chose a faire ici" sans qu'on ait a le lire.
+ */
+export const Pouce = (props: {
+  icone: string
+  taille: number
+  actions?: InputAction[]
+  onClick?: () => void
+  primaire?: boolean
+  badge?: boolean
+  right?: number
+}) => {
+  const d = props.taille
+  const cle = `pouce|${props.icone}`
+  const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  const fond = props.primaire === true ? SKIN.primary : SKIN.secondary
+  return (
+    <UiEntity
+      uiTransform={{
+        width: d, height: d, margin: { right: props.right ?? 0 },
+        justifyContent: 'center', alignItems: 'center', positionType: 'relative',
+        position: { top: enfonce ? 3 : 0 }
+      }}
+      uiBackground={fond}
+      uiInputBinding={props.actions !== undefined ? { actions: props.actions } : undefined}
+      onMouseDown={() => { presse.set(cle, Date.now()); props.onClick?.() }}
+    >
+      <UiEntity
+        uiTransform={{ width: Math.round(d * 0.56), height: Math.round(d * 0.56), positionType: 'absolute' }}
+        uiBackground={{ texture: { src: `assets/ui/${props.icone}.png` }, textureMode: 'stretch' }} />
+      {props.badge === true && (
+        <UiEntity
+          uiTransform={{
+            width: 30, height: 30, positionType: 'absolute',
+            position: { top: -6, right: -6 }, borderRadius: 15,
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={{ color: Color4.fromHexString('#0b0e17ff') }}
+        >
+          <UiEntity
+            uiTransform={{ width: 20, height: 20, borderRadius: 10 }}
+            uiBackground={{ color: Color4.fromHexString('#ff4d6dff') }} />
+        </UiEntity>
+      )}
+    </UiEntity>
+  )
+}
+
 export const Btn = (props: {
   key?: string
   label: string

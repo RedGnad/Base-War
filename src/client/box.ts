@@ -100,6 +100,7 @@ function rareteDecor(): number {
 }
 
 export function setupBox(): void {
+  setupFantomeCaisse()
 
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
@@ -368,6 +369,51 @@ export function peutOuvrirIci(): boolean {
  * reappeared somewhere else entirely. It is now put down between the player and their own
  * base, so the thing they walked home is the thing they break open.
  */
+/**
+ * Le fantome de la caisse: la ou elle tombera si on ouvre maintenant.
+ *
+ * Ouvrir pose la caisse a deux metres devant soi, sur l'etage ou l'on se tient, et seulement
+ * a portee de sa propre base. Rien ne le disait: le joueur appuyait et decouvrait ou la chose
+ * atterrissait (testeur, 1 Sep). Le marqueur reprend exactement le calcul de `openCrate`, a la
+ * taille et a l'inclinaison de la caisse qui sera ouverte, en vert translucide comme celui de
+ * la pose d'objet, avec la ligne du couvercle pour qu'il se lise comme une caisse et pas comme
+ * un cube. Il disparait des que l'ouverture commence, la vraie caisse prenant sa place.
+ */
+let fantomeCaisse: Entity
+let fantomeCouvercle: Entity
+const VERT_CAISSE = Color4.create(0.35, 0.95, 0.45, 0.34)
+
+function setupFantomeCaisse(): void {
+  fantomeCaisse = engine.addEntity()
+  Transform.create(fantomeCaisse, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+  MeshRenderer.setBox(fantomeCaisse)
+  Material.setPbrMaterial(fantomeCaisse, plasticDe(VERT_CAISSE, 0.5))
+
+  fantomeCouvercle = engine.addEntity()
+  Transform.create(fantomeCouvercle, { parent: fantomeCaisse, position: Vector3.create(0, 0.32, 0), scale: Vector3.create(1.04, 0.1, 1.04) })
+  MeshRenderer.setBox(fantomeCouvercle)
+  Material.setPbrMaterial(fantomeCouvercle, plasticDe(Color4.create(0.35, 0.95, 0.45, 0.6), 0.9))
+
+  engine.addSystem(() => {
+    const t = Transform.getMutableOrNull(fantomeCaisse)
+    if (t === null) return
+    const pret = boxView.phase === 'idle' && boxView.stock.length > 0 && !maBasePleine() && peutOuvrirIci()
+    if (!pret || !Transform.has(engine.PlayerEntity)) {
+      if (t.scale.x !== 0) t.scale = Vector3.Zero()
+      return
+    }
+    const p = Transform.get(engine.PlayerEntity)
+    const b = crate(Math.max(...boxView.stock))
+    const f = Vector3.rotate(Vector3.create(0, 0, 1), p.rotation)
+    const plat = Math.sqrt(f.x * f.x + f.z * f.z)
+    const ux = plat < 0.01 ? 0 : f.x / plat
+    const uz = plat < 0.01 ? 1 : f.z / plat
+    t.position = Vector3.create(p.position.x + ux * 2, p.position.y + b.size / 2 + 0.02, p.position.z + uz * 2)
+    t.scale = Vector3.create(b.size, b.size, b.size)
+    t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
+  })
+}
+
 export function openCrate(crateTier: number): void {
   if (boxView.phase !== 'idle') return
   if (!boxView.stock.includes(crateTier)) return

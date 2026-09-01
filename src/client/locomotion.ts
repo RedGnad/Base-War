@@ -1,4 +1,4 @@
-import { engine, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
+import { engine, Transform, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE, COIL_SHARE } from '../shared/schemas'
 
@@ -109,7 +109,45 @@ export function setAiming(active: boolean): void {
   appliquer()
 }
 
+/**
+ * En l'air et en train de descendre: le moment ou le parapente s'ouvre.
+ *
+ * Le client change tout seul l'icone de son bouton de saut en parapente, mais nous dessinons
+ * nos propres commandes pour decider de leur ordre, et un bouton a nous n'herite d'aucun etat.
+ * La scene ne recoit pas d'indicateur "au sol", alors on le deduit: on suit la hauteur du
+ * joueur d'une frame a l'autre, et une descente franche qui dure signifie qu'il est en l'air.
+ * C'est une approximation, elle se trompe une fraction de seconde au sommet d'un saut, ce qui
+ * est exactement le moment ou l'icone n'a encore rien a dire.
+ */
+export const volView = { descend: false }
+let hauteurVue = -1
+let descenteDepuis = 0
+
+function suivreLaChute(): void {
+  engine.addSystem((dt: number) => {
+    const t = Transform.getOrNull(engine.PlayerEntity)
+    if (t === null) return
+    const y = t.position.y
+    if (hauteurVue < 0) { hauteurVue = y; return }
+    const vitesse = (y - hauteurVue) / Math.max(dt, 0.001)
+    hauteurVue = y
+    if (vitesse < -1.2) descenteDepuis += dt
+    else descenteDepuis = 0
+    volView.descend = descenteDepuis > 0.12
+  })
+}
+
 export function setupTouchHud(): void {
+  suivreLaChute()
+  /*
+    Les boutons du client s'effacent, nous dessinons les notres.
+
+    Sa configuration par bouton n'expose que `hide` et `icon`: aucune position, aucun ordre.
+    La documentation officielle donne la seule porte de sortie, mot pour mot: *hide any button
+    (including jump) [...] or replace the native controls entirely with custom UI*. Comme la
+    disposition compte, on prend cette porte. Le manche de deplacement et le reticule restent
+    au client, ils sont deja a leur place et nous n'avons rien de mieux a proposer.
+  */
   TouchScreenControls.setMainAction(InputAction.IA_PRIMARY)
   TouchScreenControls.showAll()
 
@@ -147,9 +185,9 @@ export function setupTouchHud(): void {
     son equivalent contextuel, et les trois actions numerotees inutilisees, qui ne serviraient
     qu'a pousser le cinquieme bouton derriere un "+".
   */
-  for (const a of [InputAction.IA_POINTER, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
+  for (const a of [InputAction.IA_JUMP, InputAction.IA_POINTER, InputAction.IA_PRIMARY, InputAction.IA_SECONDARY, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
   TouchScreenControls.hide([...CACHES])
-  console.log('[CLIENT] touch HUD: 4 boutons natifs (saut, central, visee F, menu); seule la main du pointeur est cachee')
+  console.log('[CLIENT] touch HUD: boutons du client caches, la scene dessine saut, arme, menu et action; manche et reticule restent au client')
 }
 
 /**
