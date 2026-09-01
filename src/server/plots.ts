@@ -299,6 +299,25 @@ async function remiseAZero(): Promise<void> {
   }
 }
 
+/**
+ * Tant que le stockage n'a pas parle, personne n'est accueilli.
+ *
+ * `loadBases()` est asynchrone et `startPlots()` ne l'attend pas, alors que la boucle
+ * d'arrivee tourne des la premiere seconde. Le nettoyage du monde, lui, enchaine une dizaine
+ * d'appels au stockage puis vide `profiles` et `bases`: un joueur arrive entre les deux etait
+ * accueilli, son profil charge, PUIS efface par le nettoyage, et comme la boucle le comptait
+ * deja parmi les presents elle ne le reaccueillait jamais. Tout ce qu'il tentait repondait
+ * "unknown profile" jusqu'a ce qu'il quitte le monde (proprietaire, 2 Sep, premiere base apres
+ * la remise a zero).
+ *
+ * La course existait aussi sans nettoyage, en plus discret: accueillir quelqu'un avant que les
+ * bases soient relues, c'est risquer d'en creer une deuxieme sur les coordonnees de son profil.
+ * Le drapeau se leve dans un `finally`, donc meme une lecture qui echoue laisse le monde
+ * ouvrir, sans quoi une panne de stockage fermerait la porte a tout le monde.
+ */
+let pret = false
+export function plotsPrets(): boolean { return pret }
+
 async function loadBases(): Promise<void> {
   await remiseAZero()
   try {
@@ -1441,7 +1460,7 @@ export function reclamerQuotidienne(address: string): { log: number; crate: numb
 }
 
 export function startPlots(): void {
-  void loadBases()
+  void (async () => { try { await loadBases() } finally { pret = true } })()
 
   let acc = 0
   engine.addSystem((dt: number) => {
