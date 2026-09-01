@@ -47,13 +47,21 @@ export const IndexContent = () => {
         fontSize={TYPE.body}
         color={Color4.fromHexString('#ffd166ff')} />
 
-      {/* The columns wear their own colours, so "columns: mutation" is visible, not a footnote. */}
+      {/*
+        A colour over every column that HAS one, and nothing over the one that does not.
+
+        The first column is "no mutation", whose colour is the empty string, and it came out
+        as a black bar at the head of the grid. Worse, a full row of dots read as if it were
+        about the rarities: the owner took the leftmost for Common and the rightmost for
+        Secret twice (1 Sep). Leaving the first column bare says what it is, and the coloured
+        dots then unmistakably belong to the mutations that own them.
+      */}
       <UiEntity uiTransform={{ width: '100%', height: DOTS_H, flexDirection: 'row', alignItems: 'center' }}>
         <UiEntity uiTransform={{ width: LABEL_W, height: DOTS_H }} />
         {MUTATIONS.map((m) => (
           <UiEntity key={`h${m.id}`}
             uiTransform={{ width: CASE, height: 10, margin: { right: GAP }, borderRadius: 5 }}
-            uiBackground={{ color: Color4.fromHexString(lisible(m.color) + 'ff') }} />
+            uiBackground={m.id === 0 ? undefined : { color: Color4.fromHexString(lisible(m.color) + 'ff') }} />
         ))}
       </UiEntity>
       {RARITIES.map((r) => (
