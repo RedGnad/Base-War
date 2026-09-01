@@ -13,6 +13,7 @@ import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS } from './shared/schemas'
 import { Btn, Barre, SURF, pctAnime } from './client/ui-kit'
+import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
@@ -263,6 +264,11 @@ const MenuWindow = () => {
         <UiEntity uiTransform={{ width: bourse, height: TAP.height, justifyContent: 'center' }}>
           <Glyphs value={formatIncome(theftView.coins)} size={TYPE.body}
             role="money" align="left" box={bourse} top={(TAP.height - TYPE.body) / 2} />
+          {/* The running build, four characters, dim: which version is on screen is a
+              question the client should answer, not a thing to argue about. */}
+          <Label value={BUILD} fontSize={TYPE.caption} color={Color4.create(1, 1, 1, 0.28)}
+            uiTransform={{ width: bourse, height: 22, positionType: 'absolute', position: { left: 0, top: TAP.height - 24 } }}
+            textAlign="middle-left" textWrap="nowrap" />
         </UiEntity>
         {(['goals', 'shop', 'index', 'travel'] as const).map((o) => (
           <Btn key={o} width={onglet} right={ecart} primary={activeTab() === o}

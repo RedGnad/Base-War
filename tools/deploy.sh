@@ -7,6 +7,10 @@
 # checks the artefact before anything leaves the machine.
 set -e
 cd "$(dirname "$0")/.."
+# Stamp the build with the commit it came from, so the running client can say which
+# version it is and nobody has to guess whether a change shipped or the cache is stale.
+HASH=$(git rev-parse --short=4 HEAD 2>/dev/null || echo '????')
+printf '/**\n * Which build you are looking at, written by tools/deploy.sh before every build.\n *\n * The world pointer is cached for minutes after an upload and the launcher refocuses a\n * running Explorer instead of restarting it, so "nothing has changed" is ambiguous by\n * construction: the code may be wrong, or the client may simply be showing the previous\n * version. Two hours of that argument (1 Sep) is what this four-character string ends.\n */\nexport const BUILD = %s%s%s\n' "'" "$HASH" "'" > src/client/build-stamp.ts
 npm run build:prod
 SIZE=$(stat -f %z bin/index.js)
 if grep -q 'sourceMappingURL=data' bin/index.js || [ "$SIZE" -gt 3000000 ]; then
