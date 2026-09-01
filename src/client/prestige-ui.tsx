@@ -2,7 +2,7 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs } from './glyphs'
-import { Btn } from './ui-kit'
+import { Btn , SURF} from './ui-kit'
 import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
 import { prestigeTier, REBIRTH_MAX } from '../shared/schemas'
@@ -84,7 +84,7 @@ export const PrestigePanel = () => {
   return (
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
+      uiBackground={{ color: SURF.voile }}
     >
       <UiEntity
         uiTransform={{ width: 940, height: 600, flexDirection: 'column', alignItems: 'center', padding: 22 }}

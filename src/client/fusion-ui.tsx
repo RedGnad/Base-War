@@ -3,7 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { engine } from '@dcl/sdk/ecs'
 import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
-import { Btn } from './ui-kit'
+import { Btn , SURF} from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT } from '../shared/schemas'
 import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode } from '../shared/loot-table'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
@@ -70,7 +70,7 @@ export const FusionPanel = () => {
   return (
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', justifyContent: 'center', alignItems: 'center' }}
-      uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
+      uiBackground={{ color: SURF.voile }}
     >
       <UiEntity
         uiTransform={{ width: 940, height: 150 + fusibles.length * RANG + TAP.height + 40 + (m.hopper.length > 0 ? TAP.height + 8 : 0), flexDirection: 'column', alignItems: 'center', padding: 22 }}

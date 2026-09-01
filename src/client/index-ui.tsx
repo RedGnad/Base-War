@@ -1,7 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import { strip } from './layout'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP , SKIN, lisible } from './theme'
+import { TYPE, TAP, RAD, lisible } from './theme'
 import { RARITIES, MUTATIONS, encoder, itemColor, progresDuSkin, skinDebloque, SKIN_NEEDS } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { Btn } from './ui-kit'

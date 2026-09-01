@@ -12,7 +12,7 @@ import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS } from './shared/schemas'
-import { Btn, pctAnime } from './client/ui-kit'
+import { Btn, Barre, SURF, pctAnime } from './client/ui-kit'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
@@ -615,10 +615,7 @@ const WaitBar = () => {
   const attente = view.waitingSince === 0 ? 0 : Date.now() - view.waitingSince
   const part = 0.9 * (1 - Math.exp(-attente / 5000))
   return (
-    <UiEntity uiTransform={{ width: '100%', height: 6 }} uiBackground={{ color: C.inset }}>
-      <UiEntity uiTransform={{ width: `${Math.round(part * 100)}%`, height: 6 }}
-        uiBackground={{ color: C.bonus }} />
-    </UiEntity>
+    <Barre pct={Math.round(part * 100)} hauteur={6} couleur={C.bonus} />
   )
 }
 
@@ -826,7 +823,7 @@ function Revelation(): ReactEcs.JSX.Element {
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
       <UiEntity
         uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.44 * entree) }} />
+        uiBackground={{ color: Color4.create(0, 0, 0, SURF.voile.a * 0.63 * entree) }} />
       {depuis < 900 && (
         <UiEntity
           uiTransform={{
@@ -1186,14 +1183,8 @@ const uiComponent = () => {
           value={`FREE CRATE IN ${Math.floor(cadeauView.leftS / 60)}:${String(cadeauView.leftS % 60).padStart(2, '0')}`}
           fontSize={TYPE.caption} color={C.bonus}
           uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
-        <UiEntity uiTransform={{ width: '100%', height: 8 }} uiBackground={{ color: C.inset }}>
-          <UiEntity
-            uiTransform={{
-              width: `${Math.round((1 - cadeauView.leftS / Math.max(1, cadeauView.totalS)) * 100)}%`,
-              height: 8
-            }}
-            uiBackground={{ color: C.bonus }} />
-        </UiEntity>
+        <Barre hauteur={8} couleur={C.bonus}
+          pct={(1 - cadeauView.leftS / Math.max(1, cadeauView.totalS)) * 100} />
       </UiEntity>
     )}
 
@@ -1222,7 +1213,7 @@ const uiComponent = () => {
           position: { top: coinDroit(3), right: COIN_HAUT_DROIT },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.42) }}
+        uiBackground={{ color: SURF.voile }}
       >
         {filVisible().map((l, i) => (
           <Label key={i} uiTransform={{ width: '100%', height: FIL_LIGNE }} textWrap="nowrap"
@@ -1249,10 +1240,10 @@ const uiComponent = () => {
       <Centre top={band.event}>
         <UiEntity
           uiTransform={{
-            height: 52, padding: { left: 22, right: 22 },
+            height: 64, padding: { left: 26, right: 26 },
             justifyContent: 'center', alignItems: 'center'
           }}
-          uiBackground={{ color: Color4.create(0.06, 0.05, 0.08, 0.9) }}
+          uiBackground={SKIN.panel}
         >
           <Label
             value={ligneDuBandeau()?.text ?? ''}
@@ -1266,10 +1257,10 @@ const uiComponent = () => {
       <Centre top={band.belt}>
         <UiEntity
           uiTransform={{
-            height: 58, padding: { left: 24, right: 24 },
+            height: 68, padding: { left: 28, right: 28 },
             justifyContent: 'center', alignItems: 'center'
           }}
-          uiBackground={{ color: Color4.create(0.10, 0.08, 0.02, 0.88) }}
+          uiBackground={SKIN.panel}
         >
           <Label value={beltView.annonce} fontSize={TYPE.label}
             color={C.bonus} textWrap="nowrap" />
@@ -1300,14 +1291,14 @@ const uiComponent = () => {
           position: { bottom: notice.opening, left: '50%' }, margin: strip(320).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
-        uiBackground={{ color: Color4.create(0, 0, 0, 0.7) }}
+        uiBackground={SKIN.panel}
       >
         <Label uiTransform={{ width: '100%', height: 30 }} textWrap="nowrap" value={`SMASH THE CRATE  ${boxView.coups}/3`} fontSize={TYPE.body} color={C.bonus} textAlign="middle-center" />
         {/* Three segments that fill as the blows land: the chest-tap bar every reference shows. */}
         <UiEntity uiTransform={{ width: '86%', height: 10, margin: { top: 2 }, flexDirection: 'row', justifyContent: 'space-between' }}>
           {[0, 1, 2].map((k) => (
-            <UiEntity key={`seg${k}`} uiTransform={{ width: '31%', height: 10 }}
-              uiBackground={{ color: pctAnime(`smash${k}`, boxView.coups > k ? 100 : 0) > 50 ? C.bonus : Color4.create(1, 1, 1, 0.16) }} />
+            <UiEntity key={`seg${k}`} uiTransform={{ width: '31%', height: 10, borderRadius: 5 }}
+              uiBackground={{ color: pctAnime(`smash${k}`, boxView.coups > k ? 100 : 0) > 50 ? C.bonus : SURF.piste }} />
           ))}
         </UiEntity>
       </UiEntity>
@@ -1320,20 +1311,15 @@ const uiComponent = () => {
           position: { bottom: notice.stealing, left: '50%' }, margin: strip(460).margin,
           flexDirection: 'column', padding: 10
         }}
-        uiBackground={{ color: Color4.create(0.24, 0.06, 0.06, 0.9) }}
+        uiBackground={SKIN.danger}
       >
         <Label
           value={`TAKING FROM ${theftView.stealTarget.toUpperCase()}  ·  ${(theftView.stealLeftMs / 1000).toFixed(1)}s`}
           fontSize={TYPE.label} color={Color4.fromHexString('#ff9b9bff')}
           uiTransform={{ width: '100%', height: 24 }} textAlign="middle-center" />
-        <UiEntity
-          uiTransform={{ width: '100%', height: 12, margin: { top: 4, bottom: 4 } }}
-          uiBackground={{ color: Color4.create(1, 1, 1, 0.14) }}
-        >
-          <UiEntity
-            uiTransform={{ width: `${Math.max(0, Math.min(100, 100 - (theftView.stealLeftMs / theftView.stealTotalMs) * 100))}%`, height: 12 }}
-            uiBackground={{ color: Color4.fromHexString('#ff6b6bff') }} />
-        </UiEntity>
+        <Barre hauteur={12} haut={4}
+          pct={100 - (theftView.stealLeftMs / theftView.stealTotalMs) * 100}
+          couleur={Color4.fromHexString('#ffd7d7ff')} />
         <Label value="stay close - walking away cancels it" fontSize={TYPE.caption}
           color={Color4.fromHexString('#c9a0a0ff')}
           uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />

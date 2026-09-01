@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP } from './theme'
+import { TYPE, C, TAP , SKIN} from './theme'
 import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
 import { strip } from './layout'
@@ -29,7 +29,7 @@ export const WelcomePanel = () => {
         width: '100%', height: '100%', positionType: 'absolute',
         justifyContent: 'center', alignItems: 'center'
       }}
-      uiBackground={{ color: Color4.create(0.04, 0.05, 0.08, 0.98) }}
+      uiBackground={SKIN.panel}
       onMouseDown={closeWelcome}
     >
       <UiEntity

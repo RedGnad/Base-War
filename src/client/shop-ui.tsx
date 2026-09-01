@@ -1,7 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN, RAD } from './theme'
-import { Btn } from './ui-kit'
+import { Btn, SURF } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
@@ -87,7 +87,7 @@ const Rang = (props: {
       width: '100%', height: RANG + 14, flexDirection: 'row', alignItems: 'center',
       margin: { bottom: ENTRE - 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
     }}
-    uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
+    uiBackground={{ color: SURF.carte }}
   >
     {/*
       What is dimmed is the button, and nothing else.

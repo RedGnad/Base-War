@@ -42,6 +42,61 @@ export function tic(): void {
   if (a !== null) { a.playing = false; a.playing = true }
 }
 
+/**
+ * The surfaces, all of them, so no screen invents its own again.
+ *
+ * An audit of the interface (1 Sep) found thirty-three hand-written backgrounds across nine
+ * files: the menu spoke the generated skins while the HUD, which is what a player looks at
+ * for the whole session, was flat black rectangles with square corners. That is not a style,
+ * it is the absence of one, and it is the consistency lesson at the scale that matters.
+ *
+ * Four surfaces and nothing else:
+ *   PLAQUE  SKIN.panel, the nine-sliced navy: any window, dialog, banner or notice.
+ *   CARTE   a faint wash, rounded: one row inside a panel.
+ *   PUCE    the same wash, shorter: information, or a state that cannot be acted on.
+ *   PISTE   the groove a progress bar fills.
+ * Plus VOILE, the dimming behind a modal.
+ */
+export const SURF = {
+  carte: Color4.create(1, 1, 1, 0.05),
+  puce: Color4.create(1, 1, 1, 0.06),
+  piste: Color4.create(1, 1, 1, 0.14),
+  voile: Color4.create(0, 0, 0, 0.7)
+} as const
+
+/** A row inside a panel: the wash, the radius, the padding, decided once. */
+export const Carte = (props: { hauteur: number; bas?: number; children?: unknown }) => (
+  <UiEntity
+    uiTransform={{
+      width: '100%', height: props.hauteur, flexDirection: 'row', alignItems: 'center',
+      margin: { bottom: props.bas ?? 10 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
+    }}
+    uiBackground={{ color: SURF.carte }}
+  >
+    {props.children}
+  </UiEntity>
+)
+
+/**
+ * A progress bar, groove and fill, both rounded.
+ *
+ * There were four of these written by hand, and every one of them was a pair of square
+ * rectangles inside an interface where everything else is rounded.
+ */
+export const Barre = (props: { pct: number; hauteur: number; couleur: Color4; largeur?: number | `${number}%`; haut?: number }) => (
+  <UiEntity
+    uiTransform={{
+      width: props.largeur ?? '100%', height: props.hauteur,
+      margin: props.haut !== undefined ? { top: props.haut } : undefined, borderRadius: RAD.bar
+    }}
+    uiBackground={{ color: SURF.piste }}
+  >
+    <UiEntity
+      uiTransform={{ width: `${Math.max(0, Math.min(100, props.pct))}%`, height: props.hauteur, borderRadius: RAD.bar }}
+      uiBackground={{ color: props.couleur }} />
+  </UiEntity>
+)
+
 export const Btn = (props: {
   key?: string
   label: string
@@ -91,7 +146,7 @@ export const Btn = (props: {
             width: props.width, height: hPuce, borderRadius: RAD.card, opacity: 0.7,
             justifyContent: 'center', alignItems: 'center'
           }}
-          uiBackground={{ color: Color4.create(1, 1, 1, 0.06) }}
+          uiBackground={{ color: SURF.puce }}
         >
           <Glyphs value={props.label} size={size} align="center" box={props.width}
             top={(hPuce - size) / 2} role="name" />
