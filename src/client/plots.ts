@@ -55,6 +55,8 @@ import { isMobile } from '@dcl/sdk/platform'
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
+  /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
+  vuLabel: string; vuBouclier: string
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
@@ -477,7 +479,7 @@ function createView(x: number, z: number, accent: string): View {
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
@@ -697,7 +699,18 @@ export function setupPlots(): void {
       */
       const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}|${p.rebirths}|${p.skin}`
       const structurel = sig !== v.signature
-      const txt = TextShape.getMutableOrNull(v.label)
+      /*
+        Ne prendre le mutable QUE si la valeur a change.
+
+        `getMutable` marque l'entite sale, la serialise en octets et la compare a l'instantane
+        precedent avant de decider de ne rien envoyer: la comparaison, elle, se paie. Ces deux
+        blocs s'executaient a CHAQUE IMAGE pour CHAQUE base, donc cent vingt composants salis
+        par image sur une place de soixante parcelles. Mesure du 1 Sep sous soixante bases:
+        2,3 ticks de scene par seconde contre 40 vises, et le client a affiche sa propre
+        alerte de performance. Le texte et le bouclier ne changent qu'une fois par seconde au
+        plus; on compare d'abord, on ecrit ensuite.
+      */
+      const txt = TextShape.getOrNull(v.label) === null ? null : v.label
       if (txt !== null) {
         const lock = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
         const state = lock > 0 ? `\nLOCKED ${lock}s` : (p.ownerPresent ? '' : '\n(away)')
@@ -737,8 +750,16 @@ export function setupPlots(): void {
           since a plate read from a few metres away can carry a rank but not a fourth row.
         */
         const rang = p.rebirths > 0 ? `  ·  x${p.rebirths + 1} PRESTIGE` : ''
-        txt.text = `${p.ownerName}${rang}${state}${guard}${ledger}`
-        txt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+        // Compare d'abord, ecris ensuite: c'est tout le correctif.
+        const ligne = `${p.ownerName}${rang}${state}${guard}${ledger}|${p.ownerPresent}`
+        if (ligne !== v.vuLabel) {
+          v.vuLabel = ligne
+          const mt = TextShape.getMutableOrNull(txt)
+          if (mt !== null) {
+            mt.text = `${p.ownerName}${rang}${state}${guard}${ledger}`
+            mt.textColor = p.ownerPresent ? Color4.White() : Color4.fromHexString('#9aa4b2ff')
+          }
+        }
         if (structurel) {
           /*
             The facade speaks the HUD's numbers and the HUD's typeface. The number is the
@@ -804,9 +825,13 @@ export function setupPlots(): void {
         }
       }
 
-      const ptr = Transform.getMutableOrNull(v.door)
+      // Meme regle pour le bouclier: sa taille ne change qu'a la seconde ou il se leve.
+      const lockedNow = p.lockedUntil > Date.now()
+      const etatBouclier = `${lockedNow}|${p.floors}|${monBase}`
+      const ptr = etatBouclier === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
       if (ptr !== null) {
-        const locked = p.lockedUntil > Date.now()
+        v.vuBouclier = etatBouclier
+        const locked = lockedNow
         const h = p.floors * FLOOR_HEIGHT + 0.6
         /*
           LOCAL, because the shield is a child of the base's own root.
