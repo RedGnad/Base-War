@@ -6,6 +6,7 @@ import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
 import { envoyerOuAttendre } from './intent'
+import { poseView } from './pose'
 
 export const theftView = {
   alertes: [] as Array<{ t: string; c: string; ne: number; jusqua: number }>,
@@ -282,6 +283,8 @@ export function setupTheft(): void {
   })
 
   room.onMessage('actionRejected', (d) => {
+    // Une pose refusee rend la main: le marqueur se rallume et le joueur peut choisir ailleurs.
+    if (d.action === 'build') poseView.demandee = false
     alerter(d.reason.toUpperCase(), '#ff6b6b', 4000)
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })

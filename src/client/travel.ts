@@ -2,6 +2,7 @@ import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, tourner } from '../shared/schemas'
 import { allerA } from './deplacer'
+import { poseView } from './pose'
 import { monAdresseClient } from './theft'
 import { alerter } from './theft'
 
@@ -51,6 +52,16 @@ function apparaitreChezSoi(): void {
   let fait = false
   engine.addSystem((dt: number) => {
     if (fait) return
+    /*
+      Poser sa base n'est pas arriver chez soi.
+
+      Une base POSEE arrive du serveur par le meme chemin qu'une base RESTAUREE, alors ce
+      systeme, qui attend vingt secondes qu'une base apparaisse, prenait l'une pour l'autre et
+      teleportait a sa porte le joueur qui venait juste de choisir sa place (proprietaire,
+      2 Sep, "j'ai pose ma base et j'ai eu MOVED tout de suite"). Il se tient deja exactement
+      ou il a voulu.
+    */
+    if (poseView.demandee) { fait = true; return }
     attente += dt
     if (attente > 20) { fait = true; return }
     const chez = maBase()
