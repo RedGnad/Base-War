@@ -41,7 +41,7 @@ export const shopView = { open: false }
   the button stays TAP.height regardless, and 34 + 26 still holds a label and a caption. What
   got cut was air, not content. 3 x 38 + 5 x 72 + the window's own padding lands at 620.
 */
-const RANG = 64
+const RANG = TAP.rangee - 14
 const TITRE_FAMILLE = 34
 /** Between rows. Eight read as one block on a phone; a row needs its own air. */
 const ENTRE = 18
@@ -112,9 +112,9 @@ const Rang = (props: {
     <Label value={props.prix > 0 ? formatIncome(props.prix) : ''} fontSize={TYPE.label}
       color={C.money}
       uiTransform={{ width: '18%', height: RANG }} textAlign="middle-center" textWrap="nowrap" />
-    <UiEntity uiTransform={{ width: '24%', height: TAP.height, justifyContent: 'flex-end' }}>
-      {/* A lock must not dress as a button: LOCKED and OWNED take the greyed plate. */}
-      <Btn label={props.bouton} width={200} primary={props.possible}
+    <UiEntity uiTransform={{ width: '24%', height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
+      {/* A lock must not dress as a button: LOCKED and OWNED take the quiet chip. */}
+      <Btn label={props.bouton} width={200} height={TAP.menu} primary={props.possible}
         skin={props.bouton === 'LOCKED' || props.bouton === 'OWNED' ? 'disabled' : undefined}
         onClick={() => { if (props.possible) props.onClick() }} />
     </UiEntity>

@@ -78,12 +78,12 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   return (
     <UiEntity
       uiTransform={{
-        width: '100%', height: 84, flexDirection: 'row', alignItems: 'center',
+        width: '100%', height: TAP.rangee, flexDirection: 'row', alignItems: 'center',
         margin: { bottom: 10 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
       }}
       uiBackground={{ color: SURF.carte }}
     >
-      <UiEntity uiTransform={{ width: COL.texte, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
+      <UiEntity uiTransform={{ width: COL.texte, height: TAP.menu, flexDirection: 'column', justifyContent: 'center' }}>
         <Label value={q?.texte ?? ''} fontSize={TYPE.label}
           color={pris ? Color4.fromHexString('#6f7a6fff') : Color4.White()}
           uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" />
@@ -97,12 +97,12 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
       </UiEntity>
       <Label value={`${fait}/${cible}`} fontSize={TYPE.label}
         color={Color4.fromHexString('#a8b2c0ff')}
-        uiTransform={{ width: COL.compteur, height: 76 }} textAlign="middle-center" />
-      <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
+        uiTransform={{ width: COL.compteur, height: TAP.menu }} textAlign="middle-center" />
+      <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
       {pris ? (
-        <Btn label="CLAIMED" width={187} size={TYPE.caption} skin="disabled" />
+        <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" />
       ) : fini ? (
-        <Btn label="CLAIM" width={187} size={TYPE.caption} skin="success" onClick={() => claim(i)} />
+        <Btn label="CLAIM" width={187} height={TAP.menu} size={TYPE.caption} skin="success" onClick={() => claim(i)} />
       ) : (
         /*
           The reward, shown as a REWARD. It sat on a button plate reading "+1 CRATE" that
@@ -110,7 +110,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           player the interface lies (owner, 1 Sep). A quiet chip with the crate icon says
           "this is what you are earning", and only CLAIM ever looks pressable.
         */
-        <Puce width={187}>
+        <Puce width={187} height={TAP.menu}>
           <UiEntity uiTransform={{ width: 44, height: 44, margin: { right: 8 } }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
           <Label value="+1" fontSize={TYPE.label} color={C.money}
@@ -130,7 +130,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
  */
 const STREAK_H = 92
 
-export const HAUTEUR_GOALS = 3 * (84 + 10) + (70 + 6) + (30 + 10) + STREAK_H
+export const HAUTEUR_GOALS = 3 * (TAP.rangee + 10) + (TAP.rangee + 6) + (30 + 10) + STREAK_H
 
 export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
@@ -143,7 +143,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
     <UiEntity
-        uiTransform={{ width: '100%', height: 70, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
+        uiTransform={{ width: '100%', height: TAP.rangee, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
         uiBackground={{ color: SURF.carte }}
       >
         {/* Same three columns as a quest row: the text spans the first two, the action
@@ -151,11 +151,11 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
         <Label value="ALL THREE  ·  bonus rare crate" fontSize={TYPE.label}
           color={allDone ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
           uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
-        <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
+        <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
           {questsView.pris[3] === 1 ? (
-            <Btn label="CLAIMED" width={187} size={TYPE.caption} skin="disabled" />
+            <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" />
           ) : (
-            <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} size={TYPE.caption}
+            <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} height={TAP.menu} size={TYPE.caption}
               skin={allDone ? 'success' : 'disabled'}
               onClick={allDone ? () => claim(3) : undefined} />
           )}

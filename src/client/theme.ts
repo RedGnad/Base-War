@@ -174,7 +174,17 @@ export const C = {
  */
 export const RAD = { card: 14, bar: 10 } as const
 
-export const TAP = { height: 96, gap: 20, phone: 120 } as const   // phone: 63 pt, what the tester's thumb asked for (28 Aug)
+/**
+ * The tap sizes, and the one that was missing.
+ *
+ * `height` is the world control: the bottom bar, the navigation tabs, anything a thumb
+ * hunts for while the game runs. `menu` is a control INSIDE a panel, and it exists because
+ * the world size does not fit there: an 84-tall row was being handed a 96-tall control,
+ * which was invisible while the control was a lifted plate and obvious the moment it became
+ * a flat chip, bleeding above and below its own card (owner, 1 Sep). `rangee` is the row
+ * that holds one, air included, so the two can never be set apart again.
+ */
+export const TAP = { height: 96, gap: 20, phone: 120, menu: 80, rangee: 100 } as const   // phone: 63 pt, what the tester's thumb asked for (28 Aug)
 
 /**
  * Draw the interface as a phone would, while sitting at a desk.

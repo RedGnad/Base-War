@@ -13,16 +13,24 @@ import { CRATE_PRICE, PRODUCTION_PER_RARITY, RESELL_SECONDS } from './economy'
   `glow` rises with it so the top of the ladder reads as lit, not just large.
 */
 export const RARITIES = [
-  { id: 0, name: 'Common',    color: '#9aa3ad', size: 1.00, glow: 0.00, tours: 0 },
+  // Common steps DOWN to a deeper slate, which is what lets Secret be white.
+  { id: 0, name: 'Common',    color: '#78818e', size: 1.00, glow: 0.00, tours: 0 },
   { id: 1, name: 'Uncommon',  color: '#4ec04e', size: 1.15, glow: 0.35, tours: 0 },
   { id: 2, name: 'Rare',      color: '#3d8ef0', size: 1.30, glow: 0.80, tours: 20 },
   { id: 3, name: 'Epic',      color: '#a855f7', size: 1.50, glow: 1.30, tours: 35 },
   { id: 4, name: 'Legendary', color: '#f5a524', size: 1.70, glow: 2.00, tours: 55 },
   { id: 5, name: 'Mythic',    color: '#ff4d6d', size: 1.95, glow: 2.80, tours: 80 },
-  // Turquoise, and not another grey. Secret shipped at #e8e8f0 against Common's #9aa3ad:
-  // two pale greys at the ends of the same ladder, indistinguishable on a card (owner, 1 Sep).
-  // The rarest thing in the game now owns a hue nothing else on either axis uses.
-  { id: 6, name: 'Secret',    color: '#19e8c8', size: 2.20, glow: 4.00, tours: 120 }
+  /*
+    White, at full luminance, because that is what a Secret IS in the world.
+
+    It shipped at #e8e8f0 against Common's #9aa3ad: two pale greys at the ends of one
+    ladder, indistinguishable on a card. Turquoise separated them but broke the thing the
+    owner recognised in the object itself (1 Sep). The separation is made where it should
+    have been made from the start, at the OTHER end: Common drops to a deeper slate, so the
+    two ends now sit at half and full luminance, and Secret keeps the blazing white its
+    glow of 4 and its own light were always painting.
+  */
+  { id: 6, name: 'Secret',    color: '#ffffff', size: 2.20, glow: 4.00, tours: 120 }
 ] as const
 
 export function rarity(id: number) {
