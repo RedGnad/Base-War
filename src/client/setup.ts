@@ -10,7 +10,7 @@ import { room } from '../shared/messages'
 import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
 import { setupPlots } from './plots'
-import { setupTheft, setAdresseClient, theftView } from './theft'
+import { setupTheft, setAdresseClient, theftView, alerter } from './theft'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
 import { setupFusion } from './fusion'
@@ -22,6 +22,7 @@ import { setupTutorial } from './tutorial'
 import { setupGuidage } from './guidage'
 import { setupDecor } from './decor'
 import { setupTravel } from './travel'
+import { deplacementView } from './deplacer'
 import { setupVenue } from './venue'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
@@ -114,6 +115,7 @@ export function startClient(): void {
   setupGuidage()
   setupDecor()
   setupTravel()
+  annoncerLesDeplacements()
 
   let myAddress = ''
   engine.addSystem(() => {
@@ -153,5 +155,21 @@ export function startClient(): void {
       console.log(`[CLIENT] server ${alive ? 'ALIVE' : 'SILENT'} (last beat ${view.lastBeatSeenAt === 0 ? 'jamais' : (now - view.lastBeatSeenAt) + ' ms'})`)
     }
     view.serverAlive = alive
+  })
+}
+
+/**
+ * Tout deplacement du joueur decide par le jeu se dit a l'ecran, avec le nom de son auteur.
+ *
+ * Monte ici et non dans `deplacer.ts`: ce module doit rester sans dependance pour que les
+ * cinq appelants puissent l'importer, et `alerter` vit dans `theft.ts` qui remonte jusqu'a ce
+ * fichier. Le cycle serait reel; l'observation se branche donc a la racine.
+ */
+function annoncerLesDeplacements(): void {
+  let vu = 0
+  engine.addSystem(() => {
+    if (deplacementView.quand === vu || deplacementView.quand === 0) return
+    vu = deplacementView.quand
+    alerter(`MOVED BY: ${deplacementView.quoi.toUpperCase()}  ·  ${deplacementView.ou}`, '#7fd3ff', 4000)
   })
 }

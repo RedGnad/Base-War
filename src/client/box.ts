@@ -1,6 +1,6 @@
 import { plasticDe, caisse, FIT, TOY_DIR } from './toy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
+  engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType,
   InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, Entity, AudioSource, timers, GltfContainer
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
@@ -105,7 +105,21 @@ export function setupBox(): void {
 
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
-  MeshCollider.setBox(crateMesh)
+  /*
+    La caisse se frappe, elle ne se heurte pas.
+
+    C'est la meme regle que le convoi, et pour la meme raison: cette entite est UNIQUE et sa
+    position saute de (0,-10,0) a deux metres devant le joueur, dans une base dont les murs et
+    la bordure de la carte sont a quelques metres. Un solide qui apparait la coince le corps
+    entre lui et le decor, et le moteur resout l'interpenetration en poussant, sans limite de
+    distance. Le proprietaire s'est fait ejecter hors du terrain en ouvrant sa caisse chez lui
+    (2 Sep), apres l'avoir ete par le convoi la veille au tapis: deux fois le meme objet, deux
+    fois le meme mecanisme.
+
+    Frapper passe par un clic sur elle ou par le bouton contextuel: le pointeur suffit aux
+    deux, la physique n'apportait qu'un obstacle qu'on n'a jamais voulu.
+  */
+  MeshCollider.setBox(crateMesh, ColliderLayer.CL_POINTER)
   PointerEvents.create(crateMesh, {
     pointerEvents: [
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Smash' } }
