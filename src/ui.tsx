@@ -1396,9 +1396,17 @@ const uiComponent = () => {
               }}
               uiBackground={SKIN.panel}
             >
-              <UiEntity uiTransform={{ width: 5, height: h - 16, positionType: 'absolute', position: { left: 6, top: 8 } }}
-                uiBackground={{ color: Color4.fromHexString(a.c + 'ff') }} />
-              <Label uiTransform={{ width: '96%' }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
+              {/*
+                The severity bar is gone, and it was never earning its place.
+
+                A straight five-pixel rectangle laid on a plate whose corners are rounded by
+                a third of its height and whose outline is six pixels thick: it crossed
+                outside the shape at both ends, and the taller the box grew the worse it got
+                (owner, 1 Sep). It was redundant besides. What it encoded, the kind of thing
+                that just happened, is already carried by the colour of the text itself, so
+                removing it costs the interface nothing and gives the plate its shape back.
+              */}
+              <Label uiTransform={{ width: '92%' }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
                 color={(() => { const c = Color4.fromHexString(a.c + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
             </UiEntity>
           )
