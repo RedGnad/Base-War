@@ -24,7 +24,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RACINE = os.path.abspath(os.path.join(HERE, '../..'))
 POLICE = os.path.join(HERE, 'display.ttf')
 SORTIE = os.path.join(RACINE, 'images/base-war-thumbnail.png')
-W, H = 1280, 720
+"""Format et zone sure, mesures plutot que supposes.
+
+La fiche jump-in affiche la carte dans un cadre PORTRAIT (~0.78) et recadre au CENTRE, la
+liste Discover la montre en paysage. Une image doit donc survivre aux deux coupes. En 16:9
+le portrait ne garde que 44 pour cent de la largeur: notre premiere carte y perdait son
+titre et la fin de ses trois lignes (proprietaire, 1 Sep). Mesure faite sur les references:
+dans cette coupe WonderMine perd son W, Rat Scape perd son titre entier, Soul Magic la
+moitie de son logo; SEUL CozyFarm survit, et c'est le seul en 3:2 avec un titre centre.
+
+Donc: master en 3:2, et tout ce qui porte du sens dans la ZONE SURE, l'intersection des
+deux coupes. Le decor, lui, peut deborder: c'est son role.
+"""
+W, H = 1440, 960
+SUR_X0, SUR_X1 = int((W - H * 0.78) / 2), int((W + H * 0.78) / 2)   # survit au portrait
+SUR_Y0, SUR_Y1 = int((H - W / 1.78) / 2), int((H + W / 1.78) / 2)   # survit au paysage
 
 # The palette is the game's, not a fresh one: theme.ts and toy.ts, read across.
 CIEL_HAUT, CIEL_BAS = (0x6f, 0xb4, 0xe8), (0xd6, 0xec, 0xfa)
@@ -202,32 +216,48 @@ def ligne_promesse(texte, taille, couleur=(255, 255, 255)):
 
 
 def caisse_ouverte(im, cx, sol, larg):
-    """La caisse qui s'ouvre: le moment ou le jeu paie, en une seule forme lisible de loin.
+    """Un coffre OUVERT: couvercle rabattu en arriere sur sa charniere, piece qui en sort.
 
-    Premiere version: seize rayons fins qui traversaient toute l'image et se lisaient comme
-    des rayures, un couvercle plat pose comme une planche, la caisse coupee par le bas. Ici
-    les rayons sont larges, courts et fondus en bord de halo, le couvercle a une epaisseur,
-    et tout tient dans le cadre.
+    Deux versions ratees avant celle-ci, toutes deux pour la meme raison: le couvercle etait
+    pose PAR-DESSUS la caisse, en biais, et se lisait comme une planche jetee dessus
+    (proprietaire, 1 Sep, deux fois). Un coffre qu'on ouvre a son couvercle DERRIERE, dresse
+    sur la charniere arriere, dont on voit l'interieur. Ordre de dessin: couvercle, puis
+    lueur, puis la piece, puis le corps au premier plan.
     """
     d = ImageDraw.Draw(im)
-    haut = larg * 0.70
+    haut = larg * 0.66
     c = (0xe0, 0xa2, 0x4a)
-    cy = sol - haut * 1.25
-    # Halo et rayons, confines: un fondu radial les eteint avant qu'ils n'atteignent le texte.
+    contour = mix(c, (0, 0, 0), 0.58)
+    ep = max(3, int(larg * 0.030))
+    dos = sol - haut
+
+    # 1. Le couvercle, dresse en arriere. On en voit la face interieure, plus sombre.
+    lw = larg * 0.94
+    lh = larg * 0.46
+    d.polygon([(cx - lw / 2, dos), (cx + lw / 2, dos),
+               (cx + lw / 2 * 0.88, dos - lh), (cx - lw / 2 * 0.88, dos - lh)],
+              fill=mix(c, (0, 0, 0), 0.34), outline=contour, width=ep)
+    d.polygon([(cx - lw / 2 * 0.88, dos - lh), (cx + lw / 2 * 0.88, dos - lh),
+               (cx + lw / 2 * 0.88, dos - lh - larg * 0.07), (cx - lw / 2 * 0.88, dos - lh - larg * 0.07)],
+              fill=mix(c, (255, 255, 255), 0.34), outline=contour, width=ep)
+    d.rectangle((cx - lw * 0.075, dos - lh, cx + lw * 0.075, dos), fill=mix(c, (0, 0, 0), 0.50))
+
+    # 2. La lueur qui sort du coffre, entre le couvercle et le corps.
+    cy = dos - larg * 0.10
     lueur = Image.new('RGBA', im.size, (0, 0, 0, 0))
     dl = ImageDraw.Draw(lueur)
     for k in range(12):
         a = k * math.pi / 6 + 0.22
-        long = larg * (1.35 if k % 2 == 0 else 0.95)
+        long = larg * (1.30 if k % 2 == 0 else 0.92)
         demi = 0.15 if k % 2 == 0 else 0.10
-        dl.polygon([(cx + math.cos(a - demi) * larg * 0.26, cy + math.sin(a - demi) * larg * 0.26),
-                    (cx + math.cos(a + demi) * larg * 0.26, cy + math.sin(a + demi) * larg * 0.26),
+        dl.polygon([(cx + math.cos(a - demi) * larg * 0.24, cy + math.sin(a - demi) * larg * 0.24),
+                    (cx + math.cos(a + demi) * larg * 0.24, cy + math.sin(a + demi) * larg * 0.24),
                     (cx + math.cos(a) * long, cy + math.sin(a) * long)], fill=(255, 226, 138, 255))
-    dl.ellipse((cx - larg * 0.42, cy - larg * 0.42, cx + larg * 0.42, cy + larg * 0.42),
-               fill=(255, 240, 186, 210))
+    dl.ellipse((cx - larg * 0.40, cy - larg * 0.40, cx + larg * 0.40, cy + larg * 0.40),
+               fill=(255, 240, 186, 205))
     lueur = lueur.filter(ImageFilter.GaussianBlur(5))
     px = lueur.load()
-    rmax = larg * 1.62
+    rmax = larg * 1.6
     for y in range(max(0, int(cy - rmax)), min(im.size[1], int(cy + rmax))):
         for x in range(max(0, int(cx - rmax)), min(im.size[0], int(cx + rmax))):
             r0, g0, b0, a0 = px[x, y]
@@ -236,47 +266,47 @@ def caisse_ouverte(im, cx, sol, larg):
             t = math.hypot(x - cx, y - cy) / rmax
             px[x, y] = (r0, g0, b0, int(a0 * max(0.0, 1 - t) ** 1.15))
     im.alpha_composite(lueur)
-    # La piece qui sort, devant les rayons et derriere le couvercle.
-    ft = ImageFont.truetype(SYMBOLES, int(larg * 1.05))
+
+    # 3. La piece qui sort, bien au-dessus du bord.
+    ft = ImageFont.truetype(SYMBOLES, int(larg * 0.95))
     pc = rgb(RARETES[5])
-    d.text((cx, sol - haut * 0.90), PIECES[5], font=ft, fill=pc,
-           stroke_width=int(larg * 0.04), stroke_fill=mix(pc, (0, 0, 0), 0.66), anchor='ms')
-    # Le corps.
-    contour = mix(c, (0, 0, 0), 0.58)
-    d.rectangle((cx - larg / 2, sol - haut, cx + larg / 2, sol), fill=mix(c, (0, 0, 0), 0.10),
-                outline=contour, width=int(larg * 0.032))
+    d.text((cx, dos + larg * 0.10), PIECES[5], font=ft, fill=pc,
+           stroke_width=max(3, int(larg * 0.040)), stroke_fill=mix(pc, (0, 0, 0), 0.66), anchor='ms')
+
+    # 4. Le corps au premier plan, qui coupe la piece a hauteur du bord.
+    d.rectangle((cx - larg / 2, dos + larg * 0.02, cx + larg / 2, sol),
+                fill=mix(c, (0, 0, 0), 0.10), outline=contour, width=ep)
     sangle = mix(c, (0, 0, 0), 0.46)
-    d.rectangle((cx - larg * 0.075, sol - haut, cx + larg * 0.075, sol), fill=sangle)
-    d.rectangle((cx - larg / 2, sol - haut * 0.60, cx + larg / 2, sol - haut * 0.44), fill=sangle)
-    # Le couvercle bascule, avec son epaisseur: sans elle il se lisait comme une planche.
-    dessus = [(cx - larg * 0.60, sol - haut * 1.00), (cx + larg * 0.26, sol - haut * 1.34),
-              (cx + larg * 0.40, sol - haut * 1.20), (cx - larg * 0.46, sol - haut * 0.86)]
-    flanc = [dessus[0], dessus[3], (dessus[3][0], dessus[3][1] + larg * 0.09),
-             (dessus[0][0], dessus[0][1] + larg * 0.09)]
-    d.polygon(flanc, fill=mix(c, (0, 0, 0), 0.30), outline=contour)
-    d.polygon(dessus, fill=mix(c, (255, 255, 255), 0.34), outline=contour)
+    d.rectangle((cx - larg * 0.075, dos + larg * 0.02, cx + larg * 0.075, sol), fill=sangle)
+    d.rectangle((cx - larg / 2, sol - haut * 0.52, cx + larg / 2, sol - haut * 0.36), fill=sangle)
+    # Le rebord superieur, qui donne son epaisseur au coffre.
+    d.rectangle((cx - larg * 0.53, dos - larg * 0.03, cx + larg * 0.53, dos + larg * 0.06),
+                fill=mix(c, (255, 255, 255), 0.22), outline=contour, width=ep)
 
 
 def titre(im):
-    """Le nom en logotype, puis la promesse en trois lignes: la structure de WonderMine.
+    """Nom en logotype puis promesse en trois lignes, CENTRES dans la zone sure.
 
-    Ses lignes sont grosses et posees sur un fond sombre qui les detache; a la taille ou une
-    carte est vraiment lue, c'est ce qui fait la difference entre une promesse et une legende.
+    La structure est celle de WonderMine, second de la plateforme. Le centrage, lui, vient de
+    CozyFarm: c'est la seule reference qui traverse le recadrage portrait intacte.
     """
-    lignes = ('SMASH CRATES', 'SHOW YOUR LOOT', 'GUARD IT')
-    rendues = [ligne_promesse(t, 74) for t in lignes]
-    bloc_w = max(l.width for l in rendues)
-    x0, y0 = 618, 292
+    cx = (SUR_X0 + SUR_X1) // 2
+    large_sure = SUR_X1 - SUR_X0
+    logo = logotype('BASE WAR', 104)
+    if logo.width > large_sure - 20:
+        logo = logo.resize((large_sure - 20, int(logo.height * (large_sure - 20) / logo.width)), Image.LANCZOS)
+    im.alpha_composite(logo, (cx - logo.width // 2, SUR_Y0 + 22))
+    lignes = [ligne_promesse(t, 62) for t in ('SMASH CRATES', 'SHOW YOUR LOOT', 'GUARD IT')]
+    bloc_w = max(l.width for l in lignes)
+    y0 = SUR_Y0 + 22 + logo.height + 16
     pan = Image.new('RGBA', im.size, (0, 0, 0, 0))
     ImageDraw.Draw(pan).rounded_rectangle(
-        (x0 - 34, y0 - 26, x0 + bloc_w + 34, y0 + 3 * 112 + 4), radius=30, fill=NAVY + (135,))
+        (cx - bloc_w // 2 - 30, y0 - 20, cx + bloc_w // 2 + 30, y0 + 3 * 94 + 2), radius=28, fill=NAVY + (140,))
     im.alpha_composite(pan)
-    logo = logotype('BASE WAR', 122)
-    im.alpha_composite(logo, (x0 - 16, 92))
     y = y0
-    for l in rendues:
-        im.alpha_composite(l, (x0, y))
-        y += 112
+    for l in lignes:
+        im.alpha_composite(l, (cx - l.width // 2, y))
+        y += 94
 
 
 if __name__ == '__main__':
@@ -295,14 +325,9 @@ if __name__ == '__main__':
         im = im.filter(ImageFilter.GaussianBlur(3))
         recul = Image.new('RGBA', (W, H), NAVY + (86,))
         im.alpha_composite(recul)
-        caisse_ouverte(im, 306, H - 104, 322)
+        caisse_ouverte(im, (SUR_X0 + SUR_X1) // 2, SUR_Y1 - 6, 248)
     # A dark wash rising from the bottom, so the lettering never sits on a busy pixel.
-    voile = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    dv = ImageDraw.Draw(voile)
-    for x in range(int(W * 0.40), W):
-        t = (x - W * 0.40) / (W * 0.60)
-        dv.line([(x, 0), (x, H)], fill=NAVY + (int(120 * t),))
-    im.alpha_composite(voile)
+
     titre(im)
     os.makedirs(os.path.dirname(SORTIE), exist_ok=True)
     im.convert('RGB').save(SORTIE, optimize=True)
