@@ -9,7 +9,7 @@ import {
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
-import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases } from './plots'
+import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases, memeEspace } from './plots'
 import { frapperPorteur } from './carry'
 import { dropAt } from './coins'
 import { noter } from './records'
@@ -98,41 +98,11 @@ function meneur(): { address: string; name: string } | null {
  * The boss is one big target everyone piles onto, so any weapon aimed at it lands, up to the
  * raid range. Damage is still the shot's force at the real distance. Returns true on a hit.
  */
-/**
- * Sous un toit, on ne tire pas sur le boss.
- *
- * Le boss ne peut pas entrer dans une base: c'est ce qui fait de la base un refuge, et c'est
- * exactement ce qui rend le tir depuis l'interieur gratuit. Le testeur l'a vu tout de suite
- * (1 Sep): on se met dans son salon, on vide son chargeur, la chose tourne dehors sans jamais
- * pouvoir repondre, et les trois minutes d'evenement deviennent un stand de tir. La regle
- * symetrique est la seule tenable: le refuge protege, il ne permet pas d'attaquer.
- *
- * Mesure sur les MURS, pas sur la dalle: le socle deborde de huit dixiemes de metre et se
- * marche, donc quelqu'un debout sur le rebord est dehors et garde le droit de tirer.
- */
-const dernierRefus = new Map<string, number>()
-
-function sousUnToit(x: number, z: number): boolean {
-  const demi = BASE_SIDE / 2
-  for (const b of toutesLesBases()) {
-    if (Math.abs(x - b.x) < demi && Math.abs(z - b.z) < demi) return true
-  }
-  return false
-}
-
 export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }, mult = 1): boolean {
   if (boss === null) return false
   const r = Raid.getOrNull(boss)
   if (r === null || !r.active) return false
-  if (sousUnToit(from.x, from.z)) {
-    // Dit une fois toutes les trois secondes: un refus muet ressemble a un tir rate.
-    const t = Date.now()
-    if (t - (dernierRefus.get(a) ?? 0) > 3000) {
-      dernierRefus.set(a, t)
-      void room.send('actionRejected', { action: 'raid', reason: 'step outside to fight it', antiCheat: false }, { to: [a] })
-    }
-    return false
-  }
+  if (!memeEspace(from.x, from.z, r.x, r.z)) return false
   const ax = from.x, az = from.z
   let dx = vise.x - ax, dz = vise.z - az
   const l = Math.hypot(dx, dz)

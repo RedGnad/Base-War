@@ -8,7 +8,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import { frapperPorteur } from './carry'
 import { interrompreVol } from './theft'
-import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf } from './plots'
+import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf, memeEspace } from './plots'
 import { dropAt } from './coins'
 import { raidHit } from './raid'
 
@@ -59,6 +59,8 @@ export function startCombat(): void {
       const to = Vector3.create(t.position.x - from.x, 0, t.position.z - from.z)
       const dist = Vector3.length(to)
       if (dist > portee || dist < 0.5) continue
+      // Un mur entre les deux, et il n'y a pas de tir.
+      if (!memeEspace(from.x, from.z, t.position.x, t.position.z)) continue
       // Same cone the client draws its reticle from, so both agree on what is a target.
       const dot = (to.x * aim.x + to.z * aim.z) / dist
       if (dot < SHOT_CONE_DOT) continue

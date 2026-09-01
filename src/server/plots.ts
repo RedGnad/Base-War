@@ -1139,6 +1139,29 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   return { ok: true, prestige: p.rebirths, multiplier: incomeMultiplier(p.rebirths) }
 }
 
+/**
+ * Un mur arrete une balle, dans les deux sens.
+ *
+ * Deux points sont dans le meme espace quand ils sont dans la MEME base, ou tous les deux
+ * dehors. Sinon il y a une paroi entre eux et rien ne passe: ni un tir sur le boss depuis son
+ * salon (le boss ne peut pas entrer, donc c'etait un stand de tir), ni un tir sur un joueur
+ * abrite, ni l'inverse. Personne n'a besoin qu'on le lui explique, c'est pour ca que le refus
+ * est muet: on ne dit pas a quelqu'un que son mur est un mur (testeur, 1 Sep).
+ *
+ * Mesure sur les MURS et non sur la dalle: le socle deborde de huit dixiemes de metre et se
+ * marche, donc qui se tient sur le rebord est dehors.
+ */
+export function memeEspace(x1: number, z1: number, x2: number, z2: number): boolean {
+  const demi = BASE_SIDE / 2
+  const dedans = (x: number, z: number): string | null => {
+    for (const b of bases.values()) {
+      if (Math.abs(x - b.x) < demi && Math.abs(z - b.z) < demi) return b.address
+    }
+    return null
+  }
+  return dedans(x1, z1) === dedans(x2, z2)
+}
+
 export function prestigeOf(address: string): number { return profiles.get(address)?.rebirths ?? 0 }
 export function basePoints(sauf?: string): Array<{ x: number; z: number }> {
   const out: Array<{ x: number; z: number }> = []
