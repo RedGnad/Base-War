@@ -25,7 +25,7 @@ stand-in simply stays, so the scene never breaks on an absent model.
 
 | file | stand-in it replaces | authored size |
 |---|---|---|
-| `item-0.glb` .. `item-6.glb` | the exposed item, one per rarity (Common .. Secret) | unit cube |
+| `item-0.glb` .. `item-6.glb` | the exposed item, one per rarity (Common .. Secret). The chess set orders by chess points: pawn, knight, bishop, rook, queen, king for 0..5; 6 is absent on purpose so Secret keeps its star | unit cube |
 | `sentry.glb` | the per-floor turret | cylinder r 0.25, h 0.45 |
 | `board.glb` | the records board's plate by the belt (text is drawn by the scene on top) | box 9.6 x 3.6 x 0.14 |
 | `crate-0.glb` .. `crate-6.glb` | the crate, one per catalogue entry (Basic, Good, Rare, Epic, Gold, Lava, Cursed): on the belt, in a convoy, and being smashed | unit cube, lid at the top |

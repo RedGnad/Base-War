@@ -21,7 +21,7 @@ import { HUE } from './theme'
  */
 export const TOY = {
   /** The ground: a play-mat green, matte, the table the toys stand on. */
-  ground: '#74d083',   // a notch more saturated: the genre's daylight grass, judged too muted (tester, 31 Aug)
+  ground: '#4eb85a',   // MEASURED against the genre leader's own grass, not guessed: two map captures average #65b261 (S45 V70) and #43a944 (S62 V67); ours sat at S44 V82, paler and lighter than both (owner, 1 Sep). This sits inside their bracket.
   groundEvent: { gold: '#b89a3a', lava: '#b4523a', cursed: '#6a4a8f' },
   /** Bases: cream plastic walls, a brighter roof line, primary-colour accents. */
   wallCream: '#f2e9d8',
@@ -192,9 +192,13 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
 */
 const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
   'item-0.glb': { scale: 5.545, dy: -0.49, rotX: 0 },  // pion: 0.09 x 0.17 x 0.09 m (noeud applique)
-  'item-1.glb': { scale: 5.814, dy: -0.49, rotX: 0 },  // tour: 0.09 x 0.17 x 0.09 m (noeud applique)
-  'item-2.glb': { scale: 4.885, dy: -0.49, rotX: 0 },  // cavalier: 0.07 x 0.20 x 0.12 m (noeud applique)
-  'item-3.glb': { scale: 4.455, dy: -0.49, rotX: 0 },  // fou: 0.09 x 0.22 x 0.10 m (noeud applique)
+  // Order follows CHESS POINTS, because players know them: pawn 1, knight 3, bishop 3+,
+  // rook 5, queen 9, king beyond price. A rook sold as Uncommon under a Rare knight read
+  // as a mistake to anyone who plays (owner, 1 Sep), and rarity ladders only work when
+  // they agree with what the audience already believes.
+  'item-1.glb': { scale: 4.885, dy: -0.49, rotX: 0 },  // cavalier: 0.07 x 0.20 x 0.12 m (noeud applique)
+  'item-2.glb': { scale: 4.455, dy: -0.49, rotX: 0 },  // fou: 0.09 x 0.22 x 0.10 m (noeud applique)
+  'item-3.glb': { scale: 5.814, dy: -0.49, rotX: 0 },  // tour: 0.09 x 0.17 x 0.09 m (noeud applique)
   'item-4.glb': { scale: 4.127, dy: -0.49, rotX: 0 },  // dame: 0.10 x 0.23 x 0.10 m (noeud applique)
   'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
 }
