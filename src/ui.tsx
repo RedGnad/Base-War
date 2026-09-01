@@ -29,6 +29,7 @@ import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
+import { verbe } from './client/verbe'
 import { volView } from './client/locomotion'
 import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
@@ -536,7 +537,13 @@ function announceBackdrop(): Color4 {
  * when pressed is worse than an absent one, and the reference games put those states in
  * the world or in a line of text instead. What cannot be tapped now goes to `hint`.
  */
-function nextAction(): { label: string; action: () => void; icon?: string } | null {
+function nextAction(): { id: string; label: string; action: () => void; icon?: string } | null {
+  const choix = choisirAction()
+  verbe.id = choix?.id ?? ''
+  return choix
+}
+
+function choisirAction(): { id: string; label: string; action: () => void; icon?: string } | null {
   /*
     Almost everything here carries a picture, and the two exceptions are on purpose.
 
@@ -550,13 +557,13 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
     a word is worth its room.
   */
   if (slotView.active) {
-    return slotView.valid ? { label: 'PLACE HERE', icon: 'icon-build', action: placeHere } : null
+    return slotView.valid ? { id: 'poser-base', label: 'PLACE HERE', icon: 'icon-build', action: placeHere } : null
   }
   // A crate on the floor in front of you is smashed with the same button as everything else,
   // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.
   // And while that crate is in flight, result, reel or landing, the button offers nothing at
   // all: a fourth press in a rhythm used to open a second crate under the first one's reel.
-  if (boxView.phase === 'smash') return { label: 'SMASH', icon: 'icon-crate', action: frapper }
+  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: 'icon-crate', action: frapper }
   if (boxView.phase !== 'idle') return null
   /*
     Hands first, because full hands are the loudest fact about your situation.
@@ -574,22 +581,22 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   */
   if (carryView.code >= 0) {
     // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
-    if (fuserAPortee()) return { label: 'FEED THE FUSER', action: agirSurFuser }
+    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', action: agirSurFuser }
     const ou = baseIci()
-    if (ou === null) return { label: 'DROP', icon: 'icon-drop', action: dropCarried }
+    if (ou === null) return { id: 'lacher', label: 'DROP', icon: 'icon-drop', action: dropCarried }
     return ou.mienne
-      ? { label: 'PUT IT DOWN', icon: 'icon-place', action: () => placeDown(ou.ownerId) }
-      : { label: 'GIVE IT', icon: 'icon-give', action: () => placeDown(ou.ownerId) }
+      ? { id: 'poser-objet', label: 'PUT IT DOWN', icon: 'icon-place', action: () => placeDown(ou.ownerId) }
+      : { id: 'poser-objet', label: 'GIVE IT', icon: 'icon-give', action: () => placeDown(ou.ownerId) }
   }
-  if (theftView.canRecover) return { label: 'RECOVER', icon: 'icon-recover', action: recover }
+  if (theftView.canRecover) return { id: 'recuperer', label: 'RECOVER', icon: 'icon-recover', action: recover }
   /*
     Setting a trap is a two-tap act, like placing the base: the first shows where, the second
     commits. It sits below the carry verbs because the genre forbids gear while carrying, and
     above building because a pocket with a trap in it is a state the player created on purpose
     a moment ago, which is exactly what this button is for.
   */
-  if (gearView.placing >= 0) return { label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'icon-build', action: poserPiege }
-  if (!theftView.basePosee) return { label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
+  if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'icon-build', action: poserPiege }
+  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
   /*
     What the place offers, so the phone needs no interaction button at all.
 
@@ -603,19 +610,25 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   */
   const caisse = caisseAPortee()
   if (caisse !== null) {
-    return { label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: 'icon-crate', action: () => acheterCaisse(caisse.articleId) }
+    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: 'icon-crate', action: () => acheterCaisse(caisse.articleId) }
   }
   const convoi = convoiAPortee()
-  if (convoi !== null && !convoi.mine) return { label: `OUTBID  ${formatIncome(convoi.price)}`, action: () => surencherir(convoi.convoyId) }
-  if (fuserAPortee()) return { label: 'FUSER', action: agirSurFuser }
-  if (ascenseurAPortee()) return { label: 'GO UP', action: monterIci }
+  if (convoi !== null && !convoi.mine) return { id: 'surencherir', label: `OUTBID  ${formatIncome(convoi.price)}`, action: () => surencherir(convoi.convoyId) }
+  if (fuserAPortee()) return { id: 'fuser', label: 'FUSER', action: agirSurFuser }
+  if (ascenseurAPortee()) return { id: 'monter', label: 'GO UP', action: monterIci }
   const pad = padEnFace()
-  if (pad !== null && !pad.mine) return { label: `STEAL ${pad.nom}`, action: () => agirSurPad(pad) }
+  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, action: () => agirSurPad(pad) }
+  /*
+    Se planter devant son propre socle passe avant l'offre d'ouvrir une caisse.
+
+    L'ordre etait l'inverse, et une caisse en stock est un etat PERMANENT: des qu'on en avait
+    une, le bouton disait OPEN partout dans sa base et "PICK UP" ne pouvait plus jamais sortir
+    (proprietaire, 1 Sep). Se tenir face a un socle precis est un acte delibere, il gagne.
+  */
+  if (pad !== null && pad.mine) return { id: 'ramasser', label: `PICK UP ${pad.nom}`, action: () => agirSurPad(pad) }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
-    return { label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }
+    return { id: 'ouvrir-caisse', label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }
   }
-  // Your own shelf, below opening crates: at home the crate you carry is the louder intent.
-  if (pad !== null && pad.mine) return { label: `PICK UP ${pad.nom}`, action: () => agirSurPad(pad) }
   /*
     No purchase past this point, and that is the whole rule.
 
@@ -643,7 +656,7 @@ function nextAction(): { label: string; action: () => void; icon?: string } | nu
   if (theftView.pending >= 1) {
     // A picture, so the button says it and the bar above the controls can stay away. The
     // amount is not lost: the counter states the pool, which is where a total belongs.
-    return { label: 'COLLECT', icon: 'icon-collect', action: collectPending }
+    return { id: 'encaisser', label: 'COLLECT', icon: 'icon-collect', action: collectPending }
   }
   return null
 }

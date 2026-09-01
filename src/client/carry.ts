@@ -10,6 +10,7 @@ import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
 import { refuserAuSon } from './box'
+import { verbe } from './verbe'
 import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 /**
@@ -54,7 +55,14 @@ export function setupCarry(): void {
   engine.addSystem(() => {
     const t = Transform.getMutableOrNull(marqueur)
     if (t === null) return
-    const cible = carryView.code >= 0 ? cibleDePose() : null
+    /*
+      Meme regle que le marqueur de caisse: il obeit au verbe, pas a l'inventaire.
+
+      Les mains pleines ne suffisent pas. Devant la machine a fusion le bouton dit NOURRIR,
+      dehors il dit LACHER, et dans ces deux cas montrer un socle vise serait mentir sur ce que
+      la touche va faire.
+    */
+    const cible = verbe.id === 'poser-objet' ? cibleDePose() : null
     if (cible === null) {
       cibleIndex = -1
       if (t.scale.x !== 0) t.scale = Vector3.Zero()

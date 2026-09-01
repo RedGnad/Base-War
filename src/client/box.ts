@@ -9,6 +9,7 @@ import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
 import { rarity, crate, mutation, itemName, itemColor } from '../shared/loot-table'
 import { alerter } from './theft'
+import { verbe } from './verbe'
 import { carryView } from './carry'
 import { envoyerOuAttendre } from './intent'
 
@@ -404,14 +405,15 @@ function setupFantomeCaisse(): void {
     const t = Transform.getMutableOrNull(fantomeCaisse)
     if (t === null) return
     /*
-      Un seul fantome a la fois, celui que le bouton propose.
+      Le marqueur obeit au BOUTON, pas a ses propres conditions.
 
-      Les mains pleines, le verbe contextuel est POSER, et c'est le marqueur de socle qui doit
-      guider; celui de la caisse n'a plus rien a annoncer et deux marqueurs verts a l'ecran ne
-      disent plus lequel obeit au bouton (proprietaire, 1 Sep). Il revient de lui-meme des que
-      la piece est posee, s'il reste une caisse a ouvrir.
+      Tant qu'il decidait tout seul, il pouvait s'afficher pendant qu'une pression allait faire
+      autre chose: monter par l'ascenseur, voler un socle, ramasser sa piece, nourrir la
+      machine. Deux marqueurs verts a l'ecran, et plus personne ne sait lequel la touche sert
+      (proprietaire, 1 Sep). `nextAction()` est le seul arbitre, il publie le verbe choisi, et
+      ce marqueur ne se montre que quand ce verbe est exactement "ouvrir une caisse".
     */
-    const pret = boxView.phase === 'idle' && carryView.code < 0 && boxView.stock.length > 0 && !maBasePleine() && peutOuvrirIci()
+    const pret = verbe.id === 'ouvrir-caisse'
     if (!pret || !Transform.has(engine.PlayerEntity)) {
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
       return
