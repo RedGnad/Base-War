@@ -1,4 +1,5 @@
 import { engine, Transform, MeshRenderer, Material, TextShape, TextAlignMode, Entity, Billboard, BillboardMode } from '@dcl/sdk/ecs'
+import { getPlayer } from '@dcl/sdk/players'
 import { Vector3, Color4, Color3, Quaternion } from '@dcl/sdk/math'
 import { Records, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { formatIncome, nomDuCode } from '../shared/loot-table'
@@ -34,9 +35,10 @@ const RANG_COULEUR = ['#ffd166', '#d9dde5', '#e0a466']
 const TEXTE = '#f2f4f8'
 const BANDE = Color4.create(1, 1, 1, 0.07)
 
-type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string }
+type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string; surbrillance: Entity | null; hautG: number }
 type Face = { earners: Ligne[]; thieves: Ligne[]; journal: Ligne[] }
 const faces: Face[] = []
+let moi = ''
 
 function texte(parent: Entity, x: number, y: number, taille: number, hex: string, align: TextAlignMode): Entity {
   const e = engine.addEntity()
@@ -57,11 +59,50 @@ function bande(parent: Entity, x: number, y: number, largeur: number): void {
   Material.setPbrMaterial(e, plasticDe(BANDE, 0))
 }
 
-function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string): Ligne {
+/** A medal chip: the top three wear their metal, which is the badge a leaderboard reads by. */
+function pastille(parent: Entity, x: number, y: number, hex: string): void {
+  const e = engine.addEntity()
+  Transform.create(e, { parent, position: Vector3.create(x, y, -0.1), scale: Vector3.create(0.2, 0.2, 0.02) })
+  MeshRenderer.setBox(e)
+  Material.setPbrMaterial(e, plastic(hex, 1.4))
+}
+
+/**
+ * A row, with the two things a leaderboard needs beyond its text.
+ *
+ * A medal on the top three, and a band that can light up gold for the reader's OWN line.
+ * Both come from the same lesson: a table where every line looks alike makes the reader
+ * search, and the one line they came to find is their own. The highlight is built at zero
+ * scale on every row and grown on the one that matches, so lighting it costs a scale.
+ */
+function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string, rang: number, sien: boolean): Ligne {
   if (pair) bande(parent, xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, largeurBande)
-  const gauche = texte(parent, xg, y, 3, hex, TextAlignMode.TAM_MIDDLE_LEFT)
+  let surbrillance: Entity | null = null
+  if (sien) {
+    surbrillance = engine.addEntity()
+    Transform.create(surbrillance, {
+      parent,
+      position: Vector3.create(xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, -0.09),
+      scale: Vector3.Zero()
+    })
+    MeshRenderer.setBox(surbrillance)
+    Material.setPbrMaterial(surbrillance, plastic('#ffd166', 1.1))
+  }
+  const decal = rang >= 0 ? 0.42 : 0
+  if (rang >= 0 && rang < 3) pastille(parent, xg + 0.1, y, RANG_COULEUR[rang])
+  const gauche = texte(parent, xg + decal, y, 3, hex, TextAlignMode.TAM_MIDDLE_LEFT)
   const droite = xd === null ? null : texte(parent, xd, y, 3, hex, TextAlignMode.TAM_MIDDLE_RIGHT)
-  return { gauche, droite, texteG: '', texteD: '' }
+  return { gauche, droite, texteG: '', texteD: '', surbrillance, hautG: largeurBande }
+}
+
+/** Lights a row as the reader's own, or puts it out. Called once a second with the data. */
+function marquer(l: Ligne, sien: boolean): void {
+  const t = l.surbrillance === null ? null : Transform.getMutableOrNull(l.surbrillance)
+  if (t === null) return
+  const veut = sien ? Vector3.create(l.hautG, PAS - 0.02, 0.012) : Vector3.Zero()
+  if (t.scale.x !== veut.x || t.scale.y !== veut.y) t.scale = veut
+  const tg = TextShape.getMutableOrNull(l.gauche)
+  if (tg !== null) tg.outlineWidth = sien ? 0.3 : 0.12
 }
 
 function ecrire(l: Ligne, g: string, d = ''): void {
@@ -102,8 +143,8 @@ function face(pivot: Entity): Face {
   const thieves: Ligne[] = []
   for (let i = 0; i < RANGS; i++) {
     const hex = RANG_COULEUR[i] ?? TEXTE
-    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex))
-    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex))
+    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex, i, true))
+    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex, i, true))
     y -= PAS
   }
   y -= 0.2
@@ -114,7 +155,7 @@ function face(pivot: Entity): Face {
   const journal: Ligne[] = []
   const pleine = LARGEUR - 2 * MARGE
   for (let i = 0; i < LIGNES_JOURNAL; i++) {
-    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE))
+    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, false))
     y -= PAS
   }
   return { earners, thieves, journal }
@@ -181,6 +222,11 @@ export function setupRecords(): void {
     for (const [, v] of engine.getEntitiesWith(Records)) r = v
     if (r === null) return
     const now = Date.now()
+    // Who is reading. Resolved lazily: the profile is not there on the first frames.
+    if (moi === '') {
+      const me = getPlayer()
+      if (me !== null) moi = me.name.toLowerCase()
+    }
     const dernier = [...r.journal].reverse().slice(0, LIGNES_JOURNAL)
     for (const f of faces) {
       for (let i = 0; i < RANGS; i++) {
@@ -188,6 +234,8 @@ export function setupRecords(): void {
         const v = r.thieves[i]
         ecrire(f.earners[i], e ? `${i + 1}.  ${e.name}` : i === 0 ? 'nobody yet' : '', e ? `${formatIncome(e.value)}/s` : '')
         ecrire(f.thieves[i], v ? `${i + 1}.  ${v.name}` : i === 0 ? 'nobody yet' : '', v ? `${v.value} ${v.value === 1 ? 'steal' : 'steals'}` : '')
+        marquer(f.earners[i], e !== undefined && moi !== '' && e.name.toLowerCase() === moi)
+        marquer(f.thieves[i], v !== undefined && moi !== '' && v.name.toLowerCase() === moi)
       }
       for (let i = 0; i < LIGNES_JOURNAL; i++) {
         const e = dernier[i]

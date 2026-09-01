@@ -212,7 +212,10 @@ const MenuWindow = () => {
   const dedans = strip(MENU_W).width - MENU_PAD * 2
   const ecart = Math.round(dedans * 0.018)
   const bourse = Math.round(dedans * 0.19)
-  const fermer = Math.round(dedans * 0.15)
+  // CLOSE is utility, not a destination: it took as much of the bar as a whole tab and
+  // read as a fifth one. Half the width and a single letter give the four real tabs the
+  // room, which is the hierarchy lesson applied to our own header.
+  const fermer = Math.round(dedans * 0.075)
   const onglet = Math.floor((dedans - bourse - fermer - ecart * 5) / 4)
 
   const besoin = questsView.open ? HAUTEUR_GOALS
@@ -258,7 +261,7 @@ const MenuWindow = () => {
             badge={o === 'goals' && questsToClaim() > 0}
             label={o.toUpperCase()} />
         ))}
-        <Btn label="CLOSE" width={fermer} onClick={closeMenu} />
+        <Btn label="X" width={fermer} onClick={closeMenu} />
       </UiEntity>
 
       <UiEntity
