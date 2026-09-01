@@ -45,10 +45,17 @@ type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendemen
 const views = new Map<number, View>()
 
 export function setupBelt(): void {
+  /*
+    The frame ends where the ride ends. It used to run a full metre past the last point a
+    crate travels, and the new falling arc tumbled THROUGH that overhang (owner, 1 Sep,
+    screenshot). A decimetre of lip on each end, and every part below, tread speed
+    included, derives from this one length so they cannot disagree again.
+  */
+  const LONG_TAPIS = BELT_LENGTH + 0.2
   const bande = engine.addEntity()
   Transform.create(bande, {
     position: Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z),
-    scale: Vector3.create(BELT_LENGTH + 2, 0.35, 2.6)
+    scale: Vector3.create(LONG_TAPIS, 0.35, 2.6)
   })
   MeshRenderer.setBox(bande)
   MeshCollider.setBox(bande)
@@ -66,7 +73,7 @@ export function setupBelt(): void {
   const tapis = engine.addEntity()
   Transform.create(tapis, {
     position: Vector3.create(CENTER.x, BELT_HEIGHT + 0.18, CENTER.z),
-    scale: Vector3.create(BELT_LENGTH + 2, MAILLE, 1),
+    scale: Vector3.create(LONG_TAPIS, MAILLE, 1),
     rotation: Quaternion.fromEulerDegrees(-90, 0, 0)
   })
   MeshRenderer.setPlane(tapis)
@@ -91,12 +98,12 @@ export function setupBelt(): void {
     metallic: 0,
     roughness: 0.55
   })
-  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), (BELT_LENGTH / BELT_DURATION_S) / (BELT_LENGTH + 2), TextureMovementType.TMT_OFFSET)
+  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), (BELT_LENGTH / BELT_DURATION_S) / LONG_TAPIS, TextureMovementType.TMT_OFFSET)
 
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()
     Transform.create(pied, {
-      position: Vector3.create(CENTER.x + i * ((BELT_LENGTH + 2) / 7), BELT_HEIGHT / 2, CENTER.z),
+      position: Vector3.create(CENTER.x + i * (LONG_TAPIS / 7), BELT_HEIGHT / 2, CENTER.z),
       scale: Vector3.create(0.3, BELT_HEIGHT, 0.3)
     })
     MeshRenderer.setBox(pied)
@@ -107,7 +114,7 @@ export function setupBelt(): void {
     const r = engine.addEntity()
     Transform.create(r, {
       position: Vector3.create(CENTER.x, BELT_HEIGHT + 0.3, CENTER.z + dz),
-      scale: Vector3.create(BELT_LENGTH + 2, 0.24, 0.16)
+      scale: Vector3.create(LONG_TAPIS, 0.24, 0.16)
     })
     MeshRenderer.setBox(r)
     Material.setPbrMaterial(r, plastic(TOY.beltRail))
