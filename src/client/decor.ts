@@ -63,6 +63,9 @@ function surSpawn(x: number, z: number): boolean {
 
 
 
+/** The carpet's width, taken from the reference's own render: about a third of a base. */
+const LARGEUR_RUE = 6
+
 export function setupDecor(): void {
   // The rim: four walls just inside the scene edge, cream with a yellow lip, like the side
   // of the box. Physics AND pointer on the same boxes so the third-person camera cannot
@@ -150,5 +153,34 @@ export function setupDecor(): void {
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
 
-  console.log('[CLIENT] decor: rim, treeline, bushes, balloons placed')
+  /*
+    The street: one flat strip down the middle of the field, from wall to wall.
+
+    Two rows of buildings do not read as a street on their own; what makes a street is the
+    ground between them being a different ground. The reference does exactly this and nothing
+    more: a bright carpet laid flat on plain grass, no kerb, no fence, no border, and it is the
+    only thing separating public ground from private (its own in-game renders, read 1 Sep). It
+    also matches what actually happens here now: a bought crate travels down this strip to its
+    owner's door, in reach of anyone who wants to outbid it, so the strip is not decoration,
+    it is the route.
+
+    One entity, one material, no new texture, and no collider: it is a painted line, not a
+    kerb, and players cross it constantly.
+  */
+  const rue = engine.addEntity()
+  Transform.create(rue, {
+    position: Vector3.create(CENTER.x, 0.03, CENTER.z),
+    scale: Vector3.create(SCENE_SIDE, 0.06, LARGEUR_RUE)
+  })
+  MeshRenderer.setBox(rue)
+  Material.setPbrMaterial(rue, {
+    ...plastic(TOY.street), roughness: 0.95,
+    texture: Material.Texture.Common({
+      src: 'assets/textures/mat-wall.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create(SCENE_SIDE / 4, LARGEUR_RUE / 4)
+    })
+  })
+
+  console.log('[CLIENT] decor: rim, treeline, bushes, balloons, street placed')
 }

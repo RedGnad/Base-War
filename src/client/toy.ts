@@ -23,6 +23,16 @@ export const TOY = {
   /** The ground: a play-mat green, matte, the table the toys stand on. */
   ground: '#4eb85a',   // MEASURED against the genre leader's own grass, not guessed: two map captures average #65b261 (S45 V70) and #43a944 (S62 V67); ours sat at S44 V82, paler and lighter than both (owner, 1 Sep). This sits inside their bracket.
   groundEvent: { gold: '#b89a3a', lava: '#b4523a', cursed: '#6a4a8f' },
+  /**
+   * The street: the strip of ground that is not anybody's, running the length of the field.
+   *
+   * The reference paints its public ground bright red on plain green, which is the loudest
+   * contrast available and the reason its map reads at a glance. Ours borrows the CONTRAST,
+   * not the hue: a warm clay against the play-mat green, so the strip separates from the lawn
+   * without competing with the yellow ramps or the gold of the interface, which are the two
+   * things that must stay the brightest objects on screen.
+   */
+  street: '#c96f4a',
   /** Bases: cream plastic walls, a brighter roof line, primary-colour accents. */
   wallCream: '#f2e9d8',
   slab: '#e6dcc8',
