@@ -121,6 +121,9 @@ export function setupBox(): void {
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
   sonTic = emetteur('assets/sounds/tick.wav', 0.5)
+  // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
+  // et qu'on comprend, la ou une plaque "FLOOR FULL" reste a lire a chaque tentative.
+  sonRefus = emetteur('assets/sounds/tick.wav', 0.35)
 
   for (let i = 0; i < 14; i++) {
     const e = engine.addEntity()
@@ -226,6 +229,9 @@ export function frapper(): void {
     envoyerOuAttendre(() => { void room.send('openBox', { crateTier: tier }) })
   }
 }
+
+let sonRefus: Entity
+export function refuserAuSon(): void { jouer(sonRefus) }
 
 let lastPosition: Vector3 | null = null
 
@@ -397,7 +403,15 @@ function setupFantomeCaisse(): void {
   engine.addSystem(() => {
     const t = Transform.getMutableOrNull(fantomeCaisse)
     if (t === null) return
-    const pret = boxView.phase === 'idle' && boxView.stock.length > 0 && !maBasePleine() && peutOuvrirIci()
+    /*
+      Un seul fantome a la fois, celui que le bouton propose.
+
+      Les mains pleines, le verbe contextuel est POSER, et c'est le marqueur de socle qui doit
+      guider; celui de la caisse n'a plus rien a annoncer et deux marqueurs verts a l'ecran ne
+      disent plus lequel obeit au bouton (proprietaire, 1 Sep). Il revient de lui-meme des que
+      la piece est posee, s'il reste une caisse a ouvrir.
+    */
+    const pret = boxView.phase === 'idle' && carryView.code < 0 && boxView.stock.length > 0 && !maBasePleine() && peutOuvrirIci()
     if (!pret || !Transform.has(engine.PlayerEntity)) {
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
       return

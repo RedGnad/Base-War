@@ -632,8 +632,24 @@ export function addItem(address: string, rarity: number, ou?: number): Rangement
     if (at < 0) at = suite.length
     while (suite.length <= at) suite.push(VIDE)
     if (suite[at] !== VIDE) {
-      let k = suite.indexOf(VIDE, at + 1)
-      if (k < 0) { k = suite.length; if (k >= places) k = suite.indexOf(VIDE) }
+      /*
+        Un objet reste sur l'etage ou son proprietaire se tient.
+
+        La recherche du socle suivant balayait la suite entiere: un etage plein et l'objet
+        montait ou descendait d'un etage tout seul, ce que rien a l'ecran n'annoncait et que le
+        joueur ne pouvait ni prevoir ni annuler (proprietaire, 1 Sep). Quand un socle precis est
+        demande, la recherche reste donc DANS SON ETAGE, et un etage plein est un refus, pas un
+        deplacement. Sans cible (une recolte, un don automatique) l'ancien comportement tient:
+        le premier trou libre, ou la fin.
+      */
+      const memeEtage = ou !== undefined
+      const bas = memeEtage ? Math.floor(at / SLOTS_PER_FLOOR) * SLOTS_PER_FLOOR : 0
+      const haut = memeEtage ? Math.min(bas + SLOTS_PER_FLOOR, places) : places
+      let k = -1
+      for (let i = bas; i < haut; i++) {
+        if (i >= suite.length || suite[i] === VIDE) { k = i; break }
+      }
+      if (k < 0) return 'plein'
       at = k
       while (suite.length <= at) suite.push(VIDE)
     }

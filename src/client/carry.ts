@@ -9,6 +9,7 @@ import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
+import { refuserAuSon } from './box'
 import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 /**
@@ -161,7 +162,17 @@ export function setupCarry(): void {
 }
 
 export function pickUp(slot: number): void { void room.send('pickUp', { slot }) }
+/**
+ * Poser, ou dire au son qu'il n'y a pas de place, jamais rien entre les deux.
+ *
+ * `cibleIndex` est le socle libre le plus proche SUR L'ETAGE OU L'ON SE TIENT: un etage plein
+ * ne renvoie rien, et le marqueur vert a deja disparu. Une pression dans cet etat ne doit ni
+ * partir au serveur pour se faire refuser, ni afficher une plaque "FLOOR FULL" qu'il faudrait
+ * relire a chaque fois. Un son suffit: on l'entend une fois, on a compris, et l'ecran reste
+ * libre (proprietaire, 1 Sep).
+ */
 export function placeDown(ownerId: string): void {
+  if (cibleIndex < 0) { refuserAuSon(); return }
   void room.send('placeDown', { ownerId, slot: cibleIndex })
 }
 export function dropCarried(): void { void room.send('dropCarried', {}) }
