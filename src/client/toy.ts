@@ -173,6 +173,18 @@ export function acrylic(c: Color4): PBMaterial_PbrMaterial {
 export const TOY_DIR = 'assets/toy/'
 const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boolean }>()
 
+/**
+ * The mounts still waiting for their GLB, and only those.
+ *
+ * The arrival watcher used to walk every mount in the world on every frame to ask each one
+ * whether its model had landed yet. A model lands once and then stays landed, so at sixty
+ * bases that is upwards of a thousand component reads per frame, forever, to learn nothing.
+ * A mount joins this set when it is created and leaves it the moment its model is in, which
+ * makes the watcher's cost proportional to what is actually loading rather than to how much
+ * of the world exists.
+ */
+const enAttente = new Set<Entity>()
+
 /*
   The mount owns ONE fact about its primitive: whether the GLB has loaded. It never draws the
   stand-in itself. That is the silhouette's job (`formeDeRarete`), or the caller's, and two
@@ -229,6 +241,7 @@ export function montable(primitive: Entity, fichier: string): void {
     Animator.create(modele, { states: [{ clip: fit.clip, playing: true, loop: true }] })
   }
   montages.set(primitive, { modele, fichier })
+  enAttente.add(primitive)
 }
 
 /**
@@ -241,6 +254,8 @@ export function remonter(primitive: Entity, fichier: string): void {
   if (m === undefined) { montable(primitive, fichier); return }
   if (m.fichier === fichier) return
   m.fichier = fichier
+  // A new file is a new load: the arrival has to be watched for again.
+  if (m.charge === true) { montages.set(primitive, { ...m, charge: false }); enAttente.add(primitive) }
   poserFit(m.modele, fichier)
   const g = GltfContainer.getMutableOrNull(m.modele)
   if (g !== null) g.src = TOY_DIR + fichier
@@ -251,6 +266,7 @@ export function demonter(primitive: Entity): void {
   const m = montages.get(primitive)
   if (m === undefined) return
   montages.delete(primitive)
+  enAttente.delete(primitive)
   engine.removeEntity(m.modele)
 }
 
@@ -701,13 +717,13 @@ export function setupToy(): void {
     })
   }
   engine.addSystem(() => {
-    for (const [primitive, m] of montages) {
+    for (const primitive of enAttente) {
+      const m = montages.get(primitive)
+      if (m === undefined) { enAttente.delete(primitive); continue }
       const st = GltfContainerLoadingState.getOrNull(m.modele)
       if (st === null) continue
       if (st.currentState === LoadingState.FINISHED) {
-        // Once. This block used to run every frame a model stayed FINISHED, re-tinting and
-        // re-writing the mount for every displayed toy, sixty bases over.
-        if (m.charge === true) continue
+        enAttente.delete(primitive)
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
         effacerForme(primitive)
