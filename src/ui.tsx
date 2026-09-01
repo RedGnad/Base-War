@@ -11,7 +11,7 @@ import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fusionPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
-import { forceDuTir, GEARS } from './shared/schemas'
+import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, Barre, SURF, pctAnime } from './client/ui-kit'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -984,6 +984,7 @@ const uiComponent = () => {
   const notice = noticeBand([
     ['stealing', theftView.stealing, 76],
     ['opening', boxView.opening, 76],
+    ['carrying', carryView.code >= 0 && carryView.vole, 64],
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
@@ -1329,6 +1330,31 @@ const uiComponent = () => {
         <Label value="stay close - walking away cancels it" fontSize={TYPE.caption}
           color={Color4.fromHexString('#c9a0a0ff')}
           uiTransform={{ width: '100%', height: 18 }} textAlign="middle-center" />
+      </UiEntity>
+    )}
+
+    {/*
+      Hauling stolen goods, and what it costs.
+
+      More than half the carrier's speed goes into the load, and the only sign of it was
+      being slow, which reads as nothing (owner, 1 Sep). The ring under the thief says it to
+      everyone else; this says it to the thief, as a number, in the danger plate the theft
+      panel already uses. It names the way out too: a state a player cannot end is a
+      punishment, and one they can is a chase.
+    */}
+    {hud() && carryView.code >= 0 && carryView.vole && notice.carrying >= 0 && (
+      <UiEntity
+        uiTransform={{
+          width: strip(560).width, height: 64, positionType: 'absolute',
+          position: { bottom: notice.carrying, left: '50%' }, margin: strip(560).margin,
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={SKIN.danger}
+      >
+        <Label
+          value={`STOLEN ${carryView.name.toUpperCase()}  ·  -${Math.round((1 - CARRY_STOLEN_SHARE) * 100)}% SPEED  ·  GET IT HOME`}
+          fontSize={TYPE.label} color={Color4.fromHexString('#ffdcdcff')} textWrap="nowrap"
+          uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" />
       </UiEntity>
     )}
 

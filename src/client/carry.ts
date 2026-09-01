@@ -1,6 +1,7 @@
 import {
   engine, Transform, MeshRenderer, Material, AvatarAttach, AvatarAnchorPointType,
-  Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType } from '@dcl/sdk/ecs'
+  Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType ,
+  Tween, TweenSequence, TweenLoop, EasingFunction} from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
 import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
@@ -25,7 +26,7 @@ import { formeDeRarete, effacerForme, plasticDe } from './toy'
 
 export const carryView = { code: -1, name: '', vole: false }
 
-const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
+const vues = new Map<number, { corps: Entity; etiquette: Entity; anneau: Entity | null }>()
 
 /*
   The marker that says where it will land, before it lands.
@@ -114,7 +115,30 @@ export function setupCarry(): void {
           anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG
         })
 
-        vues.set(id, { corps, etiquette })
+        /*
+          The burden, drawn on the ground under the thief.
+
+          Carrying stolen goods costs more than half the carrier's speed, and until now the
+          only sign of it was that they were slow, which reads as nothing at all: a witness
+          cannot tell a burdened thief from a player who happens to be walking (owner,
+          1 Sep). The genre marks its states on the character, so this is a ring at the
+          feet, in the theft red, breathing so it cannot be mistaken for scenery, attached
+          to the avatar's own position so every client draws it for every thief without a
+          message of its own. Only for goods that are NOT the carrier's: taking your own
+          toy off your own shelf is tidying, and costs a fifth of the speed, not a half.
+        */
+        let anneau: Entity | null = null
+        if (c.origin.toLowerCase() !== c.holder.toLowerCase()) {
+          anneau = engine.addEntity()
+          Transform.create(anneau, { position: Vector3.create(0, 0.06, 0), scale: Vector3.create(1.5, 0.03, 1.5) })
+          MeshRenderer.setCylinder(anneau, 0.5, 0.5)
+          Material.setPbrMaterial(anneau, plasticDe(Color4.fromHexString('#ff5252ff'), 2.2))
+          Tween.setScale(anneau, Vector3.create(1.5, 0.03, 1.5), Vector3.create(2.05, 0.03, 2.05), 720, EasingFunction.EF_EASESINE)
+          TweenSequence.createOrReplace(anneau, { sequence: [], loop: TweenLoop.TL_YOYO })
+          AvatarAttach.create(anneau, { avatarId: c.holder, anchorPointId: AvatarAnchorPointType.AAPT_POSITION })
+        }
+
+        vues.set(id, { corps, etiquette, anneau })
       }
     }
 
@@ -123,6 +147,7 @@ export function setupCarry(): void {
       effacerForme(v.corps)
       engine.removeEntity(v.corps)
       engine.removeEntity(v.etiquette)
+      if (v.anneau !== null) engine.removeEntity(v.anneau)
       vues.delete(id)
     }
 
