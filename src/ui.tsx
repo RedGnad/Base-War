@@ -411,39 +411,43 @@ const PhoneControls = () => {
   if (!phone() || !hud()) return null
   const a = nextAction()
   /*
-    Nos quatre commandes de pouce, dans l'ordre demande: saut, arme, menu, et l'action au
-    dessous parce qu'elle est la plus grosse et la plus souvent pressee.
+    L'arc du client, reproduit a partir de sa propre geometrie.
 
-    Le saut porte l'icone du parapente des que le joueur descend en l'air, ce que le client
-    faisait tout seul sur son propre bouton et qu'un bouton a nous doit reproduire.
+    Le HUD de Decentraland ne range pas ses commandes en ligne: `joypad_arc.gd` place les
+    satellites sur un arc polaire autour du gros bouton ancre dans le coin, le PREMIER tangent
+    au bord du bas, le DERNIER tangent au bord droit, les autres repartis entre les deux. Ses
+    valeurs: bouton central 156, satellite 80, orbite 167, ce qui redonne exactement les
+    decalages codes en dur dans sa scene. On garde ces proportions a notre echelle, et la
+    capture d'un vrai telephone (proprietaire, 1 Sep) montre bien cette forme: main en bas a
+    gauche, puis E, puis F, puis le "+" droit au-dessus.
+
+    Ce qu'on change sciemment: chez eux le gros bouton est le SAUT, chez nous c'est le verbe
+    contextuel, parce que c'est lui qu'on presse toutes les dix secondes. Le saut prend la
+    premiere place de l'arc, celle du bas, la plus proche du pouce au repos.
   */
   return (
     <UiEntity
       uiTransform={{
-        positionType: 'absolute',
-        position: { bottom: BAND.bottom, right: clientEdges().right + 16 },
-        flexDirection: 'column', alignItems: 'flex-end'
+        width: ARC_BOITE, height: ARC_BOITE, positionType: 'absolute',
+        position: { bottom: BAND.bottom, right: clientEdges().right + 16 }
       }}
     >
-      {/* Sa propre ligne, au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
-      <UiEntity uiTransform={{ flexDirection: 'row', margin: { bottom: 10 } }}><SellChip /></UiEntity>
-      {/*
-        Un arc, pas une ligne. Le pouce pivote depuis le bas a droite: sa course naturelle
-        monte a mesure qu'elle s'eloigne, et trois boutons alignes obligent a tendre le doigt
-        pour le plus lointain. Chacun est donc remonte selon sa distance au pivot, ce qui est
-        la forme du pave que le client dessine lui-meme.
-      */}
-      <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'flex-end', margin: { bottom: 10 } }}>
-        <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE} right={TAP.gap} haut={-46}
-          actions={[InputAction.IA_JUMP]} />
-        <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE} right={TAP.gap} haut={-18}
-          primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
-        <Pouce icone={questsToClaim() > 0 ? 'icon-menu-alert' : 'icon-menu'} taille={POUCE}
-          badge={questsToClaim() > 0} onClick={basculerMenu} />
+      {/* Sa propre ligne au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: ARC_BOITE + 12, right: 0 }, flexDirection: 'row' }}>
+        <SellChip />
       </UiEntity>
+
+      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE}
+        bas={ARC[0].bas} droite={ARC[0].droite} actions={[InputAction.IA_JUMP]} />
+      <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE}
+        bas={ARC[1].bas} droite={ARC[1].droite}
+        primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
+      <Pouce icone={questsToClaim() > 0 ? 'icon-menu-alert' : 'icon-menu'} taille={POUCE}
+        bas={ARC[2].bas} droite={ARC[2].droite}
+        badge={questsToClaim() > 0} onClick={basculerMenu} />
       {a !== null && (
         <Pouce icone={combatView.aiming ? 'icon-fire' : (a.icon ?? 'icon-collect')} taille={POUCE_GROS}
-          primaire actions={[InputAction.IA_PRIMARY]} />
+          bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]} />
       )}
     </UiEntity>
   )
@@ -473,9 +477,40 @@ const DesktopControls = () => {
   )
 }
 
-/** Un pouce mesure environ 9 mm; ces tailles sont celles que le testeur a pu viser sans rater. */
-const POUCE = 118
+/*
+  Les proportions du pave du client, a notre echelle.
+
+  Chez lui: central 156, satellite 80, orbite 167. Les rapports 80/156 et 167/156 sont ce qui
+  donne a l'arc sa forme, et ils sont conserves tels quels; seule la taille du central est la
+  notre, choisie pour un pouce.
+*/
 const POUCE_GROS = 168
+const POUCE = Math.round(POUCE_GROS * 80 / 156)
+const ORBITE = POUCE_GROS * 167 / 156
+
+/** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule. */
+const ARC = ((): Array<{ droite: number; bas: number }> => {
+  const pr = POUCE_GROS / 2
+  const sr = POUCE / 2
+  const bord = pr - sr
+  const portee = Math.sqrt(Math.max(ORBITE * ORBITE - bord * bord, 0))
+  const debut = Math.atan2(bord, -portee)
+  let fin = Math.atan2(-portee, bord)
+  if (fin < debut) fin += Math.PI * 2
+  const pas = (fin - debut) / 2
+  const out: Array<{ droite: number; bas: number }> = []
+  for (let i = 0; i < 3; i++) {
+    const t = debut + pas * i
+    out.push({
+      droite: Math.round(pr - ORBITE * Math.cos(t) - sr),
+      bas: Math.round(pr - ORBITE * Math.sin(t) - sr)
+    })
+  }
+  return out
+})()
+
+/** Le carre qui contient le gros bouton et tout l'arc. */
+const ARC_BOITE = POUCE_GROS + Math.max(...ARC.map((p) => Math.max(p.droite, p.bas)))
 
 /** A handset, or the desktop preview asked to measure like one. */
 function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }

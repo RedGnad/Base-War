@@ -141,9 +141,9 @@ export const Pouce = (props: {
   onClick?: () => void
   primaire?: boolean
   badge?: boolean
-  right?: number
-  /** Remontee dans l'arc du pouce: negatif pour monter. */
-  haut?: number
+  /** Sa place sur l'arc, en pixels depuis le coin bas droit du pave. */
+  droite?: number
+  bas?: number
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -152,10 +152,10 @@ export const Pouce = (props: {
   return (
     <UiEntity
       uiTransform={{
-        width: d, height: d, margin: { right: props.right ?? 0 },
-        justifyContent: 'center', alignItems: 'center', positionType: 'relative',
-        // `haut` remonte le bouton dans l'arc; `enfonce` est le retour au doigt, par-dessus.
-        position: { top: (props.haut ?? 0) + (enfonce ? 3 : 0) }
+        width: d, height: d,
+        justifyContent: 'center', alignItems: 'center', positionType: 'absolute',
+        // Sa place sur l'arc, plus trois pixels vers le bas tant que le doigt appuie.
+        position: { right: props.droite ?? 0, bottom: (props.bas ?? 0) - (enfonce ? 3 : 0) }
       }}
       uiBackground={fond}
       uiInputBinding={props.actions !== undefined ? { actions: props.actions } : undefined}
