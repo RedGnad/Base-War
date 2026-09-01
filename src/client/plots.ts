@@ -7,7 +7,7 @@ import { PBMaterial_PbrMaterial, TextureWrapMode,
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { poserTexte3D, Segment3D } from './texte3d'
@@ -353,8 +353,8 @@ function createView(x: number, z: number, accent: string): View {
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
   parentCourant = racine
-  const plinth = bloc(0, 0.06, 0, BASE_SIDE + 1.6, 0.12, BASE_SIDE + 1.6, TOY.plinth)
-  Material.setPbrMaterial(plinth, plastiqueMoule(TOY.plinth, BASE_SIDE + 1.6, BASE_SIDE + 1.6))
+  const plinth = bloc(0, 0.06, 0, PLINTH_SIDE, 0.12, PLINTH_SIDE, TOY.plinth)
+  Material.setPbrMaterial(plinth, plastiqueMoule(TOY.plinth, PLINTH_SIDE, PLINTH_SIDE))
 
   /*
     Only the ground floor is built here; the rest appear when they are bought.
@@ -833,7 +833,7 @@ export function setupPlots(): void {
         }
       }
       if (structurel) {
-        Material.setPbrMaterial(v.plinth, plastiqueMoule(p.ownerPresent ? TOY.plinth : TOY.plinthAway, BASE_SIDE + 1.6, BASE_SIDE + 1.6))
+        Material.setPbrMaterial(v.plinth, plastiqueMoule(p.ownerPresent ? TOY.plinth : TOY.plinthAway, PLINTH_SIDE, PLINTH_SIDE))
         repeindre(v, p)
       }
 

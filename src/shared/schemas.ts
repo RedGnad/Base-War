@@ -885,6 +885,19 @@ export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
 export { RESELL_SECONDS } from './economy'
 
 export const GRILLE = 2                    // snap step, in metres
+
+/**
+ * The base's visible footprint on the ground: the plinth, which overhangs the walls.
+ *
+ * The walls enclose `BASE_SIDE`, but what a player SEES a base occupy is the slab it stands
+ * on, and that slab is wider than the walls by design, the way a building has a step. The
+ * spacing rule was written against the walls, so a pair of neighbours the rule called four
+ * metres apart actually showed two point four metres of grass between their slabs. At four
+ * rows deep that is not a street, it is a seam, and the field reads as one melted mass
+ * (tester, 1 Sep, on the sixty-base measurement field). What separates two buildings is what
+ * you can see of the ground between them, so the rule is written against the slab.
+ */
+export const PLINTH_SIDE = BASE_SIDE + 1.6
 /**
  * The gap between two bases, measured on the WIDER axis, not as a straight-line distance.
  *
@@ -896,10 +909,11 @@ export const GRILLE = 2                    // snap step, in metres
  * ground. That is the two buildings melting into each other the tester reported (1 Sep), and it
  * could only ever happen on a diagonal, which is why it looked random.
  *
- * On the wider axis the same number now means what it reads as: fourteen metres of footprint
- * and a four metre street, in every direction including the diagonals.
+ * On the wider axis the same number now means what it reads as: the slab, and a four metre
+ * street clear of it, in every direction including the diagonals. Twenty metres, which is a
+ * whole number of placement grid steps, so the rule and the grid agree.
  */
-export const MIN_BASE_GAP = BASE_SIDE + 4   // the footprint, plus a street between neighbours
+export const MIN_BASE_GAP = PLINTH_SIDE + 4.4   // the visible slab, plus a street you can walk
 export const EDGE_MARGIN = BASE_SIDE / 2 + 2   // half a footprint clear of the scene edge
 /**
  * How close to your own base you must stand to open a crate.
