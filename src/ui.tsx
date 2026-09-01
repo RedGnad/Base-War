@@ -790,6 +790,8 @@ function Roulette(): ReactEcs.JSX.Element {
   const large = Math.min(active.w - 80, 1700)
   const fini = !boxView.roule && boxView.resultat >= 0
   const depuis = fini ? Date.now() - boxView.gagneA : 0
+  // The panel leaves on a fade instead of blinking out at its timer.
+  const sortie = fini ? Math.max(0, Math.min(1, (boxView.resultatJusqua - Date.now()) / 260)) : 1
   const pop = fini ? easeOutBack(Math.min(1, depuis / 280)) : 0
   const flash = fini ? Math.max(0, 1 - depuis / 750) : 0
   const gagneHex = fini ? itemColor(boxView.resultat, boxView.resultatMutation) : '#ffffff'
@@ -799,7 +801,7 @@ function Roulette(): ReactEcs.JSX.Element {
   return (
     <Centre bottom={250}>
       <UiEntity
-        uiTransform={{ width: large, height: REEL_TITRE + bande, flexDirection: 'column', overflow: 'hidden' }}
+        uiTransform={{ width: large, height: REEL_TITRE + bande, flexDirection: 'column', overflow: 'hidden', opacity: sortie }}
         uiBackground={SKIN.panel}
       >
         {flash > 0 && (
@@ -824,10 +826,22 @@ function Roulette(): ReactEcs.JSX.Element {
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: bande }}>
+          {/* The landing burst: a fan of rays swelling behind the winning card, first child
+              so every card draws over it. The rarity flash colours the room; this is the
+              spotlight. */}
+          {fini && depuis < 700 && (
+            <UiEntity
+              uiTransform={{
+                width: 150 + 230 * pop, height: 150 + 230 * pop, positionType: 'absolute',
+                position: { left: large / 2 - (150 + 230 * pop) / 2, top: (bande - (150 + 230 * pop)) / 2 },
+                opacity: Math.max(0, 1 - depuis / 700)
+              }}
+              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
+          )}
           {boxView.reel.map((r, i) => {
             const rar = RARITIES[r] ?? RARITIES[0]
             const gagnant = fini && i === REEL_WIN
-            const s = gagnant ? 1 + 0.14 * pop : 1
+            const s = gagnant ? 1 + 0.22 * pop : 1
             const w = REEL_W * s, h = REEL_H * s
             const x = large / 2 - w / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
             if (x < -w || x > large) return null

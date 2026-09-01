@@ -190,7 +190,7 @@ const montages = new Map<Entity, { modele: Entity; fichier: string; charge?: boo
   the unit height, an offset that puts the base on the stand-in's floor at -0.5. A file
   not listed mounts at identity, which is the contract's default.
 */
-const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
+export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
   'item-0.glb': { scale: 5.545, dy: -0.49, rotX: 0 },  // pion: 0.09 x 0.17 x 0.09 m (noeud applique)
   // Order follows CHESS POINTS, because players know them: pawn 1, knight 3, bishop 3+,
   // rook 5, queen 9, king beyond price. A rook sold as Uncommon under a Rare knight read

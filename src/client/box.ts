@@ -1,7 +1,7 @@
-import { plasticDe, caisse } from './toy'
+import { plasticDe, caisse, FIT, TOY_DIR } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType,
-  InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers
+  InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, Entity, AudioSource, timers, GltfContainer
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
@@ -177,7 +177,9 @@ export function setupBox(): void {
         boxView.progres = REEL_WIN
         boxView.gagneA = Date.now()
         jouer(sonReveal)
-        boxView.resultatJusqua = Date.now() + 3600
+        // Long enough to read the name once, gone before it outstays the win: the
+        // genre closes its reveals fast and lets the item in the hand carry the memory.
+        boxView.resultatJusqua = Date.now() + 2200
         console.log(`[CLIENT] crate ouverte -> ${itemName(boxView.resultat, boxView.resultatMutation)}`)
       }
     } else if (boxView.resultat >= 0 && Date.now() > boxView.resultatJusqua) {
@@ -294,10 +296,24 @@ function sendToHand(from: Vector3, rarityId: number, mut = 0): void {
 
   const e = engine.addEntity()
   const r = rarity(rarityId)
-  Transform.create(e, { position: from, scale: Vector3.create(r.size, r.size, r.size) })
-  MeshRenderer.setBox(e)
-  const c = Color4.fromHexString(itemColor(rarityId, mut) + 'ff')
-  Material.setPbrMaterial(e, plasticDe(c, 1.2))
+  Transform.create(e, { position: from })
+  // The thing that flies to the hand is the piece that was won, spinning as it goes; a
+  // coloured cube stood in here from before the chess set existed. Secret has no file on
+  // purpose (the star is a primitive), so it keeps the cube in its own colour.
+  const visuel = engine.addEntity()
+  const fichier = `item-${rarityId}.glb`
+  const f = FIT[fichier]
+  if (rarityId <= 5 && f !== undefined) {
+    Transform.create(visuel, { parent: e, scale: Vector3.create(f.scale * r.size, f.scale * r.size, f.scale * r.size) })
+    GltfContainer.create(visuel, { src: TOY_DIR + fichier, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  } else {
+    Transform.create(visuel, { parent: e, scale: Vector3.create(r.size, r.size, r.size) })
+    MeshRenderer.setBox(visuel)
+    const c = Color4.fromHexString(itemColor(rarityId, mut) + 'ff')
+    Material.setPbrMaterial(visuel, plasticDe(c, 1.2))
+  }
+  Tween.setRotate(visuel, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 560, EasingFunction.EF_LINEAR)
+  TweenSequence.createOrReplace(visuel, { sequence: [], loop: TweenLoop.TL_RESTART })
 
   const haut = Vector3.create((from.x + target.x) / 2, Math.max(from.y, target.y) + 5, (from.z + target.z) / 2)
   Tween.createOrReplace(e, {
@@ -312,7 +328,7 @@ function sendToHand(from: Vector3, rarityId: number, mut = 0): void {
       easingFunction: EasingFunction.EF_EASEINQUAD
     }]
   })
-  timers.setTimeout(() => engine.removeEntity(e), 1100)
+  timers.setTimeout(() => engine.removeEntityWithChildren(e), 1100)
 }
 
 function myBasePosition(): Vector3 | null {

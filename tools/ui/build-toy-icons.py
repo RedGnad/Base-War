@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""Draws the seven toy icons the reel shows, and the two edge fades of the strip.
+"""Draws the seven toy icons the reel shows, the burst behind a win, and the strip fades.
 
-One icon per rarity, the same silhouettes as the stand-ins in the world (a marble, stacked
-blocks, a hat on a plate, a rocket, a tree, a pagoda, a star): a player who has seen the card
-recognises the toy on the shelf. Flat colour, dark outline, one highlight, which is the
-vinyl-toy register of the theme, plus a soft glow behind it that grows with the rarity.
+One icon per rarity, the same pieces as the models on the shelves, in chess point order:
+pawn, knight, bishop, rook, queen, king, and the star that stands for Secret. A player who
+has seen the card recognises the piece on the shelf. The glyphs come from the system's
+Apple Symbols face, filled in the rarity colour over a dark stroke, with the soft halo that
+grows with rarity. The burst is a fan of warm rays the interface scales up behind the
+winning card, baked white-gold because runtime tinting never arrives on handsets.
 
-Requires Python with Pillow. The outputs are committed, so building the scene needs neither.
+Requires Python with Pillow and the macOS Apple Symbols font. Outputs are committed, so
+building the scene needs neither.
 
     python3 tools/ui/build-toy-icons.py
 """
+import math
 import os
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(os.path.join(HERE, '../../assets/ui'))
@@ -31,6 +35,63 @@ def rgb(h):
 
 def mix(a, b, t):
     return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+GLYPHES = '\u265f\u265e\u265d\u265c\u265b\u265a\u2605'
+POLICE = '/System/Library/Fonts/Apple Symbols.ttf'
+
+
+def icone_glyphe(k, hexcol, glow):
+    c = rgb(hexcol)
+    dark = mix(c, (0, 0, 0), 0.55)
+    light = mix(c, (255, 255, 255), 0.35)
+    ft = ImageFont.truetype(POLICE, 196)
+    body = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    d = ImageDraw.Draw(body)
+    ch = GLYPHES[k]
+    # Centre on the ink itself, not the em box, so every piece sits on the same optical line.
+    x0, y0, x1, y1 = d.textbbox((0, 0), ch, font=ft, stroke_width=6)
+    d.text((128 - (x0 + x1) / 2, 134 - (y0 + y1) / 2), ch, font=ft,
+           fill=c + (255,), stroke_width=6, stroke_fill=dark + (255,))
+    # One highlight, the vinyl register: a small light pool upper left inside the ink.
+    masque = body.split()[3].point(lambda a: 255 if a > 200 else 0)
+    pool = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    dp = ImageDraw.Draw(pool)
+    dp.ellipse((86, 60, 122, 92), fill=light + (150,))
+    body = Image.alpha_composite(body, Image.composite(pool, Image.new('RGBA', (N, N), (0, 0, 0, 0)), masque))
+    halo = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    if glow > 0:
+        mask = body.split()[3].filter(ImageFilter.GaussianBlur(radius=14 + glow * 5))
+        strength = min(1.0, 0.25 + glow * 0.2)
+        halo = Image.new('RGBA', (N, N), c + (0,))
+        halo.putalpha(mask.point(lambda a: int(a * strength)))
+    return Image.alpha_composite(halo, body)
+
+
+def burst():
+    """A fan of sixteen warm rays for the moment the reel lands, alpha dying outward."""
+    S = 256
+    im = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    cx = cy = S / 2
+    for k in range(16):
+        a = k * math.pi / 8 + 0.13
+        long = 118 if k % 2 == 0 else 86
+        demi = 0.075 if k % 2 == 0 else 0.05
+        pts = [(cx + math.cos(a - demi) * 26, cy + math.sin(a - demi) * 26),
+               (cx + math.cos(a + demi) * 26, cy + math.sin(a + demi) * 26),
+               (cx + math.cos(a) * long, cy + math.sin(a) * long)]
+        d.polygon(pts, fill=(255, 224, 130, 210))
+    im = im.filter(ImageFilter.GaussianBlur(1.4))
+    # Radial falloff so the fan melts into the panel instead of ending on a line.
+    px = im.load()
+    for y in range(S):
+        for x in range(S):
+            r0, g0, b0, a0 = px[x, y]
+            if a0 == 0: continue
+            dist = math.hypot(x - cx, y - cy) / (S / 2)
+            px[x, y] = (r0, g0, b0, int(a0 * max(0.0, 1 - dist ** 1.6)))
+    return im
 
 
 def shapes(k, c):
@@ -103,7 +164,8 @@ def fade(left):
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     for k, (hexcol, glow) in enumerate(RARITIES):
-        icon(k, hexcol, glow).save(os.path.join(OUT, f'toy-{k}.png'), optimize=True)
+        icone_glyphe(k, hexcol, glow).save(os.path.join(OUT, f'toy-{k}.png'), optimize=True)
+    burst().save(os.path.join(OUT, 'burst.png'), optimize=True)
     fade(True).save(os.path.join(OUT, 'fade-left.png'), optimize=True)
     fade(False).save(os.path.join(OUT, 'fade-right.png'), optimize=True)
     print('wrote', OUT)
