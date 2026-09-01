@@ -1073,12 +1073,16 @@ export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
  * about one base deep. Ours: slabs of 15.6 m on a 24 m pitch, so 8.4 m of street, and rows at
  * 26 m from the lane, so 18 m of corridor.
  */
+const SPOTS_BRUTS: ReadonlyArray<readonly [number, number]> = [
+  // Rangee sud, portes tournees vers le tapis. Les z ondulent de six metres d une parcelle a
+  // l autre et les entraxes alternent entre vingt-deux et vingt-six, ce qui casse la ligne.
+  [14, 68], [38, 73], [60, 69], [84, 74], [106, 68], [130, 72], [154, 70], [178, 74],
+  // Rangee nord, decalee d une demi-parcelle par rapport a la sud pour qu aucune facade ne
+  // fasse face a une autre en vis-a-vis exact.
+  [12, 124], [36, 119], [58, 123], [82, 118], [108, 124], [132, 120], [156, 122], [180, 118]
+]
 function spotsDeDepart(): Array<{ x: number; z: number }> {
-  const out: Array<{ x: number; z: number }> = []
-  for (const cote of [-1, 1]) {
-    for (let k = 0; k < 8; k++) out.push({ x: 12 + k * 24, z: CENTER.z + cote * 26 })
-  }
-  return out
+  return SPOTS_BRUTS.map(([x, z]) => ({ x, z }))
 }
 export const PLOT_SPOTS: ReadonlyArray<{ x: number; z: number }> = spotsDeDepart()
 

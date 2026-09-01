@@ -59,8 +59,16 @@ let spawnX = 0, spawnZ = 0
  * outside.
  */
 function horsDesBases(nx: number, nz: number): { x: number; z: number } {
-  // The slab, not the walls: the boss was allowed to stand on the overhang it cannot climb.
-  const demi = PLINTH_SIDE / 2 + RAID_RADIUS + 0.4
+  /*
+    It has to stay out of the BUILDING, not off the doorstep.
+
+    Measured against the walls plus its own radius, and nothing more: the slab overhangs the
+    walls by eight tenths of a metre and stands twelve centimetres proud, which is a step, not
+    an obstacle, so keeping the boss off it only bought a wider no-go ring and a narrower street
+    to chase through (tester, 1 Sep). Hugging the walls is also how it should read: the thing
+    pacing right outside the glass while you shelter behind it.
+  */
+  const demi = BASE_SIDE / 2 + RAID_RADIUS + 0.2
   for (const b of toutesLesBases()) {
     const dx = nx - b.x, dz = nz - b.z
     if (Math.abs(dx) >= demi || Math.abs(dz) >= demi) continue
