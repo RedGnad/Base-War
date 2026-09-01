@@ -808,7 +808,17 @@ export function setupPlots(): void {
       if (ptr !== null) {
         const locked = p.lockedUntil > Date.now()
         const h = p.floors * FLOOR_HEIGHT + 0.6
-        ptr.position = Vector3.create(t.position.x, h / 2, t.position.z)
+        /*
+          LOCAL, because the shield is a child of the base's own root.
+
+          This wrote the base's WORLD coordinates into a child of a root already standing at
+          those coordinates, so the shield was drawn at twice them: a base at (60, 70) put its
+          dome at (120, 140), a hundred metres away or outside the scene entirely. The theft
+          was refused, the countdown ran, the plate said LOCKED, and the wall itself was
+          somewhere nobody would ever look (owner, 1 Sep). Only the height is a number here;
+          the position is the parent's.
+        */
+        ptr.position = Vector3.create(0, h / 2, 0)
         ptr.scale = locked
           ? Vector3.create(BASE_SIDE + 1.2, h, BASE_SIDE + 1.2)
           : Vector3.create(0, 0, 0)
