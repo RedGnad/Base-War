@@ -30,7 +30,7 @@ const PANEL_H = PAD * 2 + TITRE_H + RARITIES.length * (CASE + GAP) + PIED_H
 
 /** The grid plus its two labels, which is what the window is asked to make room for. */
 /** The skin row under the grid: the buttons for the columns that are full, the count for the nearest ones. */
-const SKINS_H = TAP.height + 16
+const SKINS_H = TAP.rangee
 const DOTS_H = 20
 export const HAUTEUR_INDEX = TITRE_H + DOTS_H + RARITIES.length * (CASE + GAP) + PIED_H + SKINS_H
 
@@ -94,7 +94,7 @@ export const IndexContent = () => {
       */}
       <UiEntity uiTransform={{ width: '100%', height: SKINS_H, flexDirection: 'row', alignItems: 'center' }}>
         <Label value="BASE SKIN" fontSize={TYPE.caption} color={Color4.fromHexString('#7d8798ff')}
-          uiTransform={{ width: 150, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
+          uiTransform={{ width: 150, height: TAP.menu }} textAlign="middle-left" textWrap="nowrap" />
         {(() => {
           const ouverts = MUTATIONS.filter((m) => m.id > 0 && skinDebloque(indexView.vus, m.id))
           const fermes = [...MUTATIONS]
@@ -105,7 +105,7 @@ export const IndexContent = () => {
             ...ouverts.map((m) => (
               <Btn key={`s${m.id}`}
                 label={indexView.skin === m.id ? `${m.name.toUpperCase()}  ·  ON` : m.name.toUpperCase()}
-                width={220} size={TYPE.caption} primary={indexView.skin === m.id} right={TAP.gap}
+                width={220} height={TAP.menu} size={TYPE.caption} primary={indexView.skin === m.id} right={TAP.gap}
                 onClick={() => {
                   const cible = indexView.skin === m.id ? 0 : m.id
                   indexView.skin = cible
@@ -115,7 +115,7 @@ export const IndexContent = () => {
             ...fermes.map((m) => (
               <Btn key={`p${m.id}`}
                 label={`${m.name.toUpperCase()}  ${progresDuSkin(indexView.vus, m.id)}/${RARITIES.length}`}
-                width={220} size={TYPE.caption} skin="disabled" right={TAP.gap} />
+                width={220} height={TAP.menu} size={TYPE.caption} skin="disabled" right={TAP.gap} />
             ))
           ]
         })()}

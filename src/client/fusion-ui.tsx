@@ -92,8 +92,8 @@ export const FusionPanel = () => {
           <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
             <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
               color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
-            <UiEntity uiTransform={{ width: 280, height: TAP.height, justifyContent: 'flex-end' }}>
-              <Btn label="TAKE BACK" width={260} onClick={() => { void room.send('takeBackFusion', {}); closeFusion() }} />
+            <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
+              <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { void room.send('takeBackFusion', {}); closeFusion() }} />
             </UiEntity>
           </UiEntity>
         )}
@@ -111,8 +111,8 @@ export const FusionPanel = () => {
                 <Label value={pris.length > 0 ? `takes: ${pris.map(nomDuCode).join(', ')}  ·  ${chances(pris)}` : 'none on your shelves'} fontSize={TYPE.caption}
                   color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
               </UiEntity>
-              <UiEntity uiTransform={{ width: 440, height: TAP.height, justifyContent: 'flex-end' }}>
-                <Btn label={assez ? `FUSE ${FUSION_NEEDS} INTO A ${suivant.name.toUpperCase()}` : `${FUSION_NEEDS} NEEDED`} width={420} primary={assez}
+              <UiEntity uiTransform={{ width: 440, height: TAP.menu, justifyContent: 'flex-end' }}>
+                <Btn label={assez ? `FUSE ${FUSION_NEEDS} INTO A ${suivant.name.toUpperCase()}` : `${FUSION_NEEDS} NEEDED`} width={420} height={TAP.menu} primary={assez}
                   onClick={() => { if (assez) { void room.send('fuseFromBase', { rarity: r.id }); closeFusion() } }} />
               </UiEntity>
             </UiEntity>

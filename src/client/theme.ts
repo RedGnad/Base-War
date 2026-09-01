@@ -177,12 +177,18 @@ export const RAD = { card: 14, bar: 10 } as const
 /**
  * The tap sizes, and the one that was missing.
  *
- * `height` is the world control: the bottom bar, the navigation tabs, anything a thumb
- * hunts for while the game runs. `menu` is a control INSIDE a panel, and it exists because
- * the world size does not fit there: an 84-tall row was being handed a 96-tall control,
- * which was invisible while the control was a lifted plate and obvious the moment it became
- * a flat chip, bleeding above and below its own card (owner, 1 Sep). `rangee` is the row
- * that holds one, air included, so the two can never be set apart again.
+ * THE RULE, so this is never a judgement call again:
+ *   `height` (96)  a control ALONE IN ITS BAND: the bottom bar, the navigation tabs, the
+ *                  main action of a dialog. It owns its line, so it takes the full size.
+ *   `menu` (80)    a control SHARING A ROW WITH CONTENT: a list row where text, a price or
+ *                  a counter sits beside it. It competes for the line, so it steps down.
+ *   `rangee` (100) the row that holds a `menu` control, air included.
+ *
+ * It exists because the world size does not fit a list: an 84-tall row was being handed a
+ * 96-tall control, which was invisible while the control was a lifted plate and obvious the
+ * moment it lost its gloss, bleeding above and below its own card (owner, 1 Sep). Applying
+ * it to the goals and the shop and forgetting the collection and the fusion is what the
+ * owner caught next, so the rule above is written down rather than remembered.
  */
 export const TAP = { height: 96, gap: 20, phone: 120, menu: 80, rangee: 100 } as const   // phone: 63 pt, what the tester's thumb asked for (28 Aug)
 
