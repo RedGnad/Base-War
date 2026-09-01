@@ -10,6 +10,7 @@ import {
   itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
+import { viderJournal } from './records'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
@@ -17,6 +18,7 @@ import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
 const BASE_KEY = (a: string) => `base:${a}`
 const PLAYER_KEY = 'profile'
+const JOURNAL_KEY = 'journal'
 const SAUVE_MS = 5000
 
 /**
@@ -254,7 +256,51 @@ function removeBase(address: string): void {
   bases.delete(address)
 }
 
+/**
+ * La remise a zero du monde, executee une seule fois et jamais deux.
+ *
+ * Un test reprend a zero: chaque joueur repose sa base, repart sans or, sans objets, sans
+ * caisses et sans prestige (proprietaire, 1 Sep). Ce n'est pas une suppression manuelle cle par
+ * cle, qui demanderait une signature par operation et laisserait forcement quelque chose
+ * derriere: le serveur enumere lui-meme les bases enregistrees, en tire la liste des adresses,
+ * et efface les deux cotes du stockage.
+ *
+ * `MONDE_REMIS_A_ZERO` est une DATE, pas un booleen. Une fois le nettoyage fait, elle est
+ * ecrite dans le stockage, et un demarrage suivant qui lit la meme valeur ne recommence pas.
+ * Laisser la constante en place est donc sans danger; il faut la CHANGER pour provoquer une
+ * nouvelle remise a zero. Un booleen oublie a `true`, lui, aurait vide le monde a chaque
+ * redemarrage du serveur, c'est-a-dire plusieurs fois par jour.
+ */
+const MONDE_REMIS_A_ZERO = '2026-09-01-soir'
+const CLEF_REMISE = 'reset'
+
+async function remiseAZero(): Promise<void> {
+  try {
+    const fait = await Storage.get<string>(CLEF_REMISE)
+    if (fait === MONDE_REMIS_A_ZERO) return
+
+    const res = await Storage.getValues({ prefix: 'base:' })
+    const adresses = res.data.map((e) => e.key.slice('base:'.length)).filter((a) => a.length > 0)
+    log(`remise a zero ${MONDE_REMIS_A_ZERO}: ${adresses.length} base(s) a effacer`)
+    for (const a of adresses) {
+      await Storage.delete(BASE_KEY(a))
+      await Storage.player.delete(a, PLAYER_KEY)
+    }
+    await Storage.delete(JOURNAL_KEY)
+    viderJournal()
+    bases.clear()
+    profiles.clear()
+    dirtyBases.clear()
+    dirtyProfiles.clear()
+    const ok = await Storage.set(CLEF_REMISE, JSON.stringify(MONDE_REMIS_A_ZERO))
+    log(`remise a zero terminee, marqueur ecrit: ${ok}`)
+  } catch (e) {
+    log(`remise a zero impossible: ${e}`)
+  }
+}
+
 async function loadBases(): Promise<void> {
+  await remiseAZero()
   try {
     const res = await Storage.getValues({ prefix: 'base:' })
     const loaded = res.data

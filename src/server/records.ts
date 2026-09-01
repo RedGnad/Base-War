@@ -54,6 +54,18 @@ function rafraichir(): void {
   r.journal = journal.slice(-JOURNAL_SHOWN)
 }
 
+/**
+ * Vide le journal en memoire, pour que la remise a zero ne soit pas reecrite par-dessus.
+ *
+ * Le tableau se charge au demarrage et se resauvegarde toutes les dix secondes. Effacer la
+ * clef sans vider la memoire aurait fait renaitre l'ancien palmares a la premiere ecriture.
+ */
+export function viderJournal(): void {
+  journal = []
+  sale = false
+  rafraichir()
+}
+
 export function startRecords(): void {
   // A stale board from a previous run would be a second board; only the runtime's own entities stay.
   for (const [e] of engine.getEntitiesWith(Records)) {
