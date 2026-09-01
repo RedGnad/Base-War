@@ -32,7 +32,7 @@ import { Glyphs } from './glyphs'
 const PRESSE_MS = 130
 const presse = new Map<string, number>()
 let sonClic: Entity | null = null
-function tic(): void {
+export function tic(): void {
   if (sonClic === null) {
     sonClic = engine.addEntity()
     Transform.create(sonClic, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })

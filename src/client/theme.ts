@@ -164,6 +164,16 @@ export const C = {
  * is the smallest gap that stops one thumb hitting two things. Divided by the 0.5275 above,
  * that is 84 and 16 virtual pixels; both are rounded up.
  */
+/**
+ * The corner radii, all of them.
+ *
+ * Cards were 14, chips 12, bars and bands square, and a photograph of the menu showed the
+ * mismatch plainly (owner, 1 Sep). Consistency is the cheapest of the five UI principles
+ * and the most visible when it is missing: one radius for surfaces, one for the bars
+ * inside them.
+ */
+export const RAD = { card: 14, bar: 10 } as const
+
 export const TAP = { height: 96, gap: 20, phone: 120 } as const   // phone: 63 pt, what the tester's thumb asked for (28 Aug)
 
 /**

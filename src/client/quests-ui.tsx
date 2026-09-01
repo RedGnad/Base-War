@@ -1,6 +1,6 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, TAP, C, lisible } from './theme'
-import { Btn, pctAnime, flashDe } from './ui-kit'
+import { TYPE, TAP, C, RAD, lisible } from './theme'
+import { Btn, pctAnime, flashDe, tic } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -67,7 +67,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
     <UiEntity
       uiTransform={{
         width: '100%', height: 84, flexDirection: 'row', alignItems: 'center',
-        margin: { bottom: 10 }, padding: { left: 16, right: 10 }, borderRadius: 14
+        margin: { bottom: 10 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
       }}
       uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
     >
@@ -76,12 +76,12 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           color={pris ? Color4.fromHexString('#6f7a6fff') : Color4.White()}
           uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" />
         <UiEntity
-          uiTransform={{ width: 493, height: 20, margin: { top: 3 } }}
+          uiTransform={{ width: 493, height: 20, margin: { top: 3 }, borderRadius: RAD.bar }}
           uiBackground={{ color: Color4.create(1, 1, 1, 0.12) }}
         >
           {/* The fill glides to its value and flashes white the moment it completes. */}
           <UiEntity
-            uiTransform={{ width: `${pctAnime(`quete${i}`, pct)}%`, height: 20 }}
+            uiTransform={{ width: `${pctAnime(`quete${i}`, pct)}%`, height: 20, borderRadius: RAD.bar }}
             uiBackground={{ color: (() => {
               const f = flashDe(`quete${i}`)
               const base = fini ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#4dd2ffff')
@@ -105,10 +105,10 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           player the interface lies (owner, 1 Sep). A quiet chip with the crate icon says
           "this is what you are earning", and only CLAIM ever looks pressable.
         */
-        <UiEntity uiTransform={{ width: 187, height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: 12 }}
+        <UiEntity uiTransform={{ width: 187, height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: RAD.card }}
           uiBackground={{ color: Color4.create(1, 1, 1, 0.06) }}>
           <UiEntity uiTransform={{ width: 34, height: 34, margin: { right: 8 } }}
-            uiBackground={{ texture: { src: 'assets/ui/icon-crate.png' }, textureMode: 'stretch' }} />
+            uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
           <Label value="+1" fontSize={TYPE.label} color={C.money}
             uiTransform={{ width: 44, height: 40 }} textAlign="middle-left" />
         </UiEntity>
@@ -138,7 +138,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
     <UiEntity
-        uiTransform={{ width: '100%', height: 70, flexDirection: 'row', alignItems: 'center', margin: { top: 6 } }}
+        uiTransform={{ width: '100%', height: 70, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
         uiBackground={{ color: Color4.create(1, 1, 1, 0.05) }}
       >
         <Label value="ALL THREE  ·  bonus rare crate" fontSize={TYPE.label}
@@ -184,12 +184,14 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
               uiTransform={{
                 width: '12.4%', height: STREAK_H,
                 flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                borderRadius: 14,
+                borderRadius: RAD.card,
                 borderWidth: aReclamer ? 3 : actuel ? 2 : 0,
                 borderColor: Color4.fromHexString((aReclamer ? '#a8e86e' : '#ffd166') + 'ff')
               }}
               uiBackground={{ color: aReclamer ? Color4.create(0.10, 0.28, 0.08, 0.95) : passe ? Color4.create(0.14, 0.30, 0.14, 0.9) : Color4.create(1, 1, 1, 0.06) }}
-              onMouseDown={aReclamer ? claimDaily : undefined}
+              // Every action needs a reaction: this card is the only tappable surface that
+              // is not a Btn, so it borrows the same click the buttons make.
+              onMouseDown={aReclamer ? (() => { tic(); claimDaily() }) : undefined}
             >
               <Label value={aReclamer ? `DAY ${dayN}  ✦` : `DAY ${dayN}`} fontSize={TYPE.caption}
                 color={aReclamer ? Color4.fromHexString('#c8f0a0ff') : passe ? Color4.fromHexString('#8fe08fff') : Color4.fromHexString('#a8b2c0ff')}

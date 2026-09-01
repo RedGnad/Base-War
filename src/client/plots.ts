@@ -689,7 +689,13 @@ export function setupPlots(): void {
         What stays per-frame is what genuinely ticks: the LOCKED countdown on the nameplate and
         the shield, which is why neither of them is behind this flag.
       */
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}|${p.rebirths}`
+      /*
+        `skin` belongs here, and its absence was a bug the owner could see: choosing a base
+        skin repainted NOTHING (1 Sep). `repeindre` sits behind this flag, so a change the
+        signature does not mention can never reach it, and the skin only appeared later, by
+        accident, when a floor or an item happened to move.
+      */
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}|${p.rebirths}|${p.skin}`
       const structurel = sig !== v.signature
       const txt = TextShape.getMutableOrNull(v.label)
       if (txt !== null) {

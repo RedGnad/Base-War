@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP, SKIN } from './theme'
+import { TYPE, C, TAP, SKIN, RAD } from './theme'
 import { Btn } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -53,13 +53,22 @@ function prixTourelle(tier: number): number {
   return prixParCharge(parObjet, tier) * t.charges
 }
 
-const Famille = (props: { titre: string; note: string }) => (
+/*
+  A family is a word, not a sentence.
+
+  Every header carried an explanation ("more shelves, so more earns"), every row carried
+  another, and the screen became prose with buttons in it (owner, 1 Sep). The note survives
+  only where it reports LIVE state the player cannot see from here, which is the armed floor.
+*/
+const Famille = (props: { titre: string; note?: string }) => (
   <UiEntity uiTransform={{ width: '100%', height: TITRE_FAMILLE, flexDirection: 'row', alignItems: 'center', margin: { top: 10, bottom: 6 } }}>
     {/* Fixed widths, because a Label given none resolves to nothing in this layout engine. */}
     <Label value={props.titre} fontSize={TYPE.label} color={Color4.fromHexString('#ffd166ff')}
-      uiTransform={{ width: 150, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
-    <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
-      uiTransform={{ width: 880, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
+      uiTransform={{ width: 220, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
+    {props.note !== undefined && (
+      <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
+        uiTransform={{ width: 810, height: TITRE_FAMILLE }} textAlign="middle-left" textWrap="nowrap" />
+    )}
   </UiEntity>
 )
 
@@ -67,6 +76,7 @@ const Rang = (props: {
   key?: string
   titre: string
   detail: string
+  icone?: string
   bouton: string
   prix: number
   possible: boolean
@@ -75,7 +85,7 @@ const Rang = (props: {
   <UiEntity
     uiTransform={{
       width: '100%', height: RANG + 14, flexDirection: 'row', alignItems: 'center',
-      margin: { bottom: ENTRE - 6 }, padding: { left: 16, right: 10 }, borderRadius: 14
+      margin: { bottom: ENTRE - 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
     }}
     uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
   >
@@ -88,7 +98,12 @@ const Rang = (props: {
       precisely when you cannot pay it, because it is what you are saving towards. The state
       belongs on the control, which is the part that actually stops working.
     */}
-    <UiEntity uiTransform={{ width: '58%', height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
+    {/* The picture carries what a sentence used to: a player scanning a shop reads shapes. */}
+    {props.icone !== undefined && (
+      <UiEntity uiTransform={{ width: 58, height: 58, margin: { right: 14 } }}
+        uiBackground={{ texture: { src: `assets/ui/${props.icone}` }, textureMode: 'stretch' }} />
+    )}
+    <UiEntity uiTransform={{ width: '50%', height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
       <Label value={props.titre} fontSize={TYPE.label} color={C.name}
         uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
       <Label value={props.detail} fontSize={TYPE.caption} color={C.dim}
@@ -105,6 +120,24 @@ const Rang = (props: {
     </UiEntity>
   </UiEntity>
 )
+
+/*
+  What each tool does, in four words.
+
+  The `verb` in the shared table is the long form, written when this row had a whole line to
+  itself; on a card beside an icon it is one sentence too many. The short form lives here
+  because it is a display decision, not a rule of the game.
+*/
+const COURT: Record<number, string> = {
+  0: 'freezes a thief, 7 s',
+  1: '+50% run speed',
+  2: 'melee, full force',
+  3: 'invisible, 20 s',
+  4: 'everyone nearby drops loot',
+  5: 'melee, freezes 3 s',
+  6: 'see through cloaks',
+  7: 'hidden mine, freezes 3 s'
+}
 
 /** The gear rows in the order the ladder opens them, which is the order a player meets them. */
 const ECHELLE = [...GEARS].sort((a, b) => a.prestige - b.prestige || a.id - b.id)
@@ -125,12 +158,13 @@ export const ShopContent = () => {
   return (
     <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_SHOP, flexDirection: 'column' }}>
 
-      <Famille titre="BUILD" note="more shelves, so more earns" />
+      <Famille titre="BUILD" />
       <Rang
         titre={etage > 0 ? '+1 FLOOR' : 'FLOORS MAXED'}
+        icone="ui-floor.png"
         detail={etage <= 0 ? `${MAX_FLOORS} floors is the cap`
-          : theftView.prestige < theftView.floorNeedsPrestige ? `opens at prestige ${theftView.floorNeedsPrestige}  ·  six more slots`
-          : 'six more slots, you keep everything'}
+          : theftView.prestige < theftView.floorNeedsPrestige ? `needs prestige ${theftView.floorNeedsPrestige}`
+          : 'six more slots'}
         bouton={etage > 0 && theftView.prestige < theftView.floorNeedsPrestige ? 'LOCKED' : 'BUY'} prix={etage}
         possible={etage > 0 && argent >= etage && theftView.prestige >= theftView.floorNeedsPrestige}
         onClick={() => { buyFloorFor(); closeMenu() }} />
@@ -145,18 +179,17 @@ export const ShopContent = () => {
       */}
       <Famille
         titre="DEFEND"
-        note={ici === null
-          ? 'stand inside your base, on the floor to defend'
-          : `floor ${ici.etage + 1} holds ${ici.charges}  ·  each charge blocks one theft there`} />
+        note={ici === null ? 'stand on the floor to defend' : `floor ${ici.etage + 1}  ·  ${ici.charges} charges`} />
       {SENTRY_TIERS.map((t, i) => {
         const prix = prixTourelle(i)
         const plein = ici !== null && ici.charges >= SENTRY_MAX_CHARGES
         return (
           <Rang key={t.name}
             titre={t.name}
+            icone="ui-shield.png"
             detail={t.tithe > 0
-              ? `${t.charges} charges  ·  blocks a theft, drops ${Math.round(t.tithe * 100)}% of their coins`
-              : `${t.charges} charges  ·  blocks a theft, takes nothing`}
+              ? `${t.charges} charges  ·  takes ${Math.round(t.tithe * 100)}%`
+              : `${t.charges} charges`}
             bouton="ARM" prix={prix}
             possible={ici !== null && !plein && theftView.basePosee && argent >= prix}
             onClick={() => { armSentry(i); closeMenu() }} />
@@ -169,7 +202,7 @@ export const ShopContent = () => {
         the whole ladder. The pocket count is on the row, and the SET button hands the act to
         the E button at the player's feet rather than doing it from here.
       */}
-      <Famille titre="GEAR" note="tools to steal with, or to catch thieves" />
+      <Famille titre="GEAR" />
       {ECHELLE.map((g) => {
         const prix = prixGear(g.id)
         const debloque = theftView.prestige >= g.prestige
@@ -185,7 +218,8 @@ export const ShopContent = () => {
         return (
           <Rang key={g.name}
             titre={estArme ? `${g.name}  ·  ${tenue ? 'WIELDING' : 'OWNED'}` : porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
-            detail={debloque ? g.verb : `unlocks at prestige ${g.prestige}  ·  ${g.verb}`}
+            icone={`ui-gear-${g.id}.png`}
+            detail={debloque ? (COURT[g.id] ?? g.verb) : `needs prestige ${g.prestige}`}
             bouton={estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
             prix={estArme || porte || peutPoserCe ? 0 : prix}
             possible={debloque && (estArme || (!porte && (posable && held > 0 ? peutPoserCe : argent >= prix)))}
@@ -199,15 +233,17 @@ export const ShopContent = () => {
       {/* Luck is the one thing here that is bought by the quarter hour, so its row shows the clock. */}
       <Rang key="luck"
         titre={theftView.luckSec > 0 ? `LUCKY CHARM  ·  ${mmss(theftView.luckSec)} LEFT` : 'LUCKY CHARM'}
-        detail={`x2 odds on every mutation for ${Math.round(LUCK_MS / 60000)} min, adds to the time left`}
+        icone="ui-luck.png"
+        detail={`x2 mutations, ${Math.round(LUCK_MS / 60000)} min`}
         bouton="BUY" prix={theftView.luckPrice}
         possible={theftView.luckPrice > 0 && argent >= theftView.luckPrice}
         onClick={() => acheterLuck()} />
 
-      <Famille titre="PRESTIGE" note="start over, earn more for good" />
+      <Famille titre="PRESTIGE" />
       <Rang
         titre={`PRESTIGE ${theftView.prestige + 1}`}
-        detail={`x${prestige.multiplier} on everything you earn  ·  keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}, coins reset to ${formatIncome(palierPrestige * PRESTIGE_CASH_SHARE)}`}
+        icone="ui-prestige.png"
+        detail={`x${prestige.multiplier} forever  ·  keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
         bouton="OPEN" prix={palierPrestige}
         possible={palierPrestige > 0 && argent >= palierPrestige}
         onClick={() => { closeMenu(); openPrestige() }} />

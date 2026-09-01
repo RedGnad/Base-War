@@ -179,6 +179,113 @@ def enseigne():
     return Image.alpha_composite(im, Image.composite(gloss, Image.new('RGBA', (W, H), (0, 0, 0, 0)), corps))
 
 
+def ui_icone(nom, hexcol):
+    """One interface icon: flat fill, heavy dark outline, one highlight.
+
+    A second family, and it has to be. The white-on-transparent glyphs in build-hud-icon.js
+    are drawn for the CLIENT's own dark touch button; reused on our navy cards they came out
+    as a white smudge (owner, 1 Sep: "l'icone de box est vraiment mauvais"). These are drawn
+    for our plates: a saturated body, a near-black outline that survives a phone's downscale,
+    one light pool. Same register as the toy icons, so the whole interface looks like one set.
+    """
+    c = rgb(hexcol)
+    dark = mix(c, (0, 0, 0), 0.62)
+    light = mix(c, (255, 255, 255), 0.42)
+    im = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    W = 12                      # outline, in pixels of a 256 canvas
+    cx, cy = 128, 128
+
+    def poly(pts, col=None):
+        d.polygon(pts, fill=(col or c) + (255,), outline=dark + (255,))
+        d.line(pts + [pts[0]], fill=dark + (255,), width=W, joint='curve')
+
+    def ell(box, col=None):
+        d.ellipse(box, fill=(col or c) + (255,), outline=dark + (255,), width=W)
+
+    def trait(a, b, col=None, w=W):
+        d.line([a, b], fill=(col or dark) + (255,), width=w)
+
+    if nom == 'crate':
+        # A lid, a body, and the strap cross that stops a square being a square.
+        poly([(38, 96), (218, 96), (218, 218), (38, 218)])
+        poly([(28, 52), (228, 52), (228, 100), (28, 100)], light)
+        trait((128, 100), (128, 218))
+        trait((38, 158), (218, 158))
+    elif nom == 'floor':
+        # Three slabs, the new one lit on top.
+        poly([(30, 178), (128, 214), (226, 178), (128, 142)], mix(c, (0, 0, 0), 0.25))
+        poly([(30, 130), (128, 166), (226, 130), (128, 94)], c)
+        poly([(30, 82), (128, 118), (226, 82), (128, 46)], light)
+    elif nom == 'shield':
+        poly([(128, 30), (216, 68), (216, 140), (128, 226), (40, 140), (40, 68)])
+        poly([(128, 30), (216, 68), (216, 140), (128, 226)], mix(c, (0, 0, 0), 0.22))
+    elif nom == 'prestige':
+        pts = []
+        for k in range(10):
+            a = math.pi / 2 + k * math.pi / 5
+            r = 104 if k % 2 == 0 else 44
+            pts.append((cx + math.cos(a) * r, cy - math.sin(a) * r))
+        poly(pts)
+        ell((cx - 26, cy - 26, cx + 26, cy + 26), light)
+    elif nom == 'luck':
+        for dx, dy in ((0, -46), (46, 0), (0, 46), (-46, 0)):
+            ell((cx + dx - 48, cy + dy - 48, cx + dx + 48, cy + dy + 48))
+        ell((cx - 22, cy - 22, cx + 22, cy + 22), light)
+    elif nom == 'gear-0':          # TRAP: two jaws about to shut
+        # Drawn as one zigzag per jaw rather than six outlined triangles: at this size the
+        # outlines merged into a blob. Thin strokes, wide teeth, a clear gap between them.
+        d.ellipse((30, 62, 226, 194), outline=dark + (255,), width=W)
+        haut = [(44, 84)] + [pt for k in range(4) for pt in ((58 + k * 40, 128), (78 + k * 40, 84))]
+        d.polygon(haut + [(212, 62), (44, 62)], fill=c + (255,), outline=dark + (255,))
+        d.line(haut, fill=dark + (255,), width=W // 2, joint='curve')
+        bas = [(44, 172)] + [pt for k in range(4) for pt in ((58 + k * 40, 128), (78 + k * 40, 172))]
+        d.polygon(bas + [(212, 194), (44, 194)], fill=light + (255,), outline=dark + (255,))
+        d.line(bas, fill=dark + (255,), width=W // 2, joint='curve')
+    elif nom == 'gear-1':          # SPEED COIL: two chevrons
+        poly([(52, 44), (128, 128), (52, 212), (86, 212), (162, 128), (86, 44)])
+        poly([(126, 44), (202, 128), (126, 212), (160, 212), (236, 128), (160, 44)], light)
+    elif nom == 'gear-2':          # SLAP: an open hand
+        # Fingers as wide rounded bars over a palm, thumb out to the side. The first pass
+        # made them thin and dark and the whole thing read as a cake with candles.
+        for k in range(4):
+            x = 84 + k * 30
+            d.rounded_rectangle((x, 52 + abs(k - 1) * 12, x + 24, 150), radius=12,
+                                fill=light + (255,), outline=dark + (255,), width=W - 2)
+        d.rounded_rectangle((44, 116, 96, 168), radius=22, fill=light + (255,), outline=dark + (255,), width=W - 2)
+        d.rounded_rectangle((72, 122, 210, 216), radius=26, fill=c + (255,), outline=dark + (255,), width=W)
+    elif nom == 'gear-3':          # CLOAK: a ghost
+        poly([(52, 210), (52, 118), (128, 40), (204, 118), (204, 210),
+              (178, 184), (152, 210), (128, 184), (104, 210), (78, 184)])
+        ell((94, 106, 118, 136), light); ell((140, 106, 164, 136), light)
+    elif nom == 'gear-4':          # BOOGIE BOMB: a bomb with a fuse
+        ell((44, 82, 196, 234))
+        poly([(148, 70), (188, 70), (188, 96), (148, 96)], mix(c, (0, 0, 0), 0.3))
+        trait((188, 82), (222, 40), light, 16)
+    elif nom == 'gear-5':          # TASER: a bolt
+        poly([(140, 26), (72, 140), (118, 140), (96, 230), (188, 106), (138, 106)])
+    elif nom == 'gear-6':          # X-RAY GLASSES
+        ell((26, 92, 118, 176)); ell((138, 92, 230, 176))
+        d.rectangle((112, 118, 144, 142), fill=c + (255,), outline=dark + (255,), width=W)
+    else:                          # SUBSPACE MINE: a spiked ball
+        for k in range(8):
+            a = k * math.pi / 4
+            poly([(cx + math.cos(a) * 118, cy + math.sin(a) * 118),
+                  (cx + math.cos(a + 0.42) * 52, cy + math.sin(a + 0.42) * 52),
+                  (cx + math.cos(a - 0.42) * 52, cy + math.sin(a - 0.42) * 52)])
+        ell((cx - 56, cy - 56, cx + 56, cy + 56), light)
+    return im
+
+
+UI_ICONES = [
+    ('crate', '#e0a24a'), ('floor', '#7cc4ff'), ('shield', '#6fb1f2'),
+    ('prestige', '#f5a524'), ('luck', '#6cc72e'),
+    ('gear-0', '#e06a4a'), ('gear-1', '#4dd2ff'), ('gear-2', '#f2b45a'),
+    ('gear-3', '#b48cf0'), ('gear-4', '#ff7a9c'), ('gear-5', '#ffd24a'),
+    ('gear-6', '#7de8c8'), ('gear-7', '#9aa9c4'),
+]
+
+
 def fade(left):
     im = Image.new('RGBA', (120, 8), (0, 0, 0, 0))
     px = im.load()
@@ -196,6 +303,8 @@ if __name__ == '__main__':
         icone_glyphe(k, hexcol, glow).save(os.path.join(OUT, f'toy-{k}.png'), optimize=True)
     burst().save(os.path.join(OUT, 'burst.png'), optimize=True)
     enseigne().save(os.path.join(OUT, 'sign.png'), optimize=True)
+    for nom, col in UI_ICONES:
+        ui_icone(nom, col).save(os.path.join(OUT, f'ui-{nom}.png'), optimize=True)
     fade(True).save(os.path.join(OUT, 'fade-left.png'), optimize=True)
     fade(False).save(os.path.join(OUT, 'fade-right.png'), optimize=True)
     print('wrote', OUT)
