@@ -885,6 +885,20 @@ export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
 export { RESELL_SECONDS } from './economy'
 
 export const GRILLE = 2                    // snap step, in metres
+/**
+ * The gap between two bases, measured on the WIDER axis, not as a straight-line distance.
+ *
+ * A base is a square of `BASE_SIDE`, and two axis-aligned squares miss each other only when
+ * they are clear on ONE axis: `max(|dx|, |dz|) >= BASE_SIDE`. The check used to be euclidean,
+ * `sqrt(dx*dx + dz*dz) >= 18`, which is the right test for two DISCS of radius nine and the
+ * wrong one for two squares of side fourteen. Diagonally it let a neighbour in at dx = dz =
+ * 12.7: distance 18, so the rule was satisfied, and 1.3 m of both footprints occupied the same
+ * ground. That is the two buildings melting into each other the tester reported (1 Sep), and it
+ * could only ever happen on a diagonal, which is why it looked random.
+ *
+ * On the wider axis the same number now means what it reads as: fourteen metres of footprint
+ * and a four metre street, in every direction including the diagonals.
+ */
 export const MIN_BASE_GAP = BASE_SIDE + 4   // the footprint, plus a street between neighbours
 export const EDGE_MARGIN = BASE_SIDE / 2 + 2   // half a footprint clear of the scene edge
 /**
@@ -920,8 +934,9 @@ export function invalidReason(
     return 'on the belt lane'
   }
   for (const a of autres) {
-    const dx = a.x - x, dz = a.z - z
-    if (Math.sqrt(dx * dx + dz * dz) < MIN_BASE_GAP) return 'too close to another base'
+    const dx = Math.abs(a.x - x), dz = Math.abs(a.z - z)
+    // The square metric, not the round one: see MIN_BASE_GAP.
+    if (Math.max(dx, dz) < MIN_BASE_GAP) return 'too close to another base'
   }
   return null
 }

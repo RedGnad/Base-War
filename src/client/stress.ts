@@ -15,7 +15,7 @@ import { encoder } from '../shared/loot-table'
  *
  * Ship with 0. It is a measuring instrument, not a feature.
  */
-export const STRESS_BASES = 0
+export const STRESS_BASES = 60
 
 function alea(n: number): number { return Math.floor(Math.random() * n) }
 
