@@ -181,7 +181,7 @@ export function setupGear(): void {
       if (rayonsX && qui !== moi) {
         if (!vusParRayons.has(id)) {
           vusParRayons.add(id)
-          alerter('X-RAY GLASSES  ·  a cloak is out, and you can see who is under it', '#4dd2ff', 3500)
+          alerter('X-RAY  ·  SOMEONE NEARBY IS CLOAKED', '#4dd2ff', 3500)
         }
         continue
       }

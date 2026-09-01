@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, btn, lisible, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, btn, lisible, lignesDeTexte, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
@@ -1247,8 +1247,8 @@ const uiComponent = () => {
       <Centre top={band.event}>
         <UiEntity
           uiTransform={{
-            height: 64, padding: { left: 26, right: 26 },
-            justifyContent: 'center', alignItems: 'center'
+            width: Math.min(strip(760).width, largeurTexte(ligneDuBandeau()?.text ?? '', TYPE.label) + 60),
+            height: 64, justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={SKIN.panel}
         >
@@ -1264,8 +1264,8 @@ const uiComponent = () => {
       <Centre top={band.belt}>
         <UiEntity
           uiTransform={{
-            height: 68, padding: { left: 28, right: 28 },
-            justifyContent: 'center', alignItems: 'center'
+            width: Math.min(strip(860).width, largeurTexte(beltView.annonce, TYPE.label) + 64),
+            height: 68, justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={SKIN.panel}
         >
@@ -1293,9 +1293,9 @@ const uiComponent = () => {
     {hud() && boxView.opening && (
       <UiEntity
         uiTransform={{
-          width: strip(320).width, height: 76, positionType: 'absolute',
+          width: strip(400).width, height: 76, positionType: 'absolute',
           flexDirection: 'column', padding: { top: 6, bottom: 6 },
-          position: { bottom: notice.opening, left: '50%' }, margin: strip(320).margin,
+          position: { bottom: notice.opening, left: '50%' }, margin: strip(400).margin,
           justifyContent: 'center', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -1314,8 +1314,8 @@ const uiComponent = () => {
     {hud() && theftView.stealing && (
       <UiEntity
         uiTransform={{
-          width: strip(460).width, height: 76, positionType: 'absolute',
-          position: { bottom: notice.stealing, left: '50%' }, margin: strip(460).margin,
+          width: strip(620).width, height: 76, positionType: 'absolute',
+          position: { bottom: notice.stealing, left: '50%' }, margin: strip(620).margin,
           flexDirection: 'column', padding: 10
         }}
         uiBackground={SKIN.danger}
@@ -1352,7 +1352,9 @@ const uiComponent = () => {
         uiBackground={SKIN.danger}
       >
         <Label
-          value={`STOLEN ${carryView.name.toUpperCase()}  ·  -${Math.round((1 - CARRY_STOLEN_SHARE) * 100)}% SPEED  ·  GET IT HOME`}
+          // The item is already in the thief's hand and named over their head; the line
+          // carries what neither of those says, which is the cost and the way out.
+          value={`STOLEN  ·  -${Math.round((1 - CARRY_STOLEN_SHARE) * 100)}% SPEED  ·  GET IT HOME`}
           fontSize={TYPE.label} color={Color4.fromHexString('#ffdcdcff')} textWrap="nowrap"
           uiTransform={{ width: '100%', height: 40 }} textAlign="middle-center" />
       </UiEntity>
@@ -1382,7 +1384,8 @@ const uiComponent = () => {
           const now = Date.now()
           const entree = Math.min(1, (now - a.ne) / 160)
           const sortie = Math.min(1, Math.max(0, (a.jusqua - now) / 250))
-          const lignes = a.t.split('\n').length
+          // Wrapped lines, not newlines: this counted the latter and drew the former.
+          const lignes = lignesDeTexte(a.t, TYPE.body, strip(820).width * 0.94 - 18)
           const h = 58 + (lignes - 1) * Math.round(TYPE.body * 1.35)
           return (
             <UiEntity key={`toast${a.ne}`}

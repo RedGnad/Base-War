@@ -383,7 +383,7 @@ export function openCrate(crateTier: number): void {
     return
   }
   if (maBasePleine()) {
-    alerter('BASE FULL: SELL AN ITEM OR BUY A FLOOR', '#ff6b6b', 4000)
+    alerter('BASE FULL  ·  SELL OR BUY A FLOOR', '#ff6b6b', 4000)
     return
   }
 

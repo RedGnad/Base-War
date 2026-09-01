@@ -647,7 +647,7 @@ export function setupPlots(): void {
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
       ) {
         if (v.ownerId.toLowerCase() !== monAdresseClient()) {
-          alerter('THAT ELEVATOR IS NOT YOURS: TAKE THE RAMP', '#ffd166', 3500)
+          alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', 3500)
           return
         }
         goUpOneFloor(v)

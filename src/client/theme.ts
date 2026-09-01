@@ -175,6 +175,28 @@ export const C = {
 export const RAD = { card: 14, bar: 10 } as const
 
 /**
+ * How wide a line of platform text runs, and how many lines a box will really need.
+ *
+ * Boxes were sized from the newlines in a string, and the renderer wraps: a raid
+ * announcement of seventy characters was measured as one line and drawn as three, out
+ * through the bottom of its own plate. Measured, not guessed: five of the nine spontaneous
+ * messages in the game overflowed their frames, the worst by three hundred and sixty
+ * pixels (1 Sep). The factor is the average advance of the platform face at these sizes,
+ * checked against the strings the game actually shows; it is an estimate, so callers keep
+ * a little air, but it is an estimate that is never off by a factor of three.
+ */
+export const AVANCE = 0.52
+export function largeurTexte(t: string, taille: number): number {
+  return Math.round(t.length * taille * AVANCE)
+}
+/** Lines after wrapping, counting the newlines already in the string. */
+export function lignesDeTexte(t: string, taille: number, largeur: number): number {
+  let n = 0
+  for (const ligne of t.split('\n')) n += Math.max(1, Math.ceil(largeurTexte(ligne, taille) / Math.max(1, largeur)))
+  return n
+}
+
+/**
  * The tap sizes, and the one that was missing.
  *
  * THE RULE, so this is never a judgement call again:

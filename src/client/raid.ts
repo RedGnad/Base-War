@@ -117,7 +117,7 @@ export function setupRaid(): void {
     if (!etaitActif) {
       etaitActif = true
       vu = { x: r.x, z: r.z }
-      alerter('RAID BOSS ON THE PLAZA  ·  3 min  ·  most damage wins a LEGENDARY CRATE', '#ff6b6b', 7000)
+      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A LEGENDARY', '#ff6b6b', 7000)
       const a = AudioSource.getMutableOrNull(son)
       if (a !== null) { a.playing = false; a.playing = true }
     }
