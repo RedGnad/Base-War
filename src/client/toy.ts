@@ -59,7 +59,16 @@ export const TOY = {
   bomb: '#ff4d6d',
   mine: HUE.money,
   shield: Color4.create(0.30, 0.85, 1.0, 0.16),
-  markerOk: HUE.money,
+  /*
+    Vert quand on peut poser, rouge quand on ne peut pas. Rien d'autre a apprendre.
+
+    Le marqueur valide etait en OR, la couleur de la monnaie, qui dans ce jeu veut dire "de
+    l'argent" partout ailleurs: sur un rectangle au sol elle ne disait ni oui ni non, juste
+    "quelque chose". Le couple vert/rouge est la convention que personne n'a besoin qu'on lui
+    explique, et c'est deja celle des deux autres marqueurs, le socle vise et la caisse
+    (proprietaire, 1 Sep).
+  */
+  markerOk: '#4ddc6a',
   markerBad: HUE.danger
 } as const
 

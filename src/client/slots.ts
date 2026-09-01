@@ -8,6 +8,7 @@ import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/sche
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { monAdresseClient, theftView } from './theft'
+import { welcomeView } from './welcome'
 import { envoyerOuAttendre } from './intent'
 
 
@@ -63,7 +64,9 @@ export function setupSlots(): void {
     n'a pas de base, et redevient une bascule ensuite, pour la deplacer.
   */
   engine.addSystem(() => {
-    if (!theftView.basePosee && !slotView.active) slotView.active = true
+    // Pas avant que le joueur soit dans le jeu: l'ecran d'accueil est la premiere chose qu'il
+    // voit, et un rectangle vert pose derriere n'a rien a lui dire tant qu'il n'a pas commence.
+    if (!welcomeView.open && !theftView.basePosee && !slotView.active) slotView.active = true
     if (!slotView.active) return
     if (!Transform.has(engine.PlayerEntity)) return
     const p = Transform.get(engine.PlayerEntity).position
