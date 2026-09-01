@@ -228,65 +228,6 @@ export function totalCharges(liste: number[] | undefined): number {
   return liste === undefined ? 0 : liste.reduce((a, b) => a + b, 0)
 }
 
-/**
- * The spot a base belongs on: its own if it is still free, otherwise the first free one.
- *
- * Coordinates stored with a base are a memory of where it stood, not a right to stand there.
- * Under free placement they were handed straight back at load, which is how bases that were
- * legal under an older, narrower footprint ended up inside each other. With a fixed set of
- * spots the question has one answer and it is asked every time.
- */
-function surUnSpot(x: number | undefined, z: number | undefined): { x: number; z: number } | null {
-  const pris = basePoints()
-  if (typeof x === 'number' && typeof z === 'number') {
-    const proche = spotLePlusProche(x, z, pris)
-    if (proche !== null && proche.libre && Math.abs(proche.x - x) < 0.5 && Math.abs(proche.z - z) < 0.5) {
-      return { x: proche.x, z: proche.z }
-    }
-  }
-  const libre = premierSpotLibre(pris)
-  if (libre !== null) return libre
-  return liberer()
-}
-
-/**
- * The field is full: give up the spot of whoever has been away longest.
- *
- * A fixed number of spots means somebody eventually arrives to a full street, and refusing
- * them a base refuses them the game: they can walk and they can rob, but the entire earning
- * loop is a base. The reference never faces this because it puts eight people in a private
- * copy of the map and frees the spot when they leave; a World is one shared place that keeps
- * standing after everybody logs off, which is what lets an absent player be robbed, and is
- * exactly why the street fills up.
- *
- * So the street shows the sixteen most recently active players, and nothing else changes: the
- * evicted base's contents, floors, prestige and charges are already saved under its owner's
- * address, so it stands again, on whatever spot is free, the moment they come back. Nobody
- * present is ever evicted, and if all sixteen are here at once the answer is an honest no.
- */
-function liberer(): { x: number; z: number } | null {
-  const ici = presents()
-  let victime: Base | null = null
-  for (const b of bases.values()) {
-    if (ici.has(b.address)) continue
-    if (victime === null || b.lastSeen < victime.lastSeen) victime = b
-  }
-  if (victime === null) return null
-  const place = { x: victime.x, z: victime.z }
-  const parti = Math.round((Date.now() - victime.lastSeen) / 60000)
-  // Written out before it goes, not left to the periodic save: that save looks the base up in
-  // the live map, finds nothing, and skips it, so anything not yet flushed would leave with it.
-  const adresse = victime.address
-  const blob = blobDeBase(victime)
-  dirtyBases.delete(adresse)
-  void Storage.set(BASE_KEY(adresse), blob).then((ok) => {
-    if (!ok) log(`ERROR: sauvegarde ratee en liberant la base de ${adresse.slice(0, 8)}`)
-  })
-  log(`street full: base de ${victime.name} rendue (absente depuis ${parti} min), son contenu reste enregistre`)
-  removeBase(adresse)
-  return place
-}
-
 function createBase(
   address: string, name: string, items: number[], lastSeen: number, x: number, z: number,
   vitrine: Vitrine = VITRINE_VIDE
@@ -358,20 +299,22 @@ async function loadBases(): Promise<void> {
       so when two old neighbours overlap it is the one nobody has visited in longest that gives
       ground. A base that still satisfies the rule does not move by a centimetre.
     */
-    let deplacees = 0
+    /*
+      Une base posee ne bouge plus jamais toute seule.
+
+      Il y avait ici une migration qui ramenait chaque base sur l'emplacement fixe le plus
+      proche. Elle etait juste sur le papier et desastreuse en pratique: elle a deplace en une
+      fois toutes les bases d'un monde en production, ecrase les anciennes coordonnees dans le
+      stockage, et laisse des joueurs devant un batiment qui n'etait plus la ou ils l'avaient
+      laisse (1 Sep). Le contenu etait intact, ce qui ne console personne.
+
+      La regle qui remplace: le serveur restaure ce qui est enregistre, exactement. Les
+      emplacements fixes ne servent qu'a poser les bases NEUVES, la ou personne n'a rien a
+      perdre. Une position ecrite par un joueur est un fait, pas une suggestion.
+    */
     for (const l of loaded) {
-      const place = surUnSpot(l.x, l.z)
-      if (place === null) { log(`plus d emplacement pour la base de ${l.name}, ignoree`); continue }
-      if (place.x !== l.x || place.z !== l.z) {
-        deplacees += 1
-        log(`base de ${l.name} deplacee de ${l.x},${l.z} vers l emplacement ${place.x},${place.z}`)
-      }
-      createBase(l.address, l.name, l.items, l.lastSeen, place.x, place.z, l.vitrine ?? VITRINE_VIDE)
-      // La nouvelle position doit etre ecrite, sinon le blob garde l'ancienne et le monde
-      // suivant redeplacera la base une seconde fois, ailleurs.
-      if (place.x !== l.x || place.z !== l.z) dirtyBases.add(l.address)
+      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
     }
-    if (deplacees > 0) log(`${deplacees} bases ramenees sur un emplacement au chargement`)
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
 
     /*
@@ -458,20 +401,12 @@ export async function accueillir(address: string): Promise<void> {
 
   const name = nameOf(address)
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    // Re-asked, not trusted: the spot was legal when it was stored, which says nothing about
-    // whether somebody has built there since, or whether the footprint has grown meanwhile.
-    const place = surUnSpot(profile.x, profile.z)
-    if (place === null) {
-      log(`plus de place pour la base de ${name}`)
-    } else {
-      const b = createBase(address, name, items, Date.now(), place.x, place.z)
-      if (b !== null) {
-        dirtyBases.add(address)
-        profile.x = place.x
-        profile.z = place.z
-        dirtyProfiles.add(address)
-        log(`base de ${name} reposee en ${place.x},${place.z}`)
-      }
+    // Sa position d'avant si elle est enregistree, un emplacement libre seulement s'il n'y en
+    // a pas: on ne redeplace jamais quelqu'un qui avait deja choisi.
+    const b = createBase(address, name, items, Date.now(), profile.x, profile.z)
+    if (b !== null) {
+      dirtyBases.add(address)
+      log(`base de ${name} reposee en ${profile.x},${profile.z}`)
     }
   }
   const existing = bases.get(address)
