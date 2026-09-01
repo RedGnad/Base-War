@@ -49,15 +49,16 @@ function goUpOneFloor(v: View): void {
   // elevator across the rail, which a click clears since the pillar is storey-tall.
   const pied = tourner(t.position.z, ASC_X - 3.5, ASC_Z + 1.6)
   const el = tourner(t.position.z, ASC_X, ASC_Z)
-  void movePlayerTo({
-    newRelativePosition: Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
-    cameraTarget: Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
-  })
+  allerA(
+    'ascenseur',
+    Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
+    Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
+  )
 }
 import { steal, monAdresseClient, alerter } from './theft'
 import { pickUp } from './carry'
 import { HUE } from './theme'
-import { movePlayerTo } from '~system/RestrictedActions'
+import { allerA } from './deplacer'
 import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
@@ -323,8 +324,9 @@ function expulser(base: Vector3, floors: number): void {
   if (!dedans) return
   const o = tourner(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
-  void movePlayerTo({ newRelativePosition: porte, cameraTarget: Vector3.create(base.x, 2, base.z) })
-  alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
+  if (allerA('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
+    alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
+  }
 }
 
 /** One pedestal: a small box under the floor until something stands on it, with the steal handle. */

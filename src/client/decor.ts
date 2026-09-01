@@ -57,8 +57,16 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
   return e
 }
 
+/**
+ * La bande ou rien ne se pose: le point d'apparition et ses abords.
+ *
+ * Elle suivait l'ancien point d'apparition (z 100 a 105) et n'a pas bouge quand celui-ci est
+ * sorti du couloir du tapis (z 108 a 113, 1 Sep). La toute premiere image du jeu se jouait
+ * donc a nouveau dans les buissons. Elle couvre maintenant la fourchette declaree dans
+ * `scene.json`, avec trois metres de part et d'autre.
+ */
 function surSpawn(x: number, z: number): boolean {
-  return x > 88 && x < 104 && z > 92 && z < 108
+  return x > 88 && x < 104 && z > 92 && z < 116
 }
 
 

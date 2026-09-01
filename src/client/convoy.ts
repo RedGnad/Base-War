@@ -1,7 +1,7 @@
 import { caisse, demolir } from './toy'
 import {
   engine, Transform, MeshCollider, TextShape, Billboard, BillboardMode, Entity,
-  PointerEvents, PointerEventType, InputAction, inputSystem
+  PointerEvents, PointerEventType, InputAction, inputSystem, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
@@ -35,7 +35,19 @@ export function setupConvoy(): void {
       if (v === undefined) {
         const body = engine.addEntity()
         Transform.create(body, { position: Vector3.create(0, -5, 0), scale: Vector3.create(b.size, b.size, b.size) })
-        MeshCollider.setBox(body)
+        /*
+          Le convoi se clique, il ne se heurte pas.
+
+          Sa position est REECRITE a chaque image depuis `progres`, du tapis jusqu'a la base,
+          le long du couloir que tout le monde emprunte. Un solide qui se teleporte ainsi sur
+          un joueur n'est pas un obstacle: le moteur doit resoudre l'interpenetration, et il
+          ejecte le corps, image apres image, aussi loin qu'il faut. Un acheteur debout au
+          tapis au moment ou sa caisse part se fait pousser hors du terrain (proprietaire,
+          2 Sep, "ma premiere caisse m'a teleporte hors de la zone"). Le tapis avait deja la
+          lecon pour ses articles mobiles (CL_POINTER seul), le convoi ne l'avait pas.
+          Surencherir est un clic, donc le pointeur suffit et la physique n'apportait rien.
+        */
+        MeshCollider.setBox(body, ColliderLayer.CL_POINTER)
         caisse(body, c.crateTier)
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
