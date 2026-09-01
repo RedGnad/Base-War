@@ -1138,24 +1138,24 @@ export function basePoints(sauf?: string): Array<{ x: number; z: number }> {
   return out
 }
 
-/**
- * Move a base onto an empty spot. Not "build anywhere": there is nowhere else to build.
- *
- * The reference has no build mode at all, and the one thing it announced and never shipped
- * was exactly this: "you will soon be able to move your base to empty base spaces on the map"
- * (its wiki, page Base, read live 1 Sep). So the player keeps a say in WHICH spot is theirs,
- * and none at all in where a spot is. The request carries a point on the ground; the spot
- * nearest it is what gets claimed, and only if nobody stands there.
- */
 export function placeBase(address: string, xb: number, zb: number): { ok: boolean; reason?: string } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
 
-  const cible = spotLePlusProche(xb, zb, basePoints(address))
-  if (cible === null) return { ok: false, reason: 'no base spot here' }
-  if (!cible.libre) return { ok: false, reason: 'that spot is taken' }
-  const x = cible.x
-  const z = cible.z
+  /*
+    Le joueur choisit ou il pose sa base, et peut la deplacer quand il veut.
+
+    On avait bascule sur seize emplacements fixes: le testeur a couru dans toute la carte sans
+    jamais voir de marqueur au sol, parce qu'il n'apparaissait qu'a sept metres d'un des seize
+    points, et il a fini par poser sa base a un endroit qu'il n'avait pas choisi (1 Sep). Une
+    contrainte qu'on ne voit pas est une contrainte qui punit. La regle qui reste est celle qui
+    se lit a l'ecran: n'importe ou, sauf sur le tapis, sauf au bord, et sauf dans les murs du
+    voisin.
+  */
+  const x = snapToGrid(xb)
+  const z = snapToGrid(zb)
+  const mauvais = invalidReason(x, z, SCENE_SIDE, basePoints(address))
+  if (mauvais !== null) return { ok: false, reason: mauvais }
 
   const previous = bases.get(address)
   if (previous) removeBase(address)

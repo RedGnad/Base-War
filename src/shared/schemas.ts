@@ -806,7 +806,7 @@ export const RECOVER_RANGE = 6
  * list is built; the two numbers are the same two rows of eight, and changing one means
  * changing the other.
  */
-export const MAX_BASES_AFFICHEES = 16
+export const MAX_BASES_AFFICHEES = 60
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.
