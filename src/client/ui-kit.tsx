@@ -167,8 +167,13 @@ export const Pouce = (props: {
       {props.badge === true && (
         <UiEntity
           uiTransform={{
+            /*
+              Sur un disque, le coin de la boite englobante est du vide: la pastille se pose a
+              quarante-cinq degres SUR la circonference, ou le bord passe reellement.
+            */
             width: 30, height: 30, positionType: 'absolute',
-            position: { top: -6, right: -6 }, borderRadius: 15,
+            position: { top: Math.round(d / 2 - (d / 2) * 0.7071 - 15), right: Math.round(d / 2 - (d / 2) * 0.7071 - 15) },
+            borderRadius: 15,
             justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={{ color: Color4.fromHexString('#0b0e17ff') }}
@@ -268,8 +273,14 @@ export const Btn = (props: {
       {props.badge === true && (
         <UiEntity
           uiTransform={{
+            /*
+              Le centre de la pastille est SUR le coin de la plaque: moitie dedans, moitie
+              dehors. C'est la position standard d'une notification, et c'est elle qui dit "il
+              y a quelque chose a faire ICI". Posee entierement a l'exterieur elle flotte et
+              se lit comme un objet separe (proprietaire, 1 Sep).
+            */
             width: 28, height: 28, positionType: 'absolute',
-            position: { top: -10, right: -10 }, borderRadius: 14,
+            position: { top: -14, right: -14 }, borderRadius: 14,
             justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={{ color: Color4.fromHexString('#0b0e17ff') }}

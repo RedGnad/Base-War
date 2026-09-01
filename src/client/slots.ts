@@ -7,7 +7,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
-import { monAdresseClient } from './theft'
+import { monAdresseClient, theftView } from './theft'
 import { envoyerOuAttendre } from './intent'
 
 
@@ -53,7 +53,17 @@ export function setupSlots(): void {
     autres = d.xs.map((x, i) => ({ x, z: d.zs[i] ?? 0 }))
   })
 
+  /*
+    Un joueur qui n'a pas encore de base voit tout de suite ou elle irait.
+
+    Le marqueur etait une bascule: il fallait deviner qu'une premiere pression le faisait
+    apparaitre, puis une seconde le posait. Or a l'arrivee le bouton dit deja POSER TA BASE et
+    l'etape 1 du tutoriel aussi: le contexte est sans ambiguite, le marqueur n'a aucune raison
+    d'attendre qu'on le demande (proprietaire, 1 Sep). Il s'allume donc de lui-meme tant qu'on
+    n'a pas de base, et redevient une bascule ensuite, pour la deplacer.
+  */
   engine.addSystem(() => {
+    if (!theftView.basePosee && !slotView.active) slotView.active = true
     if (!slotView.active) return
     if (!Transform.has(engine.PlayerEntity)) return
     const p = Transform.get(engine.PlayerEntity).position
