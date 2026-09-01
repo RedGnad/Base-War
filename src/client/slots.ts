@@ -13,14 +13,18 @@ import { envoyerOuAttendre } from './intent'
 
 
 
-export const slotView = { active: false, valid: false, reason: '' }
+export const slotView = { active: false, valid: false, reason: '', auto: false }
 
 let fantome: Entity
 let label: Entity
 let autres: Array<{ x: number; z: number }> = []
+/** Vrai quand le marqueur s'est allume tout seul, faux quand le joueur l'a demande. */
+let auto = false
 
 export function basculerPose(): void {
   slotView.active = !slotView.active
+  auto = false
+  slotView.auto = false
   if (!slotView.active) {
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) t.scale = Vector3.create(0, 0, 0)
@@ -64,9 +68,23 @@ export function setupSlots(): void {
     n'a pas de base, et redevient une bascule ensuite, pour la deplacer.
   */
   engine.addSystem(() => {
-    // Pas avant que le joueur soit dans le jeu: l'ecran d'accueil est la premiere chose qu'il
-    // voit, et un rectangle vert pose derriere n'a rien a lui dire tant qu'il n'a pas commence.
-    if (!welcomeView.open && !theftView.basePosee && !slotView.active) slotView.active = true
+    /*
+      Le marqueur qui s'allume tout seul ne dit que OUI, jamais NON.
+
+      Un joueur qui arrive apparait sur le couloir du tapis, qui est justement une bande ou l'on
+      ne peut pas construire: la premiere image du jeu etait donc un grand rectangle ROUGE avec
+      son motif ecrit deux fois (proprietaire, 2 Sep). Un refus qu'on n'a pas demande n'apprend
+      rien, il encombre. Quand il s'allume de lui-meme il ne se montre donc que sur un
+      emplacement valide, et c'est son APPARITION qui dit "ici, oui".
+
+      La bascule manuelle, elle, garde le rouge et sa raison: la, le joueur cherche
+      deliberement une place et a besoin de savoir pourquoi celle-ci est refusee.
+    */
+    if (!welcomeView.open && !theftView.basePosee && !slotView.active) {
+      slotView.active = true
+      auto = true
+      slotView.auto = true
+    }
     if (!slotView.active) return
     if (!Transform.has(engine.PlayerEntity)) return
     const p = Transform.get(engine.PlayerEntity).position
@@ -81,10 +99,11 @@ export function setupSlots(): void {
     slotView.valid = reason === null
     slotView.reason = reason ?? ''
 
+    const muet = auto && !slotView.valid
     const t = Transform.getMutableOrNull(fantome)
     if (t !== null) {
       t.position = Vector3.create(x, 0.08, z)
-      t.scale = Vector3.create(BASE_SIDE, 0.16, BASE_SIDE)
+      t.scale = muet ? Vector3.Zero() : Vector3.create(BASE_SIDE, 0.16, BASE_SIDE)
     }
     const c = Color4.fromHexString((slotView.valid ? TOY.markerOk : TOY.markerBad) + 'ff')
     Material.setPbrMaterial(fantome, plasticDe(c, 0.7))
@@ -92,7 +111,7 @@ export function setupSlots(): void {
     const te = Transform.getMutableOrNull(label)
     if (te !== null) {
       te.position = Vector3.create(x, 2.4, z)
-      te.scale = Vector3.create(0.7, 0.7, 0.7)
+      te.scale = muet ? Vector3.Zero() : Vector3.create(0.7, 0.7, 0.7)
     }
     const ts = TextShape.getMutableOrNull(label)
     if (ts !== null) {

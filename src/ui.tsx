@@ -557,7 +557,14 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     a word is worth its room.
   */
   if (slotView.active) {
-    return slotView.valid ? { id: 'poser-base', label: 'PLACE HERE', icon: 'icon-build', action: placeHere } : null
+    if (slotView.valid) return { id: 'poser-base', label: 'PLACE HERE', icon: 'icon-build', action: placeHere }
+    /*
+      Marqueur demande a la main et endroit refuse: le bouton reste vide, le rectangle rouge et
+      son motif disent deja tout. Marqueur allume tout seul et endroit refuse: on ne bloque
+      rien, la suite de la liste decide, sinon un joueur qui apparait sur le couloir du tapis
+      se retrouverait sans aucun bouton pour sa toute premiere seconde de jeu (2 Sep).
+    */
+    if (!slotView.auto) return null
   }
   // A crate on the floor in front of you is smashed with the same button as everything else,
   // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.

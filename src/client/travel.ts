@@ -27,6 +27,37 @@ export const travelView = {
 
 export function setupTravel(): void {
   engine.addSystem(() => { travelView.peutRentrer = maBase() !== null })
+  apparaitreChezSoi()
+}
+
+/**
+ * On apparait chez soi, une fois, a la connexion.
+ *
+ * C'est ce que fait la reference: chaque parcelle contient sa propre part `Spawn`, le serveur
+ * y teleporte son proprietaire (`Plot:TeleportOwnerToSpawn`, code decompile lu le 1 Sep), et
+ * son wiki le dit en une ligne, "You spawn at your base". La raison tient au jeu: la base est
+ * ce qui produit, ce qui se fait voler, et le seul endroit ou l'on ouvre une caisse. Arriver
+ * ailleurs commence chaque session par une marche.
+ *
+ * Un joueur qui n'a pas encore de base garde le point d'apparition de la scene: il n'a pas de
+ * chez-soi ou l'envoyer, et c'est la que le marqueur de pose l'attend.
+ *
+ * Une seule fois, et seulement dans les vingt premieres secondes: la base arrive du serveur
+ * quelques instants apres l'entree, alors on l'attend, mais on ne teleporte jamais quelqu'un
+ * qui a commence a jouer.
+ */
+function apparaitreChezSoi(): void {
+  let attente = 0
+  let fait = false
+  engine.addSystem((dt: number) => {
+    if (fait) return
+    attente += dt
+    if (attente > 20) { fait = true; return }
+    const chez = maBase()
+    if (chez === null) return
+    fait = true
+    void movePlayerTo({ newRelativePosition: chez, cameraTarget: Vector3.create(CENTER.x, 1.6, CENTER.z) })
+  })
 }
 
 export function rentrer(): void {
