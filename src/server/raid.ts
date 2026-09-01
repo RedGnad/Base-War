@@ -4,9 +4,9 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
-  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_LEASH, RAID_SPEED, RAID_TURN,
+  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN,
   SCENE_SIDE, forceDuTir
-} from '../shared/schemas'
+, RAID_DEAGGRO_RANGE, RAID_BORD} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
 import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf } from './plots'
@@ -44,6 +44,7 @@ function prochainCreneau(apres: number): number {
   }
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
+  let cibleAddr: string | null = null
 let dernierBalai = 0
 let spawnX = 0, spawnZ = 0
 let faceX = 0, faceZ = 1
@@ -209,16 +210,29 @@ export function startRaid(): void {
     const ds = Math.min(1, (now - dernierTick) / 1000)
     dernierTick = now
 
-    // Aggro: the nearest player within sight is the target; none in sight, drift back to spawn.
-    let cible: { x: number; z: number } | null = null
-    let best = RAID_AGGRO_RANGE
-    for (const addr of presents()) {
-      const p = positionOf(addr)
-      if (p === null) continue
-      const d = Math.hypot(p.x - m.x, p.z - m.z)
-      if (d < best) { best = d; cible = { x: p.x, z: p.z } }
+    /*
+      Aggro that STICKS to a player, and lets go only when that player has escaped.
+
+      It kept re-choosing the nearest player every tick and was leashed to its spawn, so it
+      abandoned a chase because of where it stood rather than where its prey was. Now it
+      holds the one it picked until that player leaves, disconnects, or opens the drop
+      distance; only then does it look for somebody else within its notice radius. With
+      nobody in reach it walks home, which is the only use the spawn point still has.
+    */
+    let vise = cibleAddr === null ? null : positionOf(cibleAddr)
+    if (vise !== null && Math.hypot(vise.x - m.x, vise.z - m.z) > RAID_DEAGGRO_RANGE) vise = null
+    if (vise === null) {
+      cibleAddr = null
+      let best = RAID_AGGRO_RANGE
+      for (const addr of presents()) {
+        const p = positionOf(addr)
+        if (p === null) continue
+        const d = Math.hypot(p.x - m.x, p.z - m.z)
+        if (d < best) { best = d; cibleAddr = addr; vise = p }
+      }
+      if (cibleAddr !== null && vise !== null) log(`the raid boss locks onto ${displayName(cibleAddr)}`)
     }
-    const vers = cible ?? { x: spawnX, z: spawnZ }
+    const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: spawnX, z: spawnZ }
     let vx = vers.x - m.x, vz = vers.z - m.z
     const vl = Math.hypot(vx, vz)
     if (vl > 0.05) {
@@ -232,12 +246,10 @@ export function startRaid(): void {
       cur += Math.max(-RAID_TURN * ds, Math.min(RAID_TURN * ds, diff))
       faceX = Math.sin(cur); faceZ = Math.cos(cur)
       m.faceX = faceX; m.faceZ = faceZ
-      // Step toward the target, never past the leash from spawn: a boss, not an endless chase.
+      // It walks to the ends of the map after its target; only the map stops it.
       const pas = Math.min(RAID_SPEED * ds, vl)
-      let nx = m.x + vx * pas, nz = m.z + vz * pas
-      const dl = Math.hypot(nx - spawnX, nz - spawnZ)
-      if (dl > RAID_LEASH) { nx = spawnX + (nx - spawnX) / dl * RAID_LEASH; nz = spawnZ + (nz - spawnZ) / dl * RAID_LEASH }
-      m.x = nx; m.z = nz
+      m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, m.x + vx * pas))
+      m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, m.z + vz * pas))
     }
 
     if (now - dernierBalai < RAID_SWIPE_MS) return

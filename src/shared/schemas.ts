@@ -1062,8 +1062,26 @@ export const RAID_HIT_RANGE = 16
   to where it appeared. It faces what it chases, and faces where it walks otherwise.
 */
 export const RAID_SPAWN_MARGIN = 30
+/**
+ * Aggro: it notices you at fourteen metres, and it gives up only when YOU are far from IT.
+ *
+ * It used to be leashed to its spawn: thirteen metres from where it appeared, whatever the
+ * player did. So a boss lost interest for a reason the player could not read, since the
+ * reason was a point on the ground nobody can see (owner, 1 Sep). Aggro in this genre is
+ * measured between the hunter and the hunted, and the hunt ends when the prey escapes, not
+ * when the hunter walks too far from home.
+ *
+ * The two radii differ on purpose: acquiring at fourteen and dropping at thirty-four gives
+ * the hysteresis that stops a target flickering on the edge, and the gap is where the chase
+ * lives. Sized against the real speeds, not guessed: a free runner does fifteen metres a
+ * second against the boss's three, so thirty-four metres costs them three seconds; a player
+ * hauling stolen goods does six and three quarters, so it costs THEM nine seconds of
+ * committed running. That second number is the interesting one, and it is the whole point.
+ */
 export const RAID_AGGRO_RANGE = 14
-export const RAID_LEASH = 13
+export const RAID_DEAGGRO_RANGE = 34
+/** How close to the scene edge the boss may walk. It has no leash any more; the map is the limit. */
+export const RAID_BORD = 6
 export const RAID_SPEED = 3.0
 export const RAID_TURN = 6
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
