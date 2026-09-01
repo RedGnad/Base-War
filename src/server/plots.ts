@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, placeLibre, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -273,10 +273,25 @@ async function loadBases(): Promise<void> {
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, MAX_BASES_AFFICHEES)
-    // The shopfront travels with the base, so a building whose owner is away still stands.
+    /*
+      The shopfront travels with the base, so a building whose owner is away still stands.
+
+      Each one is re-checked against the bases already standing, and moved to the nearest legal
+      square when its stored spot is no longer one. The list is sorted most-recently-seen first,
+      so when two old neighbours overlap it is the one nobody has visited in longest that gives
+      ground. A base that still satisfies the rule does not move by a centimetre.
+    */
+    let deplacees = 0
     for (const l of loaded) {
-      createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
+      const place = placeLibre(l.x, l.z, SCENE_SIDE, basePoints())
+      if (place === null) { log(`plus de place pour la base de ${l.name}, ignoree`); continue }
+      if (place.x !== l.x || place.z !== l.z) {
+        deplacees += 1
+        log(`base de ${l.name} deplacee de ${l.x},${l.z} vers ${place.x},${place.z} (chevauchement)`)
+      }
+      createBase(l.address, l.name, l.items, l.lastSeen, place.x, place.z, l.vitrine ?? VITRINE_VIDE)
     }
+    if (deplacees > 0) log(`${deplacees} bases degagees d un chevauchement au chargement`)
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
 
     /*
@@ -358,8 +373,21 @@ export async function accueillir(address: string): Promise<void> {
 
   const name = nameOf(address)
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    const b = createBase(address, name, items, Date.now(), profile.x, profile.z)
-    if (b !== null) { dirtyBases.add(address); log(`base de ${name} reposee en ${profile.x},${profile.z}`) }
+    // Re-asked, not trusted: the spot was legal when it was stored, which says nothing about
+    // whether somebody has built there since, or whether the footprint has grown meanwhile.
+    const place = placeLibre(profile.x, profile.z, SCENE_SIDE, basePoints(address))
+    if (place === null) {
+      log(`plus de place pour la base de ${name}`)
+    } else {
+      const b = createBase(address, name, items, Date.now(), place.x, place.z)
+      if (b !== null) {
+        dirtyBases.add(address)
+        profile.x = place.x
+        profile.z = place.z
+        dirtyProfiles.add(address)
+        log(`base de ${name} reposee en ${place.x},${place.z}`)
+      }
+    }
   }
   const existing = bases.get(address)
   if (existing) {

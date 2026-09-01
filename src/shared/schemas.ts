@@ -941,6 +941,43 @@ export function invalidReason(
   return null
 }
 
+/**
+ * The legal spot nearest a wanted one, or null when the field is genuinely full.
+ *
+ * A base's coordinates are stored with the base and handed straight back to `createBase` when
+ * the world reloads, which was fine for exactly as long as the rules never changed. They did:
+ * the footprint grew from eleven metres to fourteen, and `MIN_BASE_GAP` grew with it, so every
+ * pair of neighbours that was legal under the old eleven now stands inside the other's walls.
+ * Nothing re-checked them, because the restore path never called `invalidReason` at all: it
+ * validated on the way in, then trusted the number forever. That is the buildings melting into
+ * each other the tester keeps seeing, and no amount of fixing the placement rule reaches it,
+ * because the bases at fault were placed years of patches ago.
+ *
+ * So restoring re-asks the question. The search walks outward from the wanted spot on the
+ * placement grid, ring by ring, and takes the first square that satisfies today's rule, which
+ * keeps a base as close as possible to the ground its owner chose while guaranteeing it does
+ * not stand in anybody's living room. Rings are square, like the rule itself, and the first
+ * ring is the wanted spot, so a base that is still legal never moves at all.
+ */
+export function placeLibre(
+  xv: number, zv: number, cote: number, autres: Array<{ x: number; z: number }>
+): { x: number; z: number } | null {
+  const x0 = snapToGrid(xv)
+  const z0 = snapToGrid(zv)
+  if (invalidReason(x0, z0, cote, autres) === null) return { x: x0, z: z0 }
+  for (let r = GRILLE; r <= cote; r += GRILLE) {
+    const candidats: Array<{ x: number; z: number }> = []
+    for (let d = -r; d <= r; d += GRILLE) {
+      candidats.push({ x: x0 + d, z: z0 - r }, { x: x0 + d, z: z0 + r })
+      if (d > -r && d < r) candidats.push({ x: x0 - r, z: z0 + d }, { x: x0 + r, z: z0 + d })
+    }
+    // Nearest first inside the ring too, so the nudge is as small as the geometry allows.
+    candidats.sort((a, b) => (a.x - x0) ** 2 + (a.z - z0) ** 2 - ((b.x - x0) ** 2 + (b.z - z0) ** 2))
+    for (const c of candidats) if (invalidReason(c.x, c.z, cote, autres) === null) return c
+  }
+  return null
+}
+
 export const PLOT_MAX_ITEMS = SLOTS_PER_FLOOR * MAX_FLOORS
 
 /** The width of the hole the ramp climbs through, taken out of the +x side of every floor. */
