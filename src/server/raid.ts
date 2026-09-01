@@ -89,7 +89,7 @@ function meneur(): { address: string; name: string } | null {
  * The boss is one big target everyone piles onto, so any weapon aimed at it lands, up to the
  * raid range. Damage is still the shot's force at the real distance. Returns true on a hit.
  */
-export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }): boolean {
+export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }, mult = 1): boolean {
   if (boss === null) return false
   const r = Raid.getOrNull(boss)
   if (r === null || !r.active) return false
@@ -103,7 +103,9 @@ export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }
   const t = Math.max(0, (r.x - ax) * dx + (r.z - az) * dz)  // distance along the ray to the boss's foot
   const px = ax + t * dx, pz = az + t * dz
   if (Math.hypot(r.x - px, r.z - pz) > RAID_RADIUS) return false
-  const degat = Math.max(0.2, forceDuTir(bossDist))
+  // Le corps a corps frappe plus fort ici aussi, et c'est la ou il se paie: le balai du
+  // boss porte a quatre metres, donc frapper a deux metres cinquante, c'est rester dedans.
+  const degat = Math.max(0.2, forceDuTir(bossDist)) * mult
   const m = Raid.getMutableOrNull(boss)
   if (m === null) return false
   m.hp = Math.max(0, m.hp - degat)

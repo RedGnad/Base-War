@@ -131,7 +131,7 @@ const Rang = (props: {
 const COURT: Record<number, string> = {
   0: 'freezes a thief, 7 s',
   1: '+50% run speed',
-  2: 'melee, full force',
+  2: 'melee, x2.5 force',
   3: 'invisible, 20 s',
   4: 'everyone nearby drops loot',
   5: 'melee, freezes 3 s',

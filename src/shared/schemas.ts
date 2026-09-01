@@ -429,7 +429,7 @@ export function shieldFor(absenceMs: number): number {
 export const GEARS = [
   { id: 0, name: 'TRAP', prestige: 0, ratio: 0.0020, max: 5, kind: 'place', verb: 'freezes the first thief who steps on it, 7 s' },
   { id: 1, name: 'SPEED COIL', prestige: 0, ratio: 4.0, max: 1, kind: 'wear', verb: 'run 50% faster, always on, off while carrying' },
-  { id: 2, name: 'SLAP', prestige: 1, ratio: 0.0017, max: 1, kind: 'wear', verb: 'replaces the gun: short reach, full force every hit' },
+  { id: 2, name: 'SLAP', prestige: 1, ratio: 0.0017, max: 1, kind: 'wear', verb: 'replaces the gun: two and a half metres, two and a half times the force' },
   { id: 3, name: 'CLOAK', prestige: 4, ratio: 0.0030, max: 1, kind: 'toggle', verb: 'invisible for 20 s, breaks the moment you touch loot' },
   { id: 4, name: 'BOOGIE BOMB', prestige: 4, ratio: 0.0050, max: 3, kind: 'place', verb: 'everyone nearby drops what they carry, 3 s later' },
   { id: 5, name: 'TASER', prestige: 3, ratio: 0.0029, max: 1, kind: 'wear', verb: "replaces the gun: arm's reach, 3 s frozen, hands emptied" },
@@ -459,6 +459,22 @@ export const COIL_SHARE = 1.5
   metres, so getting there is the whole skill. Melee is the genre's FIRST weapon, the one every
   player spawns with; here it is the one a judge understands without being told what a gun does.
 */
+/**
+ * Melee hits HARDER. Without that, "full force" meant nothing at all.
+ *
+ * The flag it replaces set force to 1 for a slap, and the gun is already at force 1 inside
+ * eight metres: at the slap's own reach of two and a half, the two were identical in every
+ * respect, same cadence, same grip damage, same coins knocked loose, while the slap gave up
+ * twenty-five metres of reach AND replaced the gun. A player was paying for something
+ * strictly worse (owner, 1 Sep, asking what full force even meant for us).
+ *
+ * Two and a half is chosen against the numbers that matter, not picked round: carried loot
+ * has a grip of five, so a slap tears it loose in TWO hits where the gun needs five, and it
+ * knocks two and a half per cent of a purse loose instead of one. And the reach is the
+ * price: the raid boss swipes at four metres, so hitting it in melee means standing inside
+ * its arc. Reach for power, safety for damage, which is the trade melee is supposed to be.
+ */
+export const MELEE_FORCE = 2.5
 export const SLAP_RANGE = 2.5
 export const SLAP_COOLDOWN_MS = 250   // snappy melee: the slow 420 made a slap-user's fire feel dead (28 Aug)
 /*

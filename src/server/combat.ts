@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import {
   DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
-} from '../shared/schemas'
+, MELEE_FORCE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
 import { frapperPorteur } from './carry'
@@ -77,7 +77,7 @@ export function startCombat(): void {
     const from = positionOf(a)
     if (from === null) return
     // A raid boss in the line of fire takes the hit before any player does.
-    if (raidHit(a, from, d)) {
+    if (raidHit(a, from, d, pleineForce ? MELEE_FORCE : 1)) {
       void room.send('shotResult', { hitName: 'RAID BOSS', dropped: 0, reason: 'boss', loot: 0 }, { to: [a] })
       return
     }
@@ -109,7 +109,7 @@ export function startCombat(): void {
       an invisible wall.
     */
     // An arm at full reach lands with everything; a bullet fades with the square of the range.
-    const force = pleineForce ? 1 : forceDuTir(best.d)
+    const force = pleineForce ? MELEE_FORCE : forceDuTir(best.d)
     const butin = frapperPorteur(best.addr, force)
     // A shot lands on the prying too, which is the one window a gun used to do nothing about.
     const coupe = interrompreVol(best.addr, force)
