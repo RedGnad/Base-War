@@ -425,11 +425,18 @@ const PhoneControls = () => {
         flexDirection: 'column', alignItems: 'flex-end'
       }}
     >
-      <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', margin: { bottom: 14 } }}>
-        <SellChip right={TAP.gap * 2} />
-        <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE} right={TAP.gap}
+      {/* Sa propre ligne, au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
+      <UiEntity uiTransform={{ flexDirection: 'row', margin: { bottom: 10 } }}><SellChip /></UiEntity>
+      {/*
+        Un arc, pas une ligne. Le pouce pivote depuis le bas a droite: sa course naturelle
+        monte a mesure qu'elle s'eloigne, et trois boutons alignes obligent a tendre le doigt
+        pour le plus lointain. Chacun est donc remonte selon sa distance au pivot, ce qui est
+        la forme du pave que le client dessine lui-meme.
+      */}
+      <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'flex-end', margin: { bottom: 10 } }}>
+        <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE} right={TAP.gap} haut={-46}
           actions={[InputAction.IA_JUMP]} />
-        <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE} right={TAP.gap}
+        <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE} right={TAP.gap} haut={-18}
           primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
         <Pouce icone={questsToClaim() > 0 ? 'icon-menu-alert' : 'icon-menu'} taille={POUCE}
           badge={questsToClaim() > 0} onClick={basculerMenu} />

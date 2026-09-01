@@ -142,6 +142,8 @@ export const Pouce = (props: {
   primaire?: boolean
   badge?: boolean
   right?: number
+  /** Remontee dans l'arc du pouce: negatif pour monter. */
+  haut?: number
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -152,7 +154,8 @@ export const Pouce = (props: {
       uiTransform={{
         width: d, height: d, margin: { right: props.right ?? 0 },
         justifyContent: 'center', alignItems: 'center', positionType: 'relative',
-        position: { top: enfonce ? 3 : 0 }
+        // `haut` remonte le bouton dans l'arc; `enfonce` est le retour au doigt, par-dessus.
+        position: { top: (props.haut ?? 0) + (enfonce ? 3 : 0) }
       }}
       uiBackground={fond}
       uiInputBinding={props.actions !== undefined ? { actions: props.actions } : undefined}
