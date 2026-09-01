@@ -353,7 +353,14 @@ const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
   'icon-build', 'icon-collect', 'icon-crate', 'icon-drop', 'icon-fire', 'icon-give', 'icon-gun',
-  'icon-holster', 'icon-menu', 'icon-menu-alert', 'icon-place', 'icon-recover'
+  'icon-holster', 'icon-menu', 'icon-menu-alert', 'icon-place', 'icon-recover',
+  // The interface icon family and the reveal's ray fan. A texture named for the first time
+  // while a panel is drawing arrives a beat late, and the player sees an empty square where
+  // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
+  // here the moment it is created, which is the whole job of this list.
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck',
+  'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
+  'burst'
 ]
 /*
   Every interface texture referenced from the first frame: the icons, the five atlases and the
