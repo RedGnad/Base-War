@@ -152,16 +152,131 @@ def piece(im, k, cx, base, haut):
     im.alpha_composite(calque, (int(cx - haut), int(base - haut)))
 
 
-def titre(im):
-    """The name, lettered: every card above us in the catalogue has one."""
+OR_HAUT, OR_BAS = (0xff, 0xef, 0xa8), (0xf5, 0xa5, 0x24)
+
+
+def logotype(texte, taille, arc=8):
+    """Le nom, traite en logotype: lettres cintrees, degradé, contour navy epais, ombre.
+
+    Les douze cartes de tete du catalogue en portent un; aucune ne se contente de texte pose.
+    """
+    ft = ImageFont.truetype(POLICE, taille)
+    W2 = int(taille * len(texte) * 0.78) + 200
+    H2 = int(taille * 2.2)
+    calque = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(calque)
+    x = 100
+    milieu = len(texte) / 2 - 0.5
+    for i, ch in enumerate(texte):
+        dy = int(((i - milieu) ** 2) * arc / max(1, milieu ** 2) - arc)
+        d.text((x, H2 // 2 + dy), ch, font=ft, fill=(255, 255, 255, 255),
+               stroke_width=int(taille * 0.085), stroke_fill=NAVY + (255,), anchor='lm')
+        x += int(d.textlength(ch, font=ft) + taille * 0.02)
+    masque = calque.split()[3]
+    corps = calque.point(lambda v: 255 if v > 200 else 0).convert('L')
+    grad = Image.new('RGBA', (W2, H2))
+    gd = ImageDraw.Draw(grad)
+    for y in range(H2):
+        t = min(1, max(0, (y - H2 * 0.30) / (H2 * 0.42)))
+        gd.line([(0, y), (W2, y)], fill=mix(OR_HAUT, OR_BAS, t) + (255,))
+    lettres = Image.composite(grad, calque, corps)
+    lettres.putalpha(masque)
+    ombre = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
+    ombre.paste((0, 0, 0, 140), (0, 0), masque)
+    out = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
+    out.alpha_composite(ombre.filter(ImageFilter.GaussianBlur(11)), (0, int(taille * 0.12)))
+    out.alpha_composite(lettres)
+    return out.crop(out.getbbox())
+
+
+def ligne_promesse(texte, taille, couleur=(255, 255, 255)):
+    """Une des trois lignes de promesse. WonderMine, second de la plateforme, en a trois."""
+    ft = ImageFont.truetype(POLICE, taille)
+    tmp = ImageDraw.Draw(Image.new('RGBA', (8, 8)))
+    w = int(tmp.textlength(texte, font=ft)) + int(taille * 1.4)
+    im = Image.new('RGBA', (w, int(taille * 2)), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    ft = ImageFont.truetype(POLICE, 132)
-    fs = ImageFont.truetype(POLICE, 40)
-    x, y = 70, H - 214
-    d.text((x + 6, y + 8), 'BASE WAR', font=ft, fill=(0, 0, 0, 90))
-    d.text((x, y), 'BASE WAR', font=ft, fill=OR + (255,), stroke_width=11, stroke_fill=NAVY + (255,))
-    d.text((x + 5, y + 148), 'SMASH CRATES  ·  SHOW YOUR LOOT  ·  GUARD IT',
-           font=fs, fill=(255, 255, 255, 255), stroke_width=7, stroke_fill=NAVY + (255,))
+    d.text((taille * 0.7, taille), texte, font=ft, fill=couleur + (255,),
+           stroke_width=int(taille * 0.17), stroke_fill=NAVY + (255,), anchor='lm')
+    return im.crop(im.getbbox())
+
+
+def caisse_ouverte(im, cx, sol, larg):
+    """La caisse qui s'ouvre: le moment ou le jeu paie, en une seule forme lisible de loin.
+
+    Premiere version: seize rayons fins qui traversaient toute l'image et se lisaient comme
+    des rayures, un couvercle plat pose comme une planche, la caisse coupee par le bas. Ici
+    les rayons sont larges, courts et fondus en bord de halo, le couvercle a une epaisseur,
+    et tout tient dans le cadre.
+    """
+    d = ImageDraw.Draw(im)
+    haut = larg * 0.70
+    c = (0xe0, 0xa2, 0x4a)
+    cy = sol - haut * 1.25
+    # Halo et rayons, confines: un fondu radial les eteint avant qu'ils n'atteignent le texte.
+    lueur = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    dl = ImageDraw.Draw(lueur)
+    for k in range(12):
+        a = k * math.pi / 6 + 0.22
+        long = larg * (1.35 if k % 2 == 0 else 0.95)
+        demi = 0.15 if k % 2 == 0 else 0.10
+        dl.polygon([(cx + math.cos(a - demi) * larg * 0.26, cy + math.sin(a - demi) * larg * 0.26),
+                    (cx + math.cos(a + demi) * larg * 0.26, cy + math.sin(a + demi) * larg * 0.26),
+                    (cx + math.cos(a) * long, cy + math.sin(a) * long)], fill=(255, 226, 138, 255))
+    dl.ellipse((cx - larg * 0.42, cy - larg * 0.42, cx + larg * 0.42, cy + larg * 0.42),
+               fill=(255, 240, 186, 210))
+    lueur = lueur.filter(ImageFilter.GaussianBlur(5))
+    px = lueur.load()
+    rmax = larg * 1.62
+    for y in range(max(0, int(cy - rmax)), min(im.size[1], int(cy + rmax))):
+        for x in range(max(0, int(cx - rmax)), min(im.size[0], int(cx + rmax))):
+            r0, g0, b0, a0 = px[x, y]
+            if a0 == 0:
+                continue
+            t = math.hypot(x - cx, y - cy) / rmax
+            px[x, y] = (r0, g0, b0, int(a0 * max(0.0, 1 - t) ** 1.15))
+    im.alpha_composite(lueur)
+    # La piece qui sort, devant les rayons et derriere le couvercle.
+    ft = ImageFont.truetype(SYMBOLES, int(larg * 1.05))
+    pc = rgb(RARETES[5])
+    d.text((cx, sol - haut * 0.90), PIECES[5], font=ft, fill=pc,
+           stroke_width=int(larg * 0.04), stroke_fill=mix(pc, (0, 0, 0), 0.66), anchor='ms')
+    # Le corps.
+    contour = mix(c, (0, 0, 0), 0.58)
+    d.rectangle((cx - larg / 2, sol - haut, cx + larg / 2, sol), fill=mix(c, (0, 0, 0), 0.10),
+                outline=contour, width=int(larg * 0.032))
+    sangle = mix(c, (0, 0, 0), 0.46)
+    d.rectangle((cx - larg * 0.075, sol - haut, cx + larg * 0.075, sol), fill=sangle)
+    d.rectangle((cx - larg / 2, sol - haut * 0.60, cx + larg / 2, sol - haut * 0.44), fill=sangle)
+    # Le couvercle bascule, avec son epaisseur: sans elle il se lisait comme une planche.
+    dessus = [(cx - larg * 0.60, sol - haut * 1.00), (cx + larg * 0.26, sol - haut * 1.34),
+              (cx + larg * 0.40, sol - haut * 1.20), (cx - larg * 0.46, sol - haut * 0.86)]
+    flanc = [dessus[0], dessus[3], (dessus[3][0], dessus[3][1] + larg * 0.09),
+             (dessus[0][0], dessus[0][1] + larg * 0.09)]
+    d.polygon(flanc, fill=mix(c, (0, 0, 0), 0.30), outline=contour)
+    d.polygon(dessus, fill=mix(c, (255, 255, 255), 0.34), outline=contour)
+
+
+def titre(im):
+    """Le nom en logotype, puis la promesse en trois lignes: la structure de WonderMine.
+
+    Ses lignes sont grosses et posees sur un fond sombre qui les detache; a la taille ou une
+    carte est vraiment lue, c'est ce qui fait la difference entre une promesse et une legende.
+    """
+    lignes = ('SMASH CRATES', 'SHOW YOUR LOOT', 'GUARD IT')
+    rendues = [ligne_promesse(t, 74) for t in lignes]
+    bloc_w = max(l.width for l in rendues)
+    x0, y0 = 618, 292
+    pan = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(pan).rounded_rectangle(
+        (x0 - 34, y0 - 26, x0 + bloc_w + 34, y0 + 3 * 112 + 4), radius=30, fill=NAVY + (135,))
+    im.alpha_composite(pan)
+    logo = logotype('BASE WAR', 122)
+    im.alpha_composite(logo, (x0 - 16, 92))
+    y = y0
+    for l in rendues:
+        im.alpha_composite(l, (x0, y))
+        y += 112
 
 
 if __name__ == '__main__':
@@ -174,15 +289,19 @@ if __name__ == '__main__':
         im = src.crop((gauche, 0, gauche + W, H)).convert('RGBA')
     else:
         im = fond_compose().convert('RGBA')
-        socle = H - 96
-        for k, (x, ech) in enumerate([(742, 0.72), (838, 0.84), (952, 0.98), (1082, 1.14), (1218, 1.32)]):
-            piece(im, k + 1, x, socle + ech * 26, int(132 * ech))
+        # Le decor recule: floute et assombri, pour que deux choses seulement avancent,
+        # la caisse et le texte. Sur telephone la carte est lue plus petite encore que
+        # les trois cents pixels de la planche de reference; peu d'elements, tres gros.
+        im = im.filter(ImageFilter.GaussianBlur(3))
+        recul = Image.new('RGBA', (W, H), NAVY + (86,))
+        im.alpha_composite(recul)
+        caisse_ouverte(im, 306, H - 104, 322)
     # A dark wash rising from the bottom, so the lettering never sits on a busy pixel.
     voile = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     dv = ImageDraw.Draw(voile)
-    for y in range(int(H * 0.52), H):
-        t = (y - H * 0.52) / (H * 0.48)
-        dv.line([(0, y), (W, y)], fill=NAVY + (int(150 * t * t),))
+    for x in range(int(W * 0.40), W):
+        t = (x - W * 0.40) / (W * 0.60)
+        dv.line([(x, 0), (x, H)], fill=NAVY + (int(120 * t),))
     im.alpha_composite(voile)
     titre(im)
     os.makedirs(os.path.dirname(SORTIE), exist_ok=True)
