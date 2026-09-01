@@ -107,8 +107,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         uiTransform={{ width: COL.compteur, height: 76 }} textAlign="middle-center" />
       <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
       {pris ? (
-        <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
-          uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
+        <Btn label="CLAIMED" width={187} size={TYPE.caption} skin="disabled" />
       ) : fini ? (
         <Btn label="CLAIM" width={187} size={TYPE.caption} skin="success" onClick={() => claim(i)} />
       ) : (
@@ -162,8 +161,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
         <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
           {questsView.pris[3] === 1 ? (
-            <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
-              uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
+            <Btn label="CLAIMED" width={187} size={TYPE.caption} skin="disabled" />
           ) : (
             <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} size={TYPE.caption}
               skin={allDone ? 'success' : 'disabled'}

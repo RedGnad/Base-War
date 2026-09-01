@@ -62,6 +62,29 @@ export const Btn = (props: {
   const actif = props.onClick !== undefined || props.bind !== undefined
   const cle = `${props.label}|${props.width}`
   const enfonce = actif && Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  /*
+    A PLATE MEANS YOU CAN PRESS IT. Nothing else may wear one.
+
+    The grey plate was the loudest thing on the goals screen: LOCKED, the one control in the
+    panel that does nothing, sat in a bright pill while CLAIMED, right above it, was quiet
+    grey text (owner, 1 Sep, screenshot). A refusal that shouts is a hierarchy upside down,
+    and two different treatments for the same idea is the consistency lesson missed twice.
+    So the disabled skin is no longer a plate at all: same typeface, same slot, same size,
+    dimmed and inert. Every action slot in the game stays a Btn; only its state changes.
+  */
+  if (props.skin === 'disabled') {
+    return (
+      <UiEntity
+        uiTransform={{
+          width: props.width, height, opacity: 0.42,
+          margin: props.right !== undefined ? { right: props.right } : undefined
+        }}
+      >
+        <Glyphs value={props.label} size={size} align="center" box={props.width}
+          top={(height - size) / 2} role="name" />
+      </UiEntity>
+    )
+  }
   return (
     <UiEntity
       uiTransform={{

@@ -233,7 +233,16 @@ const MenuWindow = () => {
         margin: { left: strip(MENU_W).margin.left, top: -h / 2 },
         flexDirection: 'column', padding: MENU_PAD
       }}
-      uiBackground={{ color: Color4.create(0.04, 0.05, 0.09, 0.97) }}
+      /*
+        The window wears the same plate as everything inside it.
+
+        It was a flat near-black rectangle with square corners: the ONE surface in the game
+        that did not use the generated skins. Over the records board, which is also nearly
+        black, the two merged and the tab row looked like it was floating outside its own
+        panel (owner, 1 Sep). The navy plate brings the outline, the rounded corners and the
+        top gloss every card and button already has, so the window reads as a window.
+      */
+      uiBackground={SKIN.panel}
     >
       <UiEntity
         uiTransform={{
