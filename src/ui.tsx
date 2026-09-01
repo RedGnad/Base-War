@@ -826,18 +826,6 @@ function Roulette(): ReactEcs.JSX.Element {
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: bande }}>
-          {/* The landing burst: a fan of rays swelling behind the winning card, first child
-              so every card draws over it. The rarity flash colours the room; this is the
-              spotlight. */}
-          {fini && depuis < 700 && (
-            <UiEntity
-              uiTransform={{
-                width: 150 + 230 * pop, height: 150 + 230 * pop, positionType: 'absolute',
-                position: { left: large / 2 - (150 + 230 * pop) / 2, top: (bande - (150 + 230 * pop)) / 2 },
-                opacity: Math.max(0, 1 - depuis / 700)
-              }}
-              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
-          )}
           {boxView.reel.map((r, i) => {
             const rar = RARITIES[r] ?? RARITIES[0]
             const gagnant = fini && i === REEL_WIN
@@ -877,6 +865,20 @@ function Roulette(): ReactEcs.JSX.Element {
             )
           })}
 
+          {/* The landing burst, OVER the cards. It was drawn under them first, and a winner
+              taller than the band with neighbours fourteen pixels away covers every pixel of
+              a burst behind it: an invisible animation (owner, 1 Sep). The genre draws its
+              reveal flash over everything, so this does too, hollow-centred so the winning
+              card's face stays readable through it. */}
+          {fini && depuis < 700 && (
+            <UiEntity
+              uiTransform={{
+                width: 190 + 290 * pop, height: 190 + 290 * pop, positionType: 'absolute',
+                position: { left: large / 2 - (190 + 290 * pop) / 2, top: (bande - (190 + 290 * pop)) / 2 },
+                opacity: Math.max(0, 1 - depuis / 700)
+              }}
+              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
+          )}
           {/* The strip fades into the panel at both ends: cards arrive from beyond the window. */}
           <UiEntity
             uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { left: 0, top: 0 } }}
