@@ -219,15 +219,22 @@ export function setupBelt(): void {
         if (v.progres > 1) {
           const t = Math.min((v.progres - 1) / CHUTE_FIN, 1)
           tr.rotation = Quaternion.fromEulerDegrees(0, 0, -t * 540)
+          // Per frame: the glow has a tween to lose, and losing it takes more than one try.
+          eteindreCaisse(v.item)
+          /*
+            And once the fall is over, nothing of this crate is drawn at all. The server
+            retires it a breath later; until then a crate that has landed would sit in the
+            pit as scenery, which is what a witness photographed. The view is dropped in the
+            same pass that drops a crate the server has already taken away.
+          */
+          if (v.progres > 1 + CHUTE_FIN + 0.004) tr.scale = Vector3.Zero()
           if (!v.tombe) {
             v.tombe = true
             for (const e of [v.label, v.nom, v.rendement]) {
               const te = Transform.getMutableOrNull(e)
               if (te !== null) te.scale = Vector3.Zero()
             }
-            // No longer for sale: the glow pad and light go out, and the Buy prompt with
-            // them. An affordance that lies is worse than none.
-            eteindreCaisse(v.item)
+            // No longer for sale: the Buy prompt goes with the glow.
             PointerEvents.deleteFrom(v.item)
           }
         }

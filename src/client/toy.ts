@@ -666,9 +666,20 @@ export function eteindreCaisse(racine: Entity): void {
   const k = caisses.get(racine)
   if (k === undefined) return
   const halo = k.parts[5]
-  Tween.deleteFrom(halo)
-  TweenSequence.deleteFrom(halo)
+  /*
+    Called EVERY frame the crate is falling, not once, and cheap when nothing is left to do.
+
+    A tween writes its entity's Transform back to the scene on every frame it is alive, so
+    deleting the tween and zeroing the scale in the same frame is a race the renderer can
+    win: its own write lands after ours, the disc keeps the size it had, and since the
+    extinction only ran once there was never a second chance. The glow pad of a crate that
+    had fallen into the pit stayed lit on the pit floor (owner, 1 Sep). Idempotent, so
+    calling it per frame costs one comparison once it has taken.
+  */
   const ht = Transform.getMutableOrNull(halo)
+  if (ht !== null && ht.scale.x === 0) return
+  if (Tween.has(halo)) Tween.deleteFrom(halo)
+  if (TweenSequence.has(halo)) TweenSequence.deleteFrom(halo)
   if (ht !== null) ht.scale = Vector3.Zero()
   lumiereDuJouet(racine, null, 0)
 }
