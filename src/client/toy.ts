@@ -647,6 +647,24 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
   }
 }
 
+/**
+ * Puts out a crate's glow, halo disc and point light both, without touching the crate.
+ *
+ * For the crate that goes over the end of the belt: the pad of light under it means COME
+ * AND BUY THIS from across the plaza, and a thing tumbling into the pit must stop saying
+ * it mid air. The crate itself keeps its colours for the fall.
+ */
+export function eteindreCaisse(racine: Entity): void {
+  const k = caisses.get(racine)
+  if (k === undefined) return
+  const halo = k.parts[5]
+  Tween.deleteFrom(halo)
+  TweenSequence.deleteFrom(halo)
+  const ht = Transform.getMutableOrNull(halo)
+  if (ht !== null) ht.scale = Vector3.Zero()
+  lumiereDuJouet(racine, null, 0)
+}
+
 export function effacerCaisse(racine: Entity): void {
   const k = caisses.get(racine)
   if (k === undefined) return

@@ -1,4 +1,4 @@
-import { TOY, plastic, caisse, demolir } from './toy'
+import { TOY, plastic, caisse, demolir , eteindreCaisse} from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
 } from '@dcl/sdk/ecs'
@@ -225,6 +225,10 @@ export function setupBelt(): void {
               const te = Transform.getMutableOrNull(e)
               if (te !== null) te.scale = Vector3.Zero()
             }
+            // No longer for sale: the glow pad and light go out, and the Buy prompt with
+            // them. An affordance that lies is worse than none.
+            eteindreCaisse(v.item)
+            PointerEvents.deleteFrom(v.item)
           }
         }
       }

@@ -658,7 +658,14 @@ export const BELT_DURATION_S = 34          // time to cross: leaves time to deci
 export const BELT_INTERVAL_S = 5      // un article toutes les 5 s
 export const BUY_RANGE = 5
 
-export const CHUTE_FIN = 0.22        // part de course consacree a la chute
+/*
+  Expressed in SECONDS and converted, because the first value was a fraction of the ride:
+  0.22 of a 34 second crossing is seven and a half seconds of "falling", which read as a
+  slow drift, not a drop (owner, 1 Sep). Three quarters of a second is what 1.3 metres of
+  gravity feels like with a little arcade slack.
+*/
+export const CHUTE_S = 0.75
+export const CHUTE_FIN = CHUTE_S / BELT_DURATION_S
 /*
   An unsold crate is CARRIED off the end, it does not sink where the tread stops.
 
