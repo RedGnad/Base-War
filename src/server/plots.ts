@@ -367,6 +367,9 @@ async function loadBases(): Promise<void> {
         log(`base de ${l.name} deplacee de ${l.x},${l.z} vers l emplacement ${place.x},${place.z}`)
       }
       createBase(l.address, l.name, l.items, l.lastSeen, place.x, place.z, l.vitrine ?? VITRINE_VIDE)
+      // La nouvelle position doit etre ecrite, sinon le blob garde l'ancienne et le monde
+      // suivant redeplacera la base une seconde fois, ailleurs.
+      if (place.x !== l.x || place.z !== l.z) dirtyBases.add(l.address)
     }
     if (deplacees > 0) log(`${deplacees} bases ramenees sur un emplacement au chargement`)
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
@@ -473,6 +476,19 @@ export async function accueillir(address: string): Promise<void> {
   }
   const existing = bases.get(address)
   if (existing) {
+    /*
+      Le profil suit la base, jamais l'inverse.
+
+      Une base restauree depuis le journal peut avoir ete posee sur un emplacement different
+      de celui que le profil du joueur a memorise. Sans cette ligne les deux se contredisent:
+      le batiment est ici, le profil dit la-bas, et a la prochaine reconnexion c'est la version
+      du profil qui gagne et la base repart ailleurs. Le batiment qui existe est la verite.
+    */
+    if (profile.x !== existing.x || profile.z !== existing.z) {
+      profile.x = existing.x
+      profile.z = existing.z
+      dirtyProfiles.add(address)
+    }
     /*
       The base wins on items, not the stored profile.
 
