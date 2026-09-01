@@ -31,11 +31,23 @@ const MARGE = 0.35
 const PAS = 0.45
 const RANGS = 5
 const LIGNES_JOURNAL = 6
-const RANG_COULEUR = ['#ffd166', '#d9dde5', '#e0a466']
+/** Gold, silver and bronze, as metals rather than as pastels: #e0a466 was a tan. */
+const RANG_COULEUR = ['#ffd447', '#c9d1dc', '#cd7f32']
+/**
+ * The podium's three rows stand taller than the rest, because a face needs the height.
+ *
+ * The board's vertical budget is fixed at HAUTEUR, and it is spent, not guessed: the first
+ * cut of this podium pushed the sixth journal line to -3.72 on a panel whose bottom edge is
+ * -3.70, which is a line drawn into the frame. Every gap below is measured against that
+ * total, and a face is 0.38, a little taller than the 0.3 of a line of text, which is the
+ * proportion the reference leaderboards use.
+ */
+const PAS_PODIUM = 0.56
+const PORTRAIT = 0.38
 const TEXTE = '#f2f4f8'
 const BANDE = Color4.create(1, 1, 1, 0.07)
 
-type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string; surbrillance: Entity | null; hautG: number }
+type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string; surbrillance: Entity | null; hautG: number; portrait: Entity | null; dernierId: string }
 type Face = { earners: Ligne[]; thieves: Ligne[]; journal: Ligne[] }
 const faces: Face[] = []
 let moi = ''
@@ -52,19 +64,48 @@ function texte(parent: Entity, x: number, y: number, taille: number, hex: string
   return e
 }
 
-function bande(parent: Entity, x: number, y: number, largeur: number): void {
+function bande(parent: Entity, x: number, y: number, largeur: number, pas = PAS): void {
   const e = engine.addEntity()
-  Transform.create(e, { parent, position: Vector3.create(x, y, -0.085), scale: Vector3.create(largeur, PAS - 0.06, 0.01) })
+  Transform.create(e, { parent, position: Vector3.create(x, y, -0.085), scale: Vector3.create(largeur, pas - 0.06, 0.01) })
   MeshRenderer.setBox(e)
   Material.setPbrMaterial(e, plasticDe(BANDE, 0))
 }
 
-/** A medal chip: the top three wear their metal, which is the badge a leaderboard reads by. */
-function pastille(parent: Entity, x: number, y: number, hex: string): void {
-  const e = engine.addEntity()
-  Transform.create(e, { parent, position: Vector3.create(x, y, -0.1), scale: Vector3.create(0.2, 0.2, 0.02) })
-  MeshRenderer.setBox(e)
-  Material.setPbrMaterial(e, plastic(hex, 1.4))
+/**
+ * The medal: a metal disc, and the player's own face on it.
+ *
+ * The platform can texture a surface with any player's avatar from their address alone
+ * (`Material.Texture.Avatar`), which is how a leaderboard stops being a list of strings.
+ * Only the podium gets one: a face is a render per row, and this board carries two faces of
+ * five rows in two columns. Three is the budget, and the three that matter.
+ *
+ * The disc is drawn wider than the portrait, so a face that never loads still leaves a
+ * medal rather than a hole.
+ */
+function medaille(parent: Entity, x: number, y: number, hex: string): Entity {
+  const disque = engine.addEntity()
+  Transform.create(disque, {
+    parent, position: Vector3.create(x, y, -0.1),
+    rotation: Quaternion.fromEulerDegrees(90, 0, 0),
+    scale: Vector3.create(PORTRAIT + 0.12, 0.02, PORTRAIT + 0.12)
+  })
+  MeshRenderer.setCylinder(disque, 0.5, 0.5)
+  Material.setPbrMaterial(disque, plastic(hex, 1.3))
+
+  const portrait = engine.addEntity()
+  Transform.create(portrait, { parent, position: Vector3.create(x, y, -0.118), scale: Vector3.Zero() })
+  MeshRenderer.setPlane(portrait)
+  return portrait
+}
+
+/** Puts a face on a podium row, or takes it off. Only writes when the player changes. */
+function visage(l: Ligne, id: string): void {
+  if (l.portrait === null || l.dernierId === id) return
+  l.dernierId = id
+  const t = Transform.getMutableOrNull(l.portrait)
+  if (t !== null) t.scale = id === '' ? Vector3.Zero() : Vector3.create(PORTRAIT, PORTRAIT, 1)
+  // Unlit: a portrait lit by the scene's sun would go dark on the shaded face of the board.
+  if (id !== '') Material.setBasicMaterial(l.portrait, { texture: Material.Texture.Avatar({ userId: id }) })
 }
 
 /**
@@ -75,8 +116,8 @@ function pastille(parent: Entity, x: number, y: number, hex: string): void {
  * search, and the one line they came to find is their own. The highlight is built at zero
  * scale on every row and grown on the one that matches, so lighting it costs a scale.
  */
-function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string, rang: number, sien: boolean): Ligne {
-  if (pair) bande(parent, xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, largeurBande)
+function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string, rang: number, sien: boolean, pas: number): Ligne {
+  if (pair) bande(parent, xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, largeurBande, pas)
   let surbrillance: Entity | null = null
   if (sien) {
     surbrillance = engine.addEntity()
@@ -86,13 +127,15 @@ function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeur
       scale: Vector3.Zero()
     })
     MeshRenderer.setBox(surbrillance)
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     Material.setPbrMaterial(surbrillance, plastic('#ffd166', 1.1))
   }
-  const decal = rang >= 0 ? 0.42 : 0
-  if (rang >= 0 && rang < 3) pastille(parent, xg + 0.1, y, RANG_COULEUR[rang])
-  const gauche = texte(parent, xg + decal, y, 3, hex, TextAlignMode.TAM_MIDDLE_LEFT)
-  const droite = xd === null ? null : texte(parent, xd, y, 3, hex, TextAlignMode.TAM_MIDDLE_RIGHT)
-  return { gauche, droite, texteG: '', texteD: '', surbrillance, hautG: largeurBande }
+  const podium = rang >= 0 && rang < 3
+  const decal = podium ? 0.66 : rang >= 0 ? 0.28 : 0
+  const portrait = podium ? medaille(parent, xg + 0.3, y, RANG_COULEUR[rang]) : null
+  const gauche = texte(parent, xg + decal, y, podium ? 3.3 : 3, hex, TextAlignMode.TAM_MIDDLE_LEFT)
+  const droite = xd === null ? null : texte(parent, xd, y, podium ? 3.3 : 3, hex, TextAlignMode.TAM_MIDDLE_RIGHT)
+  return { gauche, droite, texteG: '', texteD: '', surbrillance, hautG: largeurBande, portrait, dernierId: '' }
 }
 
 /** Lights a row as the reader's own, or puts it out. Called once a second with the data. */
@@ -100,6 +143,7 @@ function marquer(l: Ligne, sien: boolean): void {
   const t = l.surbrillance === null ? null : Transform.getMutableOrNull(l.surbrillance)
   if (t === null) return
   const veut = sien ? Vector3.create(l.hautG, PAS - 0.02, 0.012) : Vector3.Zero()
+  // The band sits behind the portrait, so a lit row frames the face rather than hiding it.
   if (t.scale.x !== veut.x || t.scale.y !== veut.y) t.scale = veut
   const tg = TextShape.getMutableOrNull(l.gauche)
   if (tg !== null) tg.outlineWidth = sien ? 0.3 : 0.12
@@ -130,32 +174,33 @@ function face(pivot: Entity): Face {
   const moitie = (LARGEUR - 3 * MARGE) / 2
   const xg1 = -LARGEUR / 2 + MARGE, xd1 = xg1 + moitie
   const xg2 = xd1 + MARGE, xd2 = xg2 + moitie
-  let y = haut - MARGE - 0.35
+  let y = haut - MARGE - 0.30
 
   entete(pivot, 0, y, 4.2, '#ffd166', TextAlignMode.TAM_MIDDLE_CENTER, 'BASE WAR  ·  RECORDS')
-  y -= 0.75
+  y -= 0.66
 
   entete(pivot, xg1, y, 3.4, HUE.money, TextAlignMode.TAM_MIDDLE_LEFT, 'TOP EARNERS')
   entete(pivot, xg2, y, 3.4, HUE.danger, TextAlignMode.TAM_MIDDLE_LEFT, 'TOP THIEVES')
-  y -= PAS + 0.05
+  y -= 0.42
 
   const earners: Ligne[] = []
   const thieves: Ligne[] = []
   for (let i = 0; i < RANGS; i++) {
     const hex = RANG_COULEUR[i] ?? TEXTE
-    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex, i, true))
-    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex, i, true))
-    y -= PAS
+    const pas = i < 3 ? PAS_PODIUM : PAS
+    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex, i, true, pas))
+    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex, i, true, pas))
+    y -= pas
   }
-  y -= 0.2
+  y -= 0.06
 
   entete(pivot, xg1, y, 3.4, '#7cc4ff', TextAlignMode.TAM_MIDDLE_LEFT, 'LATEST')
-  y -= PAS + 0.05
+  y -= 0.46
 
   const journal: Ligne[] = []
   const pleine = LARGEUR - 2 * MARGE
   for (let i = 0; i < LIGNES_JOURNAL; i++) {
-    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, false))
+    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, false, PAS))
     y -= PAS
   }
   return { earners, thieves, journal }
@@ -236,6 +281,8 @@ export function setupRecords(): void {
         ecrire(f.thieves[i], v ? `${i + 1}.  ${v.name}` : i === 0 ? 'nobody yet' : '', v ? `${v.value} ${v.value === 1 ? 'steal' : 'steals'}` : '')
         marquer(f.earners[i], e !== undefined && moi !== '' && e.name.toLowerCase() === moi)
         marquer(f.thieves[i], v !== undefined && moi !== '' && v.name.toLowerCase() === moi)
+        visage(f.earners[i], e?.id ?? '')
+        visage(f.thieves[i], v?.id ?? '')
       }
       for (let i = 0; i < LIGNES_JOURNAL; i++) {
         const e = dernier[i]

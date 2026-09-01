@@ -39,14 +39,14 @@ function rafraichir(): void {
     .map((b) => {
       let parSeconde = 0
       for (const code of b.items) if (code !== VIDE) parSeconde += itemIncome(code, INCOME_PER_RARITY)
-      return { name: b.name, value: parSeconde * incomeMultiplier(b.rebirths) }
+      return { id: b.address, name: b.name, value: parSeconde * incomeMultiplier(b.rebirths) }
     })
     .filter((e) => e.value > 0)
     .sort((x, y) => y.value - x.value)
     .slice(0, RECORDS_TOP)
   const thieves = bases
     .filter((b) => b.vols > 0)
-    .map((b) => ({ name: b.name, value: b.vols }))
+    .map((b) => ({ id: b.address, name: b.name, value: b.vols }))
     .sort((x, y) => y.value - x.value)
     .slice(0, RECORDS_TOP)
   r.earners = earners

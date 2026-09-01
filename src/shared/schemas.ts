@@ -539,8 +539,10 @@ export const RUSH_TRAIT_CHANCE = 0.2
  * two leaderboards, top earner and top steals). Written by the server only, read by every client.
  */
 export const Records = engine.defineComponent('basetycoon::records', {
-  earners: Schemas.Array(Schemas.Map({ name: Schemas.String, value: Schemas.Float })),
-  thieves: Schemas.Array(Schemas.Map({ name: Schemas.String, value: Schemas.Float })),
+  // `id` is the owner's address, and it is here so the board can show a FACE. The platform
+  // renders any player's avatar as a texture from their address alone; a name cannot.
+  earners: Schemas.Array(Schemas.Map({ id: Schemas.String, name: Schemas.String, value: Schemas.Float })),
+  thieves: Schemas.Array(Schemas.Map({ id: Schemas.String, name: Schemas.String, value: Schemas.Float })),
   journal: Schemas.Array(Schemas.Map({ t: Schemas.Int64, kind: Schemas.String, a: Schemas.String, b: Schemas.String, code: Schemas.Int }))
 })
 export const RECORDS_TOP = 8
