@@ -416,11 +416,9 @@ const PhoneControls = () => {
         flexDirection: 'row', alignItems: 'center'
       }}
     >
+      {/* Le menu et la visee sont les boutons natifs du client, faits pour le pouce et
+          places par lui. Il ne reste ici que ce que le client ne sait pas dessiner. */}
       <SellChip right={TAP.gap * 2} />
-      <Btn label="MENU" width={200} height={TAP.phone} size={38} right={TAP.gap}
-        badge={questsToClaim() > 0} primary={questsToClaim() > 0} onClick={basculerMenu} />
-      <Btn label={combatView.aiming ? 'HOLSTER' : 'DRAW'} width={240} height={TAP.phone} size={38}
-        primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
     </UiEntity>
   )
 }

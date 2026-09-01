@@ -133,17 +133,23 @@ export function setupTouchHud(): void {
     replace the picture with an image it ships, so the button says menu without a caption.
   */
   /*
-    Three natives now, not five. The client's small buttons cannot be resized, and on a real
-    handset the tester found F and the menu too small to hit (28 Aug). So those two are drawn
-    by the scene, in its own skin and at its own size, bound to the same actions; the client
-    keeps only what the scene cannot draw better: jump, the interaction button, and the big
-    central action. The hidden set is remembered so an icon written later never unhides one.
+    On garde les boutons natifs, on n'en cache qu'un.
+
+    Le commentaire precedent racontait qu'on avait remplace le menu et la visee par des boutons
+    dessines par la scene, parce qu'un testeur les trouvait trop petits. Ce n'est pas ce que le
+    jeu montrait: en jeu le seul bouton en trop etait la main du pointeur, et nos deux plaques
+    rectangulaires ne lisaient pas comme des commandes de pouce (proprietaire, 1 Sep). Le pave
+    tactile du client est ce que le joueur connait deja de Decentraland, il est place pour le
+    pouce, et son bouton de saut se change tout seul en parapente apres un double saut, ce
+    qu'aucun bouton a nous ne saura faire.
+
+    Restent caches: la main du pointeur, qui n'a plus rien a designer depuis que chaque clic a
+    son equivalent contextuel, et les trois actions numerotees inutilisees, qui ne serviraient
+    qu'a pousser le cinquieme bouton derriere un "+".
   */
-  // The interaction button goes too (30 Aug): every click in the world now has a contextual
-  // equivalent on the central button, so the small pointing hand had nothing left to do.
-  for (const a of [InputAction.IA_POINTER, InputAction.IA_SECONDARY, InputAction.IA_ACTION_3, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
+  for (const a of [InputAction.IA_POINTER, InputAction.IA_ACTION_4, InputAction.IA_ACTION_5, InputAction.IA_ACTION_6]) CACHES.add(a)
   TouchScreenControls.hide([...CACHES])
-  console.log('[CLIENT] touch HUD: 2 native buttons (jump, central); menu and draw are scene buttons, every world click is contextual')
+  console.log('[CLIENT] touch HUD: 4 boutons natifs (saut, central, visee F, menu); seule la main du pointeur est cachee')
 }
 
 /**
