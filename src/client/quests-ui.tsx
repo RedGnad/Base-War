@@ -9,6 +9,18 @@ import { DAILY_REWARDS } from '../shared/schemas'
 import { crate } from '../shared/loot-table'
 import { closeMenu } from './menu'
 
+/*
+  The grid, such as this engine allows one.
+
+  React-ECS is flexbox and nothing else: no CSS grid, no column template. So a grid here is
+  a discipline, one set of column widths that every row of the tab uses. What was there
+  instead was fixed pixels per row (510 + 119 + 187 in one, 629 + 187 in the next) inside a
+  container measured in percent: the totals happened to match, the paddings did not, and the
+  LOCKED button sat fifteen pixels left of the CLAIM above it (owner, 1 Sep, screenshot).
+  Percentages of the same parent cannot drift, at any window width.
+*/
+const COL = { texte: '60%', compteur: '14%', action: '26%' } as const
+
 export const questsView = {
   open: false,
   ids: [] as number[],
@@ -71,12 +83,12 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
       }}
       uiBackground={{ color: Color4.create(1, 1, 1, 0.045) }}
     >
-      <UiEntity uiTransform={{ width: 510, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
+      <UiEntity uiTransform={{ width: COL.texte, height: 76, flexDirection: 'column', justifyContent: 'center' }}>
         <Label value={q?.texte ?? ''} fontSize={TYPE.label}
           color={pris ? Color4.fromHexString('#6f7a6fff') : Color4.White()}
           uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" />
         <UiEntity
-          uiTransform={{ width: 493, height: 20, margin: { top: 3 }, borderRadius: RAD.bar }}
+          uiTransform={{ width: '96%', height: 20, margin: { top: 3 }, borderRadius: RAD.bar }}
           uiBackground={{ color: Color4.create(1, 1, 1, 0.12) }}
         >
           {/* The fill glides to its value and flashes white the moment it completes. */}
@@ -92,7 +104,8 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
       </UiEntity>
       <Label value={`${fait}/${cible}`} fontSize={TYPE.label}
         color={Color4.fromHexString('#a8b2c0ff')}
-        uiTransform={{ width: 119, height: 76 }} textAlign="middle-center" />
+        uiTransform={{ width: COL.compteur, height: 76 }} textAlign="middle-center" />
+      <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
       {pris ? (
         <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
           uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
@@ -113,6 +126,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
             uiTransform={{ width: 44, height: 40 }} textAlign="middle-left" />
         </UiEntity>
       )}
+      </UiEntity>
     </UiEntity>
   )
 }
@@ -141,17 +155,21 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
         uiTransform={{ width: '100%', height: 70, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
         uiBackground={{ color: Color4.create(1, 1, 1, 0.05) }}
       >
+        {/* Same three columns as a quest row: the text spans the first two, the action
+            sits in the third, so the buttons of every row in this tab share one edge. */}
         <Label value="ALL THREE  ·  bonus rare crate" fontSize={TYPE.label}
           color={allDone ? Color4.fromHexString('#ffd166ff') : Color4.fromHexString('#7d879bff')}
-          uiTransform={{ width: 629, height: 60 }} textAlign="middle-left" />
-        {questsView.pris[3] === 1 ? (
-          <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
-            uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
-        ) : (
-          <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} size={TYPE.caption}
-            skin={allDone ? 'success' : 'disabled'}
-            onClick={allDone ? () => claim(3) : undefined} />
-        )}
+          uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
+        <UiEntity uiTransform={{ width: COL.action, height: TAP.height, justifyContent: 'flex-end', alignItems: 'center' }}>
+          {questsView.pris[3] === 1 ? (
+            <Label value="CLAIMED" fontSize={TYPE.caption} color={Color4.fromHexString('#6f7a6fff')}
+              uiTransform={{ width: 187, height: TAP.height }} textAlign="middle-center" />
+          ) : (
+            <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} size={TYPE.caption}
+              skin={allDone ? 'success' : 'disabled'}
+              onClick={allDone ? () => claim(3) : undefined} />
+          )}
+        </UiEntity>
     </UiEntity>
 
     <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}

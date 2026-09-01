@@ -25,7 +25,7 @@ N = 256
 # src/shared/loot-table.ts, RARITIES: colour and glow, in order.
 RARITIES = [
     ('#9aa3ad', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7', 1.30),
-    ('#f5a524', 2.00), ('#ff4d6d', 2.80), ('#e8e8f0', 4.00),
+    ('#f5a524', 2.00), ('#ff4d6d', 2.80), ('#19e8c8', 4.00),
 ]
 
 

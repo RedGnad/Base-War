@@ -100,10 +100,10 @@ const Rang = (props: {
     */}
     {/* The picture carries what a sentence used to: a player scanning a shop reads shapes. */}
     {props.icone !== undefined && (
-      <UiEntity uiTransform={{ width: 58, height: 58, margin: { right: 14 } }}
+      <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 12 } }}
         uiBackground={{ texture: { src: `assets/ui/${props.icone}` }, textureMode: 'stretch' }} />
     )}
-    <UiEntity uiTransform={{ width: '50%', height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
+    <UiEntity uiTransform={{ width: '48%', height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
       <Label value={props.titre} fontSize={TYPE.label} color={C.name}
         uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
       <Label value={props.detail} fontSize={TYPE.caption} color={C.dim}

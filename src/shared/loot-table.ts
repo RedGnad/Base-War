@@ -19,7 +19,10 @@ export const RARITIES = [
   { id: 3, name: 'Epic',      color: '#a855f7', size: 1.50, glow: 1.30, tours: 35 },
   { id: 4, name: 'Legendary', color: '#f5a524', size: 1.70, glow: 2.00, tours: 55 },
   { id: 5, name: 'Mythic',    color: '#ff4d6d', size: 1.95, glow: 2.80, tours: 80 },
-  { id: 6, name: 'Secret',    color: '#e8e8f0', size: 2.20, glow: 4.00, tours: 120 }
+  // Turquoise, and not another grey. Secret shipped at #e8e8f0 against Common's #9aa3ad:
+  // two pale greys at the ends of the same ladder, indistinguishable on a card (owner, 1 Sep).
+  // The rarest thing in the game now owns a hue nothing else on either axis uses.
+  { id: 6, name: 'Secret',    color: '#19e8c8', size: 2.20, glow: 4.00, tours: 120 }
 ] as const
 
 export function rarity(id: number) {
