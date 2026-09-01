@@ -899,7 +899,18 @@ function Revelation(): ReactEcs.JSX.Element {
     demi-hauteur de texte vers le haut pour que le BLOC soit centre.
   */
   const sousTexte = 52 + 40 + 6
-  const mid = active.h / 2 - sousTexte / 2
+  /*
+    Le centre de l'ECRAN, pas le centre de notre conteneur.
+
+    L'interface est dessinee avec `screenInset: 'device'`, donc rentree des marges materielles
+    du telephone: encoche, barre d'etat, coins arrondis. Ces marges ne sont pas symetriques en
+    paysage, et le milieu de notre conteneur n'est donc pas le milieu de la vitre. La visee se
+    corrigeait deja avec `decalageCentre()`, la revelation non, et elle tombait a gauche
+    (proprietaire, 1 Sep). Meme correction, meme raison.
+  */
+  const c = decalageCentre()
+  const mid = active.h / 2 - sousTexte / 2 + c.y
+  const milieuX = active.w / 2 + c.x
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
       <UiEntity
@@ -909,7 +920,7 @@ function Revelation(): ReactEcs.JSX.Element {
         <UiEntity
           uiTransform={{
             width: rayon, height: rayon, positionType: 'absolute',
-            position: { left: active.w / 2 - rayon / 2, top: mid - rayon / 2 },
+            position: { left: milieuX - rayon / 2, top: mid - rayon / 2 },
             opacity: Math.max(0, 1 - depuis / 900)
           }}
           uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
@@ -917,12 +928,12 @@ function Revelation(): ReactEcs.JSX.Element {
       <UiEntity
         uiTransform={{
           width: icone, height: icone, positionType: 'absolute',
-          position: { left: active.w / 2 - icone / 2, top: mid - icone / 2 }
+          position: { left: milieuX - icone / 2, top: mid - icone / 2 }
         }}
         uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
       <UiEntity
         uiTransform={{
-          width: '100%', positionType: 'absolute', position: { left: 0, top: mid + icone / 2 + 6 },
+          width: '100%', positionType: 'absolute', position: { left: c.x, top: mid + icone / 2 + 6 },
           flexDirection: 'column', alignItems: 'center'
         }}>
         <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
