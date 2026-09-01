@@ -2,7 +2,7 @@ import { engine, Transform, AudioSource, Entity, InputAction } from '@dcl/sdk/ec
 import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP, SKIN } from './theme'
+import { TYPE, C, TAP, SKIN, RAD } from './theme'
 import { Glyphs } from './glyphs'
 
 /**
@@ -63,25 +63,39 @@ export const Btn = (props: {
   const cle = `${props.label}|${props.width}`
   const enfonce = actif && Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
-    A PLATE MEANS YOU CAN PRESS IT. Nothing else may wear one.
+    THREE VISUAL ROLES, AND ONLY THREE. This is the whole interface language.
 
-    The grey plate was the loudest thing on the goals screen: LOCKED, the one control in the
-    panel that does nothing, sat in a bright pill while CLAIMED, right above it, was quiet
-    grey text (owner, 1 Sep, screenshot). A refusal that shouts is a hierarchy upside down,
-    and two different treatments for the same idea is the consistency lesson missed twice.
-    So the disabled skin is no longer a plate at all: same typeface, same slot, same size,
-    dimmed and inert. Every action slot in the game stays a Btn; only its state changes.
+      1. PLATE  - glossy, outlined, lifted. It means: you can press this. Tabs, CLAIM, BUY.
+      2. CHIP   - flat, dark, rounded, no gloss, shorter than a plate. It means: this is
+                  information, or a state you cannot act on. The reward chip, LOCKED,
+                  CLAIMED, OWNED, a skin you have not unlocked.
+      3. TEXT   - a name, a price, a sentence. Nothing else.
+
+    What was there instead: LOCKED wore the same lifted pill as the navigation tabs, in a
+    pale grey-blue that is LIGHTER than the panel, so the one control that does nothing was
+    the loudest shape on the screen, sitting a row below a CLAIMED drawn as bare text
+    (owner, 1 Sep). The plate is the loudest thing we own; it is reserved for the things
+    that answer a tap. The chip is the owner's own pick for the inside of a panel.
   */
   if (props.skin === 'disabled') {
+    const hPuce = Math.min(height, 64)
     return (
       <UiEntity
         uiTransform={{
-          width: props.width, height, opacity: 0.42,
+          width: props.width, height, justifyContent: 'center', alignItems: 'center',
           margin: props.right !== undefined ? { right: props.right } : undefined
         }}
       >
-        <Glyphs value={props.label} size={size} align="center" box={props.width}
-          top={(height - size) / 2} role="name" />
+        <UiEntity
+          uiTransform={{
+            width: props.width, height: hPuce, borderRadius: RAD.card, opacity: 0.7,
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={{ color: Color4.create(1, 1, 1, 0.06) }}
+        >
+          <Glyphs value={props.label} size={size} align="center" box={props.width}
+            top={(hPuce - size) / 2} role="name" />
+        </UiEntity>
       </UiEntity>
     )
   }
