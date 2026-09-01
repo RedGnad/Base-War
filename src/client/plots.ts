@@ -13,9 +13,23 @@ import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIn
 import { poserTexte3D, Segment3D } from './texte3d'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
-/** Cachee au-dela de la premiere, remontree en-deca de la seconde: l'ecart evite le clignotement. */
-const CULL_CACHE = 78
-const CULL_MONTRE = 68
+/*
+  Il n'y a PAS d'elimination par la distance, et c'est mesure.
+
+  J'en avais pose une, a soixante-dix-huit metres. Elle faisait apparaitre et disparaitre les
+  batiments a une frontiere que rien ne justifie a l'ecran (testeur, 1 Sep: "c'est vraiment
+  moche"), et elle ne rapportait rien: le terrain fait cent soixante-huit metres de bout en
+  bout, donc depuis le centre la base la plus eloignee est a quatre-vingt-huit metres et la
+  regle ne se declenche presque jamais. Surtout, ce qui nous contraint sur telephone est le
+  nombre de MATERIAUX, et un materiau se compte que l'objet soit dessine ou reduit a zero: une
+  base cachee coute exactement ce qu'elle coutait.
+
+  Le client mobile fait deja ce travail, gratuitement et sans a-coup: son plan de coupe est a
+  cent metres et son brouillard fond de soixante-seize a cent (`godot-explorer`,
+  `player.tscn` et `game_environment.tres`). Rien n'apparait brutalement parce que tout a
+  disparu progressivement avant. Sur desktop il n'y a pas de brouillard, mais il y a la marge:
+  trente-sept images par seconde de tick a seize bases, tout dessine.
+*/
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
 const ASC_X = BASE_SIDE / 2 - 1.1
 const ASC_Z = -BASE_SIDE / 2 + 1.1
@@ -66,8 +80,6 @@ type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
   vuLabel: string; vuBouclier: string
-  /** Dessinee ou non: une base lointaine ne coute qu'une ecriture d'echelle. */
-  visible: boolean
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
@@ -467,7 +479,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, vuLabel: '', vuBouclier: '', visible: true, ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
@@ -642,41 +654,6 @@ export function setupPlots(): void {
         return
       }
 
-    }
-  })
-
-  /*
-    Les bases lointaines ne sont pas dessinees.
-
-    Mesure du 1 Sep a 30 bases: 3 173 materiaux pour 3 173 maillages, donc environ 3 173
-    appels de rendu, dont 1 945 encore visibles depuis un seul point de vue apres l'elagage
-    du champ de vision fait par le client. Le partage de materiaux n'existe pas dans ce SDK,
-    chaque entite porte le sien; le seul levier est donc de ne pas dessiner ce qui est trop
-    loin pour compter. Toute la base est fille de `racine`, donc une seule ecriture d'echelle
-    la fait disparaitre avec ses cent soixante entites. Les deux distances different pour que
-    rien ne clignote a la frontiere, et le rayon est genereux: on cache ce que le joueur ne
-    peut de toute facon pas lire.
-  */
-  let accCull = 0
-  engine.addSystem((dt) => {
-    accCull += dt
-    if (accCull < 0.4) return
-    accCull = 0
-    const moi = Transform.getOrNull(engine.PlayerEntity)
-    if (moi === null) return
-    for (const v of views.values()) {
-      const t = Transform.getOrNull(v.racine)
-      if (t === null) continue
-      const d = Math.hypot(t.position.x - moi.position.x, t.position.z - moi.position.z)
-      const veut = v.visible ? d < CULL_CACHE : d < CULL_MONTRE
-      if (veut === v.visible) continue
-      v.visible = veut
-      const tr = Transform.getMutableOrNull(v.racine)
-      if (tr !== null) tr.scale = veut ? Vector3.One() : Vector3.Zero()
-      for (const e of [v.label, v.gain]) {
-        const te = Transform.getMutableOrNull(e)
-        if (te !== null) te.scale = veut ? Vector3.create(0.75, 0.75, 0.75) : Vector3.Zero()
-      }
     }
   })
 
