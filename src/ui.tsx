@@ -786,6 +786,61 @@ function easeOutBack(t: number): number {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
 }
 
+/**
+ * The reveal, centre stage. The reel below is the drumroll; THIS is the product, the way
+ * the genre's lootboxes and idle games spend their whole screen on the moment: the room
+ * dims, the won piece bursts huge over a fan of rays, name and yield under it, and the
+ * whole thing melts away on the same clock as the panel. It blocks nothing: no handler,
+ * so taps fall through to the game.
+ */
+function Revelation(): ReactEcs.JSX.Element {
+  const depuis = Date.now() - boxView.gagneA
+  const entree = Math.min(1, depuis / 160)
+  const heroPop = easeOutBack(Math.min(1, depuis / 340))
+  const sortie = Math.max(0, Math.min(1, (boxView.resultatJusqua - Date.now()) / 260))
+  const gagneHex = itemColor(boxView.resultat, boxView.resultatMutation)
+  const mut = mutation(boxView.resultatMutation)
+  const rayon = (560 + 120 * heroPop) * entree
+  const icone = 290 * heroPop
+  const mid = active.h * 0.36
+  return (
+    <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
+      <UiEntity
+        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+        uiBackground={{ color: Color4.create(0, 0, 0, 0.44 * entree) }} />
+      {depuis < 900 && (
+        <UiEntity
+          uiTransform={{
+            width: rayon, height: rayon, positionType: 'absolute',
+            position: { left: active.w / 2 - rayon / 2, top: mid - rayon / 2 },
+            opacity: Math.max(0, 1 - depuis / 900)
+          }}
+          uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
+      )}
+      <UiEntity
+        uiTransform={{
+          width: icone, height: icone, positionType: 'absolute',
+          position: { left: active.w / 2 - icone / 2, top: mid - icone / 2 }
+        }}
+        uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
+      <UiEntity
+        uiTransform={{
+          width: '100%', positionType: 'absolute', position: { left: 0, top: mid + icone / 2 + 6 },
+          flexDirection: 'column', alignItems: 'center'
+        }}>
+        <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
+          fontSize={TYPE.title} textWrap="nowrap" textAlign="middle-center"
+          color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
+          uiTransform={{ height: 52 }} />
+        <Label value={mut.mult > 1 ? `${mut.name.toUpperCase()}  x${mut.mult}  ·  +${formatIncome((INCOME_UI[boxView.resultat] ?? 1) * mut.mult)}/s` : `+${formatIncome(INCOME_UI[boxView.resultat] ?? 1)}/s`}
+          fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
+          color={C.money}
+          uiTransform={{ height: 40 }} />
+      </UiEntity>
+    </UiEntity>
+  )
+}
+
 function Roulette(): ReactEcs.JSX.Element {
   const large = Math.min(active.w - 80, 1700)
   const fini = !boxView.roule && boxView.resultat >= 0
@@ -865,20 +920,6 @@ function Roulette(): ReactEcs.JSX.Element {
             )
           })}
 
-          {/* The landing burst, OVER the cards. It was drawn under them first, and a winner
-              taller than the band with neighbours fourteen pixels away covers every pixel of
-              a burst behind it: an invisible animation (owner, 1 Sep). The genre draws its
-              reveal flash over everything, so this does too, hollow-centred so the winning
-              card's face stays readable through it. */}
-          {fini && depuis < 700 && (
-            <UiEntity
-              uiTransform={{
-                width: 190 + 290 * pop, height: 190 + 290 * pop, positionType: 'absolute',
-                position: { left: large / 2 - (190 + 290 * pop) / 2, top: (bande - (190 + 290 * pop)) / 2 },
-                opacity: Math.max(0, 1 - depuis / 700)
-              }}
-              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
-          )}
           {/* The strip fades into the panel at both ends: cards arrive from beyond the window. */}
           <UiEntity
             uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { left: 0, top: 0 } }}
@@ -1227,6 +1268,7 @@ const uiComponent = () => {
       drawn, out of the thirty-four in the strip.
     */}
     {hud() && (boxView.roule || boxView.resultat >= 0) && Roulette()}
+    {hud() && !boxView.roule && boxView.resultat >= 0 && Revelation()}
 
 
 

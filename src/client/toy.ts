@@ -358,6 +358,14 @@ export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMateri
     return
   }
   if (cur !== undefined) for (const e of cur.parts) engine.removeEntity(e)
+  /*
+    Rarities zero to five ARE the chess set now, and its files always ship, so the old
+    fantasy silhouettes only ever appeared as a wrong shape flashing before the piece
+    loaded (owner, 1 Sep). Those slots draw nothing while loading: the lit pad holds the
+    place and the piece pops in. Six keeps its star, which is not a stand-in but the
+    Secret's actual body.
+  */
+  if (rarete <= 5) { formes.delete(parent); if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent); return }
   const parts = silhouette(parent, rarete)
   for (const e of parts) Material.setPbrMaterial(e, materiau)
   formes.set(parent, { parts, rarete })
@@ -686,6 +694,9 @@ export function setupToy(): void {
       const st = GltfContainerLoadingState.getOrNull(m.modele)
       if (st === null) continue
       if (st.currentState === LoadingState.FINISHED) {
+        // Once. This block used to run every frame a model stayed FINISHED, re-tinting and
+        // re-writing the mount for every displayed toy, sixty bases over.
+        if (m.charge === true) continue
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
         effacerForme(primitive)
@@ -693,6 +704,16 @@ export function setupToy(): void {
         // And it takes the colours the shelf asked for while it was still loading.
         const voulu = dernierMateriau.get(primitive)
         if (voulu !== undefined) teindreModele(m.modele, voulu)
+        // The arrival is the animation: from nothing to its fitted size with a little
+        // overshoot, the pop every idle game gives a thing that just became yours.
+        const tm = Transform.getOrNull(m.modele)
+        if (tm !== null) {
+          Tween.createOrReplace(m.modele, {
+            mode: Tween.Mode.Scale({ start: Vector3.Zero(), end: Vector3.create(tm.scale.x, tm.scale.y, tm.scale.z) }),
+            duration: 190,
+            easingFunction: EasingFunction.EF_EASEOUTBACK
+          })
+        }
       }
     }
   })
