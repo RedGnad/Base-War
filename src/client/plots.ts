@@ -434,7 +434,11 @@ function createView(x: number, z: number, accent: string): View {
   const plaque = engine.addEntity()
   Transform.create(plaque, {
     parent: racine,
-    position: Vector3.create(0, WALL_HEIGHT + 0.62, BASE_SIDE / 2 + 0.12),
+    // Well clear of the glass. The anchor sat one centimetre off the pane, and the navy
+    // plate hangs at +0.05 LOCAL, which the half-turn below sends TOWARD the wall: the
+    // sign was inside the glazing (owner, 1 Sep: "fondu dans la vitre"). A hand's width
+    // of air keeps plate and letters in front of the reflections.
+    position: Vector3.create(0, WALL_HEIGHT + 0.62, BASE_SIDE / 2 + 0.45),
     // A TextShape reads correctly from its local -z side, so unrotated over the door it
     // greeted the street with MIRRORED letters (owner, 1 Sep). Half a turn faces it out.
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
