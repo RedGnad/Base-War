@@ -1,9 +1,9 @@
 import {
-  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, matiereMetal
+  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe, estMetal, matiereMetal
 } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode,
-  engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
@@ -14,21 +14,12 @@ import { poserTexte3D, Segment3D } from './texte3d'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 /*
-  Il n'y a PAS d'elimination par la distance, et c'est mesure.
+  Pas d'elimination par la distance, et c'est mesure.
 
-  J'en avais pose une, a soixante-dix-huit metres. Elle faisait apparaitre et disparaitre les
-  batiments a une frontiere que rien ne justifie a l'ecran (testeur, 1 Sep: "c'est vraiment
-  moche"), et elle ne rapportait rien: le terrain fait cent soixante-huit metres de bout en
-  bout, donc depuis le centre la base la plus eloignee est a quatre-vingt-huit metres et la
-  regle ne se declenche presque jamais. Surtout, ce qui nous contraint sur telephone est le
-  nombre de MATERIAUX, et un materiau se compte que l'objet soit dessine ou reduit a zero: une
-  base cachee coute exactement ce qu'elle coutait.
-
-  Le client mobile fait deja ce travail, gratuitement et sans a-coup: son plan de coupe est a
-  cent metres et son brouillard fond de soixante-seize a cent (`godot-explorer`,
-  `player.tscn` et `game_environment.tres`). Rien n'apparait brutalement parce que tout a
-  disparu progressivement avant. Sur desktop il n'y a pas de brouillard, mais il y a la marge:
-  trente-sept images par seconde de tick a seize bases, tout dessine.
+  J'en avais pose une a soixante-dix-huit metres: elle faisait clignoter les batiments a une
+  frontiere que rien ne justifie a l'ecran, et elle ne rapportait rien. Ce qui contraint sur
+  telephone est le nombre de MATERIAUX, et un materiau se compte que l'objet soit dessine ou
+  reduit a zero. Le client mobile coupe deja a cent metres et fond de soixante-seize a cent.
 */
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
 const ASC_X = BASE_SIDE / 2 - 1.1
@@ -69,13 +60,7 @@ import { HUE } from './theme'
 import { movePlayerTo } from '~system/RestrictedActions'
 import { isMobile } from '@dcl/sdk/platform'
 
-type Floor = {
-  /** Ce qui est dessine: quatre maillages fusionnes, un materiau chacun. */
-  coque: Entity; verre: Entity; accent: Entity; montee: Entity
-  /** Ce qui est touche: des boites sans rendu, aux memes places qu'avant. */
-  sols: Entity[]; murs: Entity[]; ramp: Entity; rails: Entity[]
-  sentry: Entity
-}
+type Floor = { floorSlab: Entity; walls: Entity[]; ramp: Entity; landing: Entity; sentry: Entity }
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
@@ -163,101 +148,114 @@ function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: numb
   return e
 }
 
-/**
- * A storey: four merged models for what is seen, plain boxes for what is touched.
- *
- * It used to be twenty-three separate rendered objects, and the mobile client charges one
- * MATERIAL per rendered object against a budget of four hundred. Sixteen bases came to 1 542
- * measured, three times the hard limit, while triangles sat at 24% and textures at 10%: the
- * count of objects was the whole problem and nothing else was close.
- *
- * Boxes that share a colour and never move relative to one another do not need to be separate
- * objects. Merged into one mesh they are one object, one material, one draw call, and the
- * mobile client hands them an automatic LOD chain on top (50%, 25%, 10% of the indices, by
- * screen error) that SDK primitives never receive. What stays split is only what has to hide
- * on its own: the climb disappears on the top storey, the glass and the accent change colour
- * with a skin.
- *
- * Collision is untouched. Every box that stopped a player still stops them, as an entity with
- * a collider and no renderer, which costs nothing against the material budget and keeps physics
- * on cheap boxes rather than on merged geometry, the exact thing workshop #4 showed tanking a
- * phone.
- */
-function collisionneur(x: number, y: number, z: number, sx: number, sy: number, sz: number, rot?: Quaternion): Entity {
-  const e = engine.addEntity()
-  /*
-    The rotation key is only WRITTEN when there is one.
-
-    `rotation: undefined` is not the same as leaving it out. The key exists, so the Transform
-    serialiser reads `rotation.x` off it, and it reads it on every frame the component is
-    flushed, not once at creation: the scene threw `Cannot read properties of undefined
-    (reading 'x')` continuously and the client froze at 82% of loading, never reaching ready
-    (tester, 1 Sep, three separate sessions before the client's own Player.log named it).
-  */
-  Transform.create(e, rot === undefined
-    ? { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) }
-    : { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz), rotation: rot })
-  taille.set(e, Vector3.create(sx, sy, sz))
-  MeshCollider.setBox(e)
-  return e
-}
-
-function modele(src: string, y: number): Entity {
-  const e = engine.addEntity()
-  Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(0, y, 0) })
-  taille.set(e, Vector3.One())
-  // Both masks off: the shapes that stop a player are the invisible boxes beside this.
-  GltfContainer.create(e, { src: `assets/Models/${src}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
-  return e
-}
-
-function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }): Floor {
+function buildFloor(x: number, z: number, floor: number, accent: string): Floor {
   const y = floor * FLOOR_HEIGHT
   const c = BASE_SIDE
   const h = WALL_HEIGHT
   const ep = WALL_THICKNESS
+
+  const floorSlab = bloc(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
+  Material.setPbrMaterial(floorSlab, plastiqueMoule(FLOOR_COLOR, c - STAIRWELL_WIDTH, c))
+  const walls: Entity[] = [
+    vitre(x, y + h / 2, z - c / 2, c, h, ep),                            // fond
+    vitre(x - c / 2, y + h / 2, z, ep, h, c),                            // gauche
+    vitre(x + c / 2, y + h / 2, z, ep, h, c),                            // droite
+    vitre(x - (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
+    vitre(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
+    bloc(x, y + h - 0.15, z + c / 2, DOOR_WIDTH, 0.3, ep, accent, false),  // linteau
+    bloc(x - c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x + c / 2, y + h / 2, z - c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x - c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent, false),
+    bloc(x + c / 2, y + h / 2, z + c / 2, 0.28, h, 0.28, accent, false)
+  ]
+
   const r = rampPosition(floor)
-  const course = RAMP_LENGTH * Math.cos((RAMP_ANGLE * Math.PI) / 180)
-  const bande = c / 2 - STAIRWELL_WIDTH / 2
-  const finPalier = course / 2 + 2.4
-  const finArriere = -1.2
+  const ramp = engine.addEntity()
+  Transform.create(ramp, {
+    parent: parentCourant ?? undefined,
+    position: Vector3.create(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz),
+    scale: Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH),
+    rotation: Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
+  })
+  taille.set(ramp, Vector3.create(STAIRWELL_WIDTH - 0.3, 0.18, RAMP_LENGTH))
+  MeshRenderer.setBox(ramp)
+  MeshCollider.setBox(ramp)
+  Material.setPbrMaterial(ramp, plastic(accent))
+
+  /*
+    Railings, sized in metres and then divided by the ramp they hang from.
+
+    A child's transform is multiplied by its parent's, and the ramp is a very flat, very long
+    box, so a rail written directly in parent space needs numbers like 3.0 and 6.0 that mean
+    nothing and quietly break the moment a floor gets taller. These are written as the metres
+    they should measure, then converted once.
+  */
   const rampeX = STAIRWELL_WIDTH - 0.3
-
-  const coque = modele(floor === 0 ? 'storey-ground.glb' : 'storey-upper.glb', y)
-  const verre = modele(mods.verre, y)
-  const accent = modele(mods.accent, y)
-  const montee = modele(mods.climb, y)
-
-  // The floor a player walks on, in the same three pieces the models are drawn in.
-  const sols: Entity[] = [
-    collisionneur(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c)
-  ]
-  if (floor === 0) {
-    sols.push(collisionneur(x + bande, y + SLAB_THICKNESS / 2, z, STAIRWELL_WIDTH, SLAB_THICKNESS, c))
-  } else {
-    sols.push(collisionneur(x + bande, y + SLAB_THICKNESS / 2, z + (-c / 2 + finArriere) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, finArriere + c / 2))
-    sols.push(collisionneur(x + bande, y + SLAB_THICKNESS / 2, z + (finPalier + c / 2) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, c / 2 - finPalier))
-    // The landing the ramp from below arrives on, at this storey's own level.
-    sols.push(collisionneur(x + r.dx, y + SLAB_THICKNESS / 2, z + course / 2 + 1.2, STAIRWELL_WIDTH, SLAB_THICKNESS, 2.4))
-  }
-  // The four walls and the two door cheeks.
-  const murs: Entity[] = [
-    collisionneur(x, y + h / 2, z - c / 2, c, h, ep),
-    collisionneur(x - c / 2, y + h / 2, z, ep, h, c),
-    collisionneur(x + c / 2, y + h / 2, z, ep, h, c),
-    collisionneur(x - (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep),
-    collisionneur(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep)
-  ]
-
-  const pente = Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
-  const ramp = collisionneur(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz, rampeX, 0.18, RAMP_LENGTH, pente)
   const RAIL_H = 1.1
-  const ca = Math.cos((-RAMP_ANGLE * Math.PI) / 180), sa = Math.sin((-RAMP_ANGLE * Math.PI) / 180)
-  const rails: Entity[] = []
   for (const cote of [-1, 1]) {
-    const dx = cote * (rampeX / 2 - 0.03)
-    const dy = (RAIL_H + 0.18) / 2
-    rails.push(collisionneur(x + r.dx + dx, y + FLOOR_HEIGHT / 2 + dy * ca, z + r.dz + dy * sa, 0.06, RAIL_H, RAMP_LENGTH, pente))
+    const rail = engine.addEntity()
+    Transform.create(rail, {
+      parent: ramp,
+      position: Vector3.create(cote * (rampeX / 2 - 0.03) / rampeX, (RAIL_H + 0.18) / 2 / 0.18, 0),
+      scale: Vector3.create(0.06 / rampeX, RAIL_H / 0.18, 1.0)
+    })
+    MeshRenderer.setBox(rail)
+    MeshCollider.setBox(rail)
+    Material.setPbrMaterial(rail, plastic(TOY.rail))
+  }
+
+  /*
+    Somewhere to put your foot at the top.
+
+    The ramp climbs through the middle of the stairwell, at x = BASE_SIDE/2 - STAIRWELL/2,
+    while the floor above stops at the edge of the same hole, a metre and a half short. So the
+    last step of the climb arrived over open air: measured, not noticed by eye, because the
+    two pieces are defined in different functions and neither knows the other exists. This is
+    the landing that joins them, sitting at the upper floor's level just past the top of the
+    slope.
+  */
+  const course = RAMP_LENGTH * Math.cos((RAMP_ANGLE * Math.PI) / 180)
+  const landing = bloc(
+    x + r.dx, y + FLOOR_HEIGHT + SLAB_THICKNESS / 2, z + r.dz + course / 2 + 1.2,
+    STAIRWELL_WIDTH, SLAB_THICKNESS, 2.4, FLOOR_COLOR
+  )
+
+  /*
+    The stairwell strip is FLOOR now, not a fenced pit.
+
+    What stood here: a guard rail along the strip's whole fourteen metres, plus the strip
+    itself left open wherever the ramp was not. A tester walked up the ramp and was fenced
+    off the slab at every storey by a rail built for the full length of a hole that no
+    longer needed guarding (31 Aug: "impossible de monter, une rambarde bloque a chaque
+    etage"). We never felt it because we click the elevator.
+
+    Now the strip is filled flush with the slab, except the one opening each storey truly
+    needs: the shaft where the ramp from below rises through, plus head-room before its
+    landing. Two short guards fence exactly that shaft and nothing else. The fillers sit
+    past index 9 in `walls`, where `repeindre` never reaches, so skins stay intact.
+  */
+  const bande = c / 2 - STAIRWELL_WIDTH / 2          // strip centre line, x = 5.2
+  const haut = course / 2                            // where the ramp below tops out, z = 3.2
+  const finPalier = haut + 2.4                       // the landing covers [haut, finPalier]
+  if (floor === 0) {
+    const plein = bloc(x + bande, y + SLAB_THICKNESS / 2, z, STAIRWELL_WIDTH, SLAB_THICKNESS, c, FLOOR_COLOR)
+    Material.setPbrMaterial(plein, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c))
+    walls.push(plein)
+  } else {
+    /*
+      Basic architecture, the owner's words (1 Sep) after the first cut of this hole put a
+      metre of ceiling over the climb: a climber's head reaches the slab above at z = 0.16,
+      and the opening began at 1.0. So the strip on upper storeys is now three dumb pieces:
+      solid floor behind the ramp's own start, the whole middle left OPEN above the climb,
+      solid floor between landing and front wall. No rails anywhere: a misstep drops you
+      onto the ramp below, which is the genre's answer, not a fence.
+    */
+    const finArriere = -1.2
+    const a = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (-c / 2 + finArriere) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, finArriere + c / 2, FLOOR_COLOR)
+    Material.setPbrMaterial(a, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, finArriere + c / 2))
+    const b = bloc(x + bande, y + SLAB_THICKNESS / 2, z + (finPalier + c / 2) / 2, STAIRWELL_WIDTH, SLAB_THICKNESS, c / 2 - finPalier, FLOOR_COLOR)
+    Material.setPbrMaterial(b, plastiqueMoule(FLOOR_COLOR, STAIRWELL_WIDTH, c / 2 - finPalier))
+    walls.push(a, b)
   }
 
   /*
@@ -278,7 +276,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
   montable(sentry, 'sentry.glb')
 
-  return { coque, verre, accent, montee, sols, murs, ramp, rails, sentry }
+  return { floorSlab, walls, ramp, landing, sentry }
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
@@ -296,17 +294,27 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   if (v.skin === p.skin && v.peints === v.floors.length) return
   v.skin = p.skin
   v.peints = v.floors.length
-  // The colour lives in the file, so repainting is swapping which file each storey shows.
-  const mods = modelesDe(p)
+  const accent = accentPour(p)
+  const teinte = Color4.fromHexString(accent + 'ff')
+  const verre = p.skin > 0 ? Color4.create(teinte.r, teinte.g, teinte.b, 0.3) : TOY.glass
   for (const et of v.floors) {
-    for (const [ent, src] of [[et.accent, mods.accent], [et.montee, mods.climb], [et.verre, mods.verre]] as Array<[Entity, string]>) {
-      const g = GltfContainer.getMutableOrNull(ent)
-      const chemin = `assets/Models/${src}`
-      if (g !== null && g.src !== chemin) g.src = chemin
+    for (let i = 0; i < et.walls.length; i++) {
+      if (i < 5) Material.setPbrMaterial(et.walls[i], acrylic(verre))
+      else if (i < 10) Material.setPbrMaterial(et.walls[i], plastic(accent))
     }
+    Material.setPbrMaterial(et.ramp, plastic(accent))
   }
 }
 
+/**
+ * A shield that goes up around you puts you out; it does not wall you in.
+ *
+ * The shield earned by being robbed rises the instant the theft succeeds, which is the instant
+ * the thief stands deepest inside the building. It became a solid box with the thief in it,
+ * camera against the walls, no way out, loot in hand. The base-raid genre's own rule is that a
+ * lock pushes intruders off the property, so anybody who is not the owner and is inside when
+ * it seals is set down at the doorstep. The chase starts outside, not in a cell.
+ */
 function expulser(base: Vector3, floors: number): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   if (moi === null) return
@@ -343,7 +351,7 @@ function creerSocle(racine: Entity, k: number): Entity {
   return o
 }
 
-function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }): View {
+function createView(x: number, z: number, accent: string): View {
   // One root at the centre, turned so the door faces the belt; everything below is local to it.
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
@@ -360,7 +368,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     and in network traffic the moment anyone walks in. Floors are added in the update below
     as the plot reports them, so an unreached floor costs exactly nothing.
   */
-  const floors: Floor[] = [buildFloor(0, 0, 0, mods)]
+  const floors: Floor[] = [buildFloor(0, 0, 0, accent)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
@@ -498,7 +506,9 @@ function destroyView(v: View): void {
       hanging off a parent that no longer existed. `removeEntityWithChildren` is the function
       that exists for exactly this, and combat.ts already uses it for the weapon.
     */
-    for (const ent of [e.coque, e.verre, e.accent, e.montee, e.ramp, ...e.sols, ...e.murs, ...e.rails]) {
+    taille.delete(e.ramp)
+    engine.removeEntityWithChildren(e.ramp)
+    for (const ent of [e.floorSlab, e.landing, ...e.walls]) {
       taille.delete(ent)
       engine.removeEntity(ent)
     }
@@ -666,7 +676,7 @@ export function setupPlots(): void {
       const t = Transform.get(ent)
       let v = views.get(id)
       if (!v) {
-        v = createView(t.position.x, t.position.z, modelesDe(p))
+        v = createView(t.position.x, t.position.z, accentPour(p))
         views.set(id, v)
       }
 
@@ -799,7 +809,7 @@ export function setupPlots(): void {
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
           parentCourant = v.racine
-          v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p)))
+          v.floors.push(buildFloor(0, 0, v.floors.length, accentPour(p)))
           parentCourant = null
           // The storey's six pedestals arrive with it.
           while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(creerSocle(v.racine, v.items.length))
@@ -814,11 +824,12 @@ export function setupPlots(): void {
             if (tr === null || t === undefined) return
             tr.scale = visible ? t : Vector3.create(0, 0, 0)
           }
-          for (const m of [et.coque, et.verre, et.accent, ...et.sols, ...et.murs]) montrer(m, open)
-          // No climb off the top storey: it would rise to nothing. The landing it lands on
-          // belongs to the storey above, and appears and disappears with it.
+          montrer(et.floorSlab, open)
+          for (const m of et.walls) montrer(m, open)
+          // No ramp off the top floor: it would climb to nothing, and neither would its landing.
           const monte = open && e + 1 < p.floors
-          for (const m of [et.montee, et.ramp, ...et.rails]) montrer(m, monte)
+          montrer(et.ramp, monte)
+          montrer(et.landing, monte)
         }
       }
 
