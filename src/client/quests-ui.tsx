@@ -111,7 +111,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           "this is what you are earning", and only CLAIM ever looks pressable.
         */
         <Puce width={187} height={TAP.menu}>
-          <UiEntity uiTransform={{ width: 44, height: 44, margin: { right: 8 } }}
+          <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 8 } }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
           <Label value="+1" fontSize={TYPE.label} color={C.money}
             uiTransform={{ width: 44, height: 44 }} textAlign="middle-left" />

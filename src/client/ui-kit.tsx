@@ -65,23 +65,24 @@ export const SURF = {
 } as const
 
 /**
- * A chip: the flat surface an inert state or a piece of information sits on.
+ * The plate, switched off: an inert state or a piece of information in an action slot.
  *
- * SAME FOOTPRINT AS THE PLATE IT STANDS IN FOR. Two states of one slot must occupy the
- * same box, or the row changes shape as the game goes on and the eye reads a movement
- * where there is only a state (owner, 1 Sep: "une puce et une plate au meme endroit
- * doivent avoir la meme taille"). What makes a chip quiet is that it has no gloss, no
- * outline and no lift, never that it is smaller. Navigation plates are free to be bigger:
- * nothing else ever takes their place.
+ * ONE SHAPE FOR EVERY CONTROL. An earlier pass gave inert states a different shape, a flat
+ * chip, on the reasoning that only pressable things should wear a plate. The owner caught
+ * it (1 Sep): two shapes side by side, differing only by whether you can click, is exactly
+ * what consistency forbids. The reference systems agree, and they are unanimous: a disabled
+ * control keeps its container and loses its VALUE and its saturation. So this is the same
+ * nine-sliced plate as a button, in the skin that sits below the card instead of above it,
+ * at the same width and the same height as the control it stands in for.
  */
 export const Puce = (props: { width: number; height?: number; right?: number; children?: unknown }) => (
   <UiEntity
     uiTransform={{
       width: props.width, height: props.height ?? TAP.height,
-      borderRadius: RAD.card, justifyContent: 'center', alignItems: 'center',
+      justifyContent: 'center', alignItems: 'center',
       margin: props.right !== undefined ? { right: props.right } : undefined
     }}
-    uiBackground={{ color: SURF.puce }}
+    uiBackground={SKIN.disabled}
   >
     {props.children}
   </UiEntity>
@@ -141,19 +142,19 @@ export const Btn = (props: {
   const cle = `${props.label}|${props.width}`
   const enfonce = actif && Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
-    THREE VISUAL ROLES, AND ONLY THREE. This is the whole interface language.
+    ONE SHAPE, THREE VALUES. That is the whole language of a control.
 
-      1. PLATE  - glossy, outlined, lifted. It means: you can press this. Tabs, CLAIM, BUY.
-      2. CHIP   - flat, dark, rounded, no gloss, shorter than a plate. It means: this is
-                  information, or a state you cannot act on. The reward chip, LOCKED,
-                  CLAIMED, OWNED, a skin you have not unlocked.
-      3. TEXT   - a name, a price, a sentence. Nothing else.
+      LIT      gold, green, blue: press me. The value carries which kind of press it is.
+      OFF      the same plate, below the card in value, barely glossed: this exists and
+               you cannot act on it. LOCKED, CLAIMED, OWNED, a skin not yet unlocked, a
+               reward you have not earned.
+      TEXT     a name, a price, a sentence. Never a control.
 
-    What was there instead: LOCKED wore the same lifted pill as the navigation tabs, in a
-    pale grey-blue that is LIGHTER than the panel, so the one control that does nothing was
-    the loudest shape on the screen, sitting a row below a CLAIMED drawn as bare text
-    (owner, 1 Sep). The plate is the loudest thing we own; it is reserved for the things
-    that answer a tap. The chip is the owner's own pick for the inside of a panel.
+    Two failures got us here and both are worth remembering. The disabled plate used to be
+    LIGHTER than the panel, so the one thing a player cannot press was the brightest shape
+    on screen. Then a pass replaced it with a flat chip, which fixed the loudness and broke
+    consistency instead: two shapes in one column, differing only by whether they answer a
+    tap. The answer both times is the same plate at a lower value.
   */
   if (props.skin === 'disabled') {
     return (
