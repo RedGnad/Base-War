@@ -37,6 +37,19 @@ export function rarity(id: number) {
   return RARITIES[id] ?? RARITIES[0]
 }
 
+/*
+  The palette was audited as a whole, not colour by colour (1 Sep).
+
+  Phantom is the rarest thing the game can roll, one part in a thousand and a multiplier of
+  twelve, and it was painted plain grey: the best mutation looked like the dullest (owner).
+  Measuring the set found that was not one mistake but a cluster: Yin Yang, Divine, Diamond,
+  Phantom and the Common and Secret rarities were seven pairs of near-identical pale
+  neutrals, and the interface brightens dark colours for legibility, which pushed them
+  closer still. Distances were computed in Lab, on the values AS DISPLAYED, and the trio
+  below is the set that maximises the smallest gap in the whole palette: the closest pair
+  went from 12.2 to 20.8. Phantom takes a spectral mint nothing else uses, Divine a warm
+  gold-cream, Yin Yang a neutral placed between Common and Secret rather than on top of them.
+*/
 export const MUTATIONS = [
   { id: 0,  name: '',            mult: 1,    color: '',        poids: 1000 },
   { id: 1,  name: 'Gold',        mult: 1.25, color: '#ffd700', poids: 220 },
@@ -45,13 +58,13 @@ export const MUTATIONS = [
   { id: 4,  name: 'Candy',       mult: 4,    color: '#ff9ecd', poids: 34 },
   { id: 5,  name: 'Lava',        mult: 6,    color: '#ff5722', poids: 20 },
   { id: 6,  name: 'Galaxy',      mult: 7,    color: '#5b2c8d', poids: 14 },
-  { id: 7,  name: 'Yin Yang',    mult: 7.5,  color: '#dcdcdc', poids: 11 },
+  { id: 7,  name: 'Yin Yang',    mult: 7.5,  color: '#b6b6be', poids: 11 },
   { id: 8,  name: 'Radioactive', mult: 8.5,  color: '#7fff00', poids: 8 },
   { id: 9,  name: 'Cursed',      mult: 9,    color: '#3b0a45', poids: 6 },
-  { id: 10, name: 'Divine',      mult: 10,   color: '#fff8dc', poids: 4 },
+  { id: 10, name: 'Divine',      mult: 10,   color: '#ffe9a8', poids: 4 },
   { id: 11, name: 'Rainbow',     mult: 10,   color: '#ff00ff', poids: 3 },
   { id: 12, name: 'Cyber',       mult: 11,   color: '#00e5ff', poids: 2 },
-  { id: 13, name: 'Phantom',     mult: 12,   color: '#9e9e9e', poids: 1 }
+  { id: 13, name: 'Phantom',     mult: 12,   color: '#86ffd0', poids: 1 }
 ] as const
 
 export function mutation(id: number) {
