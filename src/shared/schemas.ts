@@ -1053,6 +1053,62 @@ export const SCENE_SIDE = 192
 export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
 
 /**
+ * A bought crate travels down the street, then turns in. It never crosses a base.
+ *
+ * It used to fly straight from the belt to the buyer's door, which on a two-row street means
+ * straight through whatever stood between: through a neighbour's glass, over their shelves,
+ * out the other side. It also took the crate out of the one place the game wants people to
+ * be. The whole point of a convoy is that it can be outbid on the way, so its route has to
+ * run where the crowd is: down the middle, past everyone, and only then across to the door,
+ * exactly the way the reference walks its purchases along the road before branching off to
+ * the buyer's base.
+ *
+ * The route is the polyline [start, start over the lane, target's column over the lane,
+ * target]. Two of those points coincide for a crate leaving the belt, which is the common
+ * case, so the usual shape is a plain L. Because the bases sit in columns at least twenty-two
+ * metres apart and are at most 15.6 metres wide, the leg that crosses from the lane to a door
+ * runs down an empty column: no other base can be on it.
+ */
+export function convoyRoute(
+  dep: { x: number; z: number }, cib: { x: number; z: number }
+): Array<{ x: number; z: number }> {
+  const brut = [dep, { x: dep.x, z: CENTER.z }, { x: cib.x, z: CENTER.z }, cib]
+  const out: Array<{ x: number; z: number }> = []
+  for (const p of brut) {
+    const last = out[out.length - 1]
+    if (last === undefined || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.z - p.z) > 0.01) out.push({ x: p.x, z: p.z })
+  }
+  return out.length > 1 ? out : [dep, cib]
+}
+
+/** The route's total length, which is what sets how long the trip takes. */
+export function convoyLongueur(dep: { x: number; z: number }, cib: { x: number; z: number }): number {
+  const r = convoyRoute(dep, cib)
+  let d = 0
+  for (let i = 1; i < r.length; i++) d += Math.hypot(r[i].x - r[i - 1].x, r[i].z - r[i - 1].z)
+  return d
+}
+
+/** Where the crate is at `t` in [0,1], measured along the route rather than across it. */
+export function convoyPosition(
+  dep: { x: number; z: number }, cib: { x: number; z: number }, t: number
+): { x: number; z: number } {
+  const r = convoyRoute(dep, cib)
+  const total = convoyLongueur(dep, cib)
+  if (total <= 0.01) return { x: cib.x, z: cib.z }
+  let reste = Math.max(0, Math.min(1, t)) * total
+  for (let i = 1; i < r.length; i++) {
+    const seg = Math.hypot(r[i].x - r[i - 1].x, r[i].z - r[i - 1].z)
+    if (reste <= seg || i === r.length - 1) {
+      const k = seg <= 0.01 ? 1 : Math.max(0, Math.min(1, reste / seg))
+      return { x: r[i - 1].x + (r[i].x - r[i - 1].x) * k, z: r[i - 1].z + (r[i].z - r[i - 1].z) * k }
+    }
+    reste -= seg
+  }
+  return { x: cib.x, z: cib.z }
+}
+
+/**
  * The bases stand on a fixed set of spots, two rows either side of the lane.
  *
  * Free placement was ours, not the genre's. The leader's server code (`Plot:_findAvailable

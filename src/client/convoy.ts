@@ -4,7 +4,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Convoy, CONVOY_OUTBID } from '../shared/schemas'
+import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, monAdresseClient } from './theft'
@@ -48,8 +48,9 @@ export function setupConvoy(): void {
       // Position comes from the server's `progres`. Two players must see the convoy in
       // the same place, or a tap that looks well-timed gets rejected.
       const k = Math.max(0, Math.min(1, c.progres))
-      const x = c.departX + (c.cibleX - c.departX) * k
-      const z = c.departZ + (c.cibleZ - c.departZ) * k
+      const pt = convoyPosition({ x: c.departX, z: c.departZ }, { x: c.cibleX, z: c.cibleZ }, k)
+      const x = pt.x
+      const z = pt.z
       const tc = Transform.getMutableOrNull(v.body)
       // Carried half a metre off the ground whatever its size, the label riding above it.
       if (tc !== null) tc.position = Vector3.create(x, 0.5 + b.size / 2, z)

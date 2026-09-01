@@ -2,7 +2,8 @@ import { engine, Transform, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE, OUTBID_IMMUNITY_MS
+  Convoy, CONVOY_SPEED, CONVOY_MIN_S, CONVOY_OUTBID, CONVOY_RANGE, OUTBID_IMMUNITY_MS,
+  convoyPosition, convoyLongueur
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -29,7 +30,8 @@ const immunite = new Map<string, number>()
 let prochainId = 1
 
 function durationMs(depart: { x: number; z: number }, cible: { x: number; z: number }): number {
-  const d = Math.sqrt((cible.x - depart.x) ** 2 + (cible.z - depart.z) ** 2)
+  // The route's length, not the crow's flight: the crate goes round by the street.
+  const d = convoyLongueur(depart, cible)
   return Math.max(CONVOY_MIN_S, d / CONVOY_SPEED) * 1000
 }
 
@@ -46,8 +48,7 @@ function publish(e: State): void {
 }
 
 function position(e: State, t: number): { x: number; z: number } {
-  const k = Math.max(0, Math.min(1, t))
-  return { x: e.depart.x + (e.cible.x - e.depart.x) * k, z: e.depart.z + (e.cible.z - e.depart.z) * k }
+  return convoyPosition(e.depart, e.cible, t)
 }
 
 /**

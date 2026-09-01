@@ -5,7 +5,10 @@ import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
 import { strip } from './layout'
 
-export const welcomeView = { open: true }
+// Open, except on a measurement build: an instrument should not have to get past a door.
+import { STRESS_BASES } from './stress'
+
+export const welcomeView = { open: STRESS_BASES <= 0 }
 export function closeWelcome(): void { welcomeView.open = false }
 
 export const WelcomePanel = () => {
