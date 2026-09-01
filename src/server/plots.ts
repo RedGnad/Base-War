@@ -242,7 +242,47 @@ function surUnSpot(x: number | undefined, z: number | undefined): { x: number; z
       return { x: proche.x, z: proche.z }
     }
   }
-  return premierSpotLibre(pris)
+  const libre = premierSpotLibre(pris)
+  if (libre !== null) return libre
+  return liberer()
+}
+
+/**
+ * The field is full: give up the spot of whoever has been away longest.
+ *
+ * A fixed number of spots means somebody eventually arrives to a full street, and refusing
+ * them a base refuses them the game: they can walk and they can rob, but the entire earning
+ * loop is a base. The reference never faces this because it puts eight people in a private
+ * copy of the map and frees the spot when they leave; a World is one shared place that keeps
+ * standing after everybody logs off, which is what lets an absent player be robbed, and is
+ * exactly why the street fills up.
+ *
+ * So the street shows the sixteen most recently active players, and nothing else changes: the
+ * evicted base's contents, floors, prestige and charges are already saved under its owner's
+ * address, so it stands again, on whatever spot is free, the moment they come back. Nobody
+ * present is ever evicted, and if all sixteen are here at once the answer is an honest no.
+ */
+function liberer(): { x: number; z: number } | null {
+  const ici = presents()
+  let victime: Base | null = null
+  for (const b of bases.values()) {
+    if (ici.has(b.address)) continue
+    if (victime === null || b.lastSeen < victime.lastSeen) victime = b
+  }
+  if (victime === null) return null
+  const place = { x: victime.x, z: victime.z }
+  const parti = Math.round((Date.now() - victime.lastSeen) / 60000)
+  // Written out before it goes, not left to the periodic save: that save looks the base up in
+  // the live map, finds nothing, and skips it, so anything not yet flushed would leave with it.
+  const adresse = victime.address
+  const blob = blobDeBase(victime)
+  dirtyBases.delete(adresse)
+  void Storage.set(BASE_KEY(adresse), blob).then((ok) => {
+    if (!ok) log(`ERROR: sauvegarde ratee en liberant la base de ${adresse.slice(0, 8)}`)
+  })
+  log(`street full: base de ${victime.name} rendue (absente depuis ${parti} min), son contenu reste enregistre`)
+  removeBase(adresse)
+  return place
 }
 
 function createBase(
@@ -346,16 +386,21 @@ async function loadBases(): Promise<void> {
   }
 }
 
+/** Everything about a base that has to survive it, written in one place so nothing is dropped. */
+function blobDeBase(b: Base): string {
+  return JSON.stringify({
+    name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
+    floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
+    given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines
+  })
+}
+
 async function save(): Promise<void> {
   for (const a of [...dirtyBases]) {
     dirtyBases.delete(a)
     const b = bases.get(a)
     if (!b) continue
-    const ok = await Storage.set(BASE_KEY(a), JSON.stringify({
-      name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
-      floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier, rebirths: b.rebirths,
-      given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines
-    }))
+    const ok = await Storage.set(BASE_KEY(a), blobDeBase(b))
     if (!ok) { log(`ERROR base save failed ${a}`); dirtyBases.add(a) }
   }
   for (const a of [...dirtyProfiles]) {
