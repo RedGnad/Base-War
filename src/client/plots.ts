@@ -173,12 +173,18 @@ function vitre(x: number, y: number, z: number, sx: number, sy: number, sz: numb
  */
 function collisionneur(x: number, y: number, z: number, sx: number, sy: number, sz: number, rot?: Quaternion): Entity {
   const e = engine.addEntity()
-  Transform.create(e, {
-    parent: parentCourant ?? undefined,
-    position: Vector3.create(x, y, z),
-    scale: Vector3.create(sx, sy, sz),
-    rotation: rot
-  })
+  /*
+    The rotation key is only WRITTEN when there is one.
+
+    `rotation: undefined` is not the same as leaving it out. The key exists, so the Transform
+    serialiser reads `rotation.x` off it, and it reads it on every frame the component is
+    flushed, not once at creation: the scene threw `Cannot read properties of undefined
+    (reading 'x')` continuously and the client froze at 82% of loading, never reaching ready
+    (tester, 1 Sep, three separate sessions before the client's own Player.log named it).
+  */
+  Transform.create(e, rot === undefined
+    ? { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz) }
+    : { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.create(sx, sy, sz), rotation: rot })
   taille.set(e, Vector3.create(sx, sy, sz))
   MeshCollider.setBox(e)
   return e

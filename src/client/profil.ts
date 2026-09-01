@@ -21,6 +21,7 @@ export const PROFIL = true
 const temps = new Map<string, number>()
 let frames = 0
 let anonymes = 0
+const fautifs = new Set<string>()
 
 export function installerProfil(): void {
   if (!PROFIL) return
@@ -31,7 +32,12 @@ export function installerProfil(): void {
     temps.set(etiquette, 0)
     brut((dt: number) => {
       const t0 = Date.now()
-      fn(dt)
+      // A system that throws names itself, once. Without this a scene-wide exception shows up
+      // as an anonymous frame in the client's own log and costs an afternoon to place.
+      try { fn(dt) } catch (err) {
+        if (!fautifs.has(etiquette)) { fautifs.add(etiquette); console.log(`[PROFIL] EXCEPTION dans ${etiquette}: ${err}`) }
+        throw err
+      }
       temps.set(etiquette, (temps.get(etiquette) ?? 0) + (Date.now() - t0))
     }, priority, name)
   }) as typeof engine.addSystem
