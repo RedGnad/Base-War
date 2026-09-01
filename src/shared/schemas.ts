@@ -799,7 +799,14 @@ export const FLOOR_HEIGHT = 4.0
 export const SAME_STOREY = FLOOR_HEIGHT * 0.75
 export const RECOVER_RANGE = 6
 
-export const MAX_BASES_AFFICHEES = 60
+/**
+ * As many bases as there are spots to stand on, and not one more.
+ *
+ * Kept as a literal rather than `PLOT_SPOTS.length` only because this line is read before that
+ * list is built; the two numbers are the same two rows of eight, and changing one means
+ * changing the other.
+ */
+export const MAX_BASES_AFFICHEES = 16
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.
@@ -1044,6 +1051,60 @@ export function rampPosition(floor: number): { dx: number; dy: number; dz: numbe
  * parcels, so the platform is not the constraint here: population is. */
 export const SCENE_SIDE = 192
 export const CENTER = { x: SCENE_SIDE / 2, z: SCENE_SIDE / 2 }
+
+/**
+ * The bases stand on a fixed set of spots, two rows either side of the lane.
+ *
+ * Free placement was ours, not the genre's. The leader's server code (`Plot:_findAvailable
+ * PlotSlot`, decompiled dump read 1 Sep) sweeps a folder of hand-placed empty spots, takes the
+ * FIRST one with no owner, clones the base onto its pivot and deletes the spot. There is no
+ * build mode, no placement UI, no chosen coordinate anywhere in that game: eight spots for
+ * eight players, in two rows either side of the conveyor that bisects the map. Steal a Fish,
+ * Steal a Car and Steal Anime all cap at eight players too.
+ *
+ * We were letting sixty players drop a fourteen-metre building anywhere on a hundred and
+ * ninety-two metre field, which produced a field nobody could read and a frame budget nobody
+ * could hold. Fixed spots settle all three at once: two buildings can no longer overlap by
+ * construction, the map reads as a street, and the worst case is bounded by the length of this
+ * list rather than by how many people turn up.
+ *
+ * The proportions are the leader's, measured on its own top-down render: the gap between two
+ * neighbours is about half a base wide, and the corridor between the fronts and the belt is
+ * about one base deep. Ours: slabs of 15.6 m on a 24 m pitch, so 8.4 m of street, and rows at
+ * 26 m from the lane, so 18 m of corridor.
+ */
+function spotsDeDepart(): Array<{ x: number; z: number }> {
+  const out: Array<{ x: number; z: number }> = []
+  for (const cote of [-1, 1]) {
+    for (let k = 0; k < 8; k++) out.push({ x: 12 + k * 24, z: CENTER.z + cote * 26 })
+  }
+  return out
+}
+export const PLOT_SPOTS: ReadonlyArray<{ x: number; z: number }> = spotsDeDepart()
+
+/** The nearest fixed spot to a point, and whether anything already stands on it. */
+export function spotLePlusProche(
+  x: number, z: number, pris: ReadonlyArray<{ x: number; z: number }>
+): { x: number; z: number; libre: boolean } | null {
+  let best: { x: number; z: number } | null = null
+  let bestD = Infinity
+  for (const s of PLOT_SPOTS) {
+    const d = (s.x - x) ** 2 + (s.z - z) ** 2
+    if (d < bestD) { bestD = d; best = s }
+  }
+  if (best === null) return null
+  const occupe = pris.some((q) => Math.abs(q.x - best!.x) < 0.5 && Math.abs(q.z - best!.z) < 0.5)
+  return { x: best.x, z: best.z, libre: !occupe }
+}
+
+/** The first spot nobody stands on, in list order, exactly as the reference assigns them. */
+export function premierSpotLibre(pris: ReadonlyArray<{ x: number; z: number }>): { x: number; z: number } | null {
+  for (const s of PLOT_SPOTS) {
+    if (!pris.some((q) => Math.abs(q.x - s.x) < 0.5 && Math.abs(q.z - s.z) < 0.5)) return { x: s.x, z: s.z }
+  }
+  return null
+}
+
 
 /*
   A base faces the belt. Its door, ramp and shelves are laid out for a door on +z; a base

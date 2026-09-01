@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, placeLibre, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -226,6 +226,25 @@ export function totalCharges(liste: number[] | undefined): number {
   return liste === undefined ? 0 : liste.reduce((a, b) => a + b, 0)
 }
 
+/**
+ * The spot a base belongs on: its own if it is still free, otherwise the first free one.
+ *
+ * Coordinates stored with a base are a memory of where it stood, not a right to stand there.
+ * Under free placement they were handed straight back at load, which is how bases that were
+ * legal under an older, narrower footprint ended up inside each other. With a fixed set of
+ * spots the question has one answer and it is asked every time.
+ */
+function surUnSpot(x: number | undefined, z: number | undefined): { x: number; z: number } | null {
+  const pris = basePoints()
+  if (typeof x === 'number' && typeof z === 'number') {
+    const proche = spotLePlusProche(x, z, pris)
+    if (proche !== null && proche.libre && Math.abs(proche.x - x) < 0.5 && Math.abs(proche.z - z) < 0.5) {
+      return { x: proche.x, z: proche.z }
+    }
+  }
+  return premierSpotLibre(pris)
+}
+
 function createBase(
   address: string, name: string, items: number[], lastSeen: number, x: number, z: number,
   vitrine: Vitrine = VITRINE_VIDE
@@ -283,15 +302,15 @@ async function loadBases(): Promise<void> {
     */
     let deplacees = 0
     for (const l of loaded) {
-      const place = placeLibre(l.x, l.z, SCENE_SIDE, basePoints())
-      if (place === null) { log(`plus de place pour la base de ${l.name}, ignoree`); continue }
+      const place = surUnSpot(l.x, l.z)
+      if (place === null) { log(`plus d emplacement pour la base de ${l.name}, ignoree`); continue }
       if (place.x !== l.x || place.z !== l.z) {
         deplacees += 1
-        log(`base de ${l.name} deplacee de ${l.x},${l.z} vers ${place.x},${place.z} (chevauchement)`)
+        log(`base de ${l.name} deplacee de ${l.x},${l.z} vers l emplacement ${place.x},${place.z}`)
       }
       createBase(l.address, l.name, l.items, l.lastSeen, place.x, place.z, l.vitrine ?? VITRINE_VIDE)
     }
-    if (deplacees > 0) log(`${deplacees} bases degagees d un chevauchement au chargement`)
+    if (deplacees > 0) log(`${deplacees} bases ramenees sur un emplacement au chargement`)
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
 
     /*
@@ -375,7 +394,7 @@ export async function accueillir(address: string): Promise<void> {
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     // Re-asked, not trusted: the spot was legal when it was stored, which says nothing about
     // whether somebody has built there since, or whether the footprint has grown meanwhile.
-    const place = placeLibre(profile.x, profile.z, SCENE_SIDE, basePoints(address))
+    const place = surUnSpot(profile.x, profile.z)
     if (place === null) {
       log(`plus de place pour la base de ${name}`)
     } else {
@@ -1082,14 +1101,24 @@ export function basePoints(sauf?: string): Array<{ x: number; z: number }> {
   return out
 }
 
+/**
+ * Move a base onto an empty spot. Not "build anywhere": there is nowhere else to build.
+ *
+ * The reference has no build mode at all, and the one thing it announced and never shipped
+ * was exactly this: "you will soon be able to move your base to empty base spaces on the map"
+ * (its wiki, page Base, read live 1 Sep). So the player keeps a say in WHICH spot is theirs,
+ * and none at all in where a spot is. The request carries a point on the ground; the spot
+ * nearest it is what gets claimed, and only if nobody stands there.
+ */
 export function placeBase(address: string, xb: number, zb: number): { ok: boolean; reason?: string } {
   const p = profiles.get(address)
   if (!p) return { ok: false, reason: 'unknown profile' }
 
-  const x = snapToGrid(xb)
-  const z = snapToGrid(zb)
-  const mauvais = invalidReason(x, z, SCENE_SIDE, basePoints(address))
-  if (mauvais !== null) return { ok: false, reason: mauvais }
+  const cible = spotLePlusProche(xb, zb, basePoints(address))
+  if (cible === null) return { ok: false, reason: 'no base spot here' }
+  if (!cible.libre) return { ok: false, reason: 'that spot is taken' }
+  const x = cible.x
+  const z = cible.z
 
   const previous = bases.get(address)
   if (previous) removeBase(address)

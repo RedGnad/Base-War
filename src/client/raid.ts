@@ -15,7 +15,7 @@ import { alerter, pushToFeed } from './theft'
  * swipes. Everything drawn comes from one synced component the server writes; the client
  * adds the smoothing between positions and the timing of the flashes.
  */
-export const raidView = { active: false, leftS: 0, nextS: 0, hp: 0, hpMax: 1, topName: '', x: 0, z: 0 }
+export const raidView = { active: false, leftS: 0, nextS: 0, hp: 0, hpMax: 1, topName: '', x: 0, z: 0, distance: 0 }
 
 const NOIR = Color3.create(0, 0, 0)
 const PEAU = '#7a1f2e'
@@ -28,6 +28,29 @@ const BALAI_MS = 420
 export function setupRaid(): void {
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+
+  /*
+    A column of light standing on the boss, tall enough to be read from anywhere on the field.
+
+    A three minute event that everybody is meant to converge on is worth nothing if nobody can
+    find it: the tester had a raid running and no way to tell where on the map it was. Every
+    game of the genre answers this the same way, with a beam you run towards, and a beam costs
+    one entity and no collider. It is deliberately taller than anything built: sixty metres
+    against a base's thirty-four at twelve storeys, so it clears the skyline from the far
+    corner. Off while no raid runs, and it never gets a collider, because players will walk
+    straight through where it stands.
+  */
+  const phare = engine.addEntity()
+  Transform.create(phare, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+  MeshRenderer.setCylinder(phare, 0.55, 0.55)
+  Material.setPbrMaterial(phare, {
+    albedoColor: Color4.fromHexString('#ff6b6b66'),
+    emissiveColor: Color3.fromHexString('#ff6b6b'),
+    emissiveIntensity: 2.2,
+    alphaTest: 0,
+    transparencyMode: 2,
+    roughness: 1
+  })
 
   const corps = engine.addEntity()
   Transform.create(corps, { parent: racine, scale: Vector3.create(2.6, 2.6, 2.6) })
@@ -111,6 +134,9 @@ export function setupRaid(): void {
     if (t === null) return
     if (!r.active) {
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
+      const pe = Transform.getMutableOrNull(phare)
+      if (pe !== null && pe.scale.x !== 0) pe.scale = Vector3.Zero()
+      raidView.distance = 0
       etaitActif = false
       return
     }
@@ -132,6 +158,18 @@ export function setupRaid(): void {
     }
     const frappe = now - r.hitAtMs < FLASH_MS ? 1.12 : 1
     t.scale = Vector3.create(frappe, frappe, frappe)
+
+    // The beam follows the same smoothed position, breathing so it reads as alive from afar.
+    const souffle = 1 + Math.sin(now / 420) * 0.14
+    const pe = Transform.getMutableOrNull(phare)
+    if (pe !== null) {
+      pe.position = Vector3.create(vu.x, 30, vu.z)
+      pe.scale = Vector3.create(souffle, 60, souffle)
+    }
+    if (Transform.has(engine.PlayerEntity)) {
+      const moi = Transform.get(engine.PlayerEntity).position
+      raidView.distance = Math.round(Math.hypot(moi.x - vu.x, moi.z - vu.z))
+    }
 
     // The swipe: the halo swells for a moment, which is the warning and the hit in one shape.
     const balai = now - r.swipeAtMs

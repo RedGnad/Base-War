@@ -28,7 +28,10 @@ const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padS
 /** The band's one line: the rush RUNNING, or nothing. A rush lasts minutes and earns the centre. */
 export function ligneDuBandeau(): { text: string; color: string } | null {
   if (raidView.active) {
-    return { text: `RAID BOSS   ${mmss(raidView.leftS)}   ·   ${Math.round((raidView.hp / raidView.hpMax) * 100)}%${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
+    // The distance is what turns the banner into a direction: the beam says which way, this
+    // says how far, and together they answer "where is it" without a minimap.
+    const loin = raidView.distance > 0 ? `   ·   ${raidView.distance} m` : ''
+    return { text: `RAID BOSS   ${mmss(raidView.leftS)}   ·   ${Math.round((raidView.hp / raidView.hpMax) * 100)}%${loin}${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
   }
   if (eventView.theme < 0) return null
   return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }

@@ -1,6 +1,6 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, SCENE_SIDE, BELT_CLEARANCE, MIN_BASE_GAP, placeLibre } from '../shared/schemas'
+import { Plot, PLOT_SPOTS } from '../shared/schemas'
 import { encoder } from '../shared/loot-table'
 
 /**
@@ -15,48 +15,31 @@ import { encoder } from '../shared/loot-table'
  *
  * Ship with 0. It is a measuring instrument, not a feature.
  */
-export const STRESS_BASES = 60
+export const STRESS_BASES = 16
 
 function alea(n: number): number { return Math.floor(Math.random() * n) }
 
 /**
- * The wanted spots, in rows either side of the lane, before any rule is applied.
+ * Fill every free spot, which is now the whole worst case.
  *
- * These are wishes, not decisions. Each one goes through the same placement rule a real base
- * goes through, against the real bases already standing. The harness used to write its own
- * grid straight into the world without ever looking at what was there, so its buildings stood
- * inside the tester's own base and the field it produced was a picture of a bug in the
- * instrument rather than of the game (tester, 1 Sep). A measuring field has to be built by the
- * rules it is meant to measure.
+ * Bases stand on a fixed list of spots, so "a full plaza" is no longer a guess about how many
+ * players might turn up: it is the length of that list. The harness takes whatever the real
+ * server has not already claimed and puts a fake base on it, which produces exactly the field
+ * a full server produces, and never a base standing inside another one.
  */
-function souhaits(): Array<{ x: number; z: number }> {
-  const points: Array<{ x: number; z: number }> = []
-  const pas = MIN_BASE_GAP
-  for (let rang = 0; rang < 5 && points.length < STRESS_BASES * 2; rang++) {
-    for (const cote of [-1, 1]) {
-      const z = CENTER.z + cote * (BELT_CLEARANCE + pas / 2 + rang * pas)
-      if (z < pas || z > SCENE_SIDE - pas) continue
-      for (let x = pas; x <= SCENE_SIDE - pas; x += pas) points.push({ x, z })
-    }
-  }
-  return points
-}
-
 function poser(): void {
-  const occupes: Array<{ x: number; z: number }> = []
+  const pris: Array<{ x: number; z: number }> = []
   for (const [e] of engine.getEntitiesWith(Plot, Transform)) {
     const t = Transform.get(e)
-    occupes.push({ x: t.position.x, z: t.position.z })
+    pris.push({ x: t.position.x, z: t.position.z })
   }
-  const reelles = occupes.length
+  const reelles = pris.length
   let n = 0
-  for (const v of souhaits()) {
+  for (const spot of PLOT_SPOTS) {
     if (n >= STRESS_BASES) break
-    const libre = placeLibre(v.x, v.z, SCENE_SIDE, occupes)
-    if (libre === null) continue
-    occupes.push(libre)
+    if (pris.some((q) => Math.abs(q.x - spot.x) < 0.5 && Math.abs(q.z - spot.z) < 0.5)) continue
     const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.create(libre.x, 0, libre.z) })
+    Transform.create(e, { position: Vector3.create(spot.x, 0, spot.z) })
     const floors = 1 + alea(4)
     const items: number[] = []
     for (let k = 0; k < floors * 6; k++) items.push(Math.random() < 0.85 ? encoder(alea(5), alea(3) === 0 ? 1 + alea(5) : 0) : -1)
@@ -67,7 +50,7 @@ function poser(): void {
     })
     n += 1
   }
-  console.log(`[CLIENT] stress: ${n} fausses bases posees par la regle, ${reelles} vraies bases evitees`)
+  console.log(`[CLIENT] stress: ${n} fausses bases sur emplacements libres, ${reelles} vraies bases en place`)
 }
 
 export function setupStress(): void {

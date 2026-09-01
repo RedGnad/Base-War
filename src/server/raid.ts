@@ -6,7 +6,7 @@ import {
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
   RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN,
   SCENE_SIDE, forceDuTir
-, RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE} from '../shared/schemas'
+, RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
 import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases } from './plots'
@@ -59,7 +59,8 @@ let spawnX = 0, spawnZ = 0
  * outside.
  */
 function horsDesBases(nx: number, nz: number): { x: number; z: number } {
-  const demi = BASE_SIDE / 2 + RAID_RADIUS + 0.4
+  // The slab, not the walls: the boss was allowed to stand on the overhang it cannot climb.
+  const demi = PLINTH_SIDE / 2 + RAID_RADIUS + 0.4
   for (const b of toutesLesBases()) {
     const dx = nx - b.x, dz = nz - b.z
     if (Math.abs(dx) >= demi || Math.abs(dz) >= demi) continue
