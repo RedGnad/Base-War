@@ -1,4 +1,4 @@
-import { engine, Transform } from '@dcl/sdk/ecs'
+import { engine, Transform, Entity } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { Plot, PLOT_SPOTS } from '../shared/schemas'
 import { encoder } from '../shared/loot-table'
@@ -15,7 +15,7 @@ import { encoder } from '../shared/loot-table'
  *
  * Ship with 0. It is a measuring instrument, not a feature.
  */
-export const STRESS_BASES = 3
+export const STRESS_BASES = 0
 
 function alea(n: number): number { return Math.floor(Math.random() * n) }
 
@@ -27,18 +27,18 @@ function alea(n: number): number { return Math.floor(Math.random() * n) }
  * server has not already claimed and puts a fake base on it, which produces exactly the field
  * a full server produces, and never a base standing inside another one.
  */
-function poser(): void {
-  const pris: Array<{ x: number; z: number }> = []
-  for (const [e] of engine.getEntitiesWith(Plot, Transform)) {
-    const t = Transform.get(e)
-    pris.push({ x: t.position.x, z: t.position.z })
-  }
-  const reelles = pris.length
+function poser(
+  reelles: Array<{ x: number; z: number }>,
+  faux: Map<string, Entity>,
+  clef: (x: number, z: number) => string
+): void {
+  const pris = [...reelles]
   let n = 0
   for (const spot of PLOT_SPOTS) {
     if (n >= STRESS_BASES) break
     if (pris.some((q) => Math.abs(q.x - spot.x) < 0.5 && Math.abs(q.z - spot.z) < 0.5)) continue
     const e = engine.addEntity()
+    faux.set(clef(spot.x, spot.z), e)
     Transform.create(e, { position: Vector3.create(spot.x, 0, spot.z) })
     const floors = 1 + alea(4)
     const items: number[] = []
@@ -50,20 +50,54 @@ function poser(): void {
     })
     n += 1
   }
-  console.log(`[CLIENT] stress: ${n} fausses bases sur emplacements libres, ${reelles} vraies bases en place`)
+  console.log(`[CLIENT] stress: ${n} fausses bases sur emplacements libres, ${reelles.length} vraies bases evitees`)
 }
 
+/**
+ * A fake base NEVER stands where a real one stands, at any point in time.
+ *
+ * Waiting five seconds and then reading the field was not enough: the player's own base
+ * arrives over the network whenever the server gets to it, and if that is on the sixth second
+ * the harness has already taken their spot. The tester then stood inside his own building
+ * being told "not your base", with two sets of walls, two ramps and two lifts interleaved
+ * (1 Sep). It looked like the merge had broken the world; it was the instrument.
+ *
+ * So placement waits for the first real base to appear, and afterwards a light sweep keeps
+ * watching: any fake sitting on a spot a real base has since claimed is destroyed on sight.
+ * A measuring instrument that changes what it measures is worse than no instrument.
+ */
 export function setupStress(): void {
   if (STRESS_BASES <= 0) return
-  // Deferred: the real bases arrive over the network, and a field laid out before they land is
-  // a field laid out against nothing.
+  const faux = new Map<string, Entity>()
+  const clef = (x: number, z: number): string => `${Math.round(x)}|${Math.round(z)}`
+  let acc = 0
   let attente = 0
-  let fait = false
+  let pose = false
   engine.addSystem((dt: number) => {
-    if (fait) return
+    acc += dt
     attente += dt
-    if (attente < 5) return
-    fait = true
-    poser()
+    if (acc < 2) return
+    acc = 0
+    const reelles: Array<{ x: number; z: number }> = []
+    for (const [e, p] of engine.getEntitiesWith(Plot, Transform)) {
+      if (p.ownerId.startsWith('stress-')) continue
+      const t = Transform.get(e)
+      reelles.push({ x: t.position.x, z: t.position.z })
+    }
+    // Any fake standing where a real base now stands gives way, immediately.
+    for (const r of reelles) {
+      const k = clef(r.x, r.z)
+      const intrus = faux.get(k)
+      if (intrus !== undefined) {
+        engine.removeEntity(intrus)
+        faux.delete(k)
+        console.log(`[CLIENT] stress: fausse base retiree de ${k}, une vraie s y est posee`)
+      }
+    }
+    // Nothing is placed before a real base has been seen: the field has to exist to be avoided.
+    if (!pose && (reelles.length > 0 || attente > 30)) {
+      pose = true
+      poser(reelles, faux, clef)
+    }
   })
 }

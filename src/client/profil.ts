@@ -16,7 +16,7 @@ import { engine } from '@dcl/sdk/ecs'
  *
  * Ship with `PROFIL = false`. It is a measuring instrument, not a feature.
  */
-export const PROFIL = true
+export const PROFIL = false
 
 const temps = new Map<string, number>()
 let frames = 0
