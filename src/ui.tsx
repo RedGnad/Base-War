@@ -887,7 +887,19 @@ function Revelation(): ReactEcs.JSX.Element {
   const mut = mutation(boxView.resultatMutation)
   const rayon = (560 + 120 * heroPop) * entree
   const icone = 290 * heroPop
-  const mid = active.h * 0.36
+  /*
+    Au centre de l'ecran, et centre sur la COMPOSITION, pas sur l'image seule.
+
+    C'etait pose a 36% de la hauteur, donc franchement au-dessus du centre, sur les deux
+    plateformes (proprietaire, 1 Sep). Le moment ou la piece se revele est le produit: il se
+    joue au milieu de l'ecran, la ou l'oeil est deja.
+
+    Le groupe est l'icone plus ses deux lignes, nom et rendement. Centrer l'icone seule
+    poserait le texte sous le centre et ferait remonter l'ensemble; on decale donc d'une
+    demi-hauteur de texte vers le haut pour que le BLOC soit centre.
+  */
+  const sousTexte = 52 + 40 + 6
+  const mid = active.h / 2 - sousTexte / 2
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
       <UiEntity
