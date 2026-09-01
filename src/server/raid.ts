@@ -6,10 +6,10 @@ import {
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
   RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN,
   SCENE_SIDE, forceDuTir
-, RAID_DEAGGRO_RANGE, RAID_BORD} from '../shared/schemas'
+, RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
-import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf } from './plots'
+import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases } from './plots'
 import { frapperPorteur } from './carry'
 import { dropAt } from './coins'
 import { noter } from './records'
@@ -44,9 +44,30 @@ function prochainCreneau(apres: number): number {
   }
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
-  let cibleAddr: string | null = null
+let cibleAddr: string | null = null
 let dernierBalai = 0
 let spawnX = 0, spawnZ = 0
+
+/**
+ * Keeps the boss OUT of the plots, sliding along a wall instead of walking through it.
+ *
+ * It moves as two numbers on the server while the buildings are drawn on the client, so
+ * nothing stopped it strolling through a wall to stand among somebody's shelves (owner,
+ * 1 Sep). Its footprint is pushed out of every plot along whichever axis it has entered the
+ * least, which makes it round a corner rather than stop dead against it. That also gives a
+ * base the role it should have during a raid: a refuge you duck into, with the thing pacing
+ * outside.
+ */
+function horsDesBases(nx: number, nz: number): { x: number; z: number } {
+  const demi = BASE_SIDE / 2 + RAID_RADIUS + 0.4
+  for (const b of toutesLesBases()) {
+    const dx = nx - b.x, dz = nz - b.z
+    if (Math.abs(dx) >= demi || Math.abs(dz) >= demi) continue
+    if (demi - Math.abs(dx) < demi - Math.abs(dz)) nx = b.x + (dx < 0 ? -demi : demi)
+    else nz = b.z + (dz < 0 ? -demi : demi)
+  }
+  return { x: nx, z: nz }
+}
 let faceX = 0, faceZ = 1
 let dernierTick = 0
 let seed = 12345
@@ -109,6 +130,9 @@ function ouvrir(now: number, finMs?: number): void {
   seed = (now & 0x7fffffff) ^ 0x5f3759df
   spawnX = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
   spawnZ = RAID_SPAWN_MARGIN + rnd() * (SCENE_SIDE - 2 * RAID_SPAWN_MARGIN)
+  // It must not appear inside a plot either.
+  const depart = horsDesBases(spawnX, spawnZ)
+  spawnX = depart.x; spawnZ = depart.z
   m.x = spawnX
   m.z = spawnZ
   faceX = 0; faceZ = 1
@@ -246,10 +270,11 @@ export function startRaid(): void {
       cur += Math.max(-RAID_TURN * ds, Math.min(RAID_TURN * ds, diff))
       faceX = Math.sin(cur); faceZ = Math.cos(cur)
       m.faceX = faceX; m.faceZ = faceZ
-      // It walks to the ends of the map after its target; only the map stops it.
+      // It walks to the ends of the map after its target; the map and the plots stop it.
       const pas = Math.min(RAID_SPEED * ds, vl)
-      m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, m.x + vx * pas))
-      m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, m.z + vz * pas))
+      const libre = horsDesBases(m.x + vx * pas, m.z + vz * pas)
+      m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.x))
+      m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.z))
     }
 
     if (now - dernierBalai < RAID_SWIPE_MS) return
