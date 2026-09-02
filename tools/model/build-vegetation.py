@@ -131,13 +131,28 @@ def primitive_de(chemin):
     return p, aplatir.cuire(im, facteur)
 
 
+# La scene fait 192 m de cote. Un modele dont la BOITE ENGLOBANTE sort de ce carre est masque
+# par le client en production, entierement, sans erreur; l'apercu local lance en `local-scene`
+# ne verifie pas les limites, donc le defaut ne se voit qu'une fois deploye. Les arbres du bord
+# debordaient de deux a trois metres et la carte s'est retrouvee sans un seul arbre
+# (proprietaire, 2 Sep). Chaque instance est donc ramenee dans le carre, elle et sa ramure.
+MARGE_SCENE = 0.5
+
+
 def instancier(p, x, y, z, sc, ry):
-    """Une copie du primitive, tournee autour de Y puis mise a l'echelle et posee."""
+    """Une copie du primitive, tournee autour de Y, mise a l'echelle, posee et RENTREE."""
     a = math.radians(ry)
     ca, sa = math.cos(a), math.sin(a)
     pos, nor = [], []
     for (px, py, pz) in p['pos']:
         pos.append((x + sc * (px * ca + pz * sa), y + sc * py, z + sc * (-px * sa + pz * ca)))
+    # Ce que cette instance occupe reellement, ramure comprise, puis le decalage qui la rentre.
+    xs = [q[0] for q in pos]
+    zs = [q[2] for q in pos]
+    dx = max(0.0, MARGE_SCENE - min(xs)) - max(0.0, max(xs) - (SCENE_SIDE - MARGE_SCENE))
+    dz = max(0.0, MARGE_SCENE - min(zs)) - max(0.0, max(zs) - (SCENE_SIDE - MARGE_SCENE))
+    if dx or dz:
+        pos = [(q[0] + dx, q[1], q[2] + dz) for q in pos]
     for n in p['nor']:
         if n is None:
             nor.append(None)
@@ -150,6 +165,11 @@ def ecrire(nom, prims, atlas, regions):
     for p in prims:
         u0, v0, w, h = regions[p['tuile']]
         p['uv_atlas'] = [(u0 + (u % 1.0) * w, v0 + (v % 1.0) * h) for (u, v) in p['uv']]
+    xs = [q[0] for p in prims for q in p['pos']]
+    zs = [q[2] for p in prims for q in p['pos']]
+    if min(xs) < 0 or min(zs) < 0 or max(xs) > SCENE_SIDE or max(zs) > SCENE_SIDE:
+        raise SystemExit(f'{nom}: boite englobante hors scene, x {min(xs):.2f}..{max(xs):.2f} '
+                         f'z {min(zs):.2f}..{max(zs):.2f} pour une scene de 0..{SCENE_SIDE:.0f}')
     taille = aplatir.ecrire_glb(os.path.join(OUT, nom), [(False, prims)], atlas)
     print(f'-> {nom}: {len(prims)} instances fondues, {sum(len(p["pos"]) for p in prims)} sommets, '
           f'atlas {atlas.width}x{atlas.height}, {taille // 1024} Ko')
