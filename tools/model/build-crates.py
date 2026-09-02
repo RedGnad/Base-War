@@ -54,6 +54,27 @@ def melange(c, f):
     """f<1 assombrit, f>1 eclaircit sans deborder."""
     return tuple(max(0, min(255, int(round(v * f)))) for v in c)
 
+def clarte(c):
+    """Luminance percue, 0 a 1."""
+    return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255
+
+def detacher(couleur, fond):
+    """
+    La meme couleur, poussee jusqu'a se voir sur ce fond.
+
+    Une caisse a thème porte la couleur de sa mutation SUR le corps ET sur les sangles: Gold
+    est #ffd700 des deux cotes, Lava #ff5722, Cursed #3b0a45. En primitives les sangles etaient
+    emissives et se detachaient par la lueur; un atlas n'a pas de lueur, alors elles
+    disparaissaient purement et simplement. On les separe donc en clarte: on eclaircit sur un
+    fond sombre, on assombrit sur un fond clair, jusqu'a un ecart franc.
+    """
+    ecart = 0.22
+    for f in (0.62, 0.50, 0.40) if clarte(fond) > 0.5 else (1.55, 1.9, 2.4):
+        c = melange(couleur, f)
+        if abs(clarte(c) - clarte(fond)) >= ecart:
+            return c
+    return c
+
 """
   La caisse, en metres et dans le repere du support: elle tient dans [-0.56, 0.56] en x et z,
   et [-0.52, 0.52] en y, exactement la ou les primitives se tenaient. Monter le modele sur le
@@ -98,7 +119,7 @@ def uv_de(tuile):
 def couleurs_de(c):
     theme = MUTATIONS.get(c['theme']) if c['theme'] >= 0 else None
     base = rgb(c['color'])
-    sangle = rgb(theme) if theme else melange(base, 0.55)
+    sangle = detacher(rgb(theme), base) if theme else melange(base, 0.55)
     return [
         base,                    # CORPS
         melange(base, 1.30),     # COUVERCLE, eclairci: c'est lui qui portait la lueur
