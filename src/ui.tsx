@@ -83,7 +83,7 @@ export function setupUi() {
       offer, when that action has one, and falls back to the plain E for the actions whose
       price or count has to be read rather than recognised.
     */
-    setIconePrimaire(combatView.aiming ? 'icon-fire' : (nextAction()?.icon ?? null))
+    setIconePrimaire(combatView.aiming ? 'act-fire' : (nextAction()?.icon ?? null))
     setReticuleClient(!combatView.aiming && !modale() && !menuView.open)
     setMenuIcone(questsToClaim() > 0)
 
@@ -369,8 +369,12 @@ function gainRecent(): string { return gainMontant > 0 && Date.now() - gainA < 9
 const PRECHAUFFE = [
   'panel', 'card', 'inset', 'primary', 'secondary', 'danger', 'fade-left', 'fade-right',
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
-  'icon-build', 'icon-collect', 'icon-crate', 'icon-drop', 'icon-fire', 'icon-give', 'icon-gun',
-  'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu', 'icon-menu-alert', 'icon-place', 'icon-recover',
+  // Les trois boutons satellites gardent la famille blanche: ils sont poses sur la plaque
+  // BLEUE, ou le blanc mesure 3,76 contre 1, au-dessus du plancher de 3. Le gros bouton, lui,
+  // est sur la plaque OR ou le meme blanc tombe a 1,57: c'est la seule raison de la scission.
+  'icon-gun', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu', 'icon-menu-alert',
+  'act-build', 'act-crate', 'act-place', 'act-give', 'act-drop', 'act-recover', 'act-collect',
+  'act-fire', 'act-pickup', 'act-steal', 'act-up', 'act-fuse', 'act-feed', 'act-outbid',
   // The interface icon family and the reveal's ray fan. A texture named for the first time
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
@@ -447,7 +451,7 @@ const PhoneControls = () => {
         bas={ARC[2].bas} droite={ARC[2].droite}
         badge={questsToClaim() > 0} onClick={basculerMenu} />
       {a !== null && (
-        <Pouce icone={combatView.aiming ? 'icon-fire' : (a.icon ?? 'icon-collect')} taille={POUCE_GROS}
+        <Pouce icone={combatView.aiming ? 'act-fire' : (a.icon ?? 'act-collect')} taille={POUCE_GROS}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]} />
       )}
     </UiEntity>
@@ -557,7 +561,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     a word is worth its room.
   */
   if (slotView.active) {
-    if (slotView.valid) return { id: 'poser-base', label: 'PLACE HERE', icon: 'icon-build', action: placeHere }
+    if (slotView.valid) return { id: 'poser-base', label: 'PLACE HERE', icon: 'act-build', action: placeHere }
     /*
       Marqueur demande a la main et endroit refuse: le bouton reste vide, le rectangle rouge et
       son motif disent deja tout. Marqueur allume tout seul et endroit refuse: on ne bloque
@@ -570,7 +574,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   // not only by clicking the crate itself: on a phone the click is a hunt, the button is a thumb.
   // And while that crate is in flight, result, reel or landing, the button offers nothing at
   // all: a fourth press in a rhythm used to open a second crate under the first one's reel.
-  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: 'icon-crate', action: frapper }
+  if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: 'act-crate', action: frapper }
   if (boxView.phase !== 'idle') return null
   /*
     Hands first, because full hands are the loudest fact about your situation.
@@ -588,22 +592,22 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   */
   if (carryView.code >= 0) {
     // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
-    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', action: agirSurFuser }
+    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: 'act-feed', action: agirSurFuser }
     const ou = baseIci()
-    if (ou === null) return { id: 'lacher', label: 'DROP', icon: 'icon-drop', action: dropCarried }
+    if (ou === null) return { id: 'lacher', label: 'DROP', icon: 'act-drop', action: dropCarried }
     return ou.mienne
-      ? { id: 'poser-objet', label: 'PUT IT DOWN', icon: 'icon-place', action: () => placeDown(ou.ownerId) }
-      : { id: 'poser-objet', label: 'GIVE IT', icon: 'icon-give', action: () => placeDown(ou.ownerId) }
+      ? { id: 'poser-objet', label: 'PUT IT DOWN', icon: 'act-place', action: () => placeDown(ou.ownerId) }
+      : { id: 'poser-objet', label: 'GIVE IT', icon: 'act-give', action: () => placeDown(ou.ownerId) }
   }
-  if (theftView.canRecover) return { id: 'recuperer', label: 'RECOVER', icon: 'icon-recover', action: recover }
+  if (theftView.canRecover) return { id: 'recuperer', label: 'RECOVER', icon: 'act-recover', action: recover }
   /*
     Setting a trap is a two-tap act, like placing the base: the first shows where, the second
     commits. It sits below the carry verbs because the genre forbids gear while carrying, and
     above building because a pocket with a trap in it is a state the player created on purpose
     a moment ago, which is exactly what this button is for.
   */
-  if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'icon-build', action: poserPiege }
-  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: 'icon-build', action: basculerPose }
+  if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: 'act-build', action: poserPiege }
+  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: 'act-build', action: basculerPose }
   /*
     What the place offers, so the phone needs no interaction button at all.
 
@@ -617,14 +621,14 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   */
   const caisse = caisseAPortee()
   if (caisse !== null) {
-    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: 'icon-crate', action: () => acheterCaisse(caisse.articleId) }
+    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: 'act-crate', action: () => acheterCaisse(caisse.articleId) }
   }
   const convoi = convoiAPortee()
-  if (convoi !== null && !convoi.mine) return { id: 'surencherir', label: `OUTBID  ${formatIncome(convoi.price)}`, action: () => surencherir(convoi.convoyId) }
-  if (fuserAPortee()) return { id: 'fuser', label: 'FUSER', action: agirSurFuser }
-  if (ascenseurAPortee()) return { id: 'monter', label: 'GO UP', action: monterIci }
+  if (convoi !== null && !convoi.mine) return { id: 'surencherir', label: `OUTBID  ${formatIncome(convoi.price)}`, icon: 'act-outbid', action: () => surencherir(convoi.convoyId) }
+  if (fuserAPortee()) return { id: 'fuser', label: 'FUSER', icon: 'act-fuse', action: agirSurFuser }
+  if (ascenseurAPortee()) return { id: 'monter', label: 'GO UP', icon: 'act-up', action: monterIci }
   const pad = padEnFace()
-  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, action: () => agirSurPad(pad) }
+  if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, icon: 'act-steal', action: () => agirSurPad(pad) }
   /*
     Se planter devant son propre socle passe avant l'offre d'ouvrir une caisse.
 
@@ -632,9 +636,9 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     une, le bouton disait OPEN partout dans sa base et "PICK UP" ne pouvait plus jamais sortir
     (proprietaire, 1 Sep). Se tenir face a un socle precis est un acte delibere, il gagne.
   */
-  if (pad !== null && pad.mine) return { id: 'ramasser', label: `PICK UP ${pad.nom}`, action: () => agirSurPad(pad) }
+  if (pad !== null && pad.mine) return { id: 'ramasser', label: `PICK UP ${pad.nom}`, icon: 'act-pickup', action: () => agirSurPad(pad) }
   if (boxView.stock.length > 0 && peutOuvrirIci()) {
-    return { id: 'ouvrir-caisse', label: `OPEN ${boxView.stock.length}`, icon: 'icon-crate', action: openBestCrate }
+    return { id: 'ouvrir-caisse', label: `OPEN ${boxView.stock.length}`, icon: 'act-crate', action: openBestCrate }
   }
   /*
     No purchase past this point, and that is the whole rule.
@@ -663,7 +667,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (theftView.pending >= 1) {
     // A picture, so the button says it and the bar above the controls can stay away. The
     // amount is not lost: the counter states the pool, which is where a total belongs.
-    return { id: 'encaisser', label: 'COLLECT', icon: 'icon-collect', action: collectPending }
+    return { id: 'encaisser', label: 'COLLECT', icon: 'act-collect', action: collectPending }
   }
   return null
 }

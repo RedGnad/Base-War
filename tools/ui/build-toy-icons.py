@@ -277,6 +277,145 @@ def ui_icone(nom, hexcol):
     return im
 
 
+
+def act_icone(nom, hexcol):
+    """Le verbe du bouton contextuel, dessine pour la plaque OR.
+
+    Mesure du 2 Sep, sur la plaque reelle (#ffc63f au centre): un glyphe blanc y tient a
+    1,57 contre 1, et le creme a 1,30. Le plancher que ce depot s'impose a lui-meme dans
+    `theme.ts` est 3, celui de WCAG pour un graphique. Le contour presque noir de cette
+    famille, lui, mesure 11,12. Autrement dit le bouton le plus presse du jeu portait des
+    dessins que la lumiere d'un telephone efface, et ce n'est pas une question de gout.
+
+    Meme grammaire que `ui_icone`: un corps sature, un contour epais qui survit a la
+    reduction, une seule zone claire. Deux differences: ces dessins montrent un ACTE et non
+    un objet (une fleche, une main, un outil), et chacun a une silhouette distincte de ses
+    voisins, parce qu'ils s'echangent sur le meme bouton et qu'un joueur ne les compare
+    jamais cote a cote.
+    """
+    c = rgb(hexcol)
+    dark = mix(c, (0, 0, 0), 0.62)
+    light = mix(c, (255, 255, 255), 0.42)
+    acier = rgb('#aebbd0')
+    im = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    W = 12
+    cx, cy = 128, 128
+
+    def poly(pts, col=None, contour=True):
+        d.polygon(pts, fill=(col or c) + (255,))
+        if contour:
+            d.line(list(pts) + [pts[0]], fill=dark + (255,), width=W, joint='curve')
+
+    def ell(box, col=None):
+        d.ellipse(box, fill=(col or c) + (255,), outline=dark + (255,), width=W)
+
+    def dalle(y, col=None, demi=92, ep=32):
+        poly([(cx - demi, y), (cx, y + ep), (cx + demi, y), (cx, y - ep)], col)
+
+    def fleche_bas(x, haut, bas, larg=30, tete=42):
+        poly([(x - larg, haut), (x + larg, haut), (x + larg, bas - tete),
+              (x + tete, bas - tete), (x, bas), (x - tete, bas - tete), (x - larg, bas - tete)])
+
+    def fleche_haut(x, bas, haut, larg=30, tete=42):
+        poly([(x - larg, bas), (x + larg, bas), (x + larg, haut + tete),
+              (x + tete, haut + tete), (x, haut), (x - tete, haut + tete), (x - larg, haut + tete)])
+
+    def cube(x0, y0, x1, y1, col=None):
+        d.rectangle((x0, y0, x1, y1), fill=(col or light) + (255,), outline=dark + (255,), width=W)
+
+    if nom == 'build':
+        # Un maillet: le manche en bois, la tete en acier. L'ancien dessin montrait le
+        # BATIMENT, c'est-a-dire le resultat; un bouton d'action doit montrer le geste, et
+        # le marteau est la convention du genre pour "construire".
+        poly([(64, 206), (92, 228), (176, 112), (148, 90)])
+        poly([(214, 84), (186, 130), (94, 74), (122, 28)], acier)
+    elif nom == 'place':
+        # Poser: la piece descend sur une tablette qui l'attend.
+        cube(88, 14, 168, 94)
+        fleche_bas(128, 106, 168, 24, 38)
+        dalle(200, mix(c, (0, 0, 0), 0.25))
+    elif nom == 'give':
+        # Donner: la piece part de cote, vers l'etagere d'un autre.
+        cube(30, 92, 96, 158)
+        poly([(112, 104), (168, 104), (168, 82), (216, 126), (168, 170), (168, 148), (112, 148)])
+        d.rectangle((226, 56, 246, 200), fill=mix(c, (0, 0, 0), 0.25) + (255,), outline=dark + (255,), width=W)
+    elif nom == 'drop':
+        # Lacher: la piece bascule et tombe par terre. POSER est aussi une descente, alors
+        # deux fleches vers le bas ne se seraient pas distinguees: les deux verbes s'offrent
+        # dans le meme contexte, une piece en main. Ici c'est un cube DE TRAVERS au-dessus de
+        # son ombre au sol, sans tablette: rien pour l'accueillir, ce qui est exactement la
+        # difference entre les deux verbes.
+        d.ellipse((60, 196, 196, 238), fill=mix(c, (0, 0, 0), 0.32) + (255,), outline=dark + (255,), width=W - 4)
+        poly([(128, 26), (216, 108), (128, 190), (40, 108)])
+        poly([(128, 66), (176, 108), (128, 150), (80, 108)], light)
+    elif nom == 'recover':
+        ell((36, 36, 220, 220))
+        d.ellipse((78, 78, 178, 178), fill=(0, 0, 0, 0))
+        d.ellipse((78, 78, 178, 178), outline=dark + (255,), width=W)
+        d.rectangle((110, 20, 190, 68), fill=(0, 0, 0, 0))
+        poly([(104, 12), (104, 84), (176, 48)], light)
+    elif nom == 'collect':
+        for k, y in enumerate((166, 122, 78)):
+            ell((48, y, 208, y + 62), light if k == 2 else None)
+    elif nom == 'fire':
+        ell((40, 40, 216, 216))
+        d.ellipse((84, 84, 172, 172), fill=(0, 0, 0, 0))
+        d.ellipse((84, 84, 172, 172), outline=dark + (255,), width=W)
+        ell((110, 110, 146, 146), light)
+        for x0, y0, x1, y1 in ((118, 8, 138, 62), (118, 194, 138, 248), (8, 118, 62, 138), (194, 118, 248, 138)):
+            d.rectangle((x0, y0, x1, y1), fill=c + (255,), outline=dark + (255,), width=6)
+    elif nom == 'pickup':
+        # Ramasser: la piece se souleve de sa tablette.
+        dalle(214, mix(c, (0, 0, 0), 0.25))
+        cube(88, 92, 168, 172)
+        fleche_haut(128, 82, 14, 24, 38)
+    elif nom == 'steal':
+        # Voler: deux pointes se referment sur la piece de quelqu'un d'autre. La main, que
+        # j'ai essayee deux fois, ne tient pas a la taille du pouce dans une famille faite de
+        # solides geometriques: elle se lit comme un bocal. Cette prise-la n'a de voisin nulle
+        # part ailleurs dans le jeu, ce qui est la seule chose qu'on demande a une silhouette.
+        cube(86, 86, 170, 170, light)
+        poly([(14, 62), (74, 128), (14, 194), (14, 62)])
+        poly([(242, 62), (182, 128), (242, 194), (242, 62)])
+    elif nom == 'up':
+        # Monter: entre deux planchers.
+        dalle(226, mix(c, (0, 0, 0), 0.25), 96, 26)
+        dalle(66, light, 96, 26)
+        fleche_haut(128, 196, 96, 26, 40)
+    elif nom == 'fuse':
+        # Fusionner: trois deviennent un. L'etincelle au centre est le resultat.
+        for a in (0.5, 2.594, 4.688):
+            x = cx + math.cos(a) * 64
+            y = cy + math.sin(a) * 64
+            ell((x - 48, y - 48, x + 48, y + 48))
+        pts = []
+        for k in range(8):
+            ang = k * math.pi / 4
+            r = 48 if k % 2 == 0 else 19
+            pts.append((cx + math.cos(ang) * r, cy + math.sin(ang) * r))
+        poly(pts, light)
+    elif nom == 'feed':
+        # Nourrir: la piece entre dans la tremie. Distinguer NOURRIR de FUSER par un detail
+        # ajoute au meme dessin n'aurait pas tenu a la taille du pouce; c'est donc une autre
+        # silhouette, et c'est le geste qu'elle montre, pas la machine.
+        cube(94, 12, 162, 80, light)
+        poly([(28, 108), (228, 108), (162, 186), (162, 240), (94, 240), (94, 186)])
+    elif nom == 'outbid':
+        # Surencherir: on met PLUS. La fleche monte, sinon le dessin dit le contraire du mot.
+        ell((72, 150, 232, 212))
+        ell((72, 112, 232, 174), light)
+        poly([(46, 240), (46, 130), (14, 130), (62, 44), (110, 130), (78, 130), (78, 240)])
+    return im
+
+
+ACT_ICONES = [
+    ('build', '#d2913f'), ('place', '#5fbf3a'), ('give', '#37c9a6'), ('drop', '#8d9bb4'),
+    ('recover', '#4aa3ef'), ('collect', '#e8a81f'), ('fire', '#f0503c'),
+    ('pickup', '#5fbf3a'), ('steal', '#e05a3c'), ('up', '#2fb6e8'),
+    ('fuse', '#9b6ce8'), ('feed', '#9b6ce8'), ('outbid', '#e8a81f'),
+]
+
 UI_ICONES = [
     ('crate', '#e0a24a'), ('floor', '#7cc4ff'), ('shield', '#6fb1f2'),
     ('prestige', '#f5a524'), ('luck', '#6cc72e'),
@@ -305,6 +444,11 @@ if __name__ == '__main__':
     enseigne().save(os.path.join(OUT, 'sign.png'), optimize=True)
     for nom, col in UI_ICONES:
         ui_icone(nom, col).save(os.path.join(OUT, f'ui-{nom}.png'), optimize=True)
+    for nom, col in ACT_ICONES:
+        act_icone(nom, col).save(os.path.join(OUT, f'act-{nom}.png'), optimize=True)
+    # La caisse du bouton est celle des cartes: elle est deja juste, et deux dessins pour une
+    # meme chose est le debut d'une incoherence.
+    ui_icone('crate', '#e0a24a').save(os.path.join(OUT, 'act-crate.png'), optimize=True)
     fade(True).save(os.path.join(OUT, 'fade-left.png'), optimize=True)
     fade(False).save(os.path.join(OUT, 'fade-right.png'), optimize=True)
     print('wrote', OUT)
