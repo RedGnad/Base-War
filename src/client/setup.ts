@@ -70,13 +70,30 @@ export const view = {
   own `31,20-pointer-lock-control` test scene. Nothing on a phone: there is no cursor, and a
   finger on the screen already looks around.
 */
+/*
+  Deux regimes, parce que les deux erreurs ne coutent pas la meme chose.
+
+  Le declenchement sur FRONT valait pour la capture: verrouiller a chaque image se battrait
+  avec la touche Echap, qui est la sortie normale du joueur. Mais il valait aussi pour le
+  DEVERROUILLAGE, et la c'etait faux. Le client verrouille le curseur de son cote des qu'on
+  clique dans le monde, sans nous prevenir; notre intention, elle, n'a pas change, alors le
+  front ne se produit jamais et rien ne corrige. Le joueur se retrouve devant un panneau avec
+  un curseur capture: sa premiere pression sert a rendre le curseur, la seconde seulement
+  atteint le bouton. C'est exactement ce qu'il decrivait ("il faut cliquer plusieurs fois sur
+  START", 2 Sep) et ce n'etait pas un doigt qui rate.
+
+  Alors: tant qu'un panneau est ouvert on INSISTE, image apres image, parce qu'un panneau
+  qu'on ne peut pas cliquer n'est pas un panneau. Des que le jeu reprend on ne verrouille
+  qu'une fois, sur le front, et on laisse Echap tranquille.
+*/
 function setupPointerLock(): void {
   PointerLock.createOrReplace(engine.CameraEntity, { isPointerLocked: false })
   let dernier: boolean | null = null
   engine.addSystem(() => {
     const voulu = theftView.hudVisible
-    if (voulu === dernier) return
+    const front = voulu !== dernier
     dernier = voulu
+    if (voulu && !front) return
     const pl = PointerLock.getMutableOrNull(engine.CameraEntity)
     if (pl !== null && pl.isPointerLocked !== voulu) pl.isPointerLocked = voulu
   })
