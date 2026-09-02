@@ -310,6 +310,18 @@ function marqueurLu(brut: string | null | undefined): string | null {
   }
 }
 
+/*
+  Les comptes que la remise a zero est en train d'effacer, tant qu'elle n'a pas fini.
+
+  Le menage tourne en tache de fond pour ne pas tuer le demarrage, et cela ouvre une fenetre:
+  un joueur qui arrive pendant que son profil existe encore le fait relire par `accueillir`,
+  qui lui REFABRIQUE sa base depuis les coordonnees du profil, puis la marque a sauvegarder.
+  La remise a zero effacait donc ce que l'arrivee venait de ressusciter, et en pire: reecrit,
+  donc definitif (proprietaire, 3 Sep, "il y a toujours ma base"). Un compte inscrit ici
+  arrive VIERGE jusqu'a ce que son effacement soit passe.
+*/
+const effacementEnCours = new Set<string>()
+
 async function remiseAZero(): Promise<Set<string>> {
   const efface = new Set<string>()
   try {
@@ -333,7 +345,7 @@ async function remiseAZero(): Promise<Set<string>> {
     const res = await Storage.getValues({ prefix: 'base:' })
     for (const e of res.data) {
       const a = e.key.slice('base:'.length)
-      if (a.length > 0) efface.add(a)
+      if (a.length > 0) { efface.add(a); effacementEnCours.add(a) }
     }
     await Storage.delete(JOURNAL_KEY)
     viderJournal()
@@ -355,12 +367,15 @@ async function remiseAZero(): Promise<Set<string>> {
         for (const a of efface) {
           await Storage.delete(BASE_KEY(a))
           await Storage.player.delete(a, PLAYER_KEY)
+          effacementEnCours.delete(a)
           n += 1
         }
       } catch (e) {
         log(`remise a zero: menage interrompu apres ${n}: ${e}`)
+        effacementEnCours.clear()
         return
       }
+      effacementEnCours.clear()
       log(`remise a zero: ${n} compte(s) effaces`)
     })()
   } catch (e) {
@@ -515,7 +530,16 @@ async function save(): Promise<void> {
 
 export async function accueillir(address: string): Promise<void> {
   const raw = await Storage.player.get<string>(address, PLAYER_KEY)
-  const stocke: Profil | null = raw ? JSON.parse(raw) : null
+  // Un compte que la remise a zero est en train d'effacer arrive neuf, jamais avec son
+  // ancien profil: sinon l'arrivee refabrique la base que le menage vient de supprimer.
+  const enEffacement = effacementEnCours.has(address)
+  if (enEffacement) {
+    effacementEnCours.delete(address)
+    log(`${nameOf(address)} arrive pendant la remise a zero: profil ignore, compte neuf`)
+    await Storage.player.delete(address, PLAYER_KEY)
+    await Storage.delete(BASE_KEY(address))
+  }
+  const stocke: Profil | null = (!enEffacement && raw) ? JSON.parse(raw) : null
   const items = stocke?.items ?? []
   // Spread the stored profile, then override only the exceptions. A whitelist of fields
   // silently drops everything added to the type later, and the failure is invisible.
