@@ -33,11 +33,13 @@ export const ETAPES = [
  * premiere minute sans que le jeu ait a donner deux fois. La marche du bas etait de la
  * generosite en double, pas de l'attention.
  *
- * Douze minutes n'existait que comme second barreau d'une echelle qui n'en a plus qu'un: le
- * cadeau reprend donc sa place a dix, ou il etait avant cette passe.
+ * Il tombe a SIX minutes. Douze n'existait que comme second barreau d'une echelle qui n'en a
+ * plus qu'un, et dix etait le reglage d'avant, quand rien ne remplissait la premiere minute.
+ * Maintenant que la caisse de bienvenue s'en charge, six est le point ou l'attente cesse
+ * d'etre une attente et devient un rendez-vous.
  */
 export const CADEAUX = [
-  { s: 10 * 60, crate: 2 }
+  { s: 6 * 60, crate: 2 }
 ] as const
 /** La derniere marche, pour la barre qui compte a rebours et pour les messages. */
 export const CADEAU_MS = CADEAUX[CADEAUX.length - 1].s * 1000
