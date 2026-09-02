@@ -567,7 +567,7 @@ export const JOURNAL_KEPT = 40
 
 export const EVENT_MS = 5 * 60_000
 /** Mean gap between events. The genre rolls every fifteen minutes; ours lands there on average. */
-export const EVENT_GAP_MS = 24 * 3600_000
+export const EVENT_GAP_MS = 15 * 60_000
 /** How hard the event pushes its mutation: the Lava crate's own weight, applied to every crate. */
 export const EVENT_WEIGHT = 60
 /*
