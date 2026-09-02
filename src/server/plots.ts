@@ -11,7 +11,7 @@ import {
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { viderJournal } from './records'
-import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsOfDay, QuestType } from '../shared/quests'
+import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsPour, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -74,6 +74,16 @@ type Profil = {
   received?: number
   tuto?: number
   questDay?: number
+  /*
+    Les trois quetes tirees pour la journee, ECRITES au moment du tirage.
+
+    Elles etaient recalculees a chaque lecture depuis le numero du jour. Cela suffisait tant
+    que le tirage ne dependait que de la date, mais des qu'il depend AUSSI du joueur (un
+    debutant recoit la quete d'apprentissage), un joueur qui cesse d'etre debutant en cours de
+    journee verrait sa liste changer sous ses pieds, et `questProgress`, qui est indexe par
+    place, pointerait sur les mauvaises quetes. On tire une fois, on ecrit, on s'y tient.
+  */
+  questIds?: number[]
   questProgress?: number[]
   questsClaimed?: number[]
   vus?: number[]
@@ -769,12 +779,32 @@ function todayKey(): number {
   return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate()
 }
 
+/*
+  Quarante-cinq minutes de jeu, tout cumule, definit le debutant.
+
+  Le signal est deja au profil, il ne recule jamais, et il s'eteint tout seul. Les autres
+  candidats mentaient: l'etape du tutoriel ne se termine jamais pour qui joue seul, puisque sa
+  derniere marche est un cadeau sur la base d'un autre; et compter les objets trouves confond
+  celui qui debute avec celui qui joue mal.
+*/
+const DEBUTANT_S = 45 * 60
+
+function estDebutant(p: Profil): boolean {
+  return (p.playedS ?? 0) < DEBUTANT_S
+}
+
+/** Les trois quetes ecrites au profil, tirees si la journee vient de tourner. */
+function idsDuJour(p: Profil): number[] {
+  return p.questIds ?? questsPour(p.questDay ?? 0, false)
+}
+
 function questState(address: string): Profil | null {
   const p = profiles.get(address)
   if (!p) return null
   const k = todayKey()
-  if (p.questDay !== k) {
+  if (p.questDay !== k || p.questIds === undefined || p.questIds.length !== 3) {
     p.questDay = k
+    p.questIds = questsPour(k, estDebutant(p))
     p.questProgress = [0, 0, 0]
     p.questsClaimed = [0, 0, 0, 0]   // 4th flag is the all-three bonus
     dirtyProfiles.add(address)
@@ -785,7 +815,7 @@ function questState(address: string): Profil | null {
 export function advanceQuest(address: string, type: QuestType, n = 1): void {
   const p = questState(address)
   if (!p || n <= 0) return
-  const ids = questsOfDay(p.questDay ?? 0)
+  const ids = idsDuJour(p)
   const prog = [...(p.questProgress ?? [0, 0, 0])]
   let touche = false
   for (let i = 0; i < ids.length; i++) {
@@ -823,7 +853,7 @@ export function dailyDisponible(address: string): boolean {
 export function questStateOf(address: string): QuestState | null {
   const p = questState(address)
   if (!p) return null
-  const ids = questsOfDay(p.questDay ?? 0)
+  const ids = idsDuJour(p)
   const dispo = p.lastDay !== todayKey()
   return {
     ids,
@@ -845,7 +875,7 @@ export function claimQuestReward(address: string, slot: number): { crate: number
   if (slot < 0 || slot > 3) return { error: 'no such quest' }
   if (pris[slot] === 1) return { error: 'already claimed' }
 
-  const ids = questsOfDay(p.questDay ?? 0)
+  const ids = idsDuJour(p)
   const prog = p.questProgress ?? [0, 0, 0]
 
   if (slot === 3) {

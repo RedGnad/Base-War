@@ -31,3 +31,25 @@ export function questsOfDay(dayKey: number): number[] {
   const k = ((dayKey % QUESTS.length) + QUESTS.length) % QUESTS.length
   return [k, (k + 2) % QUESTS.length, (k + 4) % QUESTS.length]
 }
+
+/**
+ * La quete qui apprend la boucle du jeu: la base produit, et il faut venir encaisser.
+ *
+ * C'est la seule des neuf qui enseigne quelque chose plutot que de mesurer. Elle ne tombait
+ * que trois jours sur neuf (les jours 0, 2 et 7 du cycle), donc six nouveaux joueurs sur neuf
+ * n'avaient devant eux que des quetes qui supposent la boucle deja comprise.
+ */
+export const QUETE_DEBUT = 2
+
+/**
+ * Les trois quetes d'UN joueur pour la journee: la rotation du jour, sauf pour un debutant.
+ *
+ * Un debutant recoit toujours la quete d'apprentissage en premiere place, a la place de la
+ * premiere du jour. Les deux autres restent celles de tout le monde, pour qu'il decouvre la
+ * rotation en meme temps qu'il apprend la boucle.
+ */
+export function questsPour(dayKey: number, debutant: boolean): number[] {
+  const ids = questsOfDay(dayKey)
+  if (!debutant || ids.includes(QUETE_DEBUT)) return ids
+  return [QUETE_DEBUT, ids[1], ids[2]]
+}
