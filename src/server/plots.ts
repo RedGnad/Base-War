@@ -271,7 +271,7 @@ function removeBase(address: string): void {
  * nouvelle remise a zero. Un booleen oublie a `true`, lui, aurait vide le monde a chaque
  * redemarrage du serveur, c'est-a-dire plusieurs fois par jour.
  */
-const MONDE_REMIS_A_ZERO = '2026-09-02-nuit'
+const MONDE_REMIS_A_ZERO = '2026-09-02-nuit-2'
 const CLEF_REMISE = 'reset'
 
 async function remiseAZero(): Promise<void> {
