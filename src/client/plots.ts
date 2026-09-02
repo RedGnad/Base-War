@@ -287,7 +287,7 @@ function armerSentinelle(sentry: Entity, armee: boolean): void {
   }
 }
 
-function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }, loin = false): Floor {
+function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }, teinte: string, loin = false): Floor {
   const y = floor * FLOOR_HEIGHT
   const c = BASE_SIDE
   const h = WALL_HEIGHT
@@ -303,15 +303,19 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const verre = modele(mods.verre, y, !loin)
   const accent = modele(mods.accent, y)
   /*
-    La montee est UNE entite, pas deux.
+    La rampe qu'on VOIT est le collisionneur qu'on GRAVIT. Le meme objet, pas deux.
 
-    Le modele qu'on VOIT et le collisionneur qu'on GRAVIT etaient places separement, chacun
-    par son propre calcul: le modele portait son decalage et sa pente dans ses sommets, le
-    collisionneur les recevait de `rampPosition`. Deux chemins pour un seul objet, donc deux
-    endroits possibles, et le proprietaire a vu la rampe dessinee d'un cote de la piece et la
-    rampe marchable de l'autre, devant l'ascenseur (3 Sep). Le modele est maintenant centre
-    sur l'origine, cette entite porte la position et la pente, et le collisionneur en est
-    l'ENFANT: une seule transformation pour les deux, ils ne peuvent plus diverger.
+    Elle etait un modele charge a part, place par son propre calcul, et le collisionneur
+    ailleurs par le sien. Trois tentatives n'ont pas suffi a les faire coincider en
+    production: le proprietaire a vu la rampe dessinee d'un cote de la piece et la marchable
+    de l'autre, devant l'ascenseur, et le jeu devient injouable ainsi (3 Sep). On a verifie
+    le fichier, la boite, les noeuds, l'enroulement des faces, le parent, la pente: tout
+    concordait, et le rendu restait ailleurs. Sans cause identifiee, on supprime la
+    possibilite plutot que de la chercher une quatrieme fois.
+
+    Le prix: les deux rambardes du modele disparaissent, elles n'etaient que decoratives.
+    Le gain: la marche et le dessin sont une seule boite, ils ne peuvent plus se separer,
+    et le budget ne bouge pas (un objet rendu comme avant).
   */
   const pente = Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
   const montee = engine.addEntity()
@@ -321,11 +325,6 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     rotation: pente
   })
   taille.set(montee, Vector3.One())
-  if (!loin) {
-    GltfContainer.create(montee, {
-      src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
-    })
-  }
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
@@ -354,15 +353,15 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     collisionneur(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep)
   ]
 
-  // Enfants de `montee`, donc a l'origine et sans pente: elle les porte deja tous les deux.
+  // Enfant de `montee`, donc a l'origine: elle porte la position et la pente pour les deux.
   const parentAvant = parentCourant
   parentCourant = montee
   const ramp = collisionneur(0, 0, 0, rampeX, 0.18, RAMP_LENGTH)
-  const RAIL_H = 1.1
-  const rails: Entity[] = []
-  for (const cote of [-1, 1]) {
-    rails.push(collisionneur(cote * (rampeX / 2 - 0.03), (RAIL_H + 0.18) / 2, 0, 0.06, RAIL_H, RAMP_LENGTH))
+  if (!loin) {
+    MeshRenderer.setBox(ramp)
+    Material.setPbrMaterial(ramp, plastic(teinte))
   }
+  const rails: Entity[] = []
   parentCourant = parentAvant
 
   /*
@@ -402,8 +401,11 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   v.peints = v.floors.length
   // The colour lives in the file, so repainting is swapping which file each storey shows.
   const mods = modelesDe(p)
+  const teinte = accentPour(p)
   for (const et of v.floors) {
-    for (const [ent, src] of [[et.accent, mods.accent], [et.montee, mods.climb], [et.verre, mods.verre]] as Array<[Entity, string]>) {
+    // La rampe n'est plus un modele mais une boite: elle se repeint, elle ne se remplace pas.
+    if (MeshRenderer.has(et.ramp)) Material.setPbrMaterial(et.ramp, plastic(teinte))
+    for (const [ent, src] of [[et.accent, mods.accent], [et.verre, mods.verre]] as Array<[Entity, string]>) {
       const g = GltfContainer.getMutableOrNull(ent)
       const chemin = `assets/Models/${src}`
       if (g !== null && g.src !== chemin) g.src = chemin
@@ -457,7 +459,7 @@ function creerSocle(racine: Entity, k: number): Entity {
   return o
 }
 
-function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, loin = false): View {
+function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, teinte: string, loin = false): View {
   // One root at the centre, turned so the door faces the belt; everything below is local to it.
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
@@ -474,7 +476,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     and in network traffic the moment anyone walks in. Floors are added in the update below
     as the plot reports them, so an unreached floor costs exactly nothing.
   */
-  const floors: Floor[] = [buildFloor(0, 0, 0, mods, loin)]
+  const floors: Floor[] = [buildFloor(0, 0, 0, mods, teinte, loin)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
@@ -837,7 +839,7 @@ export function setupPlots(): void {
         v = undefined
       }
       if (!v) {
-        v = createView(t.position.x, t.position.z, modelesDe(p), veutLoin)
+        v = createView(t.position.x, t.position.z, modelesDe(p), accentPour(p), veutLoin)
         views.set(id, v)
       }
 
@@ -971,7 +973,7 @@ export function setupPlots(): void {
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
           parentCourant = v.racine
-          v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p), v.loin))
+          v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p), accentPour(p), v.loin))
           parentCourant = null
           // The storey's six pedestals arrive with it.
           while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(creerSocle(v.racine, v.items.length))
