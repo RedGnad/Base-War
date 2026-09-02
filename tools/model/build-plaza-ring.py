@@ -28,7 +28,7 @@ RACINE = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__))
 SORTIE = os.path.join(RACINE, 'assets', 'toy')
 
 A, B = 18.0, 13.0      # doit valoir PLAZA_A et PLAZA_B
-TRAIT = 1.5            # epaisseur du ruban, en metres
+TRAIT = 0.85           # epaisseur du ruban, en metres (1,5 lisait comme une route, pas comme un trait)
 SEGMENTS = 128
 # Le grain de la rue: une tuile de `mat-wall.png` tous les quatre metres. Les UV sont donc
 # ecrits en metres divises par quatre, et la scene pose le materiau avec un tiling de 1:

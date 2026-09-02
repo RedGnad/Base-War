@@ -310,18 +310,30 @@ function marqueurLu(brut: string | null | undefined): string | null {
   }
 }
 
-async function remiseAZero(): Promise<void> {
+async function remiseAZero(): Promise<Set<string>> {
+  const efface = new Set<string>()
   try {
     const fait = marqueurLu(await Storage.get<string>(CLEF_REMISE))
-    if (fait === MONDE_REMIS_A_ZERO) return
-    log(`remise a zero: marqueur lu "${fait ?? 'aucun'}", attendu "${MONDE_REMIS_A_ZERO}"`)
+    if (fait === MONDE_REMIS_A_ZERO) return efface
+
+    /*
+      Le marqueur AVANT le menage, jamais apres.
+
+      Il etait ecrit en dernier, apres une boucle de DEUX appels de stockage ATTENDUS par
+      compte. Un tour asynchrone de scene est tue a soixante secondes: passe une centaine de
+      comptes le menage n'avait pas fini, l'isolat mourait, le serveur redemarrait, et la
+      remise a zero repartait de zero sans jamais poser son marqueur. Une boucle qui ne peut
+      pas se terminer, et un monde qui recharge sans fin: 39%, 0%, 38%, 0% (proprietaire,
+      3 Sep). Marqueur d'abord, le pire cas devient un menage incomplet, qui se rattrape;
+      marqueur apres, le pire cas est un monde qu'on ne peut plus charger du tout.
+    */
+    const pose = await Storage.set(CLEF_REMISE, MONDE_REMIS_A_ZERO)
+    log(`remise a zero ${MONDE_REMIS_A_ZERO}: marqueur pose (${pose}), lu avant "${fait ?? 'aucun'}"`)
 
     const res = await Storage.getValues({ prefix: 'base:' })
-    const adresses = res.data.map((e) => e.key.slice('base:'.length)).filter((a) => a.length > 0)
-    log(`remise a zero ${MONDE_REMIS_A_ZERO}: ${adresses.length} base(s) a effacer`)
-    for (const a of adresses) {
-      await Storage.delete(BASE_KEY(a))
-      await Storage.player.delete(a, PLAYER_KEY)
+    for (const e of res.data) {
+      const a = e.key.slice('base:'.length)
+      if (a.length > 0) efface.add(a)
     }
     await Storage.delete(JOURNAL_KEY)
     viderJournal()
@@ -329,13 +341,32 @@ async function remiseAZero(): Promise<void> {
     profiles.clear()
     dirtyBases.clear()
     dirtyProfiles.clear()
-    // Ecrit BRUT, la forme que la relecture attend en premier. `JSON.stringify` etait la
-    // moitie ecrivante du defaut ci-dessus.
-    const ok = await Storage.set(CLEF_REMISE, MONDE_REMIS_A_ZERO)
-    log(`remise a zero terminee, marqueur ecrit: ${ok}`)
+    log(`remise a zero: ${efface.size} compte(s) a effacer, en tache de fond`)
+
+    /*
+      Le menage lui-meme SORT du chemin de demarrage. Il ne retient plus l'arrivee des
+      joueurs, et sa duree ne compte plus dans le tour qui peut tuer l'isolat. Les comptes
+      concernes sont rendus a l'appelant, qui les ignore en restaurant: sans cela le
+      chargement remonterait les bases que cette boucle est en train de supprimer.
+    */
+    void (async () => {
+      let n = 0
+      try {
+        for (const a of efface) {
+          await Storage.delete(BASE_KEY(a))
+          await Storage.player.delete(a, PLAYER_KEY)
+          n += 1
+        }
+      } catch (e) {
+        log(`remise a zero: menage interrompu apres ${n}: ${e}`)
+        return
+      }
+      log(`remise a zero: ${n} compte(s) effaces`)
+    })()
   } catch (e) {
     log(`remise a zero impossible: ${e}`)
   }
+  return efface
 }
 
 /**
@@ -358,7 +389,7 @@ let pret = false
 export function plotsPrets(): boolean { return pret }
 
 async function loadBases(): Promise<void> {
-  await remiseAZero()
+  const efface = await remiseAZero()
   try {
     const res = await Storage.getValues({ prefix: 'base:' })
     const loaded = res.data
@@ -377,6 +408,8 @@ async function loadBases(): Promise<void> {
         }
       })
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
+      // Les comptes que la remise a zero est en train d'effacer ne remontent pas.
+      .filter((l) => !efface.has(l.address))
       /*
         La rue montre les joueurs qui jouent, pas l'archive de tous les passages.
 

@@ -64,8 +64,8 @@ def alea():
 
 
 def sur_spawn(x, z):
-    """La bande du point d'apparition, ou rien ne se pose. Doit suivre `surSpawn` de decor.ts."""
-    return 88 < x < 104 and 92 < z < 116
+    """La bande du point d'apparition, ou rien ne se pose. Suit `spawnPoints` de scene.json."""
+    return 88 < x < 104 and 116 < z < 128
 
 
 def placer_arbres():
@@ -90,6 +90,46 @@ def placer_arbres():
             if not sur_spawn(x, z):
                 out.append((x, 0.0, z, sc, ry))
             d += 17
+    return out
+
+
+# La couronne de la place: entre le trait au sol (18 x 13) et la limite de construction
+# (27 x 22). Un arbre pose la ne sera jamais dans le salon de personne.
+PLACE_A, PLACE_B = 23.0, 18.0
+LARGEUR_RUE = 6.0
+
+
+def placer_arbres_de_la_place():
+    """
+    Une couronne d'arbres autour de la place, la seule qu'un joueur voie vraiment.
+
+    Les arbres etaient une bordure et rien d'autre: 100 parcelles sur 144 n'en contenaient
+    aucun, et depuis la place le plus proche etait a quatre-vingt-dix metres. Sur telephone
+    le plan lointain est a cent metres avec du brouillard des soixante-seize: la decoration
+    du jeu etait donc invisible depuis l'endroit ou l'on passe son temps (proprietaire,
+    3 Sep, "je ne vois toujours pas les arbres").
+
+    On ne peut pas en planter n'importe ou: le terrain est constructible partout ailleurs, et
+    un arbre finirait dans le salon de quelqu'un. La bande reservee autour de la place est le
+    seul sol a la fois VISIBLE et garanti vide pour toujours, alors la couronne va la. Elle
+    s'ouvre aux angles ou la rue traverse, sinon les arbres pousseraient sur la chaussee.
+
+    Cout: zero objet rendu. Les instances vont dans le meme maillage et le meme materiau que
+    la bordure; seuls les triangles augmentent, sur un budget qu'on remplit a huit pour cent.
+    """
+    out = []
+    for deg in range(0, 360, 24):
+        # L'ecart a l'axe de la rue, qui court en z = CZ sur toute la largeur de la carte.
+        if min(abs(deg - 0), abs(deg - 180), abs(deg - 360)) < 22:
+            continue
+        a = math.radians(deg + (alea() - 0.5) * 10)
+        x = CX + PLACE_A * math.cos(a) + (alea() - 0.5) * 2
+        z = CZ + PLACE_B * math.sin(a) + (alea() - 0.5) * 2
+        if abs(z - CZ) < LARGEUR_RUE / 2 + 1.5:
+            continue
+        if sur_spawn(x, z):
+            continue
+        out.append((x, 0.0, z, 1.1 + alea() * 0.8, alea() * 360))
     return out
 
 
@@ -148,11 +188,20 @@ def instancier(p, x, y, z, sc, ry):
         pos.append((x + sc * (px * ca + pz * sa), y + sc * py, z + sc * (-px * sa + pz * ca)))
     # Ce que cette instance occupe reellement, ramure comprise, puis le decalage qui la rentre.
     xs = [q[0] for q in pos]
+    ys = [q[1] for q in pos]
     zs = [q[2] for q in pos]
     dx = max(0.0, MARGE_SCENE - min(xs)) - max(0.0, max(xs) - (SCENE_SIDE - MARGE_SCENE))
     dz = max(0.0, MARGE_SCENE - min(zs)) - max(0.0, max(zs) - (SCENE_SIDE - MARGE_SCENE))
-    if dx or dz:
-        pos = [(q[0] + dx, q[1], q[2] + dz) for q in pos]
+    # Y AUSSI, et c'est celui qu'on avait oublie. Les limites d'une scene sont `0 <= x`,
+    # `0 <= z` ET `0 <= y`. Le modele d'arbre descend quarante-cinq centimetres sous son
+    # origine (le collet des racines), donc la boite fondue partait de y = -0,45: hors
+    # limites, et masquee en production. On avait corrige x et z le 2 Sep, jamais y, et
+    # l'apercu tourne en `local-scene`, le mode qui desactive justement cette verification:
+    # il ne pouvait pas le montrer. Les arbres etaient donc absents en production tout du
+    # long (proprietaire, 3 Sep, "ils ne sont pas la du tout").
+    dy = max(0.0, -min(ys))
+    if dx or dy or dz:
+        pos = [(q[0] + dx, q[1] + dy, q[2] + dz) for q in pos]
     for n in p['nor']:
         if n is None:
             nor.append(None)
@@ -166,7 +215,11 @@ def ecrire(nom, prims, atlas, regions):
         u0, v0, w, h = regions[p['tuile']]
         p['uv_atlas'] = [(u0 + (u % 1.0) * w, v0 + (v % 1.0) * h) for (u, v) in p['uv']]
     xs = [q[0] for p in prims for q in p['pos']]
+    ys = [q[1] for p in prims for q in p['pos']]
     zs = [q[2] for p in prims for q in p['pos']]
+    if min(ys) < 0:
+        raise SystemExit(f'{nom}: boite englobante SOUS LE SOL, y {min(ys):.2f}..{max(ys):.2f}. '
+                         f'Une scene exige 0 <= y, et un modele hors limites est masque en production.')
     if min(xs) < 0 or min(zs) < 0 or max(xs) > SCENE_SIDE or max(zs) > SCENE_SIDE:
         raise SystemExit(f'{nom}: boite englobante hors scene, x {min(xs):.2f}..{max(xs):.2f} '
                          f'z {min(zs):.2f}..{max(zs):.2f} pour une scene de 0..{SCENE_SIDE:.0f}')
@@ -177,7 +230,7 @@ def ecrire(nom, prims, atlas, regions):
 
 if __name__ == '__main__':
     arbre, img_arbre = primitive_de(os.path.join(OUT, 'tree.glb'))
-    places = placer_arbres()
+    places = placer_arbres() + placer_arbres_de_la_place()
     prims = []
     for (x, y, z, sc, ry) in places:
         q = instancier(arbre, x, y, z, sc, ry)
