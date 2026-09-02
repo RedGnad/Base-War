@@ -655,96 +655,111 @@ export function effacerForme(parent: Entity): void {
  * a light on the belt. `chauffe` is how far along a smash it is: the whole crate heats up.
  * The artist's `crate-<id>.glb` replaces all of it through the same mount as the toys.
  */
-type Caisse = { parts: Entity[]; crateId: number }
+type Caisse = { halo: Entity | null; crateId: number; chaud: number }
 const caisses = new Map<Entity, Caisse>()
 
+/*
+  La caisse est un modele, plus un disque quand elle brille.
+
+  Elle etait six primitives: corps, ceinture, sangle, couvercle, loquet, disque. Six objets
+  rendus par caisse, sept caisses sur le tapis, une par convoi: apres la vegetation, le poste
+  le plus cher du decor, pour un objet de la taille d'une main. Le client compte les objets
+  RENDUS et en plafonne a cinq cents, alors les morceaux sont maintenant fondus dans un seul
+  maillage a un seul materiau, colore par un atlas (`tools/model/build-crates.py`).
+
+  Ce qui se perd: le couvercle ne respire plus, il etait anime a part. Un couvercle qui monte
+  de six centimetres sur une caisse d'un metre, vue depuis le bord de la place, ne valait pas
+  cinq objets par caisse. Ce qui reste: le disque de lumiere sous les caisses Rare et plus,
+  qui lui respire toujours, et la chauffe pendant le cassage.
+*/
 export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
   const c = crate(crateId)
   const theme = c.theme >= 0 ? mutation(c.theme).color : null
+  const eclaire = c.tier >= 2 || theme !== null
   let k = caisses.get(racine)
   if (k !== undefined && k.crateId !== crateId) { effacerCaisse(racine); k = undefined }
   if (k === undefined) {
-    const V = Vector3.create
-    const parts = [
-      part(racine, V(0, -0.11, 0), V(1, 0.78, 1), 'box'),          // body
-      part(racine, V(0, -0.11, 0), V(1.04, 0.16, 1.04), 'box'),    // strap around
-      part(racine, V(0, -0.11, 0), V(0.16, 0.8, 1.04), 'box'),     // strap over
-      part(racine, V(0, 0.39, 0), V(1.12, 0.22, 1.12), 'box'),     // lid
-      part(racine, V(0, 0.16, 0.53), V(0.2, 0.2, 0.06), 'box'),    // latch
-      part(racine, V(0, -0.52, 0), V(0, 0, 0), 'cyl')                // glow disc, Rare and above
-    ]
-    k = { parts, crateId }
+    /*
+      Le cube du support tient lieu de caisse le temps que le modele arrive, et le montage
+      l'efface a l'atterrissage. C'est la meme attente que pour les jouets, et elle ne coute
+      rien: le support existe de toute facon.
+    */
+    MeshRenderer.setBox(racine)
+    Material.setPbrMaterial(racine, plastic(c.color))
+    k = { halo: eclaire ? part(racine, Vector3.create(0, -0.52, 0), Vector3.Zero(), 'cyl') : null, crateId, chaud: -1 }
     caisses.set(racine, k)
-    // The root is a container now; its own box would sit inside the crate.
-    if (MeshRenderer.has(racine)) MeshRenderer.deleteFrom(racine)
-    // The lid breathes: six centimetres up and back, for ever. A child's Move tween is local.
-    Tween.setMove(parts[3], V(0, 0.39, 0), V(0, 0.45, 0), 900, EasingFunction.EF_EASESINE)
-    TweenSequence.create(parts[3], { sequence: [], loop: TweenLoop.TL_YOYO })
   }
-  const [corps, sangleH, sangleV, couvercle, loquet, halo] = k.parts
-  const base = Color4.fromHexString(c.color + 'ff')
-  Material.setPbrMaterial(corps, plastic(c.color, chauffe * 1.2))
-  Material.setPbrMaterial(couvercle, plastic(c.color, 0.8 + c.tier * 0.8 + chauffe * 1.6))
-  const sangle = theme === null
-    ? plasticDe(Color4.create(base.r * 0.55, base.g * 0.55, base.b * 0.55, 1))
-    : plastic(theme, 1.2 + chauffe)
-  Material.setPbrMaterial(sangleH, sangle)
-  Material.setPbrMaterial(sangleV, sangle)
-  Material.setPbrMaterial(loquet, plastic(TOY.wallCream))
   remonter(racine, `crate-${crateId}.glb`)
-  const eclaire = c.tier >= 2 || theme !== null
   lumiereDuJouet(racine, eclaire ? (theme ?? c.color) : null, 0.8 + c.tier * 0.6)
+
   /*
-    The halo: a breathing, see-through sphere in the crate's colour around anything Rare or
-    themed. The point light and the emissive lid depend on the client's quality preset (no
-    scene lights on Low, bloom from Medium up) and on the sun, which here is fixed at noon;
-    a tester on the belt saw no glow on any crate, high tiers included. A translucent shell
-    is drawn on every preset, in any light, and reads as "glow" from the plaza edge, which is
-    what the rare drops of the genre look like.
+    La chauffe repeint le modele entier, texture comprise. Un modificateur de noeud REMPLACE
+    le materiau: sans lui redonner l'atlas, la caisse virerait au blanc uni des le premier
+    coup. D'ou `crate-atlas.png`, le meme fichier que les neuf modeles citent. On ne repeint
+    qu'aux paliers, pas a chaque image.
   */
+  const chaud = Math.max(0, Math.min(8, Math.round(chauffe * 8)))
+  if (k.chaud !== chaud) {
+    k.chaud = chaud
+    chaufferCaisse(racine, chaud / 8)
+  }
+
   /*
-    The glow is an OPAQUE emissive disc under the crate that breathes, not a translucent
-    sphere around it. The workshop's word for alpha on a phone GPU is "brutal", and a halo
-    was one alpha mesh per lit crate; a lit disc reads as the same pool of light from the
-    plaza edge and costs what any plastic costs.
+    Le disque de lumiere est OPAQUE et emissif, pose sous la caisse, et il respire. La lumiere
+    ponctuelle et l'emissif dependent du profil graphique du client (pas de lumieres de scene
+    en Bas, bloom a partir de Moyen); un testeur n'a vu briller aucune caisse, hauts paliers
+    compris. Un disque allume se lit depuis le bord de la place sur n'importe quel profil.
   */
+  const halo = k.halo
+  if (halo === null) return
+  const hex = theme ?? c.color
+  Material.setPbrMaterial(halo, plastic(hex, 2.5 + c.tier))
   const ht = Transform.getMutableOrNull(halo)
-  if (eclaire) {
-    const hex = theme ?? c.color
-    Material.setPbrMaterial(halo, plastic(hex, 2.5 + c.tier))
-    const taille = 1.7 + c.tier * 0.15
-    if (ht !== null && ht.scale.x === 0) ht.scale = Vector3.create(taille, 0.05, taille)
-    if (!Tween.has(halo)) {
-      Tween.setScale(halo, Vector3.create(taille, 0.05, taille), Vector3.create(taille * 1.18, 0.05, taille * 1.18), 1100, EasingFunction.EF_EASESINE)
-      TweenSequence.create(halo, { sequence: [], loop: TweenLoop.TL_YOYO })
-    }
-  } else {
-    Tween.deleteFrom(halo)
-    TweenSequence.deleteFrom(halo)
-    if (ht !== null && ht.scale.x !== 0) ht.scale = Vector3.Zero()
+  const taille = 1.7 + c.tier * 0.15
+  if (ht !== null && ht.scale.x === 0) ht.scale = Vector3.create(taille, 0.05, taille)
+  if (!Tween.has(halo)) {
+    Tween.setScale(halo, Vector3.create(taille, 0.05, taille), Vector3.create(taille * 1.18, 0.05, taille * 1.18), 1100, EasingFunction.EF_EASESINE)
+    TweenSequence.create(halo, { sequence: [], loop: TweenLoop.TL_YOYO })
   }
 }
 
-/**
- * Puts out a crate's glow, halo disc and point light both, without touching the crate.
- *
- * For the crate that goes over the end of the belt: the pad of light under it means COME
- * AND BUY THIS from across the plaza, and a thing tumbling into the pit must stop saying
- * it mid air. The crate itself keeps its colours for the fall.
- */
+/** Chauffe la caisse montee: blanc croissant sur l'atlas, rendu au modele et pas au support. */
+function chaufferCaisse(racine: Entity, chauffe: number): void {
+  const m = montages.get(racine)
+  if (m === undefined) return
+  if (chauffe <= 0) { GltfNodeModifiers.deleteFrom(m.modele); return }
+  GltfNodeModifiers.createOrReplace(m.modele, {
+    modifiers: [{
+      path: '',
+      material: {
+        material: {
+          $case: 'pbr',
+          pbr: {
+            texture: Material.Texture.Common({ src: `${TOY_DIR}crate-atlas.png` }),
+            albedoColor: Color4.White(),
+            emissiveColor: Color4.White(),
+            emissiveIntensity: chauffe * 2.4,
+            metallic: 0,
+            roughness: 0.9
+          }
+        }
+      }
+    }]
+  })
+}
+
 export function eteindreCaisse(racine: Entity): void {
   const k = caisses.get(racine)
-  if (k === undefined) return
-  const halo = k.parts[5]
+  if (k === undefined || k.halo === null) return
+  const halo = k.halo
   /*
-    Called EVERY frame the crate is falling, not once, and cheap when nothing is left to do.
-
-    A tween writes its entity's Transform back to the scene on every frame it is alive, so
-    deleting the tween and zeroing the scale in the same frame is a race the renderer can
-    win: its own write lands after ours, the disc keeps the size it had, and since the
-    extinction only ran once there was never a second chance. The glow pad of a crate that
-    had fallen into the pit stayed lit on the pit floor (owner, 1 Sep). Idempotent, so
-    calling it per frame costs one comparison once it has taken.
+    Appele a CHAQUE image de la chute, pas une fois, et sans frais quand il n'y a plus rien
+    a faire. Un tween reecrit le Transform de son entite a chaque image ou il vit: supprimer
+    le tween et remettre l'echelle a zero dans la meme image est une course que le rendu peut
+    gagner, son ecriture arrive apres la notre, le disque garde sa taille, et comme l'extinction
+    n'a tourne qu'une fois il n'y a jamais de seconde chance. Le disque d'une caisse tombee
+    dans la fosse restait allume au fond (proprietaire, 1er Sep). Idempotent, donc l'appeler a
+    chaque image coute une comparaison une fois qu'il a pris.
   */
   const ht = Transform.getMutableOrNull(halo)
   if (ht !== null && ht.scale.x === 0) return
@@ -757,7 +772,8 @@ export function eteindreCaisse(racine: Entity): void {
 export function effacerCaisse(racine: Entity): void {
   const k = caisses.get(racine)
   if (k === undefined) return
-  for (const e of k.parts) engine.removeEntity(e)
+  if (k.halo !== null) engine.removeEntity(k.halo)
+  demonter(racine)
   caisses.delete(racine)
 }
 

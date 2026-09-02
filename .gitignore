@@ -29,3 +29,4 @@ ytenv/
 !tools/emotes/build-emotes.js
 # Third-party reference rig, fetched on demand by that builder.
 tools/emotes/reference-rig.glb
+__pycache__/

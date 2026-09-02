@@ -200,8 +200,55 @@ function collisionneur(x: number, y: number, z: number, sx: number, sy: number, 
   propre base est toujours au niveau PRES: l'ascenseur, la pose et le bouton contextuel en
   dependent.
 */
-const LOD_PRES = 45
-const LOD_LOIN = 55
+/*
+  Le niveau de detail n'est plus un rayon, c'est un BUDGET.
+
+  Un rayon fixe est faux dans les deux sens: a trois bases sur la carte il degrade des
+  batiments qu'on pouvait parfaitement s'offrir, et a soixante il ne suffit plus. Ce qui
+  compte est le nombre d'objets rendus, et le client en plafonne a 500, en recommande 400.
+  Alors on compte: le decor fixe coute ce qu'il coute, chaque base au detail complet en coute
+  environ cinquante, chaque base reduite a sa silhouette environ huit. On garde donc au detail
+  complet LES N PLUS PROCHES, N etant le plus grand nombre qui tient dans le budget.
+
+  Effet: a deux ou trois joueurs, personne n'est degrade. A seize, les cinq ou six plus proches
+  gardent leurs pieces et le reste garde sa silhouette, sa hauteur et sa couleur. La degradation
+  arrive quand elle est necessaire, jamais avant, et le plafond dur n'est jamais franchi.
+
+  Les couts viennent de la mesure du 2 Sep sur le client, pas d'une estimation: decor seul 160
+  objets, seize bases pleines 530, une base complete ~49, une base lointaine ~8.
+*/
+/*
+  385 et non 400: l'estimation se trompe d'environ un pour cent, le tapis porte un nombre de
+  caisses qui bouge, et franchir 400 allume l'avertissement du client. Quinze objets de marge
+  achetent la certitude de rester sous le seuil doux, pour a peu pres un demi-etage de detail.
+*/
+const BUDGET_OBJETS = 385
+/*
+  Ce que coute le decor fixe. Mesure le 2 Sep, scene vide de bases: 133 objets, vegetation,
+  place, tapis, panneau et convois compris. On en reserve 145: le tapis porte sept caisses
+  dont le nombre bouge, et un budget qui se trompe vers le haut degrade pour rien.
+*/
+const COUT_DECOR = 145
+/** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quel que soit sa hauteur. */
+const COUT_BASE_FIXE = 4
+/** Un etage complet: coque, accent, verre, montee. Reduit: coque et accent seuls. */
+const COUT_ETAGE_PRES = 4
+const COUT_ETAGE_LOIN = 2
+/** Une piece exposee: son modele et sa forme de rarete. */
+const COUT_PIECE = 2
+/** Sa propre base et celles a portee de main restent completes, budget ou non. */
+const LOD_TOUJOURS_PRES = 24
+/** Une base deja complete compte comme un peu plus proche: sans ca elle clignoterait au seuil. */
+const LOD_FIDELITE = 0.85
+
+/** Ce que cette base coutera en objets rendus, au detail complet ou reduite. */
+function coutDeLaBase(p: { floors: number; items: readonly number[] }, pres: boolean): number {
+  const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
+  if (!pres) return COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
+  let pieces = 0
+  for (const it of p.items) if (it > 0) pieces++
+  return COUT_BASE_FIXE + etages * COUT_ETAGE_PRES + pieces * COUT_PIECE
+}
 
 function modele(src: string, y: number, rendu = true): Entity {
   const e = engine.addEntity()
@@ -706,17 +753,61 @@ export function setupPlots(): void {
   engine.addSystem(() => {
     const vivantes = new Set<number>()
 
+    /*
+      Une passe prealable: qui est ou, et combien on peut s'en offrir en entier.
+
+      Elle doit precede la boucle, parce que le niveau d'une base ne depend pas d'elle seule
+      mais de sa PLACE parmi les autres. La base du lecteur passe devant tout le monde.
+    */
+    const moiT = Transform.getOrNull(engine.PlayerEntity)
+    const moiAdr = monAdresseClient()
+    const distances = new Map<number, number>()
+    const rangs: Array<{ id: number; rang: number; pres: number; loin: number }> = []
+    for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
+      const id = ent as unknown as number
+      const t = Transform.get(ent)
+      const d = moiT === null ? 0 : Math.hypot(moiT.position.x - t.position.x, moiT.position.z - t.position.z)
+      distances.set(id, d)
+      const sienne = p.ownerId.toLowerCase() === moiAdr
+      const dejaPres = views.get(id)?.loin === false
+      rangs.push({
+        id,
+        rang: sienne ? -1 : dejaPres ? d * LOD_FIDELITE : d,
+        pres: coutDeLaBase(p, true),
+        loin: coutDeLaBase(p, false)
+      })
+    }
+    rangs.sort((a, b) => a.rang - b.rang)
+
+    /*
+      Tout le monde commence reduit, puis on rachete le detail complet du plus proche au plus
+      loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
+      une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
+    */
+    let facture = COUT_DECOR
+    for (const r of rangs) facture += r.loin
+    const complets = new Set<number>()
+    for (const r of rangs) {
+      const surcout = r.pres - r.loin
+      if (r.rang < 0 || facture + surcout <= BUDGET_OBJETS) {
+        facture += surcout
+        complets.add(r.id)
+      }
+    }
+
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       vivantes.add(id)
       const t = Transform.get(ent)
       const monBaseLod = p.ownerId.toLowerCase() === monAdresseClient()
-      const moiT = Transform.getOrNull(engine.PlayerEntity)
-      const dist = moiT === null ? 0 : Math.hypot(moiT.position.x - t.position.x, moiT.position.z - t.position.z)
+      const dist = distances.get(id) ?? 0
       let v = views.get(id)
-      // Le niveau se decide avec hysteresis; un changement reconstruit la vue entiere, et la
-      // signature vide qui en resulte lui fait recharger etages et pieces au bon niveau.
-      const veutLoin = !monBaseLod && (v === undefined ? dist > LOD_PRES : (v.loin ? dist > LOD_PRES : dist > LOD_LOIN))
+      /*
+        Le rang de cette base dans l'ordre des distances decide de son niveau. Une base deja
+        complete garde un rang de tolerance avant d'etre degradee: sans lui, faire un pas en
+        avant et un pas en arriere reconstruirait un batiment entier deux fois.
+      */
+      const veutLoin = !monBaseLod && dist > LOD_TOUJOURS_PRES && !complets.has(id)
       if (v !== undefined && v.loin !== veutLoin) {
         destroyView(v)
         views.delete(id)

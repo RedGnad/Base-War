@@ -234,8 +234,13 @@ def construire_atlas(j, binaire, prims):
 
 # ----------------------------------------------------------------------------- ecriture
 
-def ecrire_glb(chemin, groupes, atlas):
-    """`groupes`: liste de (double_face, primitives). Un materiau par groupe, une image."""
+def ecrire_glb(chemin, groupes, atlas, image_uri=None):
+    """`groupes`: liste de (double_face, primitives). Un materiau par groupe, une image.
+
+    `image_uri` sort l'image du fichier et la remplace par un chemin relatif. Neuf modeles qui
+    embarquent chacun leur atlas font neuf textures a charger; le meme atlas cite par son nom
+    n'en fait qu'une, partagee. A n'utiliser que si le .png est bien livre a cote du .glb.
+    """
     bin_parts = []
     buffer_views = []
     accessors = []
@@ -256,8 +261,10 @@ def ecrire_glb(chemin, groupes, atlas):
         accessors.append(a)
         return len(accessors) - 1
 
-    png = io.BytesIO(); atlas.save(png, format='PNG', optimize=True)
-    bv_img = pousser(png.getvalue())
+    bv_img = None
+    if image_uri is None:
+        png = io.BytesIO(); atlas.save(png, format='PNG', optimize=True)
+        bv_img = pousser(png.getvalue())
 
     meshes_prims = []
     materials = []
@@ -290,7 +297,7 @@ def ecrire_glb(chemin, groupes, atlas):
         'materials': materials,
         'textures': [{'sampler': 0, 'source': 0}],
         'samplers': [{'magFilter': 9729, 'minFilter': 9987, 'wrapS': 10497, 'wrapT': 10497}],
-        'images': [{'bufferView': bv_img, 'mimeType': 'image/png'}],
+        'images': [{'uri': image_uri} if image_uri is not None else {'bufferView': bv_img, 'mimeType': 'image/png'}],
         'accessors': accessors, 'bufferViews': buffer_views,
         'buffers': [{'byteLength': 0}]
     }
