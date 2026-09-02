@@ -272,10 +272,18 @@ def ecrire_glb(chemin, groupes, atlas, image_uri=None):
         P, N, UV, I = [], [], [], []
         for p in prims:
             base = len(P)
-            P.extend(p['pos'])
-            N.extend(n if n is not None else (0.0, 1.0, 0.0) for n in p['nor'])
+            # X negatif: glTF est droitier, le moteur gaucher, l'importateur retourne X en
+            # convertissant. Nos outils raisonnent en coordonnees du MONDE, comme le code, et
+            # on ne retourne qu'ici. Sans cela tout ce qu'on genere sort en miroir: invisible
+            # sur du symetrique, et fatal sur des arbres dont les positions cuites entre 0,5 et
+            # 191,5 basculent hors de la scene (proprietaire, 3 Sep, "pas d'arbres").
+            P.extend((-q[0], q[1], q[2]) for q in p['pos'])
+            N.extend(((-n[0], n[1], n[2]) if n is not None else (0.0, 1.0, 0.0)) for n in p['nor'])
             UV.extend(p['uv_atlas'])
-            I.extend(base + i for i in p['idx'])
+            # Une symetrie retourne les faces: on echange deux sommets par triangle.
+            for k in range(0, len(p['idx']), 3):
+                a0, b0, c0 = p['idx'][k], p['idx'][k + 1], p['idx'][k + 2]
+                I.extend((base + a0, base + c0, base + b0))
         mn = [min(v[k] for v in P) for k in range(3)]
         mx = [max(v[k] for v in P) for k in range(3)]
         a_pos = accesseur(pousser(b''.join(struct.pack('<fff', *v) for v in P), 34962), 5126, len(P), 'VEC3', mn, mx)

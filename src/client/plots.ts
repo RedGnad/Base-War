@@ -325,6 +325,14 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     rotation: pente
   })
   taille.set(montee, Vector3.One())
+  // Le modele revient: il est centre sur l'origine et l'entite porte position et pente, donc
+  // il ne peut pas etre ailleurs que la marche. La boite nue qui l'avait remplace le temps du
+  // diagnostic n'avait ni rambarde ni epaisseur (proprietaire, 3 Sep, "juste une rampe moche").
+  if (!loin) {
+    GltfContainer.create(montee, {
+      src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
+    })
+  }
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
@@ -357,11 +365,11 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const parentAvant = parentCourant
   parentCourant = montee
   const ramp = collisionneur(0, 0, 0, rampeX, 0.18, RAMP_LENGTH)
-  if (!loin) {
-    MeshRenderer.setBox(ramp)
-    Material.setPbrMaterial(ramp, plastic(teinte))
-  }
+  const RAIL_H = 1.1
   const rails: Entity[] = []
+  for (const cote of [-1, 1]) {
+    rails.push(collisionneur(cote * (rampeX / 2 - 0.03), (RAIL_H + 0.18) / 2, 0, 0.06, RAIL_H, RAMP_LENGTH))
+  }
   parentCourant = parentAvant
 
   /*
@@ -401,11 +409,8 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   v.peints = v.floors.length
   // The colour lives in the file, so repainting is swapping which file each storey shows.
   const mods = modelesDe(p)
-  const teinte = accentPour(p)
   for (const et of v.floors) {
-    // La rampe n'est plus un modele mais une boite: elle se repeint, elle ne se remplace pas.
-    if (MeshRenderer.has(et.ramp)) Material.setPbrMaterial(et.ramp, plastic(teinte))
-    for (const [ent, src] of [[et.accent, mods.accent], [et.verre, mods.verre]] as Array<[Entity, string]>) {
+    for (const [ent, src] of [[et.accent, mods.accent], [et.montee, mods.climb], [et.verre, mods.verre]] as Array<[Entity, string]>) {
       const g = GltfContainer.getMutableOrNull(ent)
       const chemin = `assets/Models/${src}`
       if (g !== null && g.src !== chemin) g.src = chemin
