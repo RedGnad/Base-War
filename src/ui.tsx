@@ -921,48 +921,53 @@ function Revelation(): ReactEcs.JSX.Element {
     poserait le texte sous le centre et ferait remonter l'ensemble; on decale donc d'une
     demi-hauteur de texte vers le haut pour que le BLOC soit centre.
   */
-  const sousTexte = 52 + 40 + 6
   /*
-    Le centre de l'ECRAN, pas le centre de notre conteneur.
+    Centre par la MISE EN PAGE, jamais par un calcul.
 
-    L'interface est dessinee avec `screenInset: 'device'`, donc rentree des marges materielles
-    du telephone: encoche, barre d'etat, coins arrondis. Ces marges ne sont pas symetriques en
-    paysage, et le milieu de notre conteneur n'est donc pas le milieu de la vitre. La visee se
-    corrigeait deja avec `decalageCentre()`, la revelation non, et elle tombait a gauche
-    (proprietaire, 1 Sep). Meme correction, meme raison.
+    Trois passes ont echoue a centrer ca, et la cause etait la meme a chaque fois: `active.w`
+    est la resolution de REFERENCE, 1920, pas la largeur du conteneur. Le client met notre
+    interface a l'echelle par `min(largeurToile / 1920, hauteurToile / 1080)`; sur un ecran
+    plus large que 16:9 c'est la HAUTEUR qui commande, et le conteneur mesure alors bien plus
+    de 1920 de nos unites. `active.w / 2` n'est donc pas le milieu, il est a gauche du milieu,
+    d'autant plus que l'ecran est large. `decalageCentre()`, que j'ajoutais pour corriger,
+    repond a une autre question, l'encoche du telephone, et vaut zero sur un bureau: la
+    revelation restait exactement aussi decalee (proprietaire, 1 puis 2 Sep).
+
+    Un conteneur pleine page en `justifyContent: 'center'` n'a pas ce probleme: il ne connait
+    pas la resolution, il centre ce qu'il contient. C'est ce que `Centre` fait deja pour la
+    roulette, qui, elle, a toujours ete centree. Le bloc entier, icone et ses deux lignes,
+    passe donc en colonne centree, et il n'y a plus une seule coordonnee ecrite a la main.
   */
-  const c = decalageCentre()
-  const mid = active.h / 2 - sousTexte / 2 + c.y
-  const milieuX = active.w / 2 + c.x
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
       <UiEntity
         uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
         uiBackground={{ color: Color4.create(0, 0, 0, SURF.voile.a * 0.63 * entree) }} />
-      {depuis < 900 && (
-        <UiEntity
-          uiTransform={{
-            width: rayon, height: rayon, positionType: 'absolute',
-            position: { left: milieuX - rayon / 2, top: mid - rayon / 2 },
-            opacity: Math.max(0, 1 - depuis / 900)
-          }}
-          uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
-      )}
       <UiEntity
         uiTransform={{
-          width: icone, height: icone, positionType: 'absolute',
-          position: { left: milieuX - icone / 2, top: mid - icone / 2 }
-        }}
-        uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
-      <UiEntity
-        uiTransform={{
-          width: '100%', positionType: 'absolute', position: { left: c.x, top: mid + icone / 2 + 6 },
-          flexDirection: 'column', alignItems: 'center'
+          width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 },
+          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
         }}>
+        {/* La cellule de l'icone porte l'eclat en enfant absolu, donc centre sur elle quoi
+            qu'il arrive et sans jamais deborder la colonne. */}
+        <UiEntity uiTransform={{ width: icone, height: icone }}>
+          {depuis < 900 && (
+            <UiEntity
+              uiTransform={{
+                width: rayon, height: rayon, positionType: 'absolute',
+                position: { left: (icone - rayon) / 2, top: (icone - rayon) / 2 },
+                opacity: Math.max(0, 1 - depuis / 900)
+              }}
+              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
+          )}
+          <UiEntity
+            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+            uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
+        </UiEntity>
         <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
           fontSize={TYPE.title} textWrap="nowrap" textAlign="middle-center"
           color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
-          uiTransform={{ height: 52 }} />
+          uiTransform={{ height: 52, margin: { top: 6 } }} />
         <Label value={mut.mult > 1 ? `${mut.name.toUpperCase()}  x${mut.mult}  ·  +${formatIncome((INCOME_UI[boxView.resultat] ?? 1) * mut.mult)}/s` : `+${formatIncome(INCOME_UI[boxView.resultat] ?? 1)}/s`}
           fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
           color={C.money}

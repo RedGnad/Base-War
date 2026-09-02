@@ -4,14 +4,14 @@ import {
   Tween, TweenSequence, TweenLoop, EasingFunction} from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
-import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
+import { itemColor, rarity, rarityOf, mutationDe, traitsDe, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { monAdresseClient, alerter } from './theft'
 import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
 import { refuserAuSon } from './box'
 import { verbe } from './verbe'
-import { formeDeRarete, effacerForme, plasticDe } from './toy'
+import { formeDeRarete, effacerForme, demonter, remonter, plasticDe, SOCLE_EPAISSEUR } from './toy'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -42,15 +42,32 @@ const vues = new Map<number, { corps: Entity; etiquette: Entity; anneau: Entity 
 const VERT = Color4.create(0.35, 0.95, 0.45, 0.42)
 let marqueur: Entity
 let cibleIndex = -1
-const MARQUEUR = 0.62
+/*
+  Le fantome est LA PIECE, pas un cube.
+
+  Un cube vert disait "quelque chose ira la"; il ne disait pas quoi, ni quelle taille ca fera
+  sur l'etagere, ce qui est precisement ce qu'on choisit en rangeant sa base (proprietaire,
+  2 Sep). Il porte donc le meme modele, a la meme echelle et a la meme hauteur que la piece
+  aura une fois posee: c'est le calcul de `plots.ts`, repris a l'identique. La teinte reste le
+  vert translucide de tous les marqueurs du jeu, parce que c'est lui qui dit "ici, oui" et
+  qu'une piece a sa vraie couleur se lirait comme une piece deja posee.
+*/
+const MAT_FANTOME = plasticDe(VERT, 0.7)
+const JEU = 0.02
+let vuCode = -1
+
+/** La taille qu'aura la piece sur son socle: rarete, mutation et traits, comme dans plots.ts. */
+function tailleDe(code: number): number {
+  const r = rarity(rarityOf(code))
+  const mult = mutationDe(code) > 0 ? 1.12 : 1
+  return r.size * mult * (1 + 0.05 * traitsDe(code))
+}
 
 export function setupCarry(): void {
   marqueur = engine.addEntity()
   Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   MeshRenderer.setBox(marqueur)
-  Material.setPbrMaterial(marqueur, {
-    ...plasticDe(VERT, 0.7)
-  })
+  Material.setPbrMaterial(marqueur, MAT_FANTOME)
 
   engine.addSystem(() => {
     const t = Transform.getMutableOrNull(marqueur)
@@ -63,15 +80,29 @@ export function setupCarry(): void {
       la touche va faire.
     */
     const cible = verbe.id === 'poser-objet' ? cibleDePose() : null
-    if (cible === null) {
+    const code = carryView.code
+    if (cible === null || code < 0) {
       cibleIndex = -1
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
       return
     }
     cibleIndex = cible.index
-    // The target is a point ON the slab; the marker is a box, so its centre sits half a box above it.
-    t.position = Vector3.create(cible.pos.x, cible.pos.y + MARQUEUR / 2, cible.pos.z)
-    t.scale = Vector3.create(MARQUEUR, MARQUEUR, MARQUEUR)
+    /*
+      Le modele ne se remonte qu'au CHANGEMENT de piece: `remonter` recharge un GLTF et
+      `formeDeRarete` reecrit les materiaux, deux choses qui n'ont rien a faire dans une
+      image ou rien n'a change. La teinte differee est prevue: le module suit les modeles en
+      cours de chargement et applique le dernier materiau demande a leur arrivee.
+    */
+    if (code !== vuCode) {
+      vuCode = code
+      remonter(marqueur, `item-${rarityOf(code)}.glb`)
+      formeDeRarete(marqueur, rarityOf(code), MAT_FANTOME)
+    }
+    // Exactement ou elle se posera: le dessus de la dalle, un jeu d'air, le socle, puis la
+    // piece debout sur son centre. Le meme empilement que `plots.ts`.
+    const taille = tailleDe(code)
+    t.position = Vector3.create(cible.pos.x, cible.pos.y + JEU + SOCLE_EPAISSEUR + taille / 2, cible.pos.z)
+    t.scale = Vector3.create(taille, taille, taille)
   })
 
   room.onMessage('carryResult', (d) => {
@@ -163,6 +194,7 @@ export function setupCarry(): void {
     if (porteMoi !== carryView.code || volee !== carryView.vole) {
       carryView.code = porteMoi
       carryView.vole = volee
+      if (porteMoi < 0 && vuCode >= 0) { vuCode = -1; demonter(marqueur); effacerForme(marqueur) }
       setCarrying(porteMoi < 0 ? 'non' : volee ? 'vole' : 'sien')
       carryView.name = porteMoi < 0 ? '' : nomDuCode(porteMoi)
     }
