@@ -591,7 +591,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   */
   if (carryView.code >= 0) {
     // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
-    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: ico('feed'), action: agirSurFuser }
+    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: ico('fuse'), action: agirSurFuser }
     const ou = baseIci()
     if (ou === null) return { id: 'lacher', label: 'DROP', icon: ico('drop'), action: dropCarried }
     return ou.mienne
