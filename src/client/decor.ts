@@ -1,4 +1,4 @@
-import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, Animator, ColliderLayer, Entity } from '@dcl/sdk/ecs'
+import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE, EDGE_MARGIN, BELT_CLEARANCE, BELT_LENGTH, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
@@ -116,12 +116,15 @@ export function setupDecor(): void {
       void r
     }
   }
-  // Still, on purpose. The clip turned out to spin the canopy (tester, 31 Aug: "the models
-  // rotate to face you"), and decor that tracks the player is a billboard, not a wood. The
-  // Animator stays, holding the clip OFF: a model with clips and no Animator autoplays.
-  for (const a of arbres) {
-    Animator.create(a, { states: [{ clip: 'Tree_Action', playing: false, loop: false }] })
-  }
+  /*
+    Plus d'Animator sur les arbres: l'armature est cuite dans le fichier.
+
+    Le clip 'Tree_Action' faisait tourner la ramure vers le joueur (testeur, 31 Aug: "les
+    modeles pivotent pour me faire face"), et on le tenait a l'arret avec un Animator par
+    arbre. `tools/model/aplatir-glb.py` applique maintenant la pose de repos aux sommets et
+    jette le squelette et son clip: il n'y a plus rien a tenir. Quatre meshes sont devenus un,
+    et la pancarte oubliee au pied de chaque arbre, avec sa texture de 426 Ko, est partie (2 Sep).
+  */
 
   // Bushes: the belt lane's clearance band, forbidden to bases, walked by everyone: the
   // one strip of the field guaranteed free, and the one every player crosses every visit.
