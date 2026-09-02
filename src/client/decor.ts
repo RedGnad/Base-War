@@ -1,6 +1,6 @@
-import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, ColliderLayer, Entity } from '@dcl/sdk/ecs'
+import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, PBMaterial_PbrMaterial, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS, PLAZA_A, PLAZA_B } from '../shared/schemas'
+import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
 
 /**
@@ -44,6 +44,28 @@ const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb',
 const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
+/**
+ * La matiere du sol public, definie UNE fois pour la bande centrale et pour le trait de la place.
+ *
+ * Les deux sont le meme domaine: ce qui n'appartient a personne. Ils portaient deux couleurs
+ * et deux matieres, et le trait jurait avec la bande (proprietaire, 2 Sep). Ecrire la matiere
+ * ici et la donner aux deux est la seule facon qu'elles ne divergent plus jamais; la meme
+ * `src` de texture veut aussi dire une seule texture chargee pour les deux.
+ *
+ * `tx` et `tz` comptent en TUILES: la rue les calcule depuis sa taille, l'anneau porte deja
+ * ses tuiles dans ses UV (une tous les quatre metres) et demande donc 1 sur 1.
+ */
+function matiereDeLaRue(tx: number, tz: number): PBMaterial_PbrMaterial {
+  return {
+    ...plastic(TOY.street), roughness: 0.95,
+    texture: Material.Texture.Common({
+      src: 'assets/textures/mat-wall.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create(tx, tz)
+    })
+  }
+}
+
 function pose(src: string, x: number, y: number, z: number, sc: number, ry: number, ombre = true): Entity {
   const e = engine.addEntity()
   Transform.create(e, {
@@ -165,41 +187,34 @@ export function setupDecor(): void {
     scale: Vector3.create(SCENE_SIDE, 0.06, LARGEUR_RUE)
   })
   MeshRenderer.setBox(rue)
-  Material.setPbrMaterial(rue, {
-    ...plastic(TOY.street), roughness: 0.95,
-    texture: Material.Texture.Common({
-      src: 'assets/textures/mat-wall.png',
-      wrapMode: TextureWrapMode.TWM_REPEAT,
-      tiling: Vector2.create(SCENE_SIDE / 4, LARGEUR_RUE / 4)
-    })
-  })
+  Material.setPbrMaterial(rue, matiereDeLaRue(SCENE_SIDE / 4, LARGEUR_RUE / 4))
 
   /*
-    Le sol de la place, qui EST la regle qu'on ne peut pas construire ici.
+    Le trait au sol qui EST la regle qu'on ne peut pas construire ici.
 
     Une zone reservee qu'on ne voit pas est une zone ou le joueur se fait refuser sans
-    comprendre. Un disque de sol plus clair sous tout le mobilier dit la meme chose sans un
-    mot: ici c'est public, on n'y batit pas, et le reste du champ est a prendre. Un seul objet,
-    la meme matiere que la rue, pose deux centimetres au-dessus d'elle pour ne pas clignoter,
-    et sans collider: c'est de la peinture, pas une bordure.
+    comprendre. Un TRAIT, pas un disque: le disque plein cachait l'herbe du centre, et ce
+    qu'on veut dire est "la limite est ici", pas "ce sol est autre". L'herbe reste donc
+    visible dedans, et la place se lit comme une piste, ce qu'elle est.
 
-    Ses demi-axes sont ceux de `PLAZA_A` et `PLAZA_B`, donc le trait dessine exactement ce que
-    `invalidReason` refuse, a l'emprise des bases pres. Le disque est un cylindre a douze
-    faces, ce qui suffit largement pour un ovale de 36 metres vu de la hauteur d'un joueur.
+    Un anneau n'est ni une primitive du moteur ni une texture a trous (l'alpha est cher sur
+    un GPU de telephone, on l'evite partout ailleurs ici): c'est de la geometrie, un ruban
+    de 1,5 m d'epaisseur constante, 256 triangles, un objet rendu, un materiau, aucune
+    transparence. Genere par `tools/model/build-plaza-ring.py`, aux demi-axes de `PLAZA_A`
+    et `PLAZA_B`: si ces deux nombres changent, le fichier se regenere, sinon le trait ment.
+
+    Pose a huit centimetres, juste au-dessus de la rue qui monte a six, et sans collisionneur:
+    c'est de la peinture, pas une bordure, et on la traverse en permanence.
   */
-  const place = engine.addEntity()
-  Transform.create(place, {
-    position: Vector3.create(CENTER.x, 0.05, CENTER.z),
-    scale: Vector3.create(PLAZA_A * 2, 0.05, PLAZA_B * 2)
-  })
-  MeshRenderer.setCylinder(place, 0.5, 0.5)
-  Material.setPbrMaterial(place, {
-    ...plastic(TOY.plaza), roughness: 0.95,
-    texture: Material.Texture.Common({
-      src: 'assets/textures/mat-wall.png',
-      wrapMode: TextureWrapMode.TWM_REPEAT,
-      tiling: Vector2.create(PLAZA_A / 2, PLAZA_B / 2)
-    })
+  const anneau = engine.addEntity()
+  Transform.create(anneau, { position: Vector3.create(CENTER.x, 0.08, CENTER.z) })
+  GltfContainer.create(anneau, { src: 'assets/toy/plaza-ring.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  GltfNodeModifiers.createOrReplace(anneau, {
+    modifiers: [{
+      path: '',
+      castShadows: false,
+      material: { material: { $case: 'pbr', pbr: matiereDeLaRue(1, 1) } }
+    }]
   })
 
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons, street, plaza placed')
