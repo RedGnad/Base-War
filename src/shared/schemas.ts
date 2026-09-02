@@ -888,18 +888,21 @@ export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
  * the reason to come back a seventh time.
  */
 /*
-  Le premier jour donne une Good, pas une Basic.
+  Le premier jour rend sa Basic. UNE seule des deux caisses de depart est amelioree.
 
   Avec la caisse de bienvenue, ce sont les DEUX seules caisses qu'un joueur ouvre dans ses
   premieres minutes, et la Basic est la seule du jeu dont la cloche est coupee en deux: rien
   sous Common ou repartir la masse, donc 65,1 % de Common, contre 49 % pour tous les autres
   paliers sur leur propre rarete. Deux Commons nus, c'est 2/s, et 2 018 pieces a ce rythme font
   dix-sept minutes avant le premier achat que le tutoriel demande (mesure du 2 Sep). Deux
-  Uncommons, c'est deux minutes et demie. Aucun prix ne bouge, aucune table ne bouge: seuls les
-  deux premiers tirages d'une vie de joueur changent, ce qui est la pratique du genre pour les
-  premiers tirages.
+  Uncommons, c'est deux minutes et demie, et c'est TROP: le joueur etait deja riche avant meme
+  le premier cadeau (proprietaire, 2 Sep, sur la version qui ameliorait les deux). Une seule
+  l'est donc, celle de bienvenue, que l'etape 2 du tutoriel demande d'ouvrir et qui porte la
+  premiere impression. Le quotidien garde sa Basic, qui est le barreau du bas de son echelle
+  de sept jours. Un Uncommon plus un Common font 8/s, soit quatre minutes: entre les deux.
+  Aucun prix ne bouge, aucune table ne bouge.
 */
-export const DAILY_REWARDS = [1, 4, 1, 2, 5, 3, 6] as const
+export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
 
 export { RESELL_SECONDS } from './economy'
 
