@@ -127,8 +127,24 @@ function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeur
       scale: Vector3.Zero()
     })
     MeshRenderer.setBox(surbrillance)
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    Material.setPbrMaterial(surbrillance, plastic('#ffd166', 1.1))
+    /*
+      Un CONTOUR, pas un aplat.
+
+      C'etait une bande pleine en or clair posee derriere la ligne, et le nom devenait
+      illisible dessus: du texte clair sur un fond clair, sur la seule ligne que le lecteur
+      vient chercher (proprietaire, 2 Sep, capture a l'appui). Le cadre dit exactement la meme
+      chose, "celle-ci est la tienne", et ne met rien entre l'oeil et le mot. Meme entite, meme
+      cout: c'est la texture qui creuse le milieu, pas quatre barres de plus.
+    */
+    Material.setPbrMaterial(surbrillance, {
+      texture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
+      emissiveTexture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
+      albedoColor: Color4.fromHexString('#ffd166ff'),
+      emissiveColor: Color3.fromHexString('#ffd166'),
+      emissiveIntensity: 0.9,
+      metallic: 0, roughness: 1, specularIntensity: 0,
+      transparencyMode: 1, alphaTest: 0.5
+    })
   }
   const podium = rang >= 0 && rang < 3
   const decal = podium ? 0.66 : rang >= 0 ? 0.28 : 0
