@@ -90,6 +90,8 @@ type Profil = {
    */
   playedS?: number
   giftTaken?: boolean
+  /** Combien de cadeaux de temps ont ete pris. Un drapeau ne savait en compter qu'un. */
+  giftsTaken?: number
   alerts?: object[]
   /** The base skin chosen in the Index, a mutation id, 0 for none. */
   skin?: number
@@ -455,7 +457,7 @@ export async function accueillir(address: string): Promise<void> {
     // crate", and until now a fresh account owned none: the step named a thing that did
     // not exist (tester, 30 Aug). The reference solves the first minute with a near-free
     // buy off its conveyor; ours is a crate already in hand, which the second step opens.
-    crates: stocke?.crates ?? [0],
+    crates: stocke?.crates ?? [1],
     itemsFound: stocke?.itemsFound ?? items.length,
     floorsBought: stocke?.floorsBought ?? 0,
     rebirths: stocke?.rebirths ?? 0,
@@ -527,12 +529,40 @@ export function ajouterTempsJoue(address: string, seconds: number): void {
   p.playedS = (p.playedS ?? 0) + seconds
   dirtyProfiles.add(address)
 }
-export function cadeauPris(address: string): boolean { return profiles.get(address)?.giftTaken === true }
+/*
+  Un escalier, pas une marche.
+
+  Il y avait UN cadeau, a dix minutes, et un booleen pour dire qu'il etait pris. Dix minutes
+  tombe hors de la fenetre ou tout se joue: la guidance du domaine met le noyau du jeu dans la
+  premiere minute et le declic avant quatre-vingt-dix secondes. Il en faut donc plusieurs,
+  echelonnes, et un booleen ne sait pas compter jusqu'a deux. L'ancien drapeau est lu une
+  derniere fois pour les profils qui l'ont: qui avait deja pris le cadeau des dix minutes a
+  droit aux deux, il ne les redemandera pas.
+*/
+export function cadeauxPris(address: string): number {
+  const p = profiles.get(address)
+  if (p === undefined) return 0
+  return p.giftsTaken ?? (p.giftTaken === true ? 99 : 0)
+}
 export function marquerCadeauPris(address: string): void {
   const p = profiles.get(address)
   if (p === undefined) return
-  p.giftTaken = true
+  p.giftsTaken = (p.giftsTaken ?? 0) + 1
   dirtyProfiles.add(address)
+}
+
+/**
+ * Le meilleur objet que ce joueur possede, en rarete. -1 s'il n'a rien.
+ *
+ * Sert au butin du boss: la recompense suit la progression au lieu de sauter par-dessus.
+ */
+export function meilleureRarete(address: string): number {
+  const b = bases.get(address)
+  const p = profiles.get(address)
+  let best = -1
+  for (const code of b?.items ?? []) if (code !== VIDE) best = Math.max(best, rarityOf(code))
+  for (const code of p?.items ?? []) if (code !== VIDE) best = Math.max(best, rarityOf(code))
+  return best
 }
 
 export type BaseView = { address: string; name: string; items: number[]; entity: ReturnType<typeof engine.addEntity> }

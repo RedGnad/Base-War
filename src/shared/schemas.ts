@@ -887,7 +887,19 @@ export const PENDING_CAP_S = 600      // 10 minutes de production accumulables
  * Good Crate, and leaves the Cursed Crate, the rarest thing on the belt at one percent, as
  * the reason to come back a seventh time.
  */
-export const DAILY_REWARDS = [0, 4, 1, 2, 5, 3, 6] as const
+/*
+  Le premier jour donne une Good, pas une Basic.
+
+  Avec la caisse de bienvenue, ce sont les DEUX seules caisses qu'un joueur ouvre dans ses
+  premieres minutes, et la Basic est la seule du jeu dont la cloche est coupee en deux: rien
+  sous Common ou repartir la masse, donc 65,1 % de Common, contre 49 % pour tous les autres
+  paliers sur leur propre rarete. Deux Commons nus, c'est 2/s, et 2 018 pieces a ce rythme font
+  dix-sept minutes avant le premier achat que le tutoriel demande (mesure du 2 Sep). Deux
+  Uncommons, c'est deux minutes et demie. Aucun prix ne bouge, aucune table ne bouge: seuls les
+  deux premiers tirages d'une vie de joueur changent, ce qui est la pratique du genre pour les
+  premiers tirages.
+*/
+export const DAILY_REWARDS = [1, 4, 1, 2, 5, 3, 6] as const
 
 export { RESELL_SECONDS } from './economy'
 

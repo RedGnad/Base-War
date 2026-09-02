@@ -9,7 +9,7 @@ import {
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
-import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases, memeEspace } from './plots'
+import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases, memeEspace, meilleureRarete } from './plots'
 import { frapperPorteur } from './carry'
 import { dropAt } from './coins'
 import { noter } from './records'
@@ -82,6 +82,15 @@ let dernierTick = 0
 let seed = 12345
 /** A pseudo-random in [0,1): the sandbox bans Math.random, so a small LCG seeded from the raid's start. */
 function rnd(): number { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff }
+
+/** Le palier de caisse gagne au boss, un cran au-dessus du meilleur objet du joueur. */
+function crateDuButin(meilleure: number): number {
+  if (meilleure <= 0) return 1       // rien, ou du Common -> Good Crate
+  if (meilleure === 1) return 2      // Uncommon -> Rare Crate
+  if (meilleure === 2) return 3      // Rare -> Epic Crate
+  if (meilleure === 3) return RAID_REWARD_CRATE   // Epic -> Legendary Crate
+  return 8                           // Legendary et au-dela -> Mythic Crate
+}
 
 function meneur(): { address: string; name: string } | null {
   let top: string | null = null
@@ -185,7 +194,19 @@ function finir(vaincu: boolean): void {
     }
     const top = meneur()
     if (top !== null) {
-      addCrate(top.address, RAID_REWARD_CRATE)
+      /*
+        Un cran au-dessus de ce qu'il possede, jamais le sommet.
+
+        C'etait la caisse Legendary pour tout le monde, dont le rendement attendu calcule sur
+        ses propres tables vaut 14 908/s. Le premier achat que le tutoriel demande en coute
+        2 018: un seul boss valait donc environ sept mille quatre cents fois la premiere
+        marche de la progression, et un joueur de cinq minutes se retrouvait a quinze mille a
+        la seconde (proprietaire, 2 Sep). La regle du genre pour un boss de monde est que le
+        butin suit la progression: le debutant en Commons gagne une Good, celui qui tient des
+        Legendary gagne une Mythic. Le boss reste un grand moment a tous les stades, et il
+        cesse d'etre un raccourci par-dessus toute la courbe.
+      */
+      addCrate(top.address, crateDuButin(meilleureRarete(top.address)))
       void room.send('inventory', { crates: cratesOf(top.address) }, { to: [top.address] })
       void room.send('raidWon', { crate: RAID_REWARD_CRATE }, { to: [top.address] })
       noter('raid', top.name, '', encoder(4, 0))

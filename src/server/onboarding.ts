@@ -2,7 +2,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import {
   addCrate, cratesOf, etapeTuto, avancerTuto,
-  tempsJoue, ajouterTempsJoue, cadeauPris, marquerCadeauPris
+  tempsJoue, ajouterTempsJoue, cadeauxPris, marquerCadeauPris
 } from './plots'
 
 export const ETAPES = [
@@ -14,14 +14,26 @@ export const ETAPES = [
 ] as const
 
 /**
- * Ten minutes, not fifteen.
+ * Un escalier de cadeaux, dont la premiere marche est a deux minutes.
  *
- * The bar showing it is what changed the calculation: a wait nobody could see had to be long
- * enough to be worth the surprise, and a wait somebody watches fill is doing its work the
- * whole time. Ten puts the payoff inside a first real session rather than just beyond it.
+ * Il y en avait UN, a dix minutes, une caisse Rare. La barre qui le montre etait le bon
+ * instrument, et je la garde: une attente qu'on regarde se remplir travaille pendant tout ce
+ * temps. Mais dix minutes tombe HORS de la fenetre ou tout se joue. La guidance du domaine est
+ * nette la-dessus: le noyau du jeu dans la premiere minute, le declic avant quatre-vingt-dix
+ * secondes, et les problemes de retention se decident dans les dix premieres (Playio sur le
+ * FTUE, benchmarks Segwise 2026, sources industrie et non recherche primaire). Le cadeau
+ * arrivait donc a la FIN de la fenetre decisive au lieu de la remplir.
+ *
+ * Deux marches: une Good a deux minutes, la Rare d'origine a douze. Les premieres minutes sont
+ * pleines, l'anticipation survit pour la suite, et on ne verse pas une Rare a la deuxieme.
  */
-export const CADEAU_MS = 10 * 60_000
-export const GIFT_CRATE = 2
+export const CADEAUX = [
+  { s: 2 * 60, crate: 1 },
+  { s: 12 * 60, crate: 2 }
+] as const
+/** La derniere marche, pour la barre qui compte a rebours et pour les messages. */
+export const CADEAU_MS = CADEAUX[CADEAUX.length - 1].s * 1000
+export const GIFT_CRATE = CADEAUX[CADEAUX.length - 1].crate
 
 /**
  * Seconds accrued this session, not yet folded into the player's profile.
@@ -89,19 +101,23 @@ export function verifierCadeau(presents: Iterable<string>): void {
     sessionS.set(a, s)
     if (s >= REPLI_S) replier(a)
 
-    const total = Math.round(CADEAU_MS / 1000)
+    // La barre compte vers la PROCHAINE marche, pas vers la derniere: une barre qui vise un
+    // point deja depasse ne dit plus rien, et celle du debut est justement celle qui compte.
+    const pris = cadeauxPris(a)
+    const prochaine = pris < CADEAUX.length ? CADEAUX[pris] : null
+    const joue = tempsJoue(a) + (sessionS.get(a) ?? 0)
     if (s % 5 === 0 || s === 1) {
-      const reste = cadeauPris(a) ? -1 : Math.max(0, total - (tempsJoue(a) + s))
-      void room.send('giftProgress', { leftS: reste, totalS: total }, { to: [a] })
+      const reste = prochaine === null ? -1 : Math.max(0, prochaine.s - joue)
+      void room.send('giftProgress', { leftS: reste, totalS: prochaine === null ? 0 : prochaine.s }, { to: [a] })
     }
 
-    if (cadeauPris(a)) continue
-    if (tempsJoue(a) + (sessionS.get(a) ?? 0) < CADEAU_MS / 1000) continue
+    if (prochaine === null) continue
+    if (joue < prochaine.s) continue
     replier(a)
     marquerCadeauPris(a)
-    addCrate(a, GIFT_CRATE)
+    addCrate(a, prochaine.crate)
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
-    void room.send('timeGift', { crate: GIFT_CRATE, minutes: Math.round(CADEAU_MS / 60000) }, { to: [a] })
-    log(`welcome crate for ${a.slice(0, 8)} after ${Math.round(tempsJoue(a) / 60)} min played`)
+    void room.send('timeGift', { crate: prochaine.crate, minutes: Math.round(prochaine.s / 60) }, { to: [a] })
+    log(`welcome crate ${prochaine.crate} for ${a.slice(0, 8)} after ${Math.round(joue / 60)} min played`)
   }
 }
