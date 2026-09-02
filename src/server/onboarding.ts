@@ -24,12 +24,20 @@ export const ETAPES = [
  * FTUE, benchmarks Segwise 2026, sources industrie et non recherche primaire). Le cadeau
  * arrivait donc a la FIN de la fenetre decisive au lieu de la remplir.
  *
- * Deux marches: une Good a deux minutes, la Rare d'origine a douze. Les premieres minutes sont
- * pleines, l'anticipation survit pour la suite, et on ne verse pas une Rare a la deuxieme.
+ * Une seule marche, finalement, et elle revient a dix minutes.
+ *
+ * L'escalier avait deux marches, une Good a deux minutes et la Rare a douze. Mesure faite en
+ * jeu: le debut etait devenu trop riche, le joueur avait deja trop par seconde avant meme le
+ * premier cadeau (proprietaire, 2 Sep). Le vrai remede a la fenetre decisive etait ailleurs et
+ * il est en place: la caisse de bienvenue est une Good, donc il se passe quelque chose des la
+ * premiere minute sans que le jeu ait a donner deux fois. La marche du bas etait de la
+ * generosite en double, pas de l'attention.
+ *
+ * Douze minutes n'existait que comme second barreau d'une echelle qui n'en a plus qu'un: le
+ * cadeau reprend donc sa place a dix, ou il etait avant cette passe.
  */
 export const CADEAUX = [
-  { s: 2 * 60, crate: 1 },
-  { s: 12 * 60, crate: 2 }
+  { s: 10 * 60, crate: 2 }
 ] as const
 /** La derniere marche, pour la barre qui compte a rebours et pour les messages. */
 export const CADEAU_MS = CADEAUX[CADEAUX.length - 1].s * 1000
