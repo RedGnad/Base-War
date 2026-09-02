@@ -946,14 +946,34 @@ export const EDGE_MARGIN = BASE_SIDE / 2 + 2   // half a footprint clear of the 
  * the belt and their plot, which is where theft and gunfire find each other.
  */
 export const OPEN_RANGE = 8
-/**
- * Measured from the base's CENTRE, so it has to cover the base's own half-width.
- *
- * It was a flat six against a footprint of eleven, which happened to work because half of
- * eleven is five and a half. Widening the base to fourteen would have put the corner of every
- * lane-side building through the conveyor without this being derived.
- */
-export const BELT_CLEARANCE = BASE_SIDE / 2 + 2
+
+/*
+  La place est une ELLIPSE, et rien ne se construit dedans.
+
+  La regle d'avant etait un rectangle taille pour le TAPIS seul: 34 m de long, 18 m de large.
+  Elle protegeait la bande roulante et rien d'autre. Un centre de base pose a 9,1 m derriere
+  le fuser passait la regle, et son emprise de quatorze metres avalait la machine; les ballons
+  poses au sol n'etaient couverts par rien du tout. La place a du mobilier partout, pas
+  seulement sur son axe, donc la zone reservee epouse la place, pas la bande.
+
+  `PLAZA_A` et `PLAZA_B` decrivent la place elle-meme: 36 m sur 26, ce qui contient le tapis
+  (26 m), le fuser, le poste de raid et la borne de voyage, mesure. La zone INTERDITE aux
+  centres de base est cette ellipse grossie d'une demi-emprise plus deux metres, parce que la
+  regle juge un centre alors que ce qui gene est l'emprise. Cela fait 5,1% de la carte contre
+  1,7% pour le rectangle: on paye quatre points de terrain pour que le centre du jeu reste un
+  lieu, lisible et traversable, et pas un fond de cour entre deux immeubles.
+*/
+export const PLAZA_A = 18
+export const PLAZA_B = 13
+const PLAZA_INTERDIT_A = PLAZA_A + BASE_SIDE / 2 + 2
+const PLAZA_INTERDIT_B = PLAZA_B + BASE_SIDE / 2 + 2
+
+/** Vrai quand ce point est dans l'ellipse de la place, grossie de `marge` sur les deux axes. */
+export function dansLaPlace(x: number, z: number, marge = 0): boolean {
+  const dx = (x - CENTER.x) / (PLAZA_A + marge)
+  const dz = (z - CENTER.z) / (PLAZA_B + marge)
+  return dx * dx + dz * dz <= 1
+}
 
 export function snapToGrid(v: number): number {
   return Math.round(v / GRILLE) * GRILLE
@@ -966,9 +986,9 @@ export function invalidReason(
   if (x < EDGE_MARGIN || z < EDGE_MARGIN || x > cote - EDGE_MARGIN || z > cote - EDGE_MARGIN) {
     return 'too close to the edge'
   }
-  if (Math.abs(z - CENTER.z) < BELT_CLEARANCE && Math.abs(x - CENTER.x) < BELT_LENGTH / 2 + 4) {
-    return 'on the belt lane'
-  }
+  const px = (x - CENTER.x) / PLAZA_INTERDIT_A
+  const pz = (z - CENTER.z) / PLAZA_INTERDIT_B
+  if (px * px + pz * pz < 1) return 'the plaza stays open'
   for (const a of autres) {
     const dx = Math.abs(a.x - x), dz = Math.abs(a.z - z)
     // The square metric, not the round one: see MIN_BASE_GAP.

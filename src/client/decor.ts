@@ -1,6 +1,6 @@
 import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS } from '../shared/schemas'
+import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS, PLAZA_A, PLAZA_B } from '../shared/schemas'
 import { TOY, plastic } from './toy'
 
 /**
@@ -116,21 +116,22 @@ export function setupDecor(): void {
   // Balloons: three bouquets around the plaza's fixtures, knee-high to head-high, and the
   // spiral high over the centre, the landmark you can see from any base's top floor.
   /*
-    Le bouquet du fuser se tenait DANS le fuser.
+    Les bouquets vivent DANS la place, a cent vingt degres l'un de l'autre.
 
-    Son centre etait a 2,12 m de l'axe de la machine et les ballons se posent sur un anneau
-    de 1,7 m: le plus proche tombait donc a 0,42 m de l'axe, a l'interieur du tambour, qui en
-    fait 0,9 de rayon. Il masquait la machine et se mettait entre le joueur et la cible du
-    clic (proprietaire, 2 Sep). Il passe a 6,36 m, de l'autre cote de la place: le ballon le
-    plus proche est alors a 4,66 m de l'axe, soit 3,36 m au-dela du socle et hors des 3 m de
-    portee ou le bouton du fuser s'affiche. La machine garde sa face degagee cote place, d'ou
-    on arrive.
+    Ils etaient poses librement, et l'un d'eux se tenait a 2,12 m de l'axe du fuser: comme ils
+    se posent sur un anneau de 1,7 m, le plus proche tombait a 0,42 m de l'axe, DANS un tambour
+    qui fait 0,9 de rayon. Il masquait la machine et se mettait entre le joueur et sa cible.
+    Deux autres debordaient de la place, sur du terrain constructible: le jour ou quelqu'un y
+    pose sa base, les ballons se retrouvent dans son salon (proprietaire, 2 Sep).
+
+    Donc ils tiennent sur une ellipse interieure, 13 sur 8,5, ou le bord d'un bouquet (1,7 m
+    d'anneau plus 1,3 m de ballon) reste dans la place, ou chacun est a plus de neuf metres du
+    fuser et du poste de raid, et a plus de quatre du tapis. Verifie par le calcul, pas a l'oeil.
   */
-  const bouquets: Array<[number, number]> = [
-    [FUSION_POS.x - 4.5, FUSION_POS.z - 4.5],
-    [CENTER.x + 11, CENTER.z - 7],
-    [CENTER.x - 13, CENTER.z + 6.5]
-  ]
+  const bouquets: Array<[number, number]> = [30, 150, 270].map((deg) => {
+    const a = (deg * Math.PI) / 180
+    return [CENTER.x + 13 * Math.cos(a), CENTER.z + 8.5 * Math.sin(a)] as [number, number]
+  })
   for (const [bx, bz] of bouquets) {
     // A ring, not a dice roll: these shapes run up to two metres wide and a random jitter
     // of +/-1.1 m stacked them into each other (owner, 1 Sep). Three points 120 degrees
@@ -173,5 +174,33 @@ export function setupDecor(): void {
     })
   })
 
-  console.log('[CLIENT] decor: rim, treeline, bushes, balloons, street placed')
+  /*
+    Le sol de la place, qui EST la regle qu'on ne peut pas construire ici.
+
+    Une zone reservee qu'on ne voit pas est une zone ou le joueur se fait refuser sans
+    comprendre. Un disque de sol plus clair sous tout le mobilier dit la meme chose sans un
+    mot: ici c'est public, on n'y batit pas, et le reste du champ est a prendre. Un seul objet,
+    la meme matiere que la rue, pose deux centimetres au-dessus d'elle pour ne pas clignoter,
+    et sans collider: c'est de la peinture, pas une bordure.
+
+    Ses demi-axes sont ceux de `PLAZA_A` et `PLAZA_B`, donc le trait dessine exactement ce que
+    `invalidReason` refuse, a l'emprise des bases pres. Le disque est un cylindre a douze
+    faces, ce qui suffit largement pour un ovale de 36 metres vu de la hauteur d'un joueur.
+  */
+  const place = engine.addEntity()
+  Transform.create(place, {
+    position: Vector3.create(CENTER.x, 0.05, CENTER.z),
+    scale: Vector3.create(PLAZA_A * 2, 0.05, PLAZA_B * 2)
+  })
+  MeshRenderer.setCylinder(place, 0.5, 0.5)
+  Material.setPbrMaterial(place, {
+    ...plastic(TOY.plaza), roughness: 0.95,
+    texture: Material.Texture.Common({
+      src: 'assets/textures/mat-wall.png',
+      wrapMode: TextureWrapMode.TWM_REPEAT,
+      tiling: Vector2.create(PLAZA_A / 2, PLAZA_B / 2)
+    })
+  })
+
+  console.log('[CLIENT] decor: rim, treeline, bushes, balloons, street, plaza placed')
 }

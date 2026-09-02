@@ -33,6 +33,14 @@ export const TOY = {
    * things that must stay the brightest objects on screen.
    */
   street: '#c96f4a',
+  /**
+   * La place: le sol du centre, ou l'on ne construit pas.
+   *
+   * Meme famille chaude que la rue, plus clair d'un cran. Le meme ton dirait "c'est la rue",
+   * une couleur etrangere ferait une tache; un eclaircissement dit "c'est le meme domaine
+   * public, en plus large", ce qui est exactement la regle qu'il porte.
+   */
+  plaza: '#e0906b',
   /** Bases: cream plastic walls, a brighter roof line, primary-colour accents. */
   wallCream: '#f2e9d8',
   slab: '#e6dcc8',
