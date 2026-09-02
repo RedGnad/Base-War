@@ -188,6 +188,26 @@ function modele(src: string, y: number): Entity {
   return e
 }
 
+/**
+ * Le corps de la sentinelle existe quand elle est armee, et seulement alors.
+ *
+ * Un etage sans defense ne montre rien, c'est l'information que le voleur cherche; il n'y a
+ * donc aucune raison que le client rende un cylindre et un modele a l'echelle zero sur chaque
+ * etage de chaque base. On monte a la premiere charge, on demonte a la derniere.
+ */
+function armerSentinelle(sentry: Entity, armee: boolean): void {
+  const monte = MeshRenderer.has(sentry)
+  if (armee && !monte) {
+    MeshRenderer.setCylinder(sentry, 0.25, 0.45)
+    Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
+    montable(sentry, 'sentry.glb')
+  } else if (!armee && monte) {
+    demonter(sentry)
+    MeshRenderer.deleteFrom(sentry)
+    Material.deleteFrom(sentry)
+  }
+}
+
 function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }): Floor {
   const y = floor * FLOOR_HEIGHT
   const c = BASE_SIDE
@@ -251,9 +271,8 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     position: Vector3.create(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1),
     scale: Vector3.create(0, 0, 0)
   })
-  MeshRenderer.setCylinder(sentry, 0.25, 0.45)
-  Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
-  montable(sentry, 'sentry.glb')
+  // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armerSentinelle`.
+  // A l'echelle zero ils comptaient deja deux objets rendus par etage, arme ou non.
 
   return { coque, verre, accent, montee, sols, murs, ramp, rails, sentry }
 }
@@ -306,7 +325,16 @@ function creerSocle(racine: Entity, k: number): Entity {
     position: Vector3.create(d.dx, -5, d.dz),
     scale: Vector3.create(0.45, 0.45, 0.45)
   })
-  MeshRenderer.setBox(o)
+  /*
+    Pas de boite: un socle vide ne dessine rien.
+
+    Il en portait une, cinq metres sous le sol, invisible, et le client la comptait quand meme
+    comme un objet rendu, un materiau, un appel de dessin: six par etage, pour rien, sur
+    toutes les bases de la carte (mesure du 2 Sep). La piece posee arrive avec son propre
+    modele et son socle; la silhouette du Secret se construit en enfants. Rien ici n'a besoin
+    d'un maillage sur l'entite elle-meme. Le collider de pointeur, lui, reste: il n'est pas
+    rendu.
+  */
   // Pointer only: a toy on a shelf is clicked, never walked into. And on a phone not even
   // that: the contextual button takes the pedestal in front of the player (`padEnFace`),
   // so a handset carries no collider per displayed toy at all (tester's ask, 30 Aug).
@@ -709,6 +737,7 @@ export function setupPlots(): void {
             const n = p.sentryFloors[e] ?? 0
             const k = n === 0 ? 0 : 0.6 + n * 0.18
             ts.scale = Vector3.create(k, k, k)
+            armerSentinelle(v.floors[e].sentry, n > 0)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
             lumiereDuJouet(v.floors[e].sentry, n > 0 ? TOY.sentry : null, 1.6)
           }
