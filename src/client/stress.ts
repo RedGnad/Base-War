@@ -17,7 +17,16 @@ import { encoder } from '../shared/loot-table'
  */
 export const STRESS_BASES = 0
 
-function alea(n: number): number { return Math.floor(Math.random() * n) }
+/*
+  Deterministe, expres. Un instrument qui tire au sort donne deux champs differents a deux
+  mesures, et une comparaison avant/apres d'un changement de rendu n'a alors aucun sens.
+  Meme graine, meme plaza, a chaque lancement.
+*/
+let graine = 20260902
+function alea(n: number): number {
+  graine = (graine * 1103515245 + 12345) % 2147483648
+  return Math.floor((graine / 2147483648) * n)
+}
 
 /**
  * Fill every free spot, which is now the whole worst case.
