@@ -134,7 +134,18 @@ export function setupCarry(): void {
         })
         const mat = plasticDe(teinte, 1.1)
         Material.setPbrMaterial(corps, mat)
-        // The same toy the pedestal shows, so what you carry is recognisably what you took.
+        /*
+          La piece doit etre MONTEE, sinon la main est vide.
+
+          `formeDeRarete` ne dessine plus de silhouette pour les raretes zero a cinq: depuis que
+          le jeu d'echecs existe, ces paliers ont un vrai modele et l'ancienne silhouette ne
+          faisait que clignoter avant son arrivee. Le socle, lui, monte ce modele; la main ne le
+          montait pas, alors elle ne dessinait plus rien du tout, pour toutes les raretes sauf
+          le Secret qui garde son etoile. On ne voyait plus qu'on tenait quelque chose
+          (proprietaire, 2 Sep, apres une fusion). C'est le meme geste qu'au socle et qu'au
+          fantome de pose: monter, puis teindre.
+        */
+        remonter(corps, `item-${r}.glb`)
         formeDeRarete(corps, r, mat)
         AvatarAttach.create(corps, {
           avatarId: c.holder,
@@ -184,6 +195,7 @@ export function setupCarry(): void {
 
     for (const [id, v] of [...vues]) {
       if (vivants.has(id)) continue
+      demonter(v.corps)
       effacerForme(v.corps)
       engine.removeEntity(v.corps)
       engine.removeEntity(v.etiquette)
