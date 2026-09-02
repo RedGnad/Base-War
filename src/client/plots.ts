@@ -62,6 +62,8 @@ type Floor = {
 }
 type View = {
   plinth: Entity; label: Entity; gain: Entity; door: Entity; plaque: Entity; plaqueGlyphes: Entity | null
+  /** Niveau de detail: vrai quand la base est au-dela de LOD_LOIN et ne dessine que sa structure. */
+  loin: boolean
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
   vuLabel: string; vuBouclier: string
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
@@ -179,12 +181,42 @@ function collisionneur(x: number, y: number, z: number, sx: number, sy: number, 
   return e
 }
 
-function modele(src: string, y: number): Entity {
+/*
+  Deux niveaux de detail, par NOMBRE D'OBJETS, parce que c'est ce que le telephone compte.
+
+  Le client mobile reduit deja les triangles de chaque modele avec la distance (50, 25 puis
+  10 %). Il ne reduit pas le nombre d'objets rendus, et c'est lui qui plafonne a 500. Une base
+  pleine en coute 49, dont 26 pour ses pieces et leurs socles. A quarante-cinq metres, une
+  piece de quarante centimetres est un point sur un ecran de telephone et une plaque de nom
+  n'est plus lisible; ce qui reste percu d'une base est sa silhouette, sa hauteur, sa couleur,
+  et c'est exactement ce que le voleur cherche du bout du terrain. Le niveau LOIN garde donc
+  la coque et les montants de chaque etage, dans la couleur du proprietaire, et rien d'autre:
+  ni pieces, ni socles, ni plaque, ni vitrage, ni rampe, ni ascenseur, ni colliders, qu'on ne
+  peut pas toucher de la. Ce n'est PAS du rognage: on voit toutes les bases de partout
+  (proprietaire, 2 Sep: "limiter la vue des bases est un echec"), on cesse seulement de
+  dessiner ce que l'oeil ne distingue plus.
+
+  Dix metres d'hysteresis pour ne pas reconstruire une base a chaque pas sur la frontiere. Sa
+  propre base est toujours au niveau PRES: l'ascenseur, la pose et le bouton contextuel en
+  dependent.
+*/
+const LOD_PRES = 45
+const LOD_LOIN = 55
+
+function modele(src: string, y: number, rendu = true): Entity {
   const e = engine.addEntity()
   Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(0, y, 0) })
   taille.set(e, Vector3.One())
   // Both masks off: the shapes that stop a player are the invisible boxes beside this.
-  GltfContainer.create(e, { src: `assets/Models/${src}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  if (rendu) GltfContainer.create(e, { src: `assets/Models/${src}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  return e
+}
+
+/** Une entite qui n'est qu'une place: pour les pieces d'une base LOIN qui n'ont rien a dessiner. */
+function place(x: number, y: number, z: number): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { parent: parentCourant ?? undefined, position: Vector3.create(x, y, z), scale: Vector3.Zero() })
+  taille.set(e, Vector3.One())
   return e
 }
 
@@ -208,7 +240,7 @@ function armerSentinelle(sentry: Entity, armee: boolean): void {
   }
 }
 
-function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }): Floor {
+function buildFloor(x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }, loin = false): Floor {
   const y = floor * FLOOR_HEIGHT
   const c = BASE_SIDE
   const h = WALL_HEIGHT
@@ -221,9 +253,15 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const rampeX = STAIRWELL_WIDTH - 0.3
 
   const coque = modele(floor === 0 ? 'storey-ground.glb' : 'storey-upper.glb', y)
-  const verre = modele(mods.verre, y)
+  const verre = modele(mods.verre, y, !loin)
   const accent = modele(mods.accent, y)
-  const montee = modele(mods.climb, y)
+  const montee = modele(mods.climb, y, !loin)
+  if (loin) {
+    // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
+    // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
+    const sentry = place(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1)
+    return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz), rails: [], sentry }
+  }
 
   // The floor a player walks on, in the same three pieces the models are drawn in.
   const sols: Entity[] = [
@@ -349,7 +387,7 @@ function creerSocle(racine: Entity, k: number): Entity {
   return o
 }
 
-function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }): View {
+function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, loin = false): View {
   // One root at the centre, turned so the door faces the belt; everything below is local to it.
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
@@ -366,7 +404,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     and in network traffic the moment anyone walks in. Floors are added in the update below
     as the plot reports them, so an unreached floor costs exactly nothing.
   */
-  const floors: Floor[] = [buildFloor(0, 0, 0, mods)]
+  const floors: Floor[] = [buildFloor(0, 0, 0, mods, loin)]
 
   const ascenseur = engine.addEntity()
   Transform.create(ascenseur, {
@@ -375,17 +413,19 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(ASC_X, FLOOR_HEIGHT / 2, ASC_Z),
     scale: Vector3.create(0.5, FLOOR_HEIGHT, 0.5)
   })
-  MeshRenderer.setBox(ascenseur)
-  MeshCollider.setBox(ascenseur)
-  Material.setPbrMaterial(ascenseur, {
-    ...plastic(TOY.elevator, 0.5),
-    metallic: 0.85, roughness: 0.25
-  })
-  PointerEvents.create(ascenseur, {
-    pointerEvents: [
-      { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }
-    ]
-  })
+  if (!loin) {
+    MeshRenderer.setBox(ascenseur)
+    MeshCollider.setBox(ascenseur)
+    Material.setPbrMaterial(ascenseur, {
+      ...plastic(TOY.elevator, 0.5),
+      metallic: 0.85, roughness: 0.25
+    })
+    PointerEvents.create(ascenseur, {
+      pointerEvents: [
+        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }
+      ]
+    })
+  }
 
   const door = engine.addEntity()
   Transform.create(door, {
@@ -393,11 +433,11 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, (MAX_FLOORS * FLOOR_HEIGHT) / 2, 0),
     scale: Vector3.create(0, 0, 0)
   })
-  MeshRenderer.setBox(door)
+  if (!loin) MeshRenderer.setBox(door)
   // A shield you can walk through is a lie. It had a renderer and no collider, so it
   // looked like a wall and stopped nothing.
-  MeshCollider.setBox(door)
-  Material.setPbrMaterial(door, {
+  if (!loin) MeshCollider.setBox(door)
+  if (!loin) Material.setPbrMaterial(door, {
     albedoColor: TOY.shield,
     emissiveColor: Color3.fromHexString(TOY.sentry),
     emissiveIntensity: 0.55,
@@ -421,14 +461,14 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const gain = engine.addEntity()
   Transform.create(gain, { position: Vector3.create(x, FLOOR_HEIGHT + 1.82, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(gain, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(gain, {
+  if (!loin) TextShape.create(gain, {
     text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR
   })
 
   const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(x, FLOOR_HEIGHT + 1.15, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(label, {
+  if (!loin) TextShape.create(label, {
     text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
   })
 
@@ -460,7 +500,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, 0.02, 0.05),
     scale: Vector3.create(5.1, 1.28, 1)
   })
-  MeshRenderer.setPlane(enseigne)
+  if (!loin) MeshRenderer.setPlane(enseigne)
   /*
     Alpha TEST, not blend. The glazing is alpha blended, and two blended surfaces resolve
     their order per frame by distance: from some angles the wall drew over the sign and
@@ -468,7 +508,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     writes depth and wins every angle. The texture is the sign's own 4:1 drawing; the
     stretched square panel read as a pill.
   */
-  Material.setPbrMaterial(enseigne, {
+  if (!loin) Material.setPbrMaterial(enseigne, {
     texture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
     emissiveTexture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
     emissiveColor: Color3.White(), emissiveIntensity: 0.3,
@@ -485,7 +525,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
 
 function destroyView(v: View): void {
@@ -670,9 +710,20 @@ export function setupPlots(): void {
       const id = ent as unknown as number
       vivantes.add(id)
       const t = Transform.get(ent)
+      const monBaseLod = p.ownerId.toLowerCase() === monAdresseClient()
+      const moiT = Transform.getOrNull(engine.PlayerEntity)
+      const dist = moiT === null ? 0 : Math.hypot(moiT.position.x - t.position.x, moiT.position.z - t.position.z)
       let v = views.get(id)
+      // Le niveau se decide avec hysteresis; un changement reconstruit la vue entiere, et la
+      // signature vide qui en resulte lui fait recharger etages et pieces au bon niveau.
+      const veutLoin = !monBaseLod && (v === undefined ? dist > LOD_PRES : (v.loin ? dist > LOD_PRES : dist > LOD_LOIN))
+      if (v !== undefined && v.loin !== veutLoin) {
+        destroyView(v)
+        views.delete(id)
+        v = undefined
+      }
       if (!v) {
-        v = createView(t.position.x, t.position.z, modelesDe(p))
+        v = createView(t.position.x, t.position.z, modelesDe(p), veutLoin)
         views.set(id, v)
       }
 
@@ -737,9 +788,9 @@ export function setupPlots(): void {
             const n = p.sentryFloors[e] ?? 0
             const k = n === 0 ? 0 : 0.6 + n * 0.18
             ts.scale = Vector3.create(k, k, k)
-            armerSentinelle(v.floors[e].sentry, n > 0)
+            armerSentinelle(v.floors[e].sentry, n > 0 && !v.loin)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
-            lumiereDuJouet(v.floors[e].sentry, n > 0 ? TOY.sentry : null, 1.6)
+            lumiereDuJouet(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
           }
         }
         /*
@@ -776,7 +827,7 @@ export function setupPlots(): void {
           if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
           const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
           if (p.rebirths > 0) segs.push({ texte: `  x${p.rebirths + 1}`, role: 'money', taille: 0.78 })
-          v.plaqueGlyphes = p.ownerName === '' ? null : poserTexte3D(v.plaque, segs, !p.ownerPresent)
+          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : poserTexte3D(v.plaque, segs, !p.ownerPresent)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {
@@ -806,7 +857,7 @@ export function setupPlots(): void {
       if (structurel) {
         while (v.floors.length < Math.min(p.floors, MAX_FLOORS)) {
           parentCourant = v.racine
-          v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p)))
+          v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p), v.loin))
           parentCourant = null
           // The storey's six pedestals arrive with it.
           while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(creerSocle(v.racine, v.items.length))
@@ -909,7 +960,7 @@ export function setupPlots(): void {
         const tr = Transform.getMutableOrNull(ent)
         if (tr === null) continue
         const d = slotPosition(k)
-        const occupe = k < p.items.length && p.items[k] !== VIDE
+        const occupe = !v.loin && k < p.items.length && p.items[k] !== VIDE
 
         // 1. Tweens off, whatever the state: nothing below is safe while one is running.
         Tween.deleteFrom(ent)
