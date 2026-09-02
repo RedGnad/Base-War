@@ -6,13 +6,19 @@ mal fait, c'est hyper simple de trouver un logo de marteau gaming" (proprietaire
 raison, et la silhouette d'un marteau n'est pas quelque chose qu'on improvise a la taille du
 pouce. Celui-ci vient de la bibliotheque de reference du domaine.
 
-    Icone "thor-hammer" par Delapouite, https://game-icons.net
+    Icone "3d-hammer" par Delapouite, https://game-icons.net
     Creative Commons BY 3.0. Le SVG est verse dans `vendor/` pour que la construction
     soit reproductible hors ligne, et l'attribution est dans NOTICE.md a la racine.
 
-Le SVG n'a que des segments droits, alors le rasteriseur tient en une page: on aplatit les
-sous-chemins, on remplit ligne par ligne avec la regle du non-zero, quatre fois trop grand,
-puis on reduit. Aucune dependance au-dela de Pillow, deja utilise par les autres outils.
+Le premier choix etait "thor-hammer", la bonne forme mais un manche fait de bandes
+d'enroulement: du detail qui disparait a quatre-vingt-quatorze pixels et qui, en disparaissant,
+brouille la silhouette au lieu de l'enrichir (proprietaire, 2 Sep). Filtrer ces bandes ne
+marchait pas, elles SONT le manche. Celui-ci est le meme objet sans aucun ornement: une tete
+pleine, un manche nu.
+
+Le rasteriseur tient en une page: on aplatit les sous-chemins (segments droits et cubiques),
+on remplit ligne par ligne avec la regle du non-zero, quatre fois trop grand, puis on reduit.
+Aucune dependance au-dela de Pillow, deja utilise par les autres outils.
 
     python3 tools/ui/build-hammer-icon.py
 """
@@ -23,12 +29,12 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(os.path.join(HERE, '../../assets/ui'))
-SVG = os.path.join(HERE, 'vendor/thor-hammer.svg')
+SVG = os.path.join(HERE, 'vendor/3d-hammer.svg')
 N = 256
 BLANC = (255, 255, 255)
 NAVY = (16, 26, 43)
 
-TOK = re.compile(r'([MmLlHhVvZz])|(-?\d*\.?\d+)')
+TOK = re.compile(r'([MmLlHhVvCcZz])|(-?\d*\.?\d+)')
 
 
 def sous_chemins(d):
@@ -90,6 +96,23 @@ def sous_chemins(d):
                 y += cur[1]
             cur = (cur[0], y)
             sub.append(cur)
+        elif c == 'C':
+            x1, y1 = nombre(), nombre()
+            x2, y2 = nombre(), nombre()
+            x, y = nombre(), nombre()
+            if rel:
+                x1 += cur[0]; y1 += cur[1]
+                x2 += cur[0]; y2 += cur[1]
+                x += cur[0]; y += cur[1]
+            p0 = cur
+            for k in range(1, 17):
+                t = k / 16.0
+                u = 1 - t
+                sub.append((
+                    u*u*u*p0[0] + 3*u*u*t*x1 + 3*u*t*t*x2 + t*t*t*x,
+                    u*u*u*p0[1] + 3*u*u*t*y1 + 3*u*t*t*y2 + t*t*t*y,
+                ))
+            cur = (x, y)
         else:
             raise SystemExit('commande SVG non geree: ' + c)
     if sub:
