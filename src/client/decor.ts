@@ -115,8 +115,19 @@ export function setupDecor(): void {
 
   // Balloons: three bouquets around the plaza's fixtures, knee-high to head-high, and the
   // spiral high over the centre, the landmark you can see from any base's top floor.
+  /*
+    Le bouquet du fuser se tenait DANS le fuser.
+
+    Son centre etait a 2,12 m de l'axe de la machine et les ballons se posent sur un anneau
+    de 1,7 m: le plus proche tombait donc a 0,42 m de l'axe, a l'interieur du tambour, qui en
+    fait 0,9 de rayon. Il masquait la machine et se mettait entre le joueur et la cible du
+    clic (proprietaire, 2 Sep). Il passe a 6,36 m, de l'autre cote de la place: le ballon le
+    plus proche est alors a 4,66 m de l'axe, soit 3,36 m au-dela du socle et hors des 3 m de
+    portee ou le bouton du fuser s'affiche. La machine garde sa face degagee cote place, d'ou
+    on arrive.
+  */
   const bouquets: Array<[number, number]> = [
-    [FUSION_POS.x + 1.5, FUSION_POS.z - 1.5],
+    [FUSION_POS.x - 4.5, FUSION_POS.z - 4.5],
     [CENTER.x + 11, CENTER.z - 7],
     [CENTER.x - 13, CENTER.z + 6.5]
   ]

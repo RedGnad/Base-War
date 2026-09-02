@@ -73,9 +73,20 @@ export function alerter(texte: string, color: string, durationMs = 6000): void {
   theftView.alertColor = color
   theftView.alerteJusqua = now + durationMs
 }
+/**
+ * Les toasts encore vivants, l'expiree ou qu'elle soit.
+ *
+ * On ne retirait que par la QUEUE, en s'arretant a la premiere non expiree. Les durees vont
+ * de 2,2 a 8 secondes, alors un message court pose devant un message long ne pouvait plus
+ * partir avant lui: "FUSED, a GOLD is in your hand" restait a l'ecran pendant que le toast
+ * d'en dessous finissait ses huit secondes (proprietaire, 2 Sep, "il disparait pas"). On
+ * balaie donc toute la liste, du bas vers le haut pour que les indices tiennent.
+ */
 export function alertesVisibles(): Array<{ t: string; c: string; ne: number; jusqua: number }> {
   const now = Date.now()
-  while (theftView.alertes.length > 0 && theftView.alertes[theftView.alertes.length - 1].jusqua <= now) theftView.alertes.pop()
+  for (let i = theftView.alertes.length - 1; i >= 0; i--) {
+    if (theftView.alertes[i].jusqua <= now) theftView.alertes.splice(i, 1)
+  }
   return theftView.alertes
 }
 

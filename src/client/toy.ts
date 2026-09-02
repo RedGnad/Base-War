@@ -397,7 +397,7 @@ const teintes = new Map<Entity, string>()
   here; whoever erases the stand-in paints the model with it.
 */
 const dernierMateriau = new Map<Entity, PBMaterial_PbrMaterial>()
-function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial): void {
+export function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial): void {
   const cle = JSON.stringify(materiau)
   if (teintes.get(modele) === cle) return
   teintes.set(modele, cle)
@@ -414,6 +414,35 @@ function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial): void {
       }
     }]
   })
+}
+
+/**
+ * La forme TENUE EN MAIN, toujours en primitives, jamais en modele.
+ *
+ * Un `GltfContainer` ne s'affiche pas sur une entite portee par `AvatarAttach`, ni sur une
+ * de ses filles: verifie en jeu le 2 Sep, dans les deux dispositions, la main restait vide
+ * pour toutes les raretes. Un `MeshRenderer` s'y affiche, lui: l'anneau rouge du voleur est
+ * pose directement sur une entite attachee, et les anciennes silhouettes, qui etaient des
+ * filles, se voyaient. Un `TextShape` aussi, c'est l'etiquette au-dessus de la tete, et c'est
+ * elle qui a mis sur la voie: elle s'affichait pendant que la piece, elle, ne s'affichait pas.
+ *
+ * Donc la main garde les silhouettes. Ce sont les "bracelets et boules autour du poignet"
+ * d'avant, que le proprietaire a redemandes le 2 Sep ("visuellement c'etait tres bien, on
+ * voyait tout de suite qu'on tient un truc"). Sur un socle ou un fantome de pose, ou le
+ * modele s'affiche, `formeDeRarete` reste la regle et n'en dessine aucune.
+ */
+export function formeEnMain(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
+  const cur = formes.get(parent)
+  if (cur !== undefined && cur.rarete === rarete) {
+    for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
+    return
+  }
+  if (cur !== undefined) for (const e of cur.parts) engine.removeEntity(e)
+  const parts = silhouette(parent, Math.max(0, Math.min(rarete, 6)))
+  for (const e of parts) Material.setPbrMaterial(e, materiau)
+  formes.set(parent, { parts, rarete })
+  // Le parent est un contenant: sa propre boite se tiendrait a l'interieur de la forme.
+  if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent)
 }
 
 export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {

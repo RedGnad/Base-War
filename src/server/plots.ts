@@ -286,10 +286,35 @@ function removeBase(address: string): void {
 const MONDE_REMIS_A_ZERO = '2026-09-02-nuit-6'
 const CLEF_REMISE = 'reset'
 
+/**
+ * Le marqueur relu, qu'il ait ete ecrit brut ou encode.
+ *
+ * Il etait ECRIT avec `JSON.stringify`, donc entre guillemets, et RELU tel quel puis compare
+ * a la constante sans guillemets. Les deux ne pouvaient jamais etre egaux, donc la remise a
+ * zero se declenchait a CHAQUE demarrage du serveur, et le serveur s'arrete deux minutes
+ * apres le depart du dernier joueur: bases, objets et pieces de tout le monde disparaissaient
+ * des que la place se vidait. Le commentaire au-dessus decrivait exactement le desastre que
+ * la comparaison provoquait ("aurait vide le monde a chaque redemarrage"), en croyant l'avoir
+ * evite (trouve le 2 Sep, en constatant qu'un profil prepare pour un test s'effacait seul).
+ *
+ * On tolere les deux formes, parce que le stockage de production contient deja l'ancienne.
+ */
+function marqueurLu(brut: string | null | undefined): string | null {
+  if (typeof brut !== 'string' || brut.length === 0) return null
+  if (brut[0] !== '"') return brut
+  try {
+    const v: unknown = JSON.parse(brut)
+    return typeof v === 'string' ? v : brut
+  } catch {
+    return brut
+  }
+}
+
 async function remiseAZero(): Promise<void> {
   try {
-    const fait = await Storage.get<string>(CLEF_REMISE)
+    const fait = marqueurLu(await Storage.get<string>(CLEF_REMISE))
     if (fait === MONDE_REMIS_A_ZERO) return
+    log(`remise a zero: marqueur lu "${fait ?? 'aucun'}", attendu "${MONDE_REMIS_A_ZERO}"`)
 
     const res = await Storage.getValues({ prefix: 'base:' })
     const adresses = res.data.map((e) => e.key.slice('base:'.length)).filter((a) => a.length > 0)
@@ -304,7 +329,9 @@ async function remiseAZero(): Promise<void> {
     profiles.clear()
     dirtyBases.clear()
     dirtyProfiles.clear()
-    const ok = await Storage.set(CLEF_REMISE, JSON.stringify(MONDE_REMIS_A_ZERO))
+    // Ecrit BRUT, la forme que la relecture attend en premier. `JSON.stringify` etait la
+    // moitie ecrivante du defaut ci-dessus.
+    const ok = await Storage.set(CLEF_REMISE, MONDE_REMIS_A_ZERO)
     log(`remise a zero terminee, marqueur ecrit: ${ok}`)
   } catch (e) {
     log(`remise a zero impossible: ${e}`)

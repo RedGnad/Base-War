@@ -1486,7 +1486,7 @@ const uiComponent = () => {
       already the hierarchy (gold gain, red danger, grey info); the anatomy and the motion
       are what make it read as a system rather than a message that teleports.
     */}
-    {hud() && alertesVisibles().length > 0 && (
+    {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
           width: strip(820).width, positionType: 'absolute',

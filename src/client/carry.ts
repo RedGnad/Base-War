@@ -11,7 +11,7 @@ import { setCarrying } from './locomotion'
 import { cibleDePose } from './plots'
 import { refuserAuSon } from './box'
 import { verbe } from './verbe'
-import { formeDeRarete, effacerForme, demonter, remonter, plasticDe, SOCLE_EPAISSEUR } from './toy'
+import { formeDeRarete, formeEnMain, effacerForme, demonter, remonter, plasticDe, SOCLE_EPAISSEUR } from './toy'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -127,13 +127,9 @@ export function setupCarry(): void {
         const teinte = Color4.fromHexString(itemColor(r, mutationDe(c.code)) + 'ff')
 
         const corps = engine.addEntity()
-        Transform.create(corps, {
-          position: Vector3.create(0, 0.12, 0.16),
-          // A toy in a hand reads at about a fifth of a metre; a third looked like a suitcase.
-          scale: Vector3.create(0.2, 0.2, 0.2)
-        })
+        // A toy in a hand reads at about a fifth of a metre; a third looked like a suitcase.
+        Transform.create(corps, { position: Vector3.create(0, 0.12, 0.16), scale: Vector3.create(0.2, 0.2, 0.2) })
         const mat = plasticDe(teinte, 1.1)
-        Material.setPbrMaterial(corps, mat)
         /*
           La piece doit etre MONTEE, sinon la main est vide.
 
@@ -145,8 +141,7 @@ export function setupCarry(): void {
           (proprietaire, 2 Sep, apres une fusion). C'est le meme geste qu'au socle et qu'au
           fantome de pose: monter, puis teindre.
         */
-        remonter(corps, `item-${r}.glb`)
-        formeDeRarete(corps, r, mat)
+        formeEnMain(corps, r, mat)
         AvatarAttach.create(corps, {
           avatarId: c.holder,
           anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND
