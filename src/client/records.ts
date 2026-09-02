@@ -68,7 +68,9 @@ function bande(parent: Entity, x: number, y: number, largeur: number, pas = PAS)
   const e = engine.addEntity()
   Transform.create(e, { parent, position: Vector3.create(x, y, -0.085), scale: Vector3.create(largeur, pas - 0.06, 0.01) })
   MeshRenderer.setBox(e)
-  Material.setPbrMaterial(e, plasticDe(BANDE, 0))
+  // Comme la plaque et le cadre: rien de ce panneau ne porte d'ombre. Ces bandes projetaient
+  // une grille de barres au sol, la ou le proprietaire n'attendait plus rien (2 Sep).
+  Material.setPbrMaterial(e, { ...plasticDe(BANDE, 0), castShadows: false })
 }
 
 /**
@@ -90,7 +92,7 @@ function medaille(parent: Entity, x: number, y: number, hex: string): Entity {
     scale: Vector3.create(PORTRAIT + 0.12, 0.02, PORTRAIT + 0.12)
   })
   MeshRenderer.setCylinder(disque, 0.5, 0.5)
-  Material.setPbrMaterial(disque, plastic(hex, 1.3))
+  Material.setPbrMaterial(disque, { ...plastic(hex, 1.3), castShadows: false })
 
   const portrait = engine.addEntity()
   Transform.create(portrait, { parent, position: Vector3.create(x, y, -0.118), scale: Vector3.Zero() })
@@ -105,7 +107,7 @@ function visage(l: Ligne, id: string): void {
   const t = Transform.getMutableOrNull(l.portrait)
   if (t !== null) t.scale = id === '' ? Vector3.Zero() : Vector3.create(PORTRAIT, PORTRAIT, 1)
   // Unlit: a portrait lit by the scene's sun would go dark on the shaded face of the board.
-  if (id !== '') Material.setBasicMaterial(l.portrait, { texture: Material.Texture.Avatar({ userId: id }) })
+  if (id !== '') Material.setBasicMaterial(l.portrait, { texture: Material.Texture.Avatar({ userId: id }), castShadows: false })
 }
 
 /**
@@ -150,7 +152,7 @@ function cadre(parent: Entity): Entity {
     emissiveColor: Color3.fromHexString('#ffd166'),
     emissiveIntensity: 0.9,
     metallic: 0, roughness: 1, specularIntensity: 0,
-    transparencyMode: 1, alphaTest: 0.5
+    transparencyMode: 1, alphaTest: 0.5, castShadows: false
   })
   return e
 }

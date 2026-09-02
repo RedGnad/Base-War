@@ -53,12 +53,12 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
   })
   GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   /*
-    Les ballons ne portent pas d'ombre.
+    Seul ce qui flotte HAUT perd son ombre.
 
-    Ils flottent au-dessus de la place, autour du panneau central, et leur grappe posait un
-    semis de taches sur le sol que le proprietaire a releve le 2 Sep. Un chemin vide dans
-    `GltfNodeModifiers` s'applique a tous les noeuds du fichier. La vegetation, elle, garde la
-    sienne: un arbre sans ombre flotte.
+    Les bouquets sont a hauteur d'homme, autour des fixtures de la place: leur ombre les y
+    pose, et le proprietaire la veut. C'est la spirale a vingt-sept metres au-dessus du
+    panneau central qui projetait un semis de taches sur un sol qu'elle ne touche pas (2 Sep).
+    Un chemin vide dans `GltfNodeModifiers` s'applique a tous les noeuds du fichier.
   */
   if (!ombre) GltfNodeModifiers.createOrReplace(e, { modifiers: [{ path: '', castShadows: false }] })
   return e
@@ -128,7 +128,7 @@ export function setupDecor(): void {
     const phase = alea() * 360
     for (let k = 0; k < 3; k++) {
       const a = ((phase + k * 120) * Math.PI) / 180
-      pose(BALLONS[k % BALLONS.length], bx + Math.cos(a) * 1.7, 1.2 + k * 0.7 + alea() * 0.3, bz + Math.sin(a) * 1.7, 0.9 + alea() * 0.4, alea() * 360, false)
+      pose(BALLONS[k % BALLONS.length], bx + Math.cos(a) * 1.7, 1.2 + k * 0.7 + alea() * 0.3, bz + Math.sin(a) * 1.7, 0.9 + alea() * 0.4, alea() * 360)
     }
   }
   pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0, false)
