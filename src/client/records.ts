@@ -47,8 +47,8 @@ const PORTRAIT = 0.38
 const TEXTE = '#f2f4f8'
 const BANDE = Color4.create(1, 1, 1, 0.07)
 
-type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string; surbrillance: Entity | null; hautG: number; portrait: Entity | null; dernierId: string }
-type Face = { earners: Ligne[]; thieves: Ligne[]; journal: Ligne[] }
+type Ligne = { gauche: Entity; droite: Entity | null; texteG: string; texteD: string; hautG: number; portrait: Entity | null; dernierId: string; y: number; xc: number }
+type Face = { earners: Ligne[]; thieves: Ligne[]; journal: Ligne[]; surbE: Entity; surbT: Entity }
 const faces: Face[] = []
 let moi = ''
 
@@ -116,51 +116,60 @@ function visage(l: Ligne, id: string): void {
  * search, and the one line they came to find is their own. The highlight is built at zero
  * scale on every row and grown on the one that matches, so lighting it costs a scale.
  */
-function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string, rang: number, sien: boolean, pas: number): Ligne {
+function ligne(parent: Entity, xg: number, xd: number | null, y: number, largeurBande: number, pair: boolean, hex: string, rang: number, pas: number): Ligne {
   if (pair) bande(parent, xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, largeurBande, pas)
-  let surbrillance: Entity | null = null
-  if (sien) {
-    surbrillance = engine.addEntity()
-    Transform.create(surbrillance, {
-      parent,
-      position: Vector3.create(xd === null ? xg + largeurBande / 2 : (xg + xd) / 2, y, -0.09),
-      scale: Vector3.Zero()
-    })
-    MeshRenderer.setBox(surbrillance)
-    /*
-      Un CONTOUR, pas un aplat.
-
-      C'etait une bande pleine en or clair posee derriere la ligne, et le nom devenait
-      illisible dessus: du texte clair sur un fond clair, sur la seule ligne que le lecteur
-      vient chercher (proprietaire, 2 Sep, capture a l'appui). Le cadre dit exactement la meme
-      chose, "celle-ci est la tienne", et ne met rien entre l'oeil et le mot. Meme entite, meme
-      cout: c'est la texture qui creuse le milieu, pas quatre barres de plus.
-    */
-    Material.setPbrMaterial(surbrillance, {
-      texture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
-      emissiveTexture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
-      albedoColor: Color4.fromHexString('#ffd166ff'),
-      emissiveColor: Color3.fromHexString('#ffd166'),
-      emissiveIntensity: 0.9,
-      metallic: 0, roughness: 1, specularIntensity: 0,
-      transparencyMode: 1, alphaTest: 0.5
-    })
-  }
+  const xc = xd === null ? xg + largeurBande / 2 : (xg + xd) / 2
   const podium = rang >= 0 && rang < 3
   const decal = podium ? 0.66 : rang >= 0 ? 0.28 : 0
   const portrait = podium ? medaille(parent, xg + 0.3, y, RANG_COULEUR[rang]) : null
   const gauche = texte(parent, xg + decal, y, podium ? 3.3 : 3, hex, TextAlignMode.TAM_MIDDLE_LEFT)
   const droite = xd === null ? null : texte(parent, xd, y, podium ? 3.3 : 3, hex, TextAlignMode.TAM_MIDDLE_RIGHT)
-  return { gauche, droite, texteG: '', texteD: '', surbrillance, hautG: largeurBande, portrait, dernierId: '' }
+  return { gauche, droite, texteG: '', texteD: '', hautG: largeurBande, portrait, dernierId: '', y, xc }
 }
 
-/** Lights a row as the reader's own, or puts it out. Called once a second with the data. */
-function marquer(l: Ligne, sien: boolean): void {
-  const t = l.surbrillance === null ? null : Transform.getMutableOrNull(l.surbrillance)
+/**
+ * Le cadre qui marque la ligne du lecteur: UN par colonne, deplace sur la bonne ligne.
+ *
+ * Il y en avait un par ligne, dix par face, vingt en tout, tous a l'echelle zero sauf un ou
+ * deux: le client les comptait tous, vingt objets rendus pour deux qui servent (mesure du
+ * 2 Sep). Un seul par colonne, qui va se poser sur la ligne du lecteur, fait exactement le
+ * meme dessin.
+ *
+ * Un CONTOUR, pas un aplat: la bande pleine en or clair rendait le nom illisible, du texte
+ * clair sur un fond clair, sur la seule ligne que le lecteur vient chercher (proprietaire,
+ * 2 Sep, capture a l'appui). La texture creuse le milieu.
+ */
+function cadre(parent: Entity): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { parent, position: Vector3.create(0, 0, -0.09), scale: Vector3.Zero() })
+  MeshRenderer.setBox(e)
+  Material.setPbrMaterial(e, {
+    texture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
+    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/cadre-ligne.png' }),
+    albedoColor: Color4.fromHexString('#ffd166ff'),
+    emissiveColor: Color3.fromHexString('#ffd166'),
+    emissiveIntensity: 0.9,
+    metallic: 0, roughness: 1, specularIntensity: 0,
+    transparencyMode: 1, alphaTest: 0.5
+  })
+  return e
+}
+
+/** Pose le cadre de la colonne sur la ligne `index`, ou l'eteint si aucune n'est la mienne. */
+function marquerColonne(surb: Entity, lignes: Ligne[], index: number): void {
+  const t = Transform.getMutableOrNull(surb)
   if (t === null) return
-  const veut = sien ? Vector3.create(l.hautG, PAS - 0.02, 0.012) : Vector3.Zero()
-  // The band sits behind the portrait, so a lit row frames the face rather than hiding it.
-  if (t.scale.x !== veut.x || t.scale.y !== veut.y) t.scale = veut
+  if (index < 0 || index >= lignes.length) {
+    if (t.scale.x !== 0) t.scale = Vector3.Zero()
+    return
+  }
+  const l = lignes[index]
+  t.position = Vector3.create(l.xc, l.y, -0.09)
+  t.scale = Vector3.create(l.hautG, PAS - 0.02, 0.012)
+}
+
+/** Le nom de la ligne du lecteur se detache aussi par son contour. */
+function marquer(l: Ligne, sien: boolean): void {
   const tg = TextShape.getMutableOrNull(l.gauche)
   if (tg !== null) tg.outlineWidth = sien ? 0.3 : 0.12
 }
@@ -204,8 +213,8 @@ function face(pivot: Entity): Face {
   for (let i = 0; i < RANGS; i++) {
     const hex = RANG_COULEUR[i] ?? TEXTE
     const pas = i < 3 ? PAS_PODIUM : PAS
-    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex, i, true, pas))
-    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex, i, true, pas))
+    earners.push(ligne(pivot, xg1, xd1, y, moitie, i % 2 === 0, hex, i, pas))
+    thieves.push(ligne(pivot, xg2, xd2, y, moitie, i % 2 === 0, hex, i, pas))
     y -= pas
   }
   y -= 0.06
@@ -216,10 +225,10 @@ function face(pivot: Entity): Face {
   const journal: Ligne[] = []
   const pleine = LARGEUR - 2 * MARGE
   for (let i = 0; i < LIGNES_JOURNAL; i++) {
-    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, false, PAS))
+    journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, PAS))
     y -= PAS
   }
-  return { earners, thieves, journal }
+  return { earners, thieves, journal, surbE: cadre(pivot), surbT: cadre(pivot) }
 }
 
 function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code: number }, now: number): string {
@@ -289,14 +298,18 @@ export function setupRecords(): void {
       if (me !== null) moi = me.name.toLowerCase()
     }
     const dernier = [...r.journal].reverse().slice(0, LIGNES_JOURNAL)
+    const mienE = moi === '' ? -1 : r.earners.findIndex((e) => e.name.toLowerCase() === moi)
+    const mienT = moi === '' ? -1 : r.thieves.findIndex((v) => v.name.toLowerCase() === moi)
     for (const f of faces) {
+      marquerColonne(f.surbE, f.earners, mienE)
+      marquerColonne(f.surbT, f.thieves, mienT)
       for (let i = 0; i < RANGS; i++) {
         const e = r.earners[i]
         const v = r.thieves[i]
         ecrire(f.earners[i], e ? `${i + 1}.  ${e.name}` : i === 0 ? 'nobody yet' : '', e ? `${formatIncome(e.value)}/s` : '')
         ecrire(f.thieves[i], v ? `${i + 1}.  ${v.name}` : i === 0 ? 'nobody yet' : '', v ? `${v.value} ${v.value === 1 ? 'steal' : 'steals'}` : '')
-        marquer(f.earners[i], e !== undefined && moi !== '' && e.name.toLowerCase() === moi)
-        marquer(f.thieves[i], v !== undefined && moi !== '' && v.name.toLowerCase() === moi)
+        marquer(f.earners[i], i === mienE)
+        marquer(f.thieves[i], i === mienT)
         visage(f.earners[i], e?.id ?? '')
         visage(f.thieves[i], v?.id ?? '')
       }

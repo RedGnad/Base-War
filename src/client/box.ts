@@ -64,6 +64,7 @@ let sonCoup: Entity
 let sonBurst: Entity
 let sonReveal: Entity
 const eclats: Entity[] = []
+const ECLATS = 14
 let sonTic: Entity
 let left = 0
 let reelS = 1
@@ -140,12 +141,14 @@ export function setupBox(): void {
   // et qu'on comprend, la ou une plaque "FLOOR FULL" reste a lire a chaque tentative.
   sonRefus = emetteur('assets/sounds/tick.wav', 0.35)
 
-  for (let i = 0; i < 14; i++) {
-    const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
-    MeshRenderer.setBox(e)
-    eclats.push(e)
-  }
+  /*
+    Plus d'eclats en attente sous le sol.
+
+    Quatorze boites etaient creees ici et garees a dix metres sous terre, a l'echelle zero, en
+    attendant la prochaine caisse. Le client les comptait quand meme: quatorze objets rendus,
+    quatorze materiaux, en permanence, pour un effet qui dure huit cent cinquante millisecondes
+    (mesure du 2 Sep). Ils naissent dans `exploser` et meurent avec l'effet.
+  */
 
   room.onMessage('inventory', (d) => { boxView.stock = [...d.crates] })
 
@@ -259,9 +262,14 @@ function exploser(center: Vector3, color: string): void {
   lastPosition = center
   jouer(sonBurst)
   const c = Color4.fromHexString(color + 'ff')
-  for (let i = 0; i < eclats.length; i++) {
-    const e = eclats[i]
-    const a = (i / eclats.length) * Math.PI * 2
+  for (const vieux of eclats) engine.removeEntity(vieux)
+  eclats.length = 0
+  for (let i = 0; i < ECLATS; i++) {
+    const e = engine.addEntity()
+    Transform.create(e, { position: center, scale: Vector3.create(0.16, 0.16, 0.16) })
+    MeshRenderer.setBox(e)
+    eclats.push(e)
+    const a = (i / ECLATS) * Math.PI * 2
     const h = 0.6 + (i % 3) * 0.5
     const r = 1.6 + (i % 4) * 0.45
     const t = Transform.getMutableOrNull(e)
@@ -289,11 +297,8 @@ function exploser(center: Vector3, color: string): void {
     })
   }
   timers.setTimeout(() => {
-    for (const e of eclats) {
-      const t = Transform.getMutableOrNull(e)
-      if (t !== null) { t.scale = Vector3.create(0, 0, 0); t.position = Vector3.create(0, -10, 0) }
-      Tween.deleteFrom(e); TweenSequence.deleteFrom(e)
-    }
+    for (const e of eclats) engine.removeEntity(e)
+    eclats.length = 0
   }, 850)
 }
 

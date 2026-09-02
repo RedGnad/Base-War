@@ -1,6 +1,6 @@
 import { GltfNodeModifiers, TextureWrapMode, engine, Transform, GltfContainer, MeshRenderer, MeshCollider, Material, ColliderLayer, Entity } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { CENTER, SCENE_SIDE, EDGE_MARGIN, BELT_CLEARANCE, BELT_LENGTH, FUSION_POS } from '../shared/schemas'
+import { CENTER, SCENE_SIDE, EDGE_MARGIN, FUSION_POS } from '../shared/schemas'
 import { TOY, plastic } from './toy'
 
 /**
@@ -25,8 +25,6 @@ import { TOY, plastic } from './toy'
 let graine = 987654321
 function alea(): number { graine = (graine * 1103515245 + 12345) & 0x7fffffff; return graine / 0x7fffffff }
 
-const ARBRE = 'assets/Models/tree.glb'
-const BUISSONS = ['assets/Models/bush-02.glb', 'assets/Models/bush-03.glb']
 
 /*
   The balloon mystery, solved by the tester's own eye: "one of the balloons was a 9". The
@@ -57,17 +55,13 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
   return e
 }
 
-/**
- * La bande ou rien ne se pose: le point d'apparition et ses abords.
- *
- * Elle suivait l'ancien point d'apparition (z 100 a 105) et n'a pas bouge quand celui-ci est
- * sorti du couloir du tapis (z 108 a 113, 1 Sep). La toute premiere image du jeu se jouait
- * donc a nouveau dans les buissons. Elle couvre maintenant la fourchette declaree dans
- * `scene.json`, avec trois metres de part et d'autre.
- */
-function surSpawn(x: number, z: number): boolean {
-  return x > 88 && x < 104 && z > 92 && z < 116
-}
+/*
+  La bande du point d'apparition vit maintenant dans `tools/model/build-vegetation.py`.
+
+  C'est lui qui place arbres et buissons, donc c'est lui qui doit savoir ou ne rien poser. La
+  garder ici en plus aurait fait deux definitions de la meme regle, et la premiere fois que le
+  point d'apparition bouge, une des deux serait restee en arriere. C'est deja arrive (1 Sep).
+*/
 
 
 
@@ -97,52 +91,18 @@ export function setupDecor(): void {
     Material.setPbrMaterial(levre, plastic(TOY.ramp))
   }
 
-  // The treeline: inside the rim, in the band where bases are forbidden. Forty-four trees,
-  // every twelve metres or so with a stride of jitter, each with its own turn and size.
-  const arbres: Entity[] = []
-  const bande = EDGE_MARGIN * 0.55
-  for (const cote of [0, 1, 2, 3]) {
-    for (let d = 10; d < SCENE_SIDE - 10; d += 17) {
-      const j = (alea() - 0.5) * 6
-      const r = 2.2 + alea() * 2.6
-      let x = 0, z = 0
-      if (cote === 0) { x = d + j; z = bande + (alea() - 0.5) * 3 }
-      if (cote === 1) { x = d + j; z = SCENE_SIDE - bande + (alea() - 0.5) * 3 }
-      if (cote === 2) { x = bande + (alea() - 0.5) * 3; z = d + j }
-      if (cote === 3) { x = SCENE_SIDE - bande + (alea() - 0.5) * 3; z = d + j }
-      if (surSpawn(x, z)) continue
-      const sc = 1.1 + alea() * 0.9
-      arbres.push(pose(ARBRE, x, 0, z, sc, alea() * 360))
-      void r
-    }
-  }
   /*
-    Plus d'Animator sur les arbres: l'armature est cuite dans le fichier.
+    Toute la vegetation en DEUX objets, et son placement vit desormais dans l'outil.
 
-    Le clip 'Tree_Action' faisait tourner la ramure vers le joueur (testeur, 31 Aug: "les
-    modeles pivotent pour me faire face"), et on le tenait a l'arret avec un Animator par
-    arbre. `tools/model/aplatir-glb.py` applique maintenant la pose de repos aux sommets et
-    jette le squelette et son clip: il n'y a plus rien a tenir. Quatre meshes sont devenus un,
-    et la pancarte oubliee au pied de chaque arbre, avec sa texture de 426 Ko, est partie (2 Sep).
+    Quarante-quatre arbres et quarante-trois buissons faisaient quatre-vingt-sept objets
+    rendus, plus d'un tiers du decor, pour de l'ornement sans collider (mesure du 2 Sep). Ils
+    ne bougent jamais les uns par rapport aux autres: `tools/model/build-vegetation.py` les
+    fond en deux modeles a un materiau chacun, exactement comme les etages. Le placement, qui
+    etait ici et tirait sur le meme generateur que les ballons, est parti avec: le repliquer
+    dans l'outil ET dans le client aurait garanti la derive.
   */
-
-  // Bushes: the belt lane's clearance band, forbidden to bases, walked by everyone: the
-  // one strip of the field guaranteed free, and the one every player crosses every visit.
-  for (const cote of [-1, 1]) {
-    for (let dx = -BELT_LENGTH / 2 - 2; dx <= BELT_LENGTH / 2 + 2; dx += 5) {
-      const x = CENTER.x + dx + (alea() - 0.5) * 2
-      const z = CENTER.z + cote * (BELT_CLEARANCE - 1.6) + (alea() - 0.5) * 1.4
-      if (surSpawn(x, z)) continue
-      pose(BUISSONS[alea() < 0.5 ? 0 : 1], x, 0, z, 0.9 + alea() * 0.7, alea() * 360)
-    }
-  }
-  // And at the feet of the rim, between the trees, so the boundary reads soft up close.
-  for (let d = 8; d < SCENE_SIDE - 8; d += 23) {
-    for (const [x, z] of [[d, 2.6], [SCENE_SIDE - d, SCENE_SIDE - 2.6], [2.6, SCENE_SIDE - d], [SCENE_SIDE - 2.6, d]] as Array<[number, number]>) {
-      if (surSpawn(x, z)) continue
-      pose(BUISSONS[alea() < 0.5 ? 0 : 1], x + (alea() - 0.5) * 2, 0, z + (alea() - 0.5) * 2, 0.8 + alea() * 0.6, alea() * 360)
-    }
-  }
+  pose('assets/Models/vegetation-arbres.glb', 0, 0, 0, 1, 0)
+  pose('assets/Models/vegetation-buissons.glb', 0, 0, 0, 1, 0)
 
   // Balloons: three bouquets around the plaza's fixtures, knee-high to head-high, and the
   // spiral high over the centre, the landmark you can see from any base's top floor.
