@@ -302,6 +302,19 @@ export function remonter(primitive: Entity, fichier: string): void {
   if (g !== null) g.src = TOY_DIR + fichier
 }
 
+/**
+ * Coupe l'ombre portee d'un modele monte.
+ *
+ * `GltfNodeModifiers` avec un chemin vide s'applique a tous les noeuds du fichier. Sert au
+ * panneau central, qui flotte au-dessus du tapis et posait une grande dalle d'ombre en
+ * travers de la place (proprietaire, 2 Sep).
+ */
+export function sansOmbre(primitive: Entity): void {
+  const m = montages.get(primitive)
+  if (m === undefined) return
+  GltfNodeModifiers.createOrReplace(m.modele, { modifiers: [{ path: '', castShadows: false }] })
+}
+
 /** Take the model off a mount and bring the stand-in back, for a pedestal that emptied. */
 export function demonter(primitive: Entity): void {
   const m = montages.get(primitive)

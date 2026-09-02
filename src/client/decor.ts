@@ -44,7 +44,7 @@ const BALLONS = ['assets/Models/balloon004.glb', 'assets/Models/balloon005.glb',
 const SPIRALE = 'assets/Models/balloon-group01.glb'
 
 /** A decorative GLB: no physics, no pointer, nothing for the phone to test against. */
-function pose(src: string, x: number, y: number, z: number, sc: number, ry: number): Entity {
+function pose(src: string, x: number, y: number, z: number, sc: number, ry: number, ombre = true): Entity {
   const e = engine.addEntity()
   Transform.create(e, {
     position: Vector3.create(x, y, z),
@@ -52,6 +52,15 @@ function pose(src: string, x: number, y: number, z: number, sc: number, ry: numb
     rotation: Quaternion.fromEulerDegrees(0, ry, 0)
   })
   GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  /*
+    Les ballons ne portent pas d'ombre.
+
+    Ils flottent au-dessus de la place, autour du panneau central, et leur grappe posait un
+    semis de taches sur le sol que le proprietaire a releve le 2 Sep. Un chemin vide dans
+    `GltfNodeModifiers` s'applique a tous les noeuds du fichier. La vegetation, elle, garde la
+    sienne: un arbre sans ombre flotte.
+  */
+  if (!ombre) GltfNodeModifiers.createOrReplace(e, { modifiers: [{ path: '', castShadows: false }] })
   return e
 }
 
@@ -119,10 +128,10 @@ export function setupDecor(): void {
     const phase = alea() * 360
     for (let k = 0; k < 3; k++) {
       const a = ((phase + k * 120) * Math.PI) / 180
-      pose(BALLONS[k % BALLONS.length], bx + Math.cos(a) * 1.7, 1.2 + k * 0.7 + alea() * 0.3, bz + Math.sin(a) * 1.7, 0.9 + alea() * 0.4, alea() * 360)
+      pose(BALLONS[k % BALLONS.length], bx + Math.cos(a) * 1.7, 1.2 + k * 0.7 + alea() * 0.3, bz + Math.sin(a) * 1.7, 0.9 + alea() * 0.4, alea() * 360, false)
     }
   }
-  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0)
+  pose(SPIRALE, CENTER.x, 27, CENTER.z, 1, 0, false)
 
   /*
     The street: one flat strip down the middle of the field, from wall to wall.

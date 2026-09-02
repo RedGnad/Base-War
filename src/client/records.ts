@@ -3,7 +3,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { Vector3, Color4, Color3, Quaternion } from '@dcl/sdk/math'
 import { Records, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { formatIncome, nomDuCode } from '../shared/loot-table'
-import { TOY, plastic, plasticDe, montable } from './toy'
+import { TOY, plastic, plasticDe, montable, sansOmbre } from './toy'
 import { HUE } from './theme'
 
 /**
@@ -266,13 +266,22 @@ export function setupRecords(): void {
   const cadre = engine.addEntity()
   Transform.create(cadre, { parent: racine, scale: Vector3.create(LARGEUR + 0.5, HAUTEUR + 0.5, 0.12) })
   MeshRenderer.setBox(cadre)
-  Material.setPbrMaterial(cadre, plastic(TOY.wallCream))
+  /*
+    Pas d'ombre portee.
+
+    Le panneau flotte au-dessus du tapis, au centre de la place, et sa dalle d'ombre barrait
+    le sol de part en part; les bouquets de ballons faisaient la meme chose en plus petit
+    (proprietaire, 2 Sep). `castShadows` existe sur le materiau et sur les noeuds d'un GLTF:
+    c'est un aplat de moins a projeter chaque image, et une place qui reste lisible.
+  */
+  Material.setPbrMaterial(cadre, { ...plastic(TOY.wallCream), castShadows: false })
 
   const plaque = engine.addEntity()
   Transform.create(plaque, { parent: racine, scale: Vector3.create(LARGEUR, HAUTEUR, 0.14) })
   MeshRenderer.setBox(plaque)
-  Material.setPbrMaterial(plaque, plastic('#12141c'))
+  Material.setPbrMaterial(plaque, { ...plastic('#12141c'), castShadows: false })
   montable(plaque, 'board.glb')
+  sansOmbre(plaque)
 
 
   // Two faces through one layout: the back pivot is the front one turned round, so every
