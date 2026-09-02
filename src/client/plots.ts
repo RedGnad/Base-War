@@ -302,12 +302,35 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const coque = modele(floor === 0 ? 'storey-ground.glb' : 'storey-upper.glb', y)
   const verre = modele(mods.verre, y, !loin)
   const accent = modele(mods.accent, y)
-  const montee = modele(mods.climb, y, !loin)
+  /*
+    La montee est UNE entite, pas deux.
+
+    Le modele qu'on VOIT et le collisionneur qu'on GRAVIT etaient places separement, chacun
+    par son propre calcul: le modele portait son decalage et sa pente dans ses sommets, le
+    collisionneur les recevait de `rampPosition`. Deux chemins pour un seul objet, donc deux
+    endroits possibles, et le proprietaire a vu la rampe dessinee d'un cote de la piece et la
+    rampe marchable de l'autre, devant l'ascenseur (3 Sep). Le modele est maintenant centre
+    sur l'origine, cette entite porte la position et la pente, et le collisionneur en est
+    l'ENFANT: une seule transformation pour les deux, ils ne peuvent plus diverger.
+  */
+  const pente = Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
+  const montee = engine.addEntity()
+  Transform.create(montee, {
+    parent: parentCourant ?? undefined,
+    position: Vector3.create(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz),
+    rotation: pente
+  })
+  taille.set(montee, Vector3.One())
+  if (!loin) {
+    GltfContainer.create(montee, {
+      src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
+    })
+  }
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
     const sentry = place(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1)
-    return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz), rails: [], sentry }
+    return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
   }
 
   // The floor a player walks on, in the same three pieces the models are drawn in.
@@ -331,16 +354,16 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     collisionneur(x + (c + DOOR_WIDTH) / 4, y + h / 2, z + c / 2, (c - DOOR_WIDTH) / 2, h, ep)
   ]
 
-  const pente = Quaternion.fromEulerDegrees(-RAMP_ANGLE, 0, 0)
-  const ramp = collisionneur(x + r.dx, y + FLOOR_HEIGHT / 2, z + r.dz, rampeX, 0.18, RAMP_LENGTH, pente)
+  // Enfants de `montee`, donc a l'origine et sans pente: elle les porte deja tous les deux.
+  const parentAvant = parentCourant
+  parentCourant = montee
+  const ramp = collisionneur(0, 0, 0, rampeX, 0.18, RAMP_LENGTH)
   const RAIL_H = 1.1
-  const ca = Math.cos((-RAMP_ANGLE * Math.PI) / 180), sa = Math.sin((-RAMP_ANGLE * Math.PI) / 180)
   const rails: Entity[] = []
   for (const cote of [-1, 1]) {
-    const dx = cote * (rampeX / 2 - 0.03)
-    const dy = (RAIL_H + 0.18) / 2
-    rails.push(collisionneur(x + r.dx + dx, y + FLOOR_HEIGHT / 2 + dy * ca, z + r.dz + dy * sa, 0.06, RAIL_H, RAMP_LENGTH, pente))
+    rails.push(collisionneur(cote * (rampeX / 2 - 0.03), (RAIL_H + 0.18) / 2, 0, 0.06, RAIL_H, RAMP_LENGTH))
   }
+  parentCourant = parentAvant
 
   /*
     One turret per storey, born with the storey it defends.
