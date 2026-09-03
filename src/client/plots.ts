@@ -404,6 +404,19 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   }
 }
 
+function expulser(base: Vector3, floors: number): void {
+  const moi = Transform.getOrNull(engine.PlayerEntity)
+  if (moi === null) return
+  const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
+  const dedans = dx <= BASE_SIDE / 2 + 0.6 && dz <= BASE_SIDE / 2 + 0.6 && moi.position.y <= floors * FLOOR_HEIGHT + 1
+  if (!dedans) return
+  const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
+  const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
+  if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
+    alerter('SEALED  ·  you were pushed out', '#ffd166', TOAST.warning)
+  }
+}
+
 /*
   The lock pad, in the owner's own base and nowhere else.
 
@@ -1084,14 +1097,18 @@ export function setupPlots(): void {
           only exists on somebody else's shield. Ours is drawn and walked through.
         */
         /*
-          Whoever is inside when it seals stays inside. The shield used to push intruders
-          out to the door, which made it a broom; the reference's lock is also a TRAP, the
-          owner slams it on a thief and settles the matter indoors (wiki, 4 Sep). The walls
-          already block shots between inside and outside, so the duel it sets up is fair.
+          Whoever is inside when it seals is pushed out to the door.
+
+          The reference traps intruders instead, and that works there because the owner then
+          KILLS the trapped thief and the matter ends in a respawn. We have no death: a
+          trapped thief would only stand in a sealed room for sixty seconds, out of the game
+          (owner, 4 Sep). So the seal is a broom here, and the reference's trap stays theirs.
         */
         const solide = locked && !monBase
-        if (solide && !MeshCollider.has(v.door)) MeshCollider.setBox(v.door)
-        else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+        if (solide && !MeshCollider.has(v.door)) {
+          MeshCollider.setBox(v.door)
+          expulser(t.position, p.floors)
+        } else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.
