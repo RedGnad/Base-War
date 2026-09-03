@@ -729,6 +729,10 @@ function traceurSystem(): void {
   }
 }
 
+/** The dropped coin's size, in metres: readable from the far side of a base. */
+const COIN_DIAMETER = 0.8
+const COIN_THICKNESS = 0.16
+
 /** Dropped piles: the server owns them, the client only draws what it publishes. */
 function pileSystem(): void {
   const alive = new Set<number>()
@@ -751,15 +755,21 @@ function pileSystem(): void {
     Transform.create(chute, { position: haut })
     Tween.setMove(chute, haut, sol, 520, EasingFunction.EF_EASEOUTBOUNCE)
 
+    /*
+      A coin you can see from across a base. It was 23 cm across, the footprint of the
+      cube it replaced, and a thief's dropped coins were the smallest thing on the floor
+      while the toys on the shelves stood at a metre (owner, 3 Sep). Eighty centimetres,
+      lifted by half its thickness so it lies ON the ground rather than in it.
+    */
     const body = engine.addEntity()
-    Transform.create(body, { parent: chute, position: Vector3.create(0, 0, 0), scale: Vector3.create(0.34, 0.12, 0.34) })
-    MeshRenderer.setCylinder(body, 0.34, 0.34)
+    Transform.create(body, { parent: chute, position: Vector3.create(0, COIN_THICKNESS / 2, 0), scale: Vector3.create(COIN_DIAMETER, COIN_THICKNESS, COIN_DIAMETER) })
+    MeshRenderer.setCylinder(body, 0.5, 0.5)
     Material.setPbrMaterial(body, plasticDe(OR, 1.6))
     Tween.setRotate(body, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1600, EasingFunction.EF_LINEAR)
     TweenSequence.createOrReplace(body, { sequence: [], loop: TweenLoop.TL_RESTART })
     // Hung from the same faller, so the number arrives with the coin instead of waiting for it.
     const label = engine.addEntity()
-    Transform.create(label, { parent: chute, position: Vector3.create(0, 0.7, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+    Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_THICKNESS + 0.75, 0), scale: Vector3.create(0.6, 0.6, 0.6) })
     Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
     TextShape.create(label, { text: formatIncome(c.amount), fontSize: 3, textColor: OR })
     piles.set(id, { chute, body, label })
