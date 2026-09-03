@@ -418,58 +418,95 @@ function expulser(base: Vector3, floors: number): void {
 }
 
 /*
-  The lock pad, in the owner's own base and nowhere else.
+  The lock post, in the owner's own base and nowhere else.
 
-  The reference locks a base from a button standing IN the base (Wikipedia: "the base has a
-  button which generates a temporary shield"): free, sixty seconds, then a wait before it
-  is ready again. Ours is the same idea as a disc on the floor two metres inside the door,
-  because the contextual button already carries every verb a base has and a fourth thumb
-  control is out of the question (owner, 4 Sep). One object, and only for the owner: nobody
-  else can press it, so nobody else needs to see it. Three states by colour alone: green
-  and breathing when ready, the shield's blue while the base is sealed, grey while it
-  recharges. Tapped like a crate on the belt.
+  A plain green disc on the floor said "step here" and nothing about a shield (owner, 4 Sep).
+  Norman's rule for a control whose effect is not obvious from its shape: give it a
+  SIGNIFIER, and label it when the signifier alone is ambiguous. The reference does exactly
+  that: its lock is a labelled button standing in the base, with its timer on it. So this is
+  a short post with the shield emblem the shop already uses for defence, and one line under
+  it that says what a tap does and how long the state lasts: LOCK BASE, LOCKED 0:43, READY IN
+  1:50. Text, but on the object and only the necessary word, which is the genre's own choice.
+
+  Owner only: nobody else can press it, so nobody else needs to see it. Three drawn objects
+  (post, emblem, line) plus an invisible collider that takes the tap; the emblem and the line
+  turn to face whoever looks. Colour carries the state before the word is read: the emblem
+  glows when ready, burns brighter while sealed, greys out while recharging.
 */
-const PAD_READY = '#6cc72e'
-const PAD_LOCKED = '#4dabf7'
-const PAD_RECHARGING = '#4a5468'
-let lockPad: Entity | null = null
-let lockPadParent: Entity | null = null
-let lockPadState = ''
+const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
+let lockPost: Entity | null = null
+let lockEmblem: Entity | null = null
+let lockLine: Entity | null = null
+let lockTap: Entity | null = null
+let lockParent: Entity | null = null
+let lockState = ''
+let lockLineText = ''
+
+function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
 function tenirLePave(racine: Entity, lockedUntil: number): void {
   const now = Date.now()
-  if (lockPad === null || lockPadParent !== racine) {
-    if (lockPad !== null) engine.removeEntity(lockPad)
-    lockPad = engine.addEntity()
-    lockPadParent = racine
-    lockPadState = ''
+  if (lockPost === null || lockParent !== racine) {
+    for (const e of [lockPost, lockEmblem, lockLine, lockTap]) if (e !== null) engine.removeEntity(e)
+    lockParent = racine
+    lockState = ''
+    lockLineText = ''
     const rt = Transform.getOrNull(racine)
     const o = orientToBase(rt?.position.z ?? 0, 0, BASE_SIDE / 2 - 2.2)
-    // On the slab's top face, not inside it: the root sits under the slab (owner, 7b7a: "no pad").
-    Transform.create(lockPad, { parent: racine, position: Vector3.create(o.dx, SLAB_THICKNESS + 0.05, o.dz), scale: Vector3.create(1.2, 0.08, 1.2) })
-    MeshRenderer.setCylinder(lockPad, 0.5, 0.5)
-    MeshCollider.setCylinder(lockPad, 0.5, 0.5, ColliderLayer.CL_POINTER)
+    const y = SLAB_THICKNESS
+    lockPost = engine.addEntity()
+    Transform.create(lockPost, { parent: racine, position: Vector3.create(o.dx, y + 0.5, o.dz), scale: Vector3.create(0.3, 1.0, 0.3) })
+    MeshRenderer.setBox(lockPost)
+    Material.setPbrMaterial(lockPost, plastic('#1a2f55', 0.2))
+    lockEmblem = engine.addEntity()
+    Transform.create(lockEmblem, { parent: racine, position: Vector3.create(o.dx, y + 1.45, o.dz), scale: Vector3.create(0.8, 0.8, 1) })
+    MeshRenderer.setPlane(lockEmblem)
+    Billboard.create(lockEmblem, { billboardMode: BillboardMode.BM_Y })
+    lockLine = engine.addEntity()
+    Transform.create(lockLine, { parent: racine, position: Vector3.create(o.dx, y + 2.05, o.dz), scale: Vector3.create(0.5, 0.5, 0.5) })
+    Billboard.create(lockLine, { billboardMode: BillboardMode.BM_Y })
+    TextShape.create(lockLine, { text: '', fontSize: 2.6, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0) })
+    // The tap lands on a tall invisible box around the whole post, easier to hit than a plane.
+    lockTap = engine.addEntity()
+    Transform.create(lockTap, { parent: racine, position: Vector3.create(o.dx, y + 1.2, o.dz), scale: Vector3.create(1.0, 2.4, 1.0) })
+    MeshCollider.setBox(lockTap, ColliderLayer.CL_POINTER)
   }
   const locked = lockedUntil > now
-  const recharging = !locked && now < lockedUntil + LOCK_COOLDOWN_MS
+  const readyAt = lockedUntil + LOCK_COOLDOWN_MS
+  const recharging = !locked && now < readyAt
   const state = locked ? 'locked' : recharging ? 'recharging' : 'ready'
-  if (state !== lockPadState) {
-    lockPadState = state
-    Material.setPbrMaterial(lockPad, plastic(locked ? PAD_LOCKED : recharging ? PAD_RECHARGING : PAD_READY, locked ? 2.4 : recharging ? 0.2 : 1.8))
-    PointerEvents.createOrReplace(lockPad, {
+  if (state !== lockState) {
+    lockState = state
+    const tint = locked ? Color4.create(1, 1, 1, 1) : recharging ? Color4.create(0.42, 0.45, 0.52, 1) : Color4.create(1, 1, 1, 1)
+    Material.setPbrMaterial(lockEmblem as Entity, {
+      texture: Material.Texture.Common({ src: LOCK_EMBLEM }),
+      emissiveTexture: Material.Texture.Common({ src: LOCK_EMBLEM }),
+      albedoColor: tint,
+      emissiveColor: Color3.White(),
+      emissiveIntensity: locked ? 2.4 : recharging ? 0 : 1.1,
+      metallic: 0, roughness: 1, specularIntensity: 0,
+      transparencyMode: 1, alphaTest: 0.5
+    })
+    PointerEvents.createOrReplace(lockTap as Entity, {
       pointerEvents: [{
         eventType: PointerEventType.PET_DOWN,
-        eventInfo: { button: InputAction.IA_POINTER, hoverText: locked ? 'Locked' : recharging ? 'Lock recharging' : `Lock base  ·  ${Math.round(LOCK_FREE_MS / 1000)} s` }
+        eventInfo: { button: InputAction.IA_POINTER, hoverText: locked ? 'Base locked' : recharging ? 'Lock recharging' : `Lock base  \u00b7  ${Math.round(LOCK_FREE_MS / 1000)} s` }
       }]
     })
   }
-  if (state === 'ready') {
-    // Breathing, so a ready control reads as alive from across the floor.
-    const t = Transform.getMutableOrNull(lockPad)
-    const k = 1.2 + Math.sin(now / 480) * 0.08
-    if (t !== null) t.scale = Vector3.create(k, 0.08, k)
+  // The line under the emblem: what a tap does, or how long the current state lasts.
+  const ligne = locked ? `LOCKED ${mmss(Math.ceil((lockedUntil - now) / 1000))}`
+    : recharging ? `READY IN ${mmss(Math.ceil((readyAt - now) / 1000))}`
+    : 'LOCK BASE'
+  if (ligne !== lockLineText) {
+    lockLineText = ligne
+    const tl = TextShape.getMutableOrNull(lockLine as Entity)
+    if (tl !== null) {
+      tl.text = ligne
+      tl.textColor = locked ? Color4.fromHexString('#7cd4ffff') : recharging ? Color4.fromHexString('#9aa3adff') : Color4.fromHexString('#a8e86eff')
+    }
   }
-  if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, lockPad)) lockBase()
+  if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, lockTap as Entity)) lockBase()
 }
 
 /** One pedestal: a small box under the floor until something stands on it, with the steal handle. */

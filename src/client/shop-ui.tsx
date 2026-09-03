@@ -167,6 +167,24 @@ export const ShopContent = () => {
   return (
     <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_SHOP, flexDirection: 'column' }}>
 
+      {/*
+        Prestige first. It was the fifth and last family, below a scroll, so a player who
+        never reached the bottom did not know the game had a long-term goal (owner, 4 Sep).
+        The reference keeps its rebirth in plain sight; idle games give it its own tab. Here
+        it opens the shop, with the distance to its price on the line, so the goal is read
+        every time the shop is.
+      */}
+      <Famille titre="PRESTIGE" />
+      <Rang
+        titre={`PRESTIGE ${theftView.prestige + 1}`}
+        icone="ui-prestige.png"
+        detail={argent >= palierPrestige
+          ? `x${prestige.multiplier} forever  ·  ready`
+          : `x${prestige.multiplier} forever  ·  ${formatIncome(argent)} / ${formatIncome(palierPrestige)}`}
+        bouton="OPEN" prix={palierPrestige}
+        possible={palierPrestige > 0}
+        onClick={() => { closeMenu(); openPrestige() }} />
+
       <Famille titre="BUILD" />
       <Rang
         titre={etage > 0 ? '+1 FLOOR' : 'FLOORS MAXED'}
@@ -251,15 +269,6 @@ export const ShopContent = () => {
         possible={theftView.luckPrice > 0 && argent >= theftView.luckPrice}
         refus={`need ${formatIncome(theftView.luckPrice)} coins`}
         onClick={() => buyLuckCharm()} />
-
-      <Famille titre="PRESTIGE" />
-      <Rang
-        titre={`PRESTIGE ${theftView.prestige + 1}`}
-        icone="ui-prestige.png"
-        detail={`x${prestige.multiplier} forever  ·  keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
-        bouton="OPEN" prix={palierPrestige}
-        possible={palierPrestige > 0}
-        onClick={() => { closeMenu(); openPrestige() }} />
     </UiEntity>
   )
 }
