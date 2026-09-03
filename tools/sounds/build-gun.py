@@ -10,6 +10,11 @@ the ear tells fire from hit without looking. Both synthesised here, reproducible
     shot.wav     140 ms: a white-noise burst decaying in 25 ms over a 100 Hz thump that
                  decays in 60 ms, soft-clipped so it reads as a report, not a hiss.
     hitmark.wav   60 ms: two sine ticks, 1.8 kHz then 2.6 kHz, 25 ms each, sharp decay.
+    slap.wav      90 ms: a low, rounded thwack: noise through a one-pole low-pass, a 180 Hz
+                 body, no click. A paddle on a back, not a gunshot (the slap and the taser
+                 played the gun's report, 4 Sep).
+    taser.wav    150 ms: an electric crackle: noise gated at 60 Hz with a 4 kHz whine that
+                 falls away, so it reads as a zap.
 
     python3 tools/sounds/build-gun.py
 """
@@ -61,6 +66,37 @@ def hitmark():
     return out
 
 
+def slap():
+    random.seed(11)
+    n = int(RATE * 0.09)
+    out = []
+    lp = 0.0
+    for i in range(n):
+        t = i / RATE
+        raw = (random.random() * 2 - 1)
+        lp += (raw - lp) * 0.18                       # one-pole low-pass: rounds the noise
+        body = math.sin(2 * math.pi * 180 * t) * math.exp(-t / 0.035)
+        env = math.exp(-t / 0.028)
+        out.append(math.tanh(1.8 * (lp * 1.4 * env + body * 0.7)) * 0.9)
+    return out
+
+
+def taser():
+    random.seed(13)
+    n = int(RATE * 0.15)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        gate = 1.0 if (t * 60) % 1 < 0.5 else 0.25     # 60 Hz buzz gating
+        noise = (random.random() * 2 - 1) * gate
+        whine = math.sin(2 * math.pi * (4000 - 1800 * t / 0.15) * t) * 0.5
+        env = math.exp(-t / 0.09)
+        out.append(math.tanh(1.6 * (noise * 0.8 + whine)) * env * 0.85)
+    return out
+
+
 if __name__ == '__main__':
     write('shot.wav', shot())
     write('hitmark.wav', hitmark())
+    write('slap.wav', slap())
+    write('taser.wav', taser())

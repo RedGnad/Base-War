@@ -48,10 +48,21 @@ export function bannerLine(): { text: string; color: string } | null {
   return null
 }
 
-/** The rush now running, for the corner column: its name, in its colour, and the time left. */
-export function rushChip(): { text: string; color: string } | null {
+/**
+ * The rush now running, for the corner column: a crate in the rush's colour, the multiplier
+ * its drops carry, and the time left. The name is gone from the chip: "GOLD RUSH" made a
+ * tester ask what a gold rush was (4 Sep), while a crate glowing gold next to "x1.25" says
+ * what the belt is dropping without a word. `mult` is what the crate icon is tinted with.
+ */
+export function rushChip(): { text: string; color: string; mult: number } | null {
   if (eventView.theme < 0) return null
-  return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}  ${mmss(eventView.leftS)}`, color: eventView.color }
+  const m = mutation(eventView.theme)
+  return { text: `x${m.mult}   ${mmss(eventView.leftS)}`, color: eventView.color, mult: m.mult }
+}
+
+/** Seconds since the running rush began, or -1. The beacon and the flight read it. */
+export function rushAgeS(): number {
+  return eventView.theme < 0 ? -1 : (Date.now() - eventView.sinceMs) / 1000
 }
 
 /**

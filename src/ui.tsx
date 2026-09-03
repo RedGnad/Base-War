@@ -1311,7 +1311,7 @@ const uiComponent = () => {
     */}
     {hud() && rushChip() !== null && (() => {
       const texte = rushChip()?.text ?? ''
-      const w = largeurTexte(texte, TYPE.caption) + 32
+      const w = largeurTexte(texte, TYPE.caption) + 32 + 38
       const age = Date.now() - eventView.sinceMs
       const p = Math.max(0, Math.min(1, (age - RUSH_HOLD_MS) / RUSH_FLIGHT_MS))
       const e = 1 - Math.pow(1 - p, 3)
@@ -1327,6 +1327,8 @@ const uiComponent = () => {
         }}
         uiBackground={SKIN.panel}
       >
+        <UiEntity uiTransform={{ width: 28, height: 28, margin: { right: 10 } }}
+          uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff') }} />
         <Label value={texte} fontSize={TYPE.caption}
           color={Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff')}
           uiTransform={{ height: COIN_H[1] }} textAlign="middle-center" textWrap="nowrap" />

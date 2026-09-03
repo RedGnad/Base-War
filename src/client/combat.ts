@@ -113,6 +113,8 @@ const VISEE_POS = Vector3.create(0.05, -0.16, 0.58)
 const ARMES_MAX = 10
 /** Muzzle rise on the shot, in degrees, decayed back to rest. */
 const RECUL_DEG = 20
+/** How far a melee weapon swings forward on the tap, in degrees. */
+const SWING_DEG = 55
 /** Length of the shot clip, in milliseconds. Matches tools/emotes/build-emotes.js. */
 /** Shortest gap between two arm animations, whatever the weapon's own rate. */
 
@@ -219,6 +221,16 @@ function equiperArme(g: Gun | null, type: ArmeType): void {
   for (const e of g.parts) engine.removeEntity(e)
   g.parts = modeleArme(g.poignee, type)
   g.type = type
+  // The sound follows the weapon: a paddle thwacks, a taser crackles, only a gun reports.
+  const s = AudioSource.getMutableOrNull(g.racine)
+  if (s !== null) s.audioClipUrl = SON_ARME[type]
+}
+
+/** What each weapon sounds like on the tap. */
+const SON_ARME: Record<ArmeType, string> = {
+  shoot: 'assets/sounds/shot.wav',
+  slap: 'assets/sounds/slap.wav',
+  taser: 'assets/sounds/taser.wav'
 }
 
 /** Reads before it writes, so calling it every frame costs nothing when nothing changed. */
@@ -528,13 +540,20 @@ function gunSystem(dt: number): void {
 
   // Recoil. The avatar's arm cannot move, so the weapon does: it rises on the shot and
   // settles back. Applied to whichever of the two models is the one on screen.
+  /*
+    A gun kicks back; a paddle and a taser SWING forward. The same upward jerk served all
+    three, so a slap looked like a misfire (testers, 3 and 4 Sep: "the weapons don't feel
+    like anything"). The swing is wider and a touch slower, the way an arm is.
+  */
   if (recul > 0) {
-    recul = Math.max(0, recul - dt * 9)
     const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
+    const melee = porteur !== null && porteur.type !== 'shoot'
+    recul = Math.max(0, recul - dt * (melee ? 6 : 9))
     if (porteur !== null) {
       const base = combatView.firstPerson ? Quaternion.Identity() : MAIN_ROT
+      const deg = melee ? Math.sin(recul * Math.PI) * SWING_DEG : -recul * RECUL_DEG
       Transform.getMutable(porteur.poignee).rotation =
-        Quaternion.multiply(base, Quaternion.fromEulerDegrees(-recul * RECUL_DEG, 0, 0))
+        Quaternion.multiply(base, Quaternion.fromEulerDegrees(deg, 0, 0))
     }
   }
 

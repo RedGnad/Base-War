@@ -5,6 +5,7 @@ import { plastic } from './toy'
 import { tutoView } from './tutorial'
 import { cratePosition } from './box'
 import { myClientAddress } from './theft'
+import { rushAgeS } from './events'
 
 /**
  * The step beacon: where to go, said without a word.
@@ -20,6 +21,8 @@ import { myClientAddress } from './theft'
  * of free. Hidden by scale, parked underground, like every other transient in the scene.
  */
 const OR = '#ffd23f'
+/** How long the beacon stands on the belt when a rush begins. */
+const RUSH_BEACON_S = 20
 let anneau: Entity | null = null
 let fleche: Entity | null = null
 let filage = 0
@@ -36,7 +39,16 @@ function maBase(): Vector3 | null {
 }
 
 function cible(): Vector3 | null {
-  if (tutoView.etape >= tutoView.total) return null
+  /*
+    A rush points at the belt for its first moments, for everyone past the tutorial. The
+    world says a rush is on (the floor flows in its colour) and the chip says what it drops;
+    neither says WHERE, and a player at their base asked what the rush was (4 Sep). The
+    beacon is the third voice, and it costs nothing that is not already built.
+  */
+  const rush = rushAgeS()
+  if (tutoView.etape >= tutoView.total) {
+    return rush >= 0 && rush < RUSH_BEACON_S ? Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z) : null
+  }
   if (tutoView.etape === 0) {
     /*
       The first step pointed at nothing, on the theory that its target was a button. But
