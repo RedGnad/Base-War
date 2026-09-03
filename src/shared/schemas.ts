@@ -257,7 +257,13 @@ export const LOOT_ITEM_LIFETIME_MS = 30_000
 export const LOOT_ITEM_PICKUP_RANGE = 3
 
 /** The one who just dropped it cannot scoop it straight back up. */
-export const LOOT_ITEM_OWNER_LOCK_MS = 2_000
+/*
+  Four seconds, not two. The pickup is automatic within three metres and the thief is
+  standing on what they dropped: at two seconds they had it back before the shooter had
+  closed half the distance (owner, playing with the testers, 4 Sep). Four gives a defender
+  who fired from the full-force range time to arrive.
+*/
+export const LOOT_ITEM_OWNER_LOCK_MS = 4_000
 
 /**
  * An item lying where its carrier was hit, waiting for whoever gets there first.
