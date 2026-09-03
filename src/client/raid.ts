@@ -5,6 +5,7 @@ import {
 import { Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Raid } from '../shared/schemas'
 import { room } from '../shared/messages'
+import { flashDamage, floatAmount } from './juice'
 import { formatIncome, crate } from '../shared/loot-table'
 import { plastic, plasticDe } from './toy'
 import { alerter, pushToFeed } from './theft'
@@ -102,6 +103,8 @@ export function setupRaid(): void {
   AudioSource.create(son, { audioClipUrl: 'assets/sounds/reveal.wav', playing: false, loop: false, volume: 0.9 })
 
   room.onMessage('raidSwipe', (d) => {
+    flashDamage()
+    floatAmount(d.lost, true)
     alerter(d.lost > 0
       ? `THE BOSS HIT YOU  ·  -${formatIncome(d.lost)} on the floor, grab it back`
       : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', 4000)

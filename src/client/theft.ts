@@ -4,6 +4,7 @@ import { room } from '../shared/messages'
 import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
+import { flashDamage, floatAmount } from './juice'
 import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
@@ -168,6 +169,8 @@ export function setupTheft(): void {
     pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name}`)
   })
   room.onMessage('sentryBlocked', (d) => {
+    flashDamage()
+    floatAmount(d.lost, true)
     applyFreeze(d.gelMs)
     // The coins are on the floor at your feet, not in their pocket: worth saying, because it
     // is the difference between a punishment and a scramble you can still win.

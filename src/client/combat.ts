@@ -15,7 +15,7 @@ import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
-import { flashDamage } from './juice'
+import { flashDamage, floatAmount } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 
 /**
@@ -304,6 +304,7 @@ export function setupCombat(): void {
   })
   room.onMessage('wasShot', (d) => {
     flashDamage()
+    floatAmount(d.lost, true)
     const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
     alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} DROPPED, YOURS AGAIN IN ${s}s`, '#ff6b6b', 5000)
   })

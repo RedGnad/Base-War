@@ -13,7 +13,7 @@ import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
-import { damageFlashAlpha } from './client/juice'
+import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
@@ -1113,6 +1113,27 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
         uiBackground={{ color: Color4.create(1, 0.16, 0.16, damageFlashAlpha()) }} />
     )}
+
+    {/*
+      The quantity channel, above the centre so it never covers the avatar or the crosshair.
+      Rises and fades in just over a second, the window the references give for a number that
+      has to be read without being studied. Stacked by rank when several land at once.
+    */}
+    {liveAmounts().map((f) => (
+      <UiEntity key={`amt${f.rank}`}
+        uiTransform={{
+          positionType: 'absolute', width: '100%', height: 64,
+          position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: 0 },
+          justifyContent: 'center', alignItems: 'center'
+        }}>
+        <Label value={`${f.loss ? '-' : '+'}${formatIncome(f.amount)}`}
+          fontSize={f.loss ? TYPE.hero : TYPE.title}
+          color={f.loss
+            ? Color4.create(1, 0.36, 0.36, 1 - f.t * f.t)
+            : Color4.create(0.56, 0.88, 0.56, 1 - f.t * f.t)}
+          textWrap="nowrap" />
+      </UiEntity>
+    ))}
 
     <Prechauffe />
     <DesktopControls />
