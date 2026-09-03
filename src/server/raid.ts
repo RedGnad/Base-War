@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
-  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN,
+  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF,
   SCENE_SIDE, forceDuTir
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -303,11 +303,24 @@ export function startRaid(): void {
       cur += Math.max(-RAID_TURN * ds, Math.min(RAID_TURN * ds, diff))
       faceX = Math.sin(cur); faceZ = Math.cos(cur)
       m.faceX = faceX; m.faceZ = faceZ
-      // It walks to the ends of the map after its target; the map and the plots stop it.
-      const pas = Math.min(RAID_SPEED * ds, vl)
-      const libre = horsDesBases(m.x + vx * pas, m.z + vz * pas)
-      m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.x))
-      m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.z))
+      /*
+        It stops a body's length short instead of walking into its prey.
+
+        It used to steer at the player's exact position, so it ended up standing in the same
+        spot: in first person the player was suddenly inside it and could not read what was
+        happening (owner, 3 Sep). It swipes at four metres, so holding at RAID_STANDOFF keeps
+        every swipe in range while leaving the boss visible in front of whoever it hunts.
+        The guard applies only to a chase; going home to its spawn still goes all the way.
+      */
+      const garde = vise !== null ? RAID_STANDOFF : 0
+      const reste = vl - garde
+      if (reste > 0.05) {
+        // It walks to the ends of the map after its target; the map and the plots stop it.
+        const pas = Math.min(RAID_SPEED * ds, reste)
+        const libre = horsDesBases(m.x + vx * pas, m.z + vz * pas)
+        m.x = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.x))
+        m.z = Math.max(RAID_BORD, Math.min(SCENE_SIDE - RAID_BORD, libre.z))
+      }
     }
 
     if (now - dernierBalai < RAID_SWIPE_MS) return

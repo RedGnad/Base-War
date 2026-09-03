@@ -4,7 +4,7 @@ import { room } from '../shared/messages'
 import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
-import { flashDamage, floatAmount } from './juice'
+import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
@@ -171,6 +171,7 @@ export function setupTheft(): void {
   room.onMessage('sentryBlocked', (d) => {
     flashDamage()
     floatAmount(d.lost, true)
+    playHurt()
     applyFreeze(d.gelMs)
     // The coins are on the floor at your feet, not in their pocket: worth saying, because it
     // is the difference between a punishment and a scramble you can still win.
@@ -265,6 +266,9 @@ export function setupTheft(): void {
   room.onMessage('index', (d) => { indexView.vus = [...d.vus]; indexView.skin = d.skin })
 
   room.onMessage('collected', (d) => {
+    // The most repeated gesture in the game, and until now it was a line of text and silence.
+    floatAmount(d.gain, false)
+    playCash()
     alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)
   })
 

@@ -1369,6 +1369,15 @@ export const RAID_TURN = 6
 /** Hits to fell it: forty alone, twenty-five more per person in the room. */
 export const RAID_HP_BASE = 80    // re-tuned for four rounds a second: about twenty seconds of point-blank fire alone
 export const RAID_HP_PER_PLAYER = 50
+/**
+ * How close the boss gets before it stops walking into you.
+ *
+ * It used to steer at the player's exact position, so it ended up occupying the same spot:
+ * in first person you were suddenly inside it, with no way to read what was happening
+ * (owner, 3 Sep). It swipes at four metres, so holding at 2.8 keeps it well in range while
+ * leaving it visible in front of you, which is the whole point of a boss.
+ */
+export const RAID_STANDOFF = 2.8
 export const RAID_SWIPE_MS = 5_000
 export const RAID_SWIPE_RANGE = 4
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */

@@ -24,6 +24,7 @@ import { setupDecor } from './decor'
 import { setupTravel } from './travel'
 import { moveView } from './deplacer'
 import { setupVenue } from './venue'
+import { setupJuiceSound } from './juice'
 import { setupConvoy } from './convoy'
 import { setupCombat } from './combat'
 import { setupCarry } from './carry'
@@ -110,6 +111,7 @@ export function startClient(): void {
 
   SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 43200 })
 
+  setupJuiceSound()
   setupVenue()
   setupBox()
   setupPlots()
