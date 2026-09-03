@@ -1,4 +1,4 @@
-import { plasticDe, caisse, FIT, TOY_DIR, flareCrate } from './toy'
+import { plasticDe, caisse, FIT, TOY_DIR } from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType,
   InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, Entity, AudioSource, timers, GltfContainer
@@ -287,7 +287,6 @@ export function frapper(): void {
     currentTime: 0
   })
   jouer(hitSound)
-  flareCrate(crateMesh)
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
   // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque
