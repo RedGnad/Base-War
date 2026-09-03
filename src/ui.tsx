@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, CloseBtn, PagerBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
+import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -29,7 +29,7 @@ import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
 import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
-import { menuView, activeTab, basculerMenu, chooseTab, closeMenu, dialogPage, turnPage } from './client/menu'
+import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView } from './client/tutorial'
@@ -163,8 +163,8 @@ const Centre = (props: { top?: number; bottom?: number; children?: unknown }) =>
 )
 
 const MENU_W = 1088
-/** The strip on the right of a dialog body that holds the two page chevrons. */
-const PAGER_W = 72
+/** The strip at the right edge of a dialog body where the client draws its scrollbar. */
+const SCROLLBAR_COVER_W = 26
 
 /**
  * The right-hand corner, as a stack with air between its tenants.
@@ -231,9 +231,8 @@ const MenuWindow = () => {
     : HAUTEUR_TRAVEL
   const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
-  // A few pixels of slack, so a tab that declares exactly one body does not get a blank second page.
-  const pages = besoin > corps + 4 ? Math.ceil(besoin / corps) : 1
-  const page = Math.min(dialogPage.n, pages - 1)
+  // Whether this tab runs past its body, which is when the client draws its scrollbar.
+  const deborde = besoin > corps + 4
 
   return (
     <UiEntity
@@ -289,34 +288,47 @@ const MenuWindow = () => {
       </UiEntity>
 
       {/*
-        Pages, not a scrollbar: see `dialogPage` in client/menu.ts. The body clips to its
-        height and the content slides up by whole bodies; when there is more than one page
-        the chevrons take the strip on the right, where the client's bar used to be.
+        The body scrolls natively, and the client's scrollbar is covered.
+
+        A first answer replaced scrolling with pages of our own; the owner preferred the
+        native drag on a phone and was right (3 Sep). The bar itself is not ours to style
+        or hide in this SDK (no such property in 7.26.1), but it is drawn inside the
+        body's box at its right edge, and a plate of ours laid over that strip, later in the
+        tree, sits on top of it. What tells the player there is more is the fade along the
+        bottom edge, the affordance the platforms use once a bar is gone.
       */}
-      <UiEntity uiTransform={{ width: '100%', height: corps, flexDirection: 'row' }}>
+      <UiEntity uiTransform={{ width: '100%', height: corps }}>
         <UiEntity
           uiTransform={{
-            width: pages > 1 ? dedans - PAGER_W : '100%', height: corps,
-            overflow: 'hidden', flexDirection: 'column'
+            width: '100%', height: corps, overflow: 'scroll', flexDirection: 'column',
+            positionType: 'absolute', position: { top: 0, left: 0 }
           }}
         >
-          <UiEntity uiTransform={{ width: '100%', height: besoin, margin: { top: -page * corps }, flexDirection: 'column' }}>
-            <QuestsContent />
-            <ShopContent />
-            <IndexContent />
-            <TravelContent />
-          </UiEntity>
+          <QuestsContent />
+          <ShopContent />
+          <IndexContent />
+          <TravelContent />
         </UiEntity>
-        {pages > 1 && (
+        {deborde && (
           <UiEntity
             uiTransform={{
-              width: PAGER_W, height: corps, flexDirection: 'column',
-              justifyContent: 'space-between', alignItems: 'flex-end'
+              width: SCROLLBAR_COVER_W, height: corps, positionType: 'absolute',
+              position: { top: 0, right: 0 }, pointerFilter: 'block'
             }}
-          >
-            <PagerBtn up enabled={page > 0} onClick={() => turnPage(-1, pages)} />
-            <PagerBtn up={false} enabled={page < pages - 1} onClick={() => turnPage(1, pages)} />
-          </UiEntity>
+            uiBackground={{ color: Color4.fromHexString('#1b3054ff') }} />
+        )}
+        {deborde && (
+          <UiEntity
+            uiTransform={{
+              width: '100%', height: 56, positionType: 'absolute', position: { bottom: 0, left: 0 }
+            }}
+            uiBackground={{
+              texture: { src: 'assets/ui/fade-right.png' }, textureMode: 'stretch',
+              // The strip is dark at u = 1. Corners go bottom-left, top-left, top-right,
+              // bottom-right (docs.decentraland.org, ui_background), so the dark end lands
+              // on the bottom edge and the fade rises from it.
+              uvs: [1, 0, 0, 0, 0, 1, 1, 1]
+            }} />
         )}
       </UiEntity>
     </UiEntity>
@@ -405,7 +417,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'ui-up', 'ui-down',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]

@@ -240,24 +240,6 @@ export const CloseBtn = (props: { size: number; onClick: () => void }) => {
   )
 }
 
-/** One of the two chevrons that turn a dialog's pages: a small disc, dimmed when it cannot. */
-export const PagerBtn = (props: { up: boolean; enabled: boolean; onClick: () => void }) => {
-  const size = 56
-  return (
-    <UiEntity
-      uiTransform={{
-        width: size, height: size, justifyContent: 'center', alignItems: 'center',
-        opacity: props.enabled ? 1 : 0.3, pointerFilter: 'block'
-      }}
-      uiBackground={SKIN.secondaryDisc}
-      onMouseDown={props.enabled ? () => { tic(); props.onClick() } : undefined}
-    >
-      <UiEntity uiTransform={{ width: Math.round(size * 0.5), height: Math.round(size * 0.5) }}
-        uiBackground={{ texture: { src: `assets/ui/${props.up ? 'ui-up' : 'ui-down'}.png` }, textureMode: 'stretch' }} />
-    </UiEntity>
-  )
-}
-
 export const Btn = (props: {
   key?: string
   label: string
