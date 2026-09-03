@@ -593,6 +593,9 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (carryView.code >= 0) {
     // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
     if (fuserInReach()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: ico('fuse'), action: agirSurFuser }
+    // An elevator in reach beats putting the thing down: a loaded player could never ride it,
+    // and stepping one pace away to put something down costs nothing (mobile tester, 3 Sep).
+    if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
     const ou = baseIci()
     if (ou === null) return { id: 'lacher', label: 'DROP', icon: ico('drop'), action: dropCarried }
     return ou.mienne
@@ -1119,8 +1122,13 @@ const uiComponent = () => {
       Rises and fades in just over a second, the window the references give for a number that
       has to be read without being studied. Stacked by rank when several land at once.
     */}
+    {/*
+      Keyed on the instant each number was born, never on its rank. Ranks shift when the
+      oldest expires, so a rank key made the next number inherit a stale element: one figure
+      sat frozen on screen and no new one was drawn (mobile tester, 3 Sep).
+    */}
     {liveAmounts().map((f) => (
-      <UiEntity key={`amt${f.rank}`}
+      <UiEntity key={`amt${f.born}`}
         uiTransform={{
           positionType: 'absolute', width: '100%', height: 64,
           position: { top: `${34 - f.t * 7 + f.rank * 6}%`, left: 0 },

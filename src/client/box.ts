@@ -16,6 +16,18 @@ import { sendOrHold } from './intent'
 let monAdresse = ''
 
 const COUPS = 3
+/*
+  A crate you walk away from is a crate you did not open.
+
+  The smash phase had exactly one exit, the third blow. Tap OPEN, get distracted, walk off,
+  and the phase stayed `smash` for the rest of the session; since the action button tests it
+  first, it said SMASH everywhere, at other people's bases, in front of their shelves, and no
+  other verb could ever surface (mobile tester, 3 Sep: STEAL "only appeared later", the icon
+  "never changed after buying"; all one bug). The crate is not consumed before the third blow,
+  so abandoning it costs nothing: it stays in stock.
+*/
+const SMASH_ABANDON_M = 3.5
+const SMASH_TIMEOUT_MS = 20_000
 
 /**
  * One crate at a time, from the floor to your hand.
@@ -236,15 +248,33 @@ export function setupBox(): void {
     // The two waits end on what they wait for, or on a timeout when it never comes: the
     // server refusing the opening, or the item not reaching the hand.
     const now = Date.now()
+    if (boxView.phase === 'smash') {
+      const c = cratePosition()
+      const pl = Transform.getOrNull(engine.PlayerEntity)
+      const loin = c !== null && pl !== null && Math.hypot(pl.position.x - c.x, pl.position.z - c.z) > SMASH_ABANDON_M
+      if (loin || now > boxView.phaseJusqua) abandonSmash()
+    }
     if (boxView.phase === 'wait' && now > boxView.phaseJusqua) boxView.phase = 'idle'
     if (boxView.phase === 'land' && (carryView.code >= 0 || now > boxView.phaseJusqua)) boxView.phase = 'idle'
   })
 }
 
 /** One blow on the crate in front of you, from a click on it or from the action button. */
+/** Give up on the crate in front of you: phase back to idle, mesh away, stock untouched. */
+function abandonSmash(): void {
+  boxView.phase = 'idle'
+  boxView.opening = false
+  boxView.coups = 0
+  const t = Transform.getMutableOrNull(crateMesh)
+  if (t !== null) t.scale = Vector3.Zero()
+  console.log('[CLIENT] crate opening abandoned, crate stays in stock')
+}
+
 export function frapper(): void {
   if (!boxView.opening) return
   boxView.coups += 1
+  // Every blow buys more time: only a crate nobody is hitting gets abandoned.
+  boxView.phaseJusqua = Date.now() + SMASH_TIMEOUT_MS
   const b = crate(boxView.typeEnCours)
   Tween.createOrReplace(crateMesh, {
     mode: Tween.Mode.Scale({
@@ -529,6 +559,7 @@ export function openCrate(crateTier: number): void {
   const b = crate(crateTier)
 
   boxView.phase = 'smash'
+  boxView.phaseJusqua = Date.now() + SMASH_TIMEOUT_MS
   boxView.opening = true
   boxView.coups = 0
   boxView.typeEnCours = crateTier

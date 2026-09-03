@@ -15,7 +15,7 @@ import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
-import { flashDamage, floatAmount, playHurt } from './juice'
+import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 
 /**
@@ -131,7 +131,12 @@ function placeAvailable(): boolean { return !isMobile() }
  * a region and not a per-player flag, so it stays barely wider than one body: anyone
  * standing closer than sixty centimetres would be pulled into it as well.
  */
-const ZONE_VISEE = Vector3.create(1.2, 2.6, 1.2)
+/*
+  Wide enough to run in. At 1.2 m across, a sprinting player left the box within a frame of
+  transform lag and the camera flipped between first and third person until they stopped
+  (mobile tester, 3 Sep). 2.2 m still only catches a neighbour standing inside arm's reach.
+*/
+const ZONE_VISEE = Vector3.create(2.2, 2.8, 2.2)
 /** How long the explorer takes to slide from one camera mode to the other. */
 const TRANSITION_MS = 350
 
@@ -309,7 +314,9 @@ export function setupCombat(): void {
     const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
     alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} DROPPED, YOURS AGAIN IN ${s}s`, '#ff6b6b', 5000)
   })
-  room.onMessage('pickedUp', (d) => alerter(`+${formatIncome(d.amount)} picked up`, '#8fe08f', 2500))
+  // Same channel as collecting: the number says how much, the coin says it landed. The toast
+  // it replaces was the one the mobile tester named first as "taking the whole screen".
+  room.onMessage('pickedUp', (d) => { floatAmount(d.amount, false); playCash() })
   room.onMessage('aiming', (d) => {
     const a = d.addr.toLowerCase()
     if (d.on) enJoue.add(a); else enJoue.delete(a)

@@ -73,10 +73,10 @@ export function floatAmount(amount: number, loss: boolean): void {
  * Expiry happens here rather than on a system: the interface reads this once a frame anyway,
  * and a list nobody is drawing does not need a clock of its own.
  */
-export function liveAmounts(): Array<{ amount: number; loss: boolean; t: number; rank: number }> {
+export function liveAmounts(): Array<{ amount: number; loss: boolean; t: number; rank: number; born: number }> {
   const now = Date.now()
   while (floating.length > 0 && now - floating[0].born > FLOAT_MS) floating.shift()
-  return floating.map((f, i) => ({ amount: f.amount, loss: f.loss, t: (now - f.born) / FLOAT_MS, rank: i }))
+  return floating.map((f, i) => ({ amount: f.amount, loss: f.loss, t: (now - f.born) / FLOAT_MS, rank: i, born: f.born }))
 }
 
 
