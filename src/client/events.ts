@@ -26,7 +26,7 @@ export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, gran
 const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
 /** The band's one line: the rush RUNNING, or nothing. A rush lasts minutes and earns the centre. */
-export function ligneDuBandeau(): { text: string; color: string } | null {
+export function bannerLine(): { text: string; color: string } | null {
   if (raidView.active) {
     // The distance is what turns the banner into a direction: the beam says which way, this
     // says how far, and together they answer "where is it" without a minimap.
@@ -42,7 +42,7 @@ export function ligneDuBandeau(): { text: string; color: string } | null {
  * and an hour in the middle of the screen is furniture (tester, 27 Aug): it goes where the
  * other standing facts go, under the money, at caption size.
  */
-export function prochainGrandTexte(): string | null {
+export function nextBigText(): string | null {
   if (eventView.theme >= 0 || raidView.active) return null
   const grand = eventView.nextGrandS > 0 && eventView.nextGrandS <= 3600 ? eventView.nextGrandS : 0
   const raid = raidView.nextS > 0 && raidView.nextS <= 600 ? raidView.nextS : 0
@@ -85,7 +85,7 @@ export function setEventFloor(entity: Entity, base: string): void { sol = entity
  * checker: a flat floor gave the eye nothing that moves, so running read as standing still
  * (tester, 28 Aug). Same recipe as the event mats, a fraction of their contrast.
  */
-export function materiauDuSol(hex: string): PBMaterial_PbrMaterial {
+export function groundMaterial(hex: string): PBMaterial_PbrMaterial {
   return {
     ...plastic(hex), roughness: 0.9,
     texture: Material.Texture.Common({
@@ -179,7 +179,7 @@ export function setupEvents(): void {
     } else {
       SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: JOUR_DE_BASE, transitionMode: TransitionMode.TM_FORWARD })
       if (sol !== null && solCouleur !== '') {
-        Material.setPbrMaterial(sol, materiauDuSol(solCouleur))
+        Material.setPbrMaterial(sol, groundMaterial(solCouleur))
         Tween.deleteFrom(sol)
       }
     }

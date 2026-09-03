@@ -5,11 +5,11 @@ import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { tutoView } from './tutorial'
-import { envoyerOuAttendre } from './intent'
+import { sendOrHold } from './intent'
 import { poseView } from './pose'
 
 export const theftView = {
-  alertes: [] as Array<{ t: string; c: string; ne: number; jusqua: number }>,
+  alertes: [] as Array<{ t: string; c: string; ne: number; until: number }>,
   stealing: false,
   stealTarget: '',
   stealLeftMs: 0,
@@ -34,7 +34,7 @@ export const theftView = {
   alert: '',
   alertColor: '#ffffff',
   alerteJusqua: 0,
-  fil: [] as Array<{ t: string; jusqua: number }>,
+  fil: [] as Array<{ t: string; until: number }>,
   malusJusqua: 0,
   luckSec: 0,
   luckPrice: 0,
@@ -67,7 +67,7 @@ export function alerterEnFile(texte: string, color: string, durationMs = 6000): 
 */
 export function alerter(texte: string, color: string, durationMs = 6000): void {
   const now = Date.now()
-  theftView.alertes.unshift({ t: texte, c: color, ne: now, jusqua: now + durationMs })
+  theftView.alertes.unshift({ t: texte, c: color, ne: now, until: now + durationMs })
   if (theftView.alertes.length > 2) theftView.alertes.length = 2
   theftView.alert = texte
   theftView.alertColor = color
@@ -82,10 +82,10 @@ export function alerter(texte: string, color: string, durationMs = 6000): void {
  * d'en dessous finissait ses huit secondes (proprietaire, 2 Sep, "il disparait pas"). On
  * balaie donc toute la liste, du bas vers le haut pour que les indices tiennent.
  */
-export function alertesVisibles(): Array<{ t: string; c: string; ne: number; jusqua: number }> {
+export function alertesVisibles(): Array<{ t: string; c: string; ne: number; until: number }> {
   const now = Date.now()
   for (let i = theftView.alertes.length - 1; i >= 0; i--) {
-    if (theftView.alertes[i].jusqua <= now) theftView.alertes.splice(i, 1)
+    if (theftView.alertes[i].until <= now) theftView.alertes.splice(i, 1)
   }
   return theftView.alertes
 }
@@ -100,7 +100,7 @@ export function alertesVisibles(): Array<{ t: string; c: string; ne: number; jus
 const FIL_MS = 12_000
 
 export function pushToFeed(ligne: string): void {
-  theftView.fil.unshift({ t: ligne, jusqua: Date.now() + FIL_MS })
+  theftView.fil.unshift({ t: ligne, until: Date.now() + FIL_MS })
   if (theftView.fil.length > 4) theftView.fil.pop()
 }
 
@@ -109,7 +109,7 @@ export function filVisible(): string[] {
   const now = Date.now()
   const out: string[] = []
   for (const f of theftView.fil) {
-    if (f.jusqua <= now) continue
+    if (f.until <= now) continue
     out.push(f.t)
     if (out.length === 3) break
   }
@@ -295,7 +295,7 @@ export function setupTheft(): void {
 
   room.onMessage('actionRejected', (d) => {
     // Une pose refusee rend la main: le marqueur se rallume et le joueur peut choisir ailleurs.
-    if (d.action === 'build') poseView.demandee = false
+    if (d.action === 'build') poseView.pending = false
     alerter(d.reason.toUpperCase(), '#ff6b6b', 4000)
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
@@ -325,12 +325,12 @@ export function cancelSteal(): void { theftView.stealing = false; void room.send
 export function steal(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })
 }
-export function lockBase(): void { envoyerOuAttendre(() => { void room.send('activateLock', {}) }) }
+export function lockBase(): void { sendOrHold(() => { void room.send('activateLock', {}) }) }
 export function recover(): void { void room.send('reclaim', {}) }
 export function doPrestige(): void { void room.send('rebirth', {}) }
-export function buyFloorFor(): void { envoyerOuAttendre(() => { void room.send('buyFloor', {}) }) }
-export function armSentry(tier = 0): void { envoyerOuAttendre(() => { void room.send('buySentry', { tier }) }) }
-export function collectPending(): void { envoyerOuAttendre(() => { void room.send('collect', {}) }) }
+export function buyFloorFor(): void { sendOrHold(() => { void room.send('buyFloor', {}) }) }
+export function armSentry(tier = 0): void { sendOrHold(() => { void room.send('buySentry', { tier }) }) }
+export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }
 
 let _adresse = ''
 export function myClientAddress(): string { return _adresse }

@@ -9,9 +9,9 @@ import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
 import { rarity, crate, mutation, itemName, itemColor, rarityOf, mutationDe } from '../shared/loot-table'
 import { alerter } from './theft'
-import { verbe } from './verbe'
+import { verb } from './verb'
 import { carryView } from './carry'
-import { envoyerOuAttendre } from './intent'
+import { sendOrHold } from './intent'
 
 let monAdresse = ''
 
@@ -267,7 +267,7 @@ export function frapper(): void {
     if (t !== null) exploser(Vector3.create(t.position.x, t.position.y, t.position.z), b.color)
     storeCrate()
     const tier = boxView.typeEnCours
-    envoyerOuAttendre(() => { void room.send('openBox', { crateTier: tier }) })
+    sendOrHold(() => { void room.send('openBox', { crateTier: tier }) })
   }
 }
 
@@ -470,10 +470,10 @@ function setupCrateGhost(): void {
       Tant qu'il decidait tout seul, il pouvait s'afficher pendant qu'une pression allait faire
       autre chose: monter par l'ascenseur, voler un socle, ramasser sa piece, nourrir la
       machine. Deux marqueurs verts a l'ecran, et plus personne ne sait lequel la touche sert
-      (proprietaire, 1 Sep). `nextAction()` est le seul arbitre, il publie le verbe choisi, et
-      ce marqueur ne se montre que quand ce verbe est exactement "ouvrir une caisse".
+      (proprietaire, 1 Sep). `nextAction()` est le seul arbitre, il publie le verb choisi, et
+      ce marqueur ne se montre que quand ce verb est exactement "ouvrir une caisse".
     */
-    const pret = verbe.id === 'ouvrir-caisse'
+    const pret = verb.id === 'ouvrir-caisse'
     if (!pret || !Transform.has(engine.PlayerEntity)) {
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
       return

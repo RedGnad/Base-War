@@ -41,7 +41,7 @@ export function setupTravel(): void {
  * ailleurs commence chaque session par une marche.
  *
  * Un joueur qui n'a pas encore de base garde le point d'apparition de la scene: il n'a pas de
- * chez-soi ou l'envoyer, et c'est la que le marqueur de pose l'attend.
+ * chez-soi ou l'send, et c'est la que le marqueur de pose l'attend.
  *
  * Une seule fois, et seulement dans les vingt premieres secondes: la base arrive du serveur
  * quelques instants apres l'entree, alors on l'attend, mais on ne teleporte jamais quelqu'un
@@ -61,7 +61,7 @@ function apparaitreChezSoi(): void {
       2 Sep, "j'ai pose ma base et j'ai eu MOVED tout de suite"). Il se tient deja exactement
       ou il a voulu.
     */
-    if (poseView.demandee) { fait = true; return }
+    if (poseView.pending) { fait = true; return }
     attente += dt
     if (attente > 20) { fait = true; return }
     const chez = maBase()

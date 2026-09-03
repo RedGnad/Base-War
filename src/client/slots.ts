@@ -9,7 +9,7 @@ import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
 import { myClientAddress, theftView } from './theft'
 import { welcomeView } from './welcome'
-import { envoyerOuAttendre } from './intent'
+import { sendOrHold } from './intent'
 import { poseView } from './pose'
 
 
@@ -81,7 +81,7 @@ export function setupSlots(): void {
       La bascule manuelle, elle, garde le rouge et sa raison: la, le joueur cherche
       deliberement une place et a besoin de savoir pourquoi celle-ci est refusee.
     */
-    if (!welcomeView.open && !theftView.basePosee && !slotView.active && !poseView.demandee) {
+    if (!welcomeView.open && !theftView.basePosee && !slotView.active && !poseView.pending) {
       slotView.active = true
       auto = true
       slotView.auto = true
@@ -126,8 +126,8 @@ export function placeHere(): void {
   if (!Transform.has(engine.PlayerEntity)) return
   const p = Transform.get(engine.PlayerEntity).position
   const x = snapToGrid(p.x), z = snapToGrid(p.z)
-  poseView.demandee = true
-  envoyerOuAttendre(() => { void room.send('claimSlot', { x, z }) })
+  poseView.pending = true
+  sendOrHold(() => { void room.send('claimSlot', { x, z }) })
   togglePlacing()
 }
 

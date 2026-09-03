@@ -110,9 +110,9 @@ export function runConvoys(): void {
     const dist = Math.sqrt((ici.x - p.x) ** 2 + (ici.z - p.z) ** 2)
     if (dist > CONVOY_RANGE) { refus(a, `too far (${dist.toFixed(1)}m)`, true); return }
 
-    const jusqua = immunite.get(e.owner) ?? 0
-    if (jusqua > Date.now()) {
-      refus(a, `${displayName(e.owner)} was just outbid, ${Math.ceil((jusqua - Date.now()) / 1000)}s left`)
+    const until = immunite.get(e.owner) ?? 0
+    if (until > Date.now()) {
+      refus(a, `${displayName(e.owner)} was just outbid, ${Math.ceil((until - Date.now()) / 1000)}s left`)
       return
     }
     const price = Math.ceil(e.pricePaid * CONVOY_OUTBID)

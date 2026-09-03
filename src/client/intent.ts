@@ -21,13 +21,13 @@ import { view } from './setup'
  * a burst nobody asked for. The last intent wins, and it expires on its own so a player
  * who wandered off does not come back to an action they no longer want.
  */
-const GARDE_MS = 30_000
+const HOLD_MS = 30_000
 
-let differe: { envoyer: () => void; jusqua: number } | null = null
+let deferred: { send: () => void; until: number } | null = null
 
 /** Whether something is waiting on the server, for the interface to say so. */
 export function intentEnAttente(): boolean {
-  return differe !== null
+  return deferred !== null
 }
 
 /**
@@ -37,24 +37,24 @@ export function intentEnAttente(): boolean {
  * is a statement about a server that is actually running, not about the transport being
  * connected.
  */
-export function envoyerOuAttendre(envoyer: () => void): void {
-  if (view.serverAlive) { envoyer(); return }
-  differe = { envoyer, jusqua: Date.now() + GARDE_MS }
+export function sendOrHold(send: () => void): void {
+  if (view.serverAlive) { send(); return }
+  deferred = { send, until: Date.now() + HOLD_MS }
 }
 
 export function setupIntent(): void {
   engine.addSystem(() => {
-    if (differe === null) return
+    if (deferred === null) return
     const now = Date.now()
-    if (now > differe.jusqua) {
+    if (now > deferred.until) {
       console.log('[CLIENT] deferred intent expired')
-      differe = null
+      deferred = null
       return
     }
     if (!view.serverAlive) return
-    const envoyer = differe.envoyer
-    differe = null
+    const send = deferred.send
+    deferred = null
     console.log('[CLIENT] deferred intent sent on the first heartbeat')
-    envoyer()
+    send()
   })
 }

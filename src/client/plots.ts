@@ -865,7 +865,7 @@ export function setupPlots(): void {
         Ne prendre le mutable QUE si la valeur a change.
 
         `getMutable` marque l'entite sale, la serialise en octets et la compare a l'instantane
-        precedent avant de decider de ne rien envoyer: la comparaison, elle, se paie. Ces deux
+        precedent avant de decider de ne rien send: la comparaison, elle, se paie. Ces deux
         blocs s'executaient a CHAQUE IMAGE pour CHAQUE base, donc cent vingt composants salis
         par image sur une place de soixante parcelles. Mesure du 1 Sep sous soixante bases:
         2,3 ticks de scene par seconde contre 40 vises, et le client a affiche sa propre
@@ -1045,14 +1045,14 @@ export function setupPlots(): void {
       v.ownerId = p.ownerId
 
       const mine = monBase
-      const verbe = mine
+      const verb = mine
         ? 'Pick up'
         : 'Steal'
       for (let k = 0; k < v.items.length; k++) {
         const code = p.items[k]
         const label = code === undefined || code === VIDE
-          ? verbe
-          : `${verbe} ${nomDuCode(code)} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
+          ? verb
+          : `${verb} ${nomDuCode(code)} · ${formatIncome(itemIncome(code, INCOME_UI))}/s`
         PointerEvents.createOrReplace(v.items[k], {
           pointerEvents: [
             { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: label } }

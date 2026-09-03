@@ -1,7 +1,7 @@
 import { TransitionMode, SkyboxTime, engine, Transform, MeshRenderer, MeshCollider, Material, TextureWrapMode } from '@dcl/sdk/ecs'
 import { Vector3, Quaternion } from '@dcl/sdk/math'
 import { CENTER, SCENE_SIDE } from '../shared/schemas'
-import { setEventFloor, materiauDuSol } from './events'
+import { setEventFloor, groundMaterial } from './events'
 import { TOY } from './toy'
 
 /**
@@ -19,7 +19,7 @@ export function setupVenue(): void {
   MeshRenderer.setPlane(sol)
   MeshCollider.setPlane(sol)
   // A play mat: matte green, the table every toy stands on.
-  Material.setPbrMaterial(sol, materiauDuSol(TOY.ground))
+  Material.setPbrMaterial(sol, groundMaterial(TOY.ground))
   setEventFloor(sol, TOY.ground)
   SkyboxTime.createOrReplace(engine.RootEntity, { fixedTime: 37_800, transitionMode: TransitionMode.TM_FORWARD })
 

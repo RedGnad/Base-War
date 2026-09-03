@@ -685,7 +685,7 @@ function tirer(now: number): boolean {
       tt.rotation = cam.rotation
       tt.scale = Vector3.create(0.025, 0.025, long)
     }
-    t.jusqua = now + 70
+    t.until = now + 70
   }
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)
@@ -695,7 +695,7 @@ function tirer(now: number): boolean {
 }
 
 /** The tracer pool: three streaks, reused round-robin, hidden by scale when their time is up. */
-const traceurs: Array<{ e: Entity; jusqua: number }> = []
+const traceurs: Array<{ e: Entity; until: number }> = []
 let traceurSuivant = 0
 function creerTraceurs(): void {
   for (let i = 0; i < 3; i++) {
@@ -703,14 +703,14 @@ function creerTraceurs(): void {
     Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
     MeshRenderer.setBox(e)
     Material.setPbrMaterial(e, plasticDe(Color4.create(1, 0.85, 0.45, 1), 3))
-    traceurs.push({ e, jusqua: 0 })
+    traceurs.push({ e, until: 0 })
   }
 }
 function traceurSystem(): void {
   const now = Date.now()
   for (const t of traceurs) {
-    if (t.jusqua !== 0 && now > t.jusqua) {
-      t.jusqua = 0
+    if (t.until !== 0 && now > t.until) {
+      t.until = 0
       const tt = Transform.getMutableOrNull(t.e)
       if (tt !== null) tt.scale = Vector3.Zero()
     }

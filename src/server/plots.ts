@@ -1482,7 +1482,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   }
 
   const previous = bases.get(address)
-  // Deplacer sa propre base ne coute rien de plus: la place n'est demandee qu'a la premiere pose.
+  // Moving your own base costs nothing extra: room is asked for only at the first placement.
   if (previous === undefined && !makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }

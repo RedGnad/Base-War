@@ -18,7 +18,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
-import { ligneDuBandeau, prochainGrandTexte } from './client/events'
+import { bannerLine, nextBigText } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
@@ -29,7 +29,7 @@ import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
-import { verbe } from './client/verbe'
+import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
@@ -180,7 +180,7 @@ function coinDroit(rang: number): number {
   const present = [
     tutoView.etape < tutoView.total,
     giftView.leftS > 0,
-    prochainGrandTexte() !== null
+    nextBigText() !== null
   ]
   let y = BAND.top
   for (let i = 0; i < rang; i++) if (present[i] === true) y += COIN_H[i] + COIN_GAP
@@ -425,7 +425,7 @@ const PhoneControls = () => {
     capture d'un vrai telephone (proprietaire, 1 Sep) montre bien cette forme: main en bas a
     gauche, puis E, puis F, puis le "+" droit au-dessus.
 
-    Ce qu'on change sciemment: chez eux le gros bouton est le SAUT, chez nous c'est le verbe
+    Ce qu'on change sciemment: chez eux le gros bouton est le SAUT, chez nous c'est le verb
     contextuel, parce que c'est lui qu'on presse toutes les dix secondes. Le saut prend la
     premiere place de l'arc, celle du bas, la plus proche du pouce au repos.
   */
@@ -542,7 +542,7 @@ function announceBackdrop(): Color4 {
  */
 function nextAction(): { id: string; label: string; action: () => void; icon?: string } | null {
   const choix = choisirAction()
-  verbe.id = choix?.id ?? ''
+  verb.id = choix?.id ?? ''
   return choix
 }
 
@@ -1089,7 +1089,7 @@ const uiComponent = () => {
   */
   const band = topBand([
     ['money', true, TYPE.hero + 6 + 34 + 6],
-    ['event', ligneDuBandeau() !== null, 52],
+    ['event', bannerLine() !== null, 52],
     ['belt', beltView.annonce !== '', 58]
   ])
   /*
@@ -1277,7 +1277,7 @@ const uiComponent = () => {
       progress towards something wanted. This one fails the first two and passes the third.
     */}
     {/* The next grand rush, as a chip: a standing fact, not an announcement. */}
-    {hud() && prochainGrandTexte() !== null && (
+    {hud() && nextBigText() !== null && (
       <UiEntity
         uiTransform={{
           height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
@@ -1286,7 +1286,7 @@ const uiComponent = () => {
         }}
         uiBackground={SKIN.panel}
       >
-        <Label value={prochainGrandTexte() ?? ''} fontSize={TYPE.caption}
+        <Label value={nextBigText() ?? ''} fontSize={TYPE.caption}
           color={Color4.fromHexString('#ffd166ff')} textWrap="nowrap" />
       </UiEntity>
     )}
@@ -1357,19 +1357,19 @@ const uiComponent = () => {
       alone. It sits between the money and the belt line because it is the one thing on screen
       that ties the two together: this is why the belt is worth watching right now.
     */}
-    {hud() && ligneDuBandeau() !== null && band.event >= 0 && (
+    {hud() && bannerLine() !== null && band.event >= 0 && (
       <Centre top={band.event}>
         <UiEntity
           uiTransform={{
-            width: Math.min(strip(760).width, largeurTexte(ligneDuBandeau()?.text ?? '', TYPE.label) + 60),
+            width: Math.min(strip(760).width, largeurTexte(bannerLine()?.text ?? '', TYPE.label) + 60),
             height: 64, justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={SKIN.panel}
         >
           <Label
-            value={ligneDuBandeau()?.text ?? ''}
+            value={bannerLine()?.text ?? ''}
             fontSize={TYPE.label}
-            color={Color4.fromHexString((ligneDuBandeau()?.color ?? '#ffffff') + 'ff')} textWrap="nowrap" />
+            color={Color4.fromHexString((bannerLine()?.color ?? '#ffffff') + 'ff')} textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}
@@ -1497,7 +1497,7 @@ const uiComponent = () => {
         {alertesVisibles().map((a) => {
           const now = Date.now()
           const entree = Math.min(1, (now - a.ne) / 160)
-          const sortie = Math.min(1, Math.max(0, (a.jusqua - now) / 250))
+          const sortie = Math.min(1, Math.max(0, (a.until - now) / 250))
           // Wrapped lines, not newlines: this counted the latter and drew the former.
           const lignes = lignesDeTexte(a.t, TYPE.body, strip(820).width * 0.94 - 18)
           const h = 58 + (lignes - 1) * Math.round(TYPE.body * 1.35)
