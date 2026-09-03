@@ -13,7 +13,7 @@ import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
-import { damageFlashAlpha, liveAmounts, impactFlashAlpha } from './client/juice'
+import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
@@ -1210,10 +1210,6 @@ const uiComponent = () => {
     {damageFlashAlpha() > 0 && (
       <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
         uiBackground={{ color: Color4.create(1, 0.16, 0.16, damageFlashAlpha()) }} />
-    )}
-    {impactFlashAlpha() > 0 && (
-      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
-        uiBackground={{ color: Color4.create(1, 1, 1, impactFlashAlpha()) }} />
     )}
 
     {/*

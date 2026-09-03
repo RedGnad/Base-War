@@ -1,5 +1,5 @@
 import { isMobile } from '@dcl/sdk/platform'
-import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { Animator, GltfNodeModifiers, engine, Entity, timers, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -793,6 +793,21 @@ function heatCrate(racine: Entity, chauffe: number): void {
       }
     }]
   })
+}
+
+/**
+ * The blow lands ON the crate: its ember flares for a moment, then settles back to the
+ * heat it had. The first pass put a white frame over the whole screen instead; a
+ * full-screen flash is the genre's signal for the player being hit, it counts toward the
+ * three-flashes-a-second accessibility limit, and three blows a crate can cross it. And
+ * this crate is never white (owner, 2 and 3 Sep): it is the same orange, brighter, briefly.
+ */
+export function flareCrate(racine: Entity): void {
+  const k = caisses.get(racine)
+  if (k === undefined) return
+  const repos = Math.max(0, k.chaud) / 8
+  heatCrate(racine, repos + 1.6)
+  timers.setTimeout(() => { if (caisses.get(racine) === k) heatCrate(racine, repos) }, 90)
 }
 
 export function dimCrate(racine: Entity): void {
