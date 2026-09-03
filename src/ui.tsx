@@ -13,6 +13,7 @@ import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
+import { damageFlashAlpha } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
@@ -1102,6 +1103,16 @@ const uiComponent = () => {
   ])
   return (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
+
+    {/*
+      The damage flash sits FIRST, so it renders under every other layer: it tints the world
+      behind the interface without ever tinting the buttons or a panel the player is reading.
+      Not gated on hud(): being shot while a window is open still has to register.
+    */}
+    {damageFlashAlpha() > 0 && (
+      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
+        uiBackground={{ color: Color4.create(1, 0.16, 0.16, damageFlashAlpha()) }} />
+    )}
 
     <Prechauffe />
     <DesktopControls />
