@@ -13,13 +13,13 @@ import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
-import { damageFlashAlpha, liveAmounts } from './client/juice'
+import { damageFlashAlpha, liveAmounts, impactFlashAlpha } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
-import { bannerLine, nextBigText, rushChip } from './client/events'
+import { bannerLine, nextBigText, rushChip, eventView } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
@@ -182,6 +182,9 @@ const SCROLLBAR_COVER_W = 26
  * decides, and it leaves a real gap.
  */
 const COIN_H = [64, 40, 52, 40, 62]
+/** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
+const RUSH_HOLD_MS = 1500
+const RUSH_FLIGHT_MS = 550
 /** The step chip grows a line once its hint is due. */
 const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
@@ -1208,6 +1211,10 @@ const uiComponent = () => {
       <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
         uiBackground={{ color: Color4.create(1, 0.16, 0.16, damageFlashAlpha()) }} />
     )}
+    {impactFlashAlpha() > 0 && (
+      <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}
+        uiBackground={{ color: Color4.create(1, 1, 1, impactFlashAlpha()) }} />
+    )}
 
     {/*
       The quantity channel, above the centre so it never covers the avatar or the crosshair.
@@ -1299,20 +1306,37 @@ const uiComponent = () => {
 
 
     {/* The rush running now: a standing fact for minutes, so it lives with the other standing facts. */}
-    {hud() && rushChip() !== null && (
+    {/*
+      Announced in the player's gaze, then it FLIES to its permanent place: the chip is born
+      under the counter, in the middle, holds there a second and a half, then slides to its
+      slot in the corner over half a second. That is the second half of the timer conveyance
+      this HUD cites, done as motion rather than as two unrelated things appearing. Only a
+      translation: the interface has no scale transform, so the chip keeps its size.
+    */}
+    {hud() && rushChip() !== null && (() => {
+      const texte = rushChip()?.text ?? ''
+      const w = largeurTexte(texte, TYPE.caption) + 32
+      const age = Date.now() - eventView.sinceMs
+      const p = Math.max(0, Math.min(1, (age - RUSH_HOLD_MS) / RUSH_FLIGHT_MS))
+      const e = 1 - Math.pow(1 - p, 3)
+      const fromTop = bandBottom + 12, fromRight = active.w / 2 - w / 2
+      const top = Math.round(fromTop + (coinDroit(1) - fromTop) * e)
+      const right = Math.round(fromRight + (rightCornerMargin() - fromRight) * e)
+      return (
       <UiEntity
         uiTransform={{
           height: COIN_H[1], positionType: 'absolute', padding: { left: 16, right: 16 },
-          position: { top: coinDroit(1), right: rightCornerMargin() },
+          position: { top, right },
           flexDirection: 'row', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
       >
-        <Label value={rushChip()?.text ?? ''} fontSize={TYPE.caption}
+        <Label value={texte} fontSize={TYPE.caption}
           color={Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff')}
           uiTransform={{ height: COIN_H[1] }} textAlign="middle-center" textWrap="nowrap" />
       </UiEntity>
-    )}
+      )
+    })()}
 
     {/*
       The counter, with nothing behind it.

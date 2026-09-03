@@ -13,6 +13,7 @@ import { verb } from './verb'
 import { carryView } from './carry'
 import { sendOrHold } from './intent'
 import { TOAST } from './theme'
+import { flashImpact } from './juice'
 
 let monAdresse = ''
 
@@ -287,6 +288,7 @@ export function frapper(): void {
     currentTime: 0
   })
   jouer(hitSound)
+  flashImpact()
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
   // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque

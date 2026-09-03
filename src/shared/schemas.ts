@@ -126,6 +126,20 @@ export const SHOT_COOLDOWN_MS = 250  // four rounds a second, the tester's cap o
  * the server will rule: a target shown as locked is a target the shot will reach.
  */
 export const SHOT_CONE_DOT = 0.97
+/**
+ * How far a shot may miss sideways and still land, in metres.
+ *
+ * The cone alone is a courtesy for a thumb: about fourteen degrees each side, which at the
+ * 28 m limit is a corridor seven metres wide, and testers "never missed" (3 Sep). Past a few
+ * metres the lateral tolerance takes over: 1.6 m at any range, a body's width plus assist,
+ * so a thief running past stays easy to hit and a far target needs real aim. One rule for
+ * the server's hit and the client's reticle, so both agree on what is a target.
+ */
+export const SHOT_LATERAL_M = 1.6
+export function inShotCone(dist: number, dot: number): boolean {
+  if (dot < SHOT_CONE_DOT) return false
+  return dist * Math.sqrt(Math.max(0, 1 - dot * dot)) <= SHOT_LATERAL_M
+}
 /** Jog speed while aiming, as a fraction of the normal one. Aiming costs mobility. */
 export const AIM_SPEED_SHARE = 0.5
 /**

@@ -1,7 +1,7 @@
 import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import {
-  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
+  DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, SHOT_DROP_SHARE, SHOT_MIN_YIELD, LOOT_OWNER_LOCK_MS, forceDuTir,
   SHOT_DROP_CAP_S, LOOT_PICKUP_RANGE, LOOT_LIFETIME_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, TASER_FREEZE_MS
 , MELEE_FORCE} from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -63,7 +63,7 @@ export function startCombat(): void {
       if (!memeEspace(from.x, from.z, t.position.x, t.position.z)) continue
       // Same cone the client draws its reticle from, so both agree on what is a target.
       const dot = (to.x * aim.x + to.z * aim.z) / dist
-      if (dot < SHOT_CONE_DOT) continue
+      if (!inShotCone(dist, dot)) continue
       if (best === null || dist < best.d) {
         best = { addr: other, pos: Vector3.create(t.position.x, t.position.y, t.position.z), d: dist }
       }

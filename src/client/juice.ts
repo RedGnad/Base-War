@@ -30,6 +30,27 @@ export function flashDamage(): void {
   hitAt = Date.now()
 }
 
+/*
+  Impact flash: white, shorter and fainter than the damage veil, for a blow the player
+  DEALS. Same stack, other direction: the smash had an elastic punch on the crate and a
+  thud, and testers still said the hammer did not feel like it connected (3 Sep). A white
+  frame on impact is the genre's oldest hit-stop substitute where the engine offers none.
+*/
+const IMPACT_PEAK = 0.22
+const IMPACT_MS = 90
+let impactAt = -1
+
+export function flashImpact(): void {
+  impactAt = Date.now()
+}
+
+export function impactFlashAlpha(): number {
+  if (impactAt < 0) return 0
+  const age = Date.now() - impactAt
+  if (age < 0 || age > IMPACT_MS) return 0
+  return IMPACT_PEAK * (1 - age / IMPACT_MS)
+}
+
 /**
  * Current alpha of the red veil, 0 when there is nothing to draw.
  *

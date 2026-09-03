@@ -9,7 +9,7 @@ import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
-import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, SHOT_CONE_DOT, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
+import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
 import { gearView, tirerLaCape } from './gear'
 import { raidView } from './raid'
 import { room } from '../shared/messages'
@@ -160,6 +160,7 @@ let dernierRecensement = 0
 let targetName = ''
 let cbtTargetAddr = ''
 let recul = 0
+let hitmark = 0 as unknown as Entity
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
 const armeDe = new Map<string, ArmeType>()
@@ -274,7 +275,16 @@ export function setupCombat(): void {
   MeshRenderer.setSphere(flash)
   Material.setPbrMaterial(flash, plasticDe(FLASH, 5))
 
-  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/hit.wav', playing: false, loop: false, volume: 0.5 })
+  /*
+    A report of its own. The gun fired the crate-smash clip at half volume: a shot sounded
+    like a thud on wood, and testers said the weapon felt like nothing (3 Sep). And a
+    second, separate cue when the round LANDS, on the player, so fire and hit are told apart
+    by ear: the hit marker's tick, the genre's convention.
+  */
+  AudioSource.create(ancre, { audioClipUrl: 'assets/sounds/shot.wav', playing: false, loop: false, volume: 0.8 })
+  hitmark = engine.addEntity()
+  Transform.create(hitmark, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(hitmark, { audioClipUrl: 'assets/sounds/hitmark.wav', playing: false, loop: false, volume: 0.85 })
 
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
@@ -290,6 +300,16 @@ export function setupCombat(): void {
     where the other player gets to stop you.
   */
   room.onMessage('shotResult', (d) => {
+    /*
+      Every landed round gets the marker and the tick, the boss and the empty-handed
+      included. The marker used to fire only when coins dropped, so most hits on the boss
+      and on a broke thief left the reticle mute: "I can't feel whether I hit" (3 Sep).
+    */
+    if (d.reason !== 'missed') {
+      combatView.lastHitAt = Date.now()
+      const h = AudioSource.getMutableOrNull(hitmark)
+      if (h !== null) { h.playing = false; h.playing = true }
+    }
     // The boss flashes when hit; a line per round at five rounds a second would be noise.
     if (d.reason === 'boss') return
     // One shot, one line. What it did to their hands leads, because that is the bigger prize.
@@ -598,7 +618,7 @@ function viser(): void {
     const dz = t.position.z - moiT.position.z
     const d = Math.sqrt(dx * dx + dz * dz)
     if (d > weaponReach() || d < 0.5) continue
-    if ((dx * ax + dz * az) / d < SHOT_CONE_DOT) continue
+    if (!inShotCone(d, (dx * ax + dz * az) / d)) continue
     if (best === null || d < best.d) best = { addr: a, d }
   }
   // The raid boss is a target like any other, and the nearer one wins the reticle.
@@ -607,7 +627,7 @@ function viser(): void {
     const dz = raidView.z - moiT.position.z
     const d = Math.sqrt(dx * dx + dz * dz)
     // The boss locks out to the raid range whatever the weapon: a taser (2.5 m) still aims at it.
-    if (d <= RAID_HIT_RANGE && d >= 0.5 && (dx * ax + dz * az) / d >= SHOT_CONE_DOT && (best === null || d < best.d)) {
+    if (d <= RAID_HIT_RANGE && d >= 0.5 && inShotCone(d, (dx * ax + dz * az) / d) && (best === null || d < best.d)) {
       cbtTargetAddr = 'raid-boss'
       targetName = 'RAID BOSS'
       combatView.targetName = targetName

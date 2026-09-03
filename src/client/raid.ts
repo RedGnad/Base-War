@@ -25,6 +25,8 @@ const CORNE = '#f2e9d8'
 const OEIL = '#ffd166'
 const HAUTEUR = 1.7
 const FLASH_MS = 160
+/** The life bar's width, in metres: as wide as the boss itself. */
+const BAR_W = 2.6
 const BALAI_MS = 420
 
 export function setupRaid(): void {
@@ -94,10 +96,27 @@ export function setupRaid(): void {
   Transform.create(titre, { parent: racine, position: Vector3.create(0, 2.6, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(titre, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(titre, { text: 'RAID BOSS', fontSize: 5, textColor: Color4.fromHexString('#ff6b6bff'), outlineWidth: 0.22, outlineColor: NOIR })
+  /*
+    The life bar is a BAR: a dark track and a red fill that shortens, over the head, turned
+    to face whoever looks. It was a line of hash marks in a text shape, which reads as a
+    console and not as a wound (owner, 3 Sep). Two boxes, opaque, on the budget only while
+    a raid runs. The text below it keeps the one thing a bar cannot say: who leads.
+  */
+  const jauge = engine.addEntity()
+  Transform.create(jauge, { parent: racine, position: Vector3.create(0, 2.2, 0) })
+  Billboard.create(jauge, { billboardMode: BillboardMode.BM_Y })
+  const piste = engine.addEntity()
+  Transform.create(piste, { parent: jauge, scale: Vector3.create(BAR_W, 0.24, 0.05) })
+  MeshRenderer.setBox(piste)
+  Material.setPbrMaterial(piste, plasticDe(Color4.create(0.05, 0.08, 0.16, 1)))
+  const vie = engine.addEntity()
+  Transform.create(vie, { parent: jauge, position: Vector3.create(0, 0, -0.04), scale: Vector3.create(BAR_W, 0.18, 0.05) })
+  MeshRenderer.setBox(vie)
+  Material.setPbrMaterial(vie, plastic('#ff4d5e', 1.8))
   const barre = engine.addEntity()
-  Transform.create(barre, { parent: racine, position: Vector3.create(0, 2.15, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
+  Transform.create(barre, { parent: racine, position: Vector3.create(0, 1.85, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
   Billboard.create(barre, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(barre, { text: '', fontSize: 3.2, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.create(barre, { text: '', fontSize: 2.6, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
 
   const son = engine.addEntity()
   Transform.create(son, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
@@ -121,6 +140,8 @@ export function setupRaid(): void {
   let etaitActif = false
   let vu = { x: 0, z: 0 }
   let barText = ''
+  let dernierePart = -1
+  let flashOn = false
   engine.addSystem((dt) => {
     let r: ReturnType<typeof Raid.get> | null = null
     for (const [, v] of engine.getEntitiesWith(Raid)) { r = v; break }
@@ -161,8 +182,19 @@ export function setupRaid(): void {
     if (Math.hypot(r.faceX, r.faceZ) > 0.01) {
       t.rotation = Quaternion.fromEulerDegrees(0, Math.atan2(-r.faceX, -r.faceZ) * 180 / Math.PI, 0)
     }
-    const frappe = now - r.hitAtMs < FLASH_MS ? 1.12 : 1
+    /*
+      Hit: the body swells AND goes white for the flash window. The swell alone was read
+      as the boss breathing, not as a hit landing (testers, 3 Sep). A white flash is the
+      genre's hit signal for the thing being hit, red being reserved for the player's own
+      damage; the material swap happens on the edges only, never per frame.
+    */
+    const touche = now - r.hitAtMs < FLASH_MS
+    const frappe = touche ? 1.12 : 1
     t.scale = Vector3.create(frappe, frappe, frappe)
+    if (touche !== flashOn) {
+      flashOn = touche
+      Material.setPbrMaterial(corps, touche ? plastic('#ffffff', 4) : plastic(PEAU, 0.35))
+    }
 
     // The beam follows the same smoothed position, breathing so it reads as alive from afar.
     const souffle = 1 + Math.sin(now / 420) * 0.14
@@ -185,8 +217,16 @@ export function setupRaid(): void {
     }
 
     const part = Math.max(0, Math.min(1, r.hp / Math.max(1, r.hpMax)))
-    const pleins = Math.round(part * 20)
-    const ligne = `${'#'.repeat(pleins)}${'-'.repeat(20 - pleins)}  ${Math.round(part * 100)}%${r.topName !== '' ? `   top: ${r.topName}` : ''}`
+    if (Math.abs(part - dernierePart) > 0.004) {
+      dernierePart = part
+      const vt = Transform.getMutableOrNull(vie)
+      if (vt !== null) {
+        // Anchored on the left: the fill shrinks toward the start of the track, as bars do.
+        vt.scale = Vector3.create(Math.max(0.001, BAR_W * part), 0.18, 0.05)
+        vt.position = Vector3.create(-(BAR_W * (1 - part)) / 2, 0, -0.04)
+      }
+    }
+    const ligne = `${Math.round(part * 100)}%${r.topName !== '' ? `   ·   top: ${r.topName}` : ''}`
     if (ligne !== barText) {
       barText = ligne
       const tb = TextShape.getMutableOrNull(barre)

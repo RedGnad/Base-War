@@ -22,7 +22,8 @@ import { TOAST } from './theme'
  * main gaze, then living at the top with the remaining time, in the theme's colour, with the
  * theme's name as its icon.
  */
-export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, grand: false, nextGrandS: 0 }
+/** `sinceMs`: when the running rush began on this clock; the corner chip flies in from it. */
+export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, grand: false, nextGrandS: 0, sinceMs: 0 }
 
 const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
@@ -165,6 +166,7 @@ export function setupEvents(): void {
 
     if (eventView.theme === dernierTheme) return
     dernierTheme = eventView.theme
+    if (actif) eventView.sinceMs = now
 
     if (actif && t !== undefined) {
       // Announced once where the eye is, then it lives at the top of the screen.
