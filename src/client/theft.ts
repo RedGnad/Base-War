@@ -169,6 +169,15 @@ export function setupTheft(): void {
     */
     pushToFeed(`${d.byName} stole a ${rarity(d.rarity).name}`)
   })
+  room.onMessage('itemHome', (d) => {
+    const r = rarity(d.rarity)
+    alerter(d.stocked
+      ? `YOUR ${r.name.toUpperCase()} IS BACK  ·  in your stock, open it at home`
+      : `YOUR ${r.name.toUpperCase()} CAME BACK HOME`, r.color, TOAST.result)
+  })
+  room.onMessage('itemPicked', (d) => {
+    pushToFeed(`${d.byName} picked a ${rarity(d.rarity).name} up off the floor`)
+  })
   room.onMessage('reclaimed', (d) => {
     pushToFeed(`${d.byName} took back a ${rarity(d.rarity).name}`)
   })

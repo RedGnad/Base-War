@@ -140,7 +140,11 @@ export const MESSAGES = {
   youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, shieldSec: Schemas.Int }),
   thiefPenalty: Schemas.Map({ ms: Schemas.Int }),
   stolen: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int }),
-  reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int })
+  reclaimed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, rarity: Schemas.Int }),
+  /** server -> the origin's owner: a dropped item nobody reached went back to their base (or their stock). */
+  itemHome: Schemas.Map({ rarity: Schemas.Int, mutation: Schemas.Int, stocked: Schemas.Boolean }),
+  /** server -> everyone: somebody picked a dropped item up off the floor. */
+  itemPicked: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int })
 } as const
 
 export const room = registerMessages(MESSAGES)

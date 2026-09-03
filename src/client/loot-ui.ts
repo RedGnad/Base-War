@@ -17,14 +17,31 @@ import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table
  */
 
 const vues = new Map<number, { corps: Entity; etiquette: Entity }>()
+/** How long before it goes home a dropped item starts blinking. */
+const BLINK_MS = 5000
 
 export function setupLootUi(): void {
   engine.addSystem(() => {
     const vivants = new Set<number>()
+    const now = Date.now()
     for (const [e, d] of engine.getEntitiesWith(DroppedItem, Transform)) {
       const id = e as unknown as number
       vivants.add(id)
-      if (vues.has(id)) continue
+      const vue = vues.get(id)
+      if (vue !== undefined) {
+        /*
+          Loot that is about to leave the floor blinks, the genre's oldest despawn warning.
+          The last five seconds: the piece snaps between its size and two thirds of it, six
+          times a second, so a player who was walking away knows to turn around.
+        */
+        const reste = d.untilMs - now
+        const ct = Transform.getMutableOrNull(vue.corps)
+        if (ct !== null) {
+          const k = reste < BLINK_MS && Math.floor(now / 85) % 2 === 0 ? 0.34 : 0.5
+          if (ct.scale.x !== k) ct.scale = Vector3.create(k, k, k)
+        }
+        continue
+      }
 
       const t = Transform.get(e)
       const r = rarityOf(d.code)

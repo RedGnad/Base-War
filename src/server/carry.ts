@@ -418,11 +418,19 @@ export function startCarry(): void {
       if (t === null) continue
       if (d.untilMs < now) {
         // If home cannot take it back it stays on the floor rather than evaporating.
-        if (addItem(d.origin, d.code) === 'plein') {
+        const ou = addItem(d.origin, d.code)
+        if (ou === 'plein') {
           const m = DroppedItem.getMutableOrNull(e)
           if (m !== null) m.untilMs = now + LOOT_ITEM_LIFETIME_MS
           continue
         }
+        /*
+          Told to its owner. It went home in silence, and a piece that leaves the floor
+          without a word reads as lost, to its owner most of all (owner, playing with the
+          testers, 4 Sep). Whether it landed on a shelf or in the stock is the one thing
+          they need to know to find it again.
+        */
+        void room.send('itemHome', { rarity: rarityOf(d.code), mutation: mutationDe(d.code), stocked: ou === 'en-stock' }, { to: [d.origin] })
         engine.removeEntity(e)
         continue
       }
@@ -445,6 +453,8 @@ export function startCarry(): void {
           ok: true, reason: 'picked it up', rarity: rarityOf(d.code), mutation: mutationDe(d.code)
         }, { to: [gagnant] })
         log(`carry: ${displayName(gagnant)} picked a ${rarityOf(d.code)} up off the ground`)
+        // And everyone else learns who has it now, on the feed: the floor never went quiet.
+        void room.send('itemPicked', { byName: displayName(gagnant), rarity: rarityOf(d.code) })
         engine.removeEntity(e)
       }
     }
