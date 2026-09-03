@@ -8,19 +8,20 @@ import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, myClientAddress } from './theft'
+import { TOAST } from './theme'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
 
 export function setupConvoy(): void {
   room.onMessage('outbidWon', (d) => {
-    alerter(`YOU OUTBID ${d.fromName.toUpperCase()}  ·  ${crate(d.crateTier).name} for ${formatIncome(d.price)}`, '#8fe08f', 5000)
+    alerter(`YOU OUTBID ${d.fromName.toUpperCase()}  ·  ${crate(d.crateTier).name} for ${formatIncome(d.price)}`, '#8fe08f', TOAST.result)
   })
   room.onMessage('outbidLost', (d) => {
-    alerter(`${d.byName.toUpperCase()} OUTBID YOU\\nrefunded ${formatIncome(d.rembourse)}`, '#ff6b6b', 6000)
+    alerter(`${d.byName.toUpperCase()} OUTBID YOU\\nrefunded ${formatIncome(d.rembourse)}`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('convoyArrived', (d) => {
-    alerter(`${crate(d.crateTier).name.toUpperCase()} DELIVERED`, '#4dd2ff', 3000)
+    alerter(`${crate(d.crateTier).name.toUpperCase()} DELIVERED`, '#4dd2ff', TOAST.result)
   })
 
   engine.addSystem(() => {
@@ -91,7 +92,7 @@ export function setupConvoy(): void {
       if (
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.body)
       ) {
-        if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', 2500)
+        if (mine) alerter('THIS ONE IS ALREADY YOURS', '#ffd166', TOAST.warning)
         else void room.send('outbid', { convoyId: c.convoyId })
       }
     }

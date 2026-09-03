@@ -9,6 +9,7 @@ import { flashDamage, floatAmount, playHurt } from './juice'
 import { formatIncome, crate } from '../shared/loot-table'
 import { plastic, plasticDe } from './toy'
 import { alerter, pushToFeed } from './theft'
+import { TOAST } from './theme'
 
 /**
  * The raid boss, client side: a big hostile toy that walks a circle on the plaza, a life bar
@@ -107,11 +108,11 @@ export function setupRaid(): void {
     floatAmount(d.lost, true)
     playHurt()
     alerter(d.lost > 0
-      ? `THE BOSS HIT YOU  ·  -${formatIncome(d.lost)} on the floor, grab it back`
-      : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', 4000)
+      ? 'THE BOSS HIT YOU  ·  your coins are on the floor, grab them back'
+      : 'THE BOSS HIT YOU  ·  you dropped what you carried', '#ff6b6b', TOAST.warning)
   })
   room.onMessage('raidWon', (d) => {
-    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your crates`, '#ffd166', 8000)
+    alerter(`YOU SLEW THE BOSS  ·  ${crate(d.crate).name.toUpperCase()} in your crates`, '#ffd166', TOAST.event)
   })
   room.onMessage('raidOver', (d) => {
     pushToFeed(d.slain ? `${d.winner} slew the raid boss` : 'the raid boss left')
@@ -147,7 +148,7 @@ export function setupRaid(): void {
     if (!etaitActif) {
       etaitActif = true
       vu = { x: r.x, z: r.z }
-      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A LEGENDARY', '#ff6b6b', 7000)
+      alerter('RAID BOSS  ·  3 MIN  ·  TOP DAMAGE TAKES A LEGENDARY', '#ff6b6b', TOAST.event)
       const a = AudioSource.getMutableOrNull(son)
       if (a !== null) { a.playing = false; a.playing = true }
     }

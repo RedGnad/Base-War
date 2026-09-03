@@ -11,6 +11,7 @@ import { carryView } from './carry'
 import { alerter, pushToFeed } from './theft'
 import { revealItem } from './box'
 import { openFuser } from './fusion-ui'
+import { TOAST } from './theme'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -84,7 +85,7 @@ export function setupFuser(): void {
       // La meme revelation que pour une caisse: c'est deja le moment "vous avez obtenu
       // quelque chose", et le fuser n'en avait aucun. Le texte reste, plus court.
       revealItem(d.made)
-      alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', 3200)
+      alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', TOAST.result)
     }
   })
   room.onMessage('fused', (d) => {

@@ -373,7 +373,7 @@ const PRECHAUFFE = [
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
   // Les trois boutons satellites, puis les quatorze verbes du bouton contextuel dans la
   // famille active, quelle qu'elle soit: voir `client/icones.ts`.
-  'icon-gun', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu', 'icon-menu-alert',
+  'icon-gun', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu',
   ...ICONES_VERBES,
   // The interface icon family and the reveal's ray fan. A texture named for the first time
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
@@ -453,7 +453,11 @@ const PhoneControls = () => {
       <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE}
         bas={ARC[1].bas} droite={ARC[1].droite}
         primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
-      <Pouce icone={questsToClaim() > 0 ? 'icon-menu-alert' : 'icon-menu'} taille={POUCE}
+      {/*
+        One pip, on the rim. The alert glyph carried a second, smaller dot inside the
+        icon, and two red dots on one button read as a mistake (mobile tester, 3 Sep).
+      */}
+      <Pouce icone="icon-menu" taille={POUCE}
         bas={ARC[2].bas} droite={ARC[2].droite}
         badge={questsToClaim() > 0} onClick={basculerMenu} />
       {a !== null && (
@@ -1102,11 +1106,18 @@ const uiComponent = () => {
     A crowd bonus and a crate on the belt are moments. The feed is history, so it goes last
     and is the one dropped when the band is full.
   */
-  const band = topBand([
+  const topBlocks: Array<[string, boolean, number]> = [
     ['money', true, TYPE.hero + 6 + 34 + 6],
     ['event', bannerLine() !== null, 52],
     ['belt', beltView.annonce !== '', 58]
-  ])
+  ]
+  const band = topBand(topBlocks)
+  /*
+    Where the band ends right now: the toasts hang just under it, so they never cover the
+    counter or a running announcement and never sit in the play area either. Most of the
+    time only the counter is up and they land at fifteen percent of the screen.
+  */
+  const bandBottom = topBlocks.reduce<number>((y, [name, present, h]) => present && band[name] >= 0 ? Math.max(y, band[name] + h) : y, BAND.top)
   /*
     What the game is waiting for, stacked above the controls, most urgent first.
   */
@@ -1540,8 +1551,7 @@ const uiComponent = () => {
     {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
-          width: strip(820).width, positionType: 'absolute',
-          position: { top: '28%', left: '50%' }, margin: strip(820).margin,
+          width: '100%', positionType: 'absolute', position: { top: bandBottom + 12, left: 0 },
           flexDirection: 'column', alignItems: 'center'
         }}
       >
@@ -1549,29 +1559,25 @@ const uiComponent = () => {
           const now = Date.now()
           const entree = Math.min(1, (now - a.ne) / 160)
           const sortie = Math.min(1, Math.max(0, (a.until - now) / 250))
-          // Wrapped lines, not newlines: this counted the latter and drew the former.
-          const lignes = lignesDeTexte(a.t, TYPE.body, strip(820).width * 0.94 - 18)
-          const h = 58 + (lignes - 1) * Math.round(TYPE.body * 1.35)
+          /*
+            Sized to its words, never to the screen. The plate used to be 820 wide, half a
+            phone, whatever it said; a four-word refusal wore the same slab as a boss
+            announcement. Capped under half the canvas so a long line wraps instead.
+          */
+          const maxW = Math.round(active.w * 0.46)
+          const w = Math.min(maxW, largeurTexte(a.t, TYPE.body) + 56)
+          const lignes = lignesDeTexte(a.t, TYPE.body, w - 40)
+          const h = 52 + (lignes - 1) * Math.round(TYPE.body * 1.3)
           return (
             <UiEntity key={`toast${a.ne}`}
               uiTransform={{
-                width: '100%', height: h,
-                margin: { top: Math.round(-(1 - entree) * 14), bottom: 10 },
+                width: w, height: h,
+                margin: { top: Math.round(-(1 - entree) * 14), bottom: 8 },
                 justifyContent: 'center', alignItems: 'center'
               }}
               uiBackground={SKIN.panel}
             >
-              {/*
-                The severity bar is gone, and it was never earning its place.
-
-                A straight five-pixel rectangle laid on a plate whose corners are rounded by
-                a third of its height and whose outline is six pixels thick: it crossed
-                outside the shape at both ends, and the taller the box grew the worse it got
-                (owner, 1 Sep). It was redundant besides. What it encoded, the kind of thing
-                that just happened, is already carried by the colour of the text itself, so
-                removing it costs the interface nothing and gives the plate its shape back.
-              */}
-              <Label uiTransform={{ width: '92%' }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
+              <Label uiTransform={{ width: w - 40 }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
                 color={(() => { const c = Color4.fromHexString(a.c + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
             </UiEntity>
           )

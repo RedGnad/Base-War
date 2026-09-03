@@ -8,6 +8,7 @@ import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
+import { TOAST } from './theme'
 
 export const theftView = {
   alertes: [] as Array<{ t: string; c: string; ne: number; until: number }>,
@@ -56,7 +57,7 @@ let derniereAnnonceHL = 0
  * full time, once the HUD is back. The join answers with the offline sum, the day's crate
  * and a goal within the same second; three writes to one slot showed the last.
  */
-export function alerterEnFile(texte: string, color: string, durationMs = 6000): void {
+export function alerterEnFile(texte: string, color: string, durationMs: number = TOAST.warning): void {
   file.push({ t: texte, c: color, ms: durationMs })
 }
 
@@ -66,8 +67,11 @@ export function alerterEnFile(texte: string, color: string, durationMs = 6000): 
   birth for the slide-in and its expiry for the fade-out; the legacy single-alert fields
   stay written so nothing else changes.
 */
-export function alerter(texte: string, color: string, durationMs = 6000): void {
+export function alerter(texte: string, color: string, durationMs: number = TOAST.warning): void {
   const now = Date.now()
+  // The same line again refreshes the one on screen instead of stacking a twin under it.
+  const twin = theftView.alertes.find((a) => a.t === texte && a.until > now)
+  if (twin !== undefined) { twin.until = now + durationMs; twin.c = color; return }
   theftView.alertes.unshift({ t: texte, c: color, ne: now, until: now + durationMs })
   if (theftView.alertes.length > 2) theftView.alertes.length = 2
   theftView.alert = texte
@@ -135,7 +139,7 @@ export function setupTheft(): void {
     const abri = d.shieldSec >= 300
       ? `\nyour base is sealed for ${d.shieldSec >= 3600 ? Math.round(d.shieldSec / 3600) + 'h' : Math.round(d.shieldSec / 60) + ' min'}`
       : ''
-    alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!${abri}`, r.color, 8000)
+    alerter(`${d.byName} STOLE YOUR ${r.name.toUpperCase()}!${abri}`, r.color, TOAST.event)
     const a = AudioSource.getMutableOrNull(sonneur)
     if (a !== null) { a.playing = false; a.playing = true }
     console.log(`[CLIENT] VOL SUBI: ${d.byName} -> ${r.name}`)
@@ -181,25 +185,25 @@ export function setupTheft(): void {
       the one with the money on it, was below the edge of a box sized for one. Two lines, the
       sum in the first, and naming the floor stays, since another storey may have nothing on it.
     */
-    const perte = d.lost > 0 ? `-${formatIncome(d.lost)} COINS  ·  ` : ''
-    const ramasser = d.lost > 0 ? '  ·  coins on the floor, up for grabs' : ''
-    alerter(`${perte}${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED\nfrozen ${Math.round(d.gelMs / 1000)}s  ·  sealed ${d.lockSec}s${ramasser}`, '#ff6b6b', 7000)
+    // The sum floats off the counter; the toast says what happened and what to do next.
+    const ramasser = d.lost > 0 ? ', your coins are on the floor' : ''
+    alerter(`${d.ownerName.toUpperCase()}'S FLOOR ${d.floor} IS DEFENDED  ·  frozen ${Math.round(d.gelMs / 1000)}s, sealed ${d.lockSec}s${ramasser}`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('sentryTriggered', (d) => {
-    const butin = d.taken > 0 ? `\nthey dropped ${formatIncome(d.taken)}, go and get it` : ''
-    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', 7000)
+    const butin = d.taken > 0 ? `  ·  they dropped ${formatIncome(d.taken)}, go get it` : ''
+    alerter(`YOUR SENTRY STOPPED ${d.byName.toUpperCase()}  ·  ${d.left} charge${d.left === 1 ? '' : 's'} left${butin}`, '#4dd2ff', TOAST.warning)
   })
   room.onMessage('sentryBought', (d) => {
-    alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges there  ·  -${formatIncome(d.cost)} coins`, '#4dd2ff', 4000)
+    alerter(`FLOOR ${d.floor} DEFENDED  ·  ${d.charges} charges there  ·  -${formatIncome(d.cost)} coins`, '#4dd2ff', TOAST.result)
   })
 
   room.onMessage('gaveItem', (d) => {
     const r = rarity(d.rarity)
-    alerter(`GIFTED TO ${d.toName.toUpperCase()}: ${r.name.toUpperCase()}`, '#8fe08f', 5000)
+    alerter(`GIFTED TO ${d.toName.toUpperCase()}: ${r.name.toUpperCase()}`, '#8fe08f', TOAST.result)
   })
   room.onMessage('wasGifted', (d) => {
     const r = rarity(d.rarity)
-    alerter(`${d.byName} LEFT YOU A ${r.name.toUpperCase()}!`, r.color, 8000)
+    alerter(`${d.byName} LEFT YOU A ${r.name.toUpperCase()}!`, r.color, TOAST.event)
   })
   room.onMessage('outbidFeed', (d) => {
     pushToFeed(`${d.byName} outbid a crate for ${d.price}`)
@@ -216,10 +220,10 @@ export function setupTheft(): void {
   })
   room.onMessage('stealFailed', (d) => {
     theftView.stealing = false
-    alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', 4000)
+    alerter(`STEAL FAILED: ${d.reason.toUpperCase()}`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('beingRobbed', (d) => {
-    alerter(`${d.byName.toUpperCase()} IS TAKING YOUR ${rarity(d.rarity).name.toUpperCase()}!`, '#ff6b6b', Math.max(3000, d.restantMs))
+    alerter(`${d.byName.toUpperCase()} IS TAKING YOUR ${rarity(d.rarity).name.toUpperCase()}!`, '#ff6b6b', Math.min(TOAST.event, Math.max(TOAST.warning, d.restantMs)))
   })
 
   room.onMessage('wallet', (d) => {
@@ -249,7 +253,7 @@ export function setupTheft(): void {
     if (d.offlineAt > 0 && d.offlineGain > 0 && d.offlineAt !== derniereAnnonceHL) {
       derniereAnnonceHL = d.offlineAt
       const min = Math.max(1, Math.round(d.offlineSec / 60))
-      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away`, '#ffd166', 9000)
+      alerterEnFile(`WELCOME BACK  ·  +${formatIncome(d.offlineGain)} coins earned in ${min} min away`, '#ffd166', TOAST.event)
     }
   })
 
@@ -259,7 +263,7 @@ export function setupTheft(): void {
       the player was handed a number about the one thing that had stayed the same, at the
       exact moment they were trying to work out what they had just paid for.
     */
-    alerter(`PRESTIGE ${d.prestige}  ·  INCOME x${d.multiplier} FOR GOOD`, '#f5a524', 6000)
+    alerter(`PRESTIGE ${d.prestige}  ·  INCOME x${d.multiplier} FOR GOOD`, '#f5a524', TOAST.event)
     console.log(`[CLIENT] prestige ${d.prestige}, income x${d.multiplier}`)
   })
 
@@ -284,7 +288,7 @@ export function setupTheft(): void {
   })
 
   room.onMessage('dailyReward', (d) => {
-    alerterEnFile(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', 7000)
+    alerterEnFile(`DAY ${d.log}/7  ·  free crate!`, '#4dd2ff', TOAST.event)
     console.log(`[CLIENT] recompense du log ${d.log}`)
   })
   /*
@@ -292,23 +296,25 @@ export function setupTheft(): void {
     fourth day read "DAY 0/7" for finishing an objective. Two events, two messages.
   */
   room.onMessage('questReward', (d) => {
-    alerterEnFile(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', 6000)
+    alerterEnFile(`GOAL DONE  ·  ${crate(d.crate).name.toUpperCase()}!`, '#4dd2ff', TOAST.event)
   })
 
   room.onMessage('floorBought', (d) => {
-    alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', 5000)
+    alerter(`FLOOR ${d.floors} UNLOCKED  ·  +6 slots`, '#4dd2ff', TOAST.result)
     console.log(`[CLIENT] floor ${d.floors} achete pour ${d.cost}`)
   })
 
   room.onMessage('sold', (d) => {
-    alerter(`+${d.gain} coins`, '#8fe08f', 2500)
+    // A sale is a quantity: it floats like every other gain, it is not read as a sentence.
+    floatAmount(d.gain, false)
+    playCash()
     console.log(`[CLIENT] sold for ${d.gain}`)
   })
 
   room.onMessage('actionRejected', (d) => {
     // Une pose refusee rend la main: le marqueur se rallume et le joueur peut choisir ailleurs.
     if (d.action === 'build') poseView.pending = false
-    alerter(d.reason.toUpperCase(), '#ff6b6b', 4000)
+    alerter(d.reason.toUpperCase(), '#ff6b6b', TOAST.warning)
     console.log(`[CLIENT] refuse (${d.action}): ${d.reason}${d.antiCheat ? ' [anti-triche]' : ''}`)
   })
 

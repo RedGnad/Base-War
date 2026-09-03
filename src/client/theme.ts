@@ -185,6 +185,27 @@ export const RAD = { card: 14, bar: 10 } as const
  * checked against the strings the game actually shows; it is an estimate, so callers keep
  * a little air, but it is an estimate that is never off by a factor of three.
  */
+/**
+ * How long a toast stays, by what it says. Three classes, and no other number anywhere.
+ *
+ * Every platform that ships a toast fixes its life system-wide and short: Android draws
+ * one for 2 s or 3.5 s, Material's snackbar for 1.5 s or 2.75 s and never two at once,
+ * Canva's guidelines default to 5 s and forbid more than 10. Ours defaulted to 6 s and ran
+ * to 9, on a plate half the width of a phone, in the third of the screen where the game is
+ * played: "they take too much room and stay too long" (mobile tester, 3 Sep).
+ *
+ *   result   what the player just did, and the screen already shows it: fused, delivered,
+ *            set, bought. Read in passing.
+ *   warning  a refusal, or something done to the player that asks for a reaction: shot,
+ *            frozen, base full. Long enough to be read twice.
+ *   event    rare and worth a beat: a boss slain, a prestige, your best item stolen. The
+ *            ceiling; nothing lives longer.
+ *
+ * Sums never ride a toast: a quantity is the floating number's job, and a figure repeated
+ * in words under it is the duplicate the tester saw.
+ */
+export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
+
 export const AVANCE = 0.52
 export function largeurTexte(t: string, taille: number): number {
   return Math.round(t.length * taille * AVANCE)

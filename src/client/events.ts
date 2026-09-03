@@ -7,6 +7,7 @@ import { room } from '../shared/messages'
 import { raidView } from './raid'
 import { alerter, alerterEnFile } from './theft'
 import { plastic, TOY } from './toy'
+import { TOAST } from './theme'
 
 /**
  * What an event looks like, which is the part that makes it one.
@@ -124,7 +125,7 @@ export function setupEvents(): void {
   room.onMessage('rushGift', (d) => {
     const caisse = CRATES[d.crateTier]?.name ?? 'crate'
     const trait = d.code >= 0 ? `  ·  your ${nomDuCode(d.code)} gained a trait` : ''
-    alerterEnFile(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', 7000)
+    alerterEnFile(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', TOAST.event)
   })
 
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a
@@ -155,7 +156,7 @@ export function setupEvents(): void {
       const minutes = Math.max(1, Math.round((until - now) / 60000))
       alerter(grand
         ? `GRAND ${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes, belt at double speed`
-        : `${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes`, mutation(theme).color, 6000)
+        : `${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes`, mutation(theme).color, TOAST.event)
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
       const look = LOOK[theme] ?? LOOK[5]

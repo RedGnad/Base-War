@@ -7,6 +7,7 @@ import { formatIncome } from '../shared/loot-table'
 import { myClientAddress, alerter, pushToFeed } from './theft'
 import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
+import { TOAST } from './theme'
 
 /**
  * Gear, client side: what the player holds, and what is lying on the floor.
@@ -93,31 +94,31 @@ export function setupGear(): void {
     setCoil(gearView.held[1] > 0)
   })
   room.onMessage('gearBought', (d) => {
-    alerter(`${GEARS[d.gear].name} IN YOUR POCKET  ·  you hold ${d.held}  ·  -${formatIncome(d.cost)}`, '#4dd2ff', 4000)
+    alerter(`${GEARS[d.gear].name} IN YOUR POCKET  ·  you hold ${d.held}  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('gearPlaced', (d) => {
-    alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left in your pocket`, '#4dd2ff', 3000)
+    alerter(`${GEARS[d.gear].name} SET  ·  ${d.held} left in your pocket`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('trapped', (d) => {
     applyFreeze(d.gelMs)
     alerter(d.mine
       ? `${d.ownerName.toUpperCase()}'S MINE  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`
-      : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', 5000)
+      : `${d.ownerName.toUpperCase()}'S TRAP  ·  frozen ${Math.round(d.gelMs / 1000)}s`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('tased', (d) => {
     applyFreeze(d.gelMs)
-    alerter(`${d.byName.toUpperCase()}'S TASER  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`, '#ff6b6b', 4000)
+    alerter(`${d.byName.toUpperCase()}'S TASER  ·  frozen ${Math.round(d.gelMs / 1000)}s, hands emptied`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('luckBought', (d) => {
-    alerter(`LUCKY CHARM  ·  x2 on every mutation for ${Math.ceil(d.sec / 60)} min  ·  -${formatIncome(d.cost)}`, '#4dd2ff', 4000)
+    alerter(`LUCKY CHARM  ·  x2 on every mutation for ${Math.ceil(d.sec / 60)} min  ·  -${formatIncome(d.cost)}`, '#4dd2ff', TOAST.result)
   })
   room.onMessage('bombed', (d) => {
     alerter(d.dropped
       ? `${d.ownerName.toUpperCase()}'S BOMB  ·  you dropped what you carried`
-      : `${d.ownerName.toUpperCase()}'S BOMB went off next to you`, '#ff6b6b', 4000)
+      : `${d.ownerName.toUpperCase()}'S BOMB went off next to you`, '#ff6b6b', TOAST.warning)
   })
   room.onMessage('trapSprung', (d) => {
-    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', 6000)
+    alerter(`YOUR TRAP CAUGHT ${d.byName.toUpperCase()}`, '#4dd2ff', TOAST.warning)
     pushToFeed(`${d.byName} stepped on a trap`)
   })
 
@@ -181,7 +182,7 @@ export function setupGear(): void {
       if (rayonsX && qui !== moi) {
         if (!vusParRayons.has(id)) {
           vusParRayons.add(id)
-          alerter('X-RAY  ·  SOMEONE NEARBY IS CLOAKED', '#4dd2ff', 3500)
+          alerter('X-RAY  ·  SOMEONE NEARBY IS CLOAKED', '#4dd2ff', TOAST.warning)
         }
         continue
       }

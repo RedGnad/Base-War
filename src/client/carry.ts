@@ -12,6 +12,7 @@ import { placeTarget } from './plots'
 import { refuseWithSound } from './box'
 import { verb } from './verb'
 import { rarityShape, handShape, clearShape, demonter, remonter, plasticDe, PEDESTAL_THICKNESS } from './toy'
+import { TOAST } from './theme'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -108,7 +109,7 @@ export function setupCarry(): void {
   room.onMessage('carryResult', (d) => {
     if (d.ok) return
     // Only the failures need saying: a success is already visible in the player's own hand.
-    alerter(d.reason.toUpperCase(), '#ffd166', 2600)
+    alerter(d.reason.toUpperCase(), '#ffd166', TOAST.warning)
   })
 
   engine.addSystem(() => {
@@ -231,7 +232,7 @@ export function placeDown(ownerId: string): void {
       refusee alors.
     */
     refuseWithSound()
-    alerter('FLOOR FULL  ·  GO UP OR MAKE ROOM', '#ffd166', 1500)
+    alerter('FLOOR FULL  ·  GO UP OR MAKE ROOM', '#ffd166', TOAST.result)
     return
   }
   void room.send('placeDown', { ownerId, slot: targetIndex })

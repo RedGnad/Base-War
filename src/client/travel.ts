@@ -5,6 +5,7 @@ import { moveTo } from './deplacer'
 import { poseView } from './pose'
 import { myClientAddress } from './theft'
 import { alerter } from './theft'
+import { TOAST } from './theme'
 
 function maBase(): Vector3 | null {
   const moi = myClientAddress()
@@ -73,7 +74,7 @@ function apparaitreChezSoi(): void {
 
 export function rentrer(): void {
   const p = maBase()
-  if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', 3000); return }
+  if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', TOAST.warning); return }
   moveTo('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
 }
 

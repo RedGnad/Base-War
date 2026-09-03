@@ -33,6 +33,7 @@ import { setupEvents } from './events'
 import { setupToy } from './toy'
 import { setupLootUi } from './loot-ui'
 import { setupIntent } from './intent'
+import { TOAST } from './theme'
 
 export const view = {
   items: 0,
@@ -189,6 +190,6 @@ function announceMoves(): void {
   engine.addSystem(() => {
     if (moveView.quand === vu || moveView.quand === 0) return
     vu = moveView.quand
-    alerter(`MOVED BY: ${moveView.quoi.toUpperCase()}  ·  ${moveView.ou}`, '#7fd3ff', 4000)
+    alerter(`MOVED BY: ${moveView.quoi.toUpperCase()}  ·  ${moveView.ou}`, '#7fd3ff', TOAST.result)
   })
 }

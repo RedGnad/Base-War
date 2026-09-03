@@ -17,6 +17,7 @@ import { formatIncome } from '../shared/loot-table'
 import { alerter } from './theft'
 import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
+import { TOAST } from './theme'
 
 /**
  * The pistol, client side.
@@ -295,16 +296,16 @@ export function setupCombat(): void {
     const qui = d.hitName.toUpperCase()
     if (d.loot > 0) combatView.lastHitAt = Date.now()
     if (d.loot === 3) {
-      alerter(`${qui} LOST THEIR GRIP, THE THEFT IS OFF`, '#8fe08f', 3200)
+      alerter(`${qui} LOST THEIR GRIP, THE THEFT IS OFF`, '#8fe08f', TOAST.result)
     } else if (d.loot === 2) {
-      alerter(`${qui} DROPPED IT, GRAB IT OFF THE GROUND`, '#ff6b6b', 3500)
+      alerter(`${qui} DROPPED IT, GRAB IT OFF THE GROUND`, '#ff6b6b', TOAST.warning)
     } else if (d.loot === 1) {
-      alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', 2600)
+      alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', TOAST.result)
     } else if (d.reason === 'hit') {
       combatView.lastHitAt = Date.now()
-      alerter(`HIT ${qui}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', 3500)
+      alerter(`HIT ${qui}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', TOAST.warning)
     } else if (d.reason === 'nothing to drop') {
-      alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', 2200)
+      alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', TOAST.result)
     }
   })
   room.onMessage('wasShot', (d) => {
@@ -312,7 +313,7 @@ export function setupCombat(): void {
     floatAmount(d.lost, true)
     playHurt()
     const s = Math.round(LOOT_OWNER_LOCK_MS / 1000)
-    alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  ${formatIncome(d.lost)} DROPPED, YOURS AGAIN IN ${s}s`, '#ff6b6b', 5000)
+    alerter(`${d.byName.toUpperCase()} SHOT YOU  ·  YOURS AGAIN IN ${s}s`, '#ff6b6b', TOAST.warning)
   })
   // Same channel as collecting: the number says how much, the coin says it landed. The toast
   // it replaces was the one the mobile tester named first as "taking the whole screen".

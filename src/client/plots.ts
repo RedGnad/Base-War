@@ -49,7 +49,7 @@ function goUpOneFloor(v: View): void {
 }
 import { steal, myClientAddress, alerter } from './theft'
 import { pickUp } from './carry'
-import { HUE } from './theme'
+import { HUE, TOAST } from './theme'
 import { moveTo } from './deplacer'
 import { isMobile } from '@dcl/sdk/platform'
 
@@ -413,7 +413,7 @@ function expulser(base: Vector3, floors: number): void {
   const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
   if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
-    alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
+    alerter('SEALED  ·  you were pushed out', '#ffd166', TOAST.warning)
   }
 }
 
@@ -756,7 +756,7 @@ export function setupPlots(): void {
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
       ) {
         if (v.ownerId.toLowerCase() !== myClientAddress()) {
-          alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', 3500)
+          alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', TOAST.warning)
           return
         }
         goUpOneFloor(v)

@@ -12,6 +12,7 @@ import { alerter } from './theft'
 import { verb } from './verb'
 import { carryView } from './carry'
 import { sendOrHold } from './intent'
+import { TOAST } from './theme'
 
 let monAdresse = ''
 
@@ -543,15 +544,15 @@ export function openCrate(crateTier: number): void {
 
   const base = myBasePosition()
   if (base === null) {
-    alerter('BUILD YOUR BASE FIRST', '#ff6b6b', 4000)
+    alerter('BUILD YOUR BASE FIRST', '#ff6b6b', TOAST.warning)
     return
   }
   if (!peutOuvrirIci()) {
-    alerter('GO TO YOUR BASE TO OPEN IT', '#ffd166', 4000)
+    alerter('GO TO YOUR BASE TO OPEN IT', '#ffd166', TOAST.warning)
     return
   }
   if (maBasePleine()) {
-    alerter('BASE FULL  ·  SELL OR BUY A FLOOR', '#ff6b6b', 4000)
+    alerter('BASE FULL  ·  SELL OR BUY A FLOOR', '#ff6b6b', TOAST.warning)
     return
   }
 
