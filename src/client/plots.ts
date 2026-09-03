@@ -2,12 +2,12 @@ import {
   TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial
 } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import { PBMaterial_PbrMaterial, TextureWrapMode,
-  engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
+import {
+  PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_COOLDOWN_MS, LOCK_FREE_MS
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { place3DText, Segment3D } from './texte3d'
@@ -47,10 +47,10 @@ function goUpOneFloor(v: View): void {
     Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
   )
 }
-import { steal, myClientAddress, alerter } from './theft'
+import { steal, myClientAddress, alerter, lockBase } from './theft'
+import { moveTo } from './deplacer'
 import { pickUp } from './carry'
 import { HUE, TOAST } from './theme'
-import { moveTo } from './deplacer'
 import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = {
@@ -404,17 +404,58 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   }
 }
 
-function expulser(base: Vector3, floors: number): void {
-  const moi = Transform.getOrNull(engine.PlayerEntity)
-  if (moi === null) return
-  const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
-  const dedans = dx <= BASE_SIDE / 2 + 0.6 && dz <= BASE_SIDE / 2 + 0.6 && moi.position.y <= floors * FLOOR_HEIGHT + 1
-  if (!dedans) return
-  const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
-  const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
-  if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
-    alerter('SEALED  ·  you were pushed out', '#ffd166', TOAST.warning)
+/*
+  The lock pad, in the owner's own base and nowhere else.
+
+  The reference locks a base from a button standing IN the base (Wikipedia: "the base has a
+  button which generates a temporary shield"): free, sixty seconds, then a wait before it
+  is ready again. Ours is the same idea as a disc on the floor two metres inside the door,
+  because the contextual button already carries every verb a base has and a fourth thumb
+  control is out of the question (owner, 4 Sep). One object, and only for the owner: nobody
+  else can press it, so nobody else needs to see it. Three states by colour alone: green
+  and breathing when ready, the shield's blue while the base is sealed, grey while it
+  recharges. Tapped like a crate on the belt.
+*/
+const PAD_READY = '#6cc72e'
+const PAD_LOCKED = '#4dabf7'
+const PAD_RECHARGING = '#4a5468'
+let lockPad: Entity | null = null
+let lockPadParent: Entity | null = null
+let lockPadState = ''
+
+function tenirLePave(racine: Entity, lockedUntil: number): void {
+  const now = Date.now()
+  if (lockPad === null || lockPadParent !== racine) {
+    if (lockPad !== null) engine.removeEntity(lockPad)
+    lockPad = engine.addEntity()
+    lockPadParent = racine
+    lockPadState = ''
+    const rt = Transform.getOrNull(racine)
+    const o = orientToBase(rt?.position.z ?? 0, 0, BASE_SIDE / 2 - 2.2)
+    Transform.create(lockPad, { parent: racine, position: Vector3.create(o.dx, 0.06, o.dz), scale: Vector3.create(1.2, 0.08, 1.2) })
+    MeshRenderer.setCylinder(lockPad, 0.5, 0.5)
+    MeshCollider.setCylinder(lockPad, 0.5, 0.5, ColliderLayer.CL_POINTER)
   }
+  const locked = lockedUntil > now
+  const recharging = !locked && now < lockedUntil + LOCK_COOLDOWN_MS
+  const state = locked ? 'locked' : recharging ? 'recharging' : 'ready'
+  if (state !== lockPadState) {
+    lockPadState = state
+    Material.setPbrMaterial(lockPad, plastic(locked ? PAD_LOCKED : recharging ? PAD_RECHARGING : PAD_READY, locked ? 2.4 : recharging ? 0.2 : 1.8))
+    PointerEvents.createOrReplace(lockPad, {
+      pointerEvents: [{
+        eventType: PointerEventType.PET_DOWN,
+        eventInfo: { button: InputAction.IA_POINTER, hoverText: locked ? 'Locked' : recharging ? 'Lock recharging' : `Lock base  ·  ${Math.round(LOCK_FREE_MS / 1000)} s` }
+      }]
+    })
+  }
+  if (state === 'ready') {
+    // Breathing, so a ready control reads as alive from across the floor.
+    const t = Transform.getMutableOrNull(lockPad)
+    const k = 1.2 + Math.sin(now / 480) * 0.08
+    if (t !== null) t.scale = Vector3.create(k, 0.08, k)
+  }
+  if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, lockPad)) lockBase()
 }
 
 /** One pedestal: a small box under the floor until something stands on it, with the steal handle. */
@@ -1042,12 +1083,19 @@ export function setupPlots(): void {
           explanation. The protection is against other people by definition, so the collider
           only exists on somebody else's shield. Ours is drawn and walked through.
         */
+        /*
+          Whoever is inside when it seals stays inside. The shield used to push intruders
+          out to the door, which made it a broom; the reference's lock is also a TRAP, the
+          owner slams it on a thief and settles the matter indoors (wiki, 4 Sep). The walls
+          already block shots between inside and outside, so the duel it sets up is fair.
+        */
         const solide = locked && !monBase
-        if (solide && !MeshCollider.has(v.door)) {
-          MeshCollider.setBox(v.door)
-          expulser(t.position, p.floors)
-        } else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
+        if (solide && !MeshCollider.has(v.door)) MeshCollider.setBox(v.door)
+        else if (!solide && MeshCollider.has(v.door)) MeshCollider.deleteFrom(v.door)
       }
+
+      // The lock pad: the one control of the base that is a thing on its floor.
+      if (monBase) tenirLePave(v.racine, p.lockedUntil)
 
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces
