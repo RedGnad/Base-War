@@ -151,6 +151,11 @@ export const Pouce = (props: {
   frames?: [string, string]
   /** How often the swing plays, in ms. */
   periodMs?: number
+  /**
+   * The icon swells and settles once per period: the cue for "this is the one to press".
+   * Ignored when frames are given, since a swing already is that cue.
+   */
+  pulse?: boolean
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -161,9 +166,16 @@ export const Pouce = (props: {
     period is the owner's call and comes in as a prop.
   */
   let icone = props.icone
+  const periode = props.periodMs ?? 800
   if (props.frames !== undefined) {
-    const t = Date.now() % (props.periodMs ?? 800)
+    const t = Date.now() % periode
     icone = t < 80 ? props.frames[0] : t < 140 ? props.frames[1] : props.icone
+  }
+  // A 300 ms swell to 1.12 at the start of each period, on the icon alone; the plate holds.
+  let gonfle = 1
+  if (props.pulse === true && props.frames === undefined) {
+    const t = Date.now() % periode
+    if (t < 300) gonfle = 1 + 0.12 * Math.sin(Math.PI * t / 300)
   }
   const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
@@ -185,7 +197,7 @@ export const Pouce = (props: {
       onMouseDown={() => { presse.set(cle, Date.now()); props.onClick?.() }}
     >
       <UiEntity
-        uiTransform={{ width: Math.round(d * 0.56), height: Math.round(d * 0.56), positionType: 'absolute' }}
+        uiTransform={{ width: Math.round(d * 0.56 * gonfle), height: Math.round(d * 0.56 * gonfle), positionType: 'absolute' }}
         uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
       {props.badge === true && (
         <UiEntity

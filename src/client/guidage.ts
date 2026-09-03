@@ -1,6 +1,6 @@
 import { engine, Transform, MeshRenderer, Material, Entity } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
+import { Plot, CENTER, BELT_HEIGHT, BASE_SIDE, freeSpotNear } from '../shared/schemas'
 import { plastic } from './toy'
 import { tutoView } from './tutorial'
 import { cratePosition } from './box'
@@ -14,8 +14,7 @@ import { myClientAddress } from './theft'
  * says "I don't know what to do". The panel says why, the central button says what to
  * press; this is the missing third voice, WHERE. One gold column of light and a bobbing
  * chevron over the current step's target: the crate to smash, the belt to buy from, the
- * neighbour to rob. Steps whose target is a button (placing the base, collecting) show no
- * beacon, because pointing at the whole world teaches nothing.
+ * neighbour to rob, the square your base can take, your own base when coins wait there.
  *
  * Two entities, emissive plastic, no light, no collider, no alpha: the phone budget's idea
  * of free. Hidden by scale, parked underground, like every other transient in the scene.
@@ -25,19 +24,41 @@ let anneau: Entity | null = null
 let fleche: Entity | null = null
 let filage = 0
 
+/** Where my own base stands, or null before it does. */
+function maBase(): Vector3 | null {
+  const moi = myClientAddress()
+  for (const [e, p] of engine.getEntitiesWith(Plot)) {
+    if (p.ownerId.toLowerCase() !== moi) continue
+    const t = Transform.getOrNull(e)
+    if (t !== null) return Vector3.create(t.position.x, 0, t.position.z)
+  }
+  return null
+}
+
 function cible(): Vector3 | null {
   if (tutoView.etape >= tutoView.total) return null
+  if (tutoView.etape === 0) {
+    /*
+      The first step pointed at nothing, on the theory that its target was a button. But
+      "place your base" is also a WHERE: the nearest square the rule would accept, computed
+      with the same search the server runs, so the beacon stands on ground the player can
+      actually take. Five times a second, on a grid walk: cheap.
+    */
+    const ici = Transform.getOrNull(engine.PlayerEntity)
+    if (ici === null) return null
+    const autres: Array<{ x: number; z: number }> = []
+    for (const [e] of engine.getEntitiesWith(Plot)) {
+      const t = Transform.getOrNull(e)
+      if (t !== null) autres.push({ x: t.position.x, z: t.position.z })
+    }
+    const spot = freeSpotNear(ici.position.x, ici.position.z, BASE_SIDE, autres)
+    return spot === null ? null : Vector3.create(spot.x, 0, spot.z)
+  }
+  if (tutoView.etape === 2) return maBase()
   if (tutoView.etape === 1) {
     // The crate being opened; before it stands, home, where the OPEN button will put it.
     const caisse = cratePosition()
-    if (caisse !== null) return caisse
-    const moi = myClientAddress()
-    for (const [e, p] of engine.getEntitiesWith(Plot)) {
-      if (p.ownerId.toLowerCase() !== moi) continue
-      const t = Transform.getOrNull(e)
-      if (t !== null) return Vector3.create(t.position.x, 0, t.position.z)
-    }
-    return null
+    return caisse !== null ? caisse : maBase()
   }
   if (tutoView.etape === 3) return Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z)
   if (tutoView.etape === 4) {

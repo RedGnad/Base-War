@@ -32,7 +32,7 @@ import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { verb } from './client/verb'
 import { volView } from './client/locomotion'
-import { tutoView, STEP_TEXTS, giftView } from './client/tutorial'
+import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
 
@@ -181,7 +181,9 @@ const SCROLLBAR_COVER_W = 26
  * pixels apart, which reads as one panel that has split rather than two panels. One place
  * decides, and it leaves a real gap.
  */
-const COIN_H = [52, 52, 40, 62]
+const COIN_H = [64, 52, 40, 62]
+/** The step chip grows a line once its hint is due. */
+const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
 const FIL_LIGNE = 26
 const COIN_GAP = STACK_GAP
@@ -193,7 +195,7 @@ function coinDroit(rang: number): number {
     nextBigText() !== null
   ]
   let y = BAND.top
-  for (let i = 0; i < rang; i++) if (present[i] === true) y += COIN_H[i] + COIN_GAP
+  for (let i = 0; i < rang; i++) if (present[i] === true) y += (i === 0 ? stepChipH() : COIN_H[i]) + COIN_GAP
   return y
 }
 
@@ -516,6 +518,7 @@ const PhoneControls = () => {
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={POUCE_GROS}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           frames={!combatView.aiming && a.icon === ico('build') ? BUILD_FRAMES : undefined}
+          pulse={!combatView.aiming && stepExpects(a.id)}
           periodMs={BUILD_SWING_MS} />
       )}
     </UiEntity>
@@ -1245,23 +1248,40 @@ const uiComponent = () => {
       It is also no longer part of the stacked top band, since it now occupies a corner
       nothing else competes for.
     */}
+    {/*
+      The step chip: the verb's own icon, the title at reading size, and the count kept
+      small. It was a caption and a label in a corner, which testers did not read (owner,
+      3 Sep). The icon is the one the contextual button will show, so what the corner says
+      and what the thumb presses are the same picture. The help sentence joins after twelve
+      seconds on the same step, and only then.
+    */}
     {hud() && tutoView.etape < tutoView.total && (
       <UiEntity
         uiTransform={{
-          height: 52, positionType: 'absolute', padding: { left: 20, right: 20 },
+          height: stepChipH(), positionType: 'absolute', padding: { left: 16, right: 20 },
           position: { top: coinDroit(0), right: rightCornerMargin() },
-          flexDirection: 'row', alignItems: 'center'
+          flexDirection: 'column', justifyContent: 'center'
         }}
         uiBackground={SKIN.panel}
       >
-        <Label
-          value={`STEP ${tutoView.etape + 1}/${tutoView.total}`}
-          fontSize={TYPE.caption} color={C.dim}
-          uiTransform={{ height: 32, margin: { right: 14 } }} textWrap="nowrap" />
-        <Label
-          value={STEP_TEXTS[tutoView.etape]?.titre ?? ''}
-          fontSize={TYPE.label} color={C.bonus}
-          uiTransform={{ height: 32 }} textWrap="nowrap" />
+        <UiEntity uiTransform={{ height: 48, flexDirection: 'row', alignItems: 'center' }}>
+          <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 12 } }}
+            uiBackground={{ texture: { src: `assets/ui/icon-${STEP_TEXTS[tutoView.etape]?.verb ?? 'build'}.png` }, textureMode: 'stretch' }} />
+          <Label
+            value={`${tutoView.etape + 1}/${tutoView.total}`}
+            fontSize={TYPE.caption} color={C.dim}
+            uiTransform={{ height: 32, margin: { right: 12 } }} textWrap="nowrap" />
+          <Label
+            value={STEP_TEXTS[tutoView.etape]?.titre ?? ''}
+            fontSize={TYPE.body} color={C.bonus}
+            uiTransform={{ height: 40 }} textWrap="nowrap" />
+        </UiEntity>
+        {stepHintDue() && (
+          <Label
+            value={STEP_TEXTS[tutoView.etape]?.aide ?? ''}
+            fontSize={TYPE.caption} color={C.name}
+            uiTransform={{ height: 30 }} textWrap="nowrap" />
+        )}
       </UiEntity>
     )}
 
