@@ -252,6 +252,16 @@ const skin = (name: string) => ({
   textureSlices: SLICE
 })
 
+/*
+  A disc is scaled whole. Nine-slicing a circle keeps its four corners and stretches the
+  straight middle, which is a stadium, not a disc; `stretch` keeps it round at any size.
+*/
+const disc = (name: string) => ({
+  color: Color4.White(),
+  texture: { src: `assets/ui/${name}-disc.png` },
+  textureMode: 'stretch' as const
+})
+
 export const SKIN = {
   panel: skin('panel'),
   card: skin('card'),
@@ -260,7 +270,10 @@ export const SKIN = {
   secondary: skin('secondary'),
   danger: skin('danger'),
   success: skin('success'),
-  disabled: skin('disabled')
+  disabled: skin('disabled'),
+  /* The thumb buttons: the same two palettes, cut round. */
+  primaryDisc: disc('primary'),
+  secondaryDisc: disc('secondary')
 }
 
 /** The skin a control wears, picked from the same condition that picks its variant. */

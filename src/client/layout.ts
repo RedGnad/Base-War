@@ -55,6 +55,29 @@ export function clientEdges(): { left: number; right: number } {
   return { left: info.interactableArea.left / scale, right: info.interactableArea.right / scale }
 }
 
+/**
+ * The client's own thumb pad, measured, so ours lands where a player's thumb already goes.
+ *
+ * Measured on a screenshot of the mobile client at 2412x1080 (owner, 3 Sep): the jump disc
+ * is 168 px across with its centre 253 px from the right edge and 160 px from the bottom;
+ * the four satellites (hand, E, F, +) are 87 px across on an orbit of 205 px around it.
+ * The phone renders our interface on a 1600x720 canvas, so the canvas scale there is 1.5
+ * and every number below is the measurement divided by it. The earlier arc kept a Godot
+ * add-on's proportions at a size "chosen for a thumb", which came out one and a half times
+ * the native pad and sat a full button further left (mobile tester, 3 Sep).
+ */
+export const THUMB = {
+  /** Diameter of the central button, the one pressed every ten seconds. */
+  big: 112,
+  /** Diameter of a satellite. */
+  small: 58,
+  /** Distance from the central button's centre to a satellite's centre. */
+  orbit: 137,
+  /** The central button's outer edges, from the right and bottom edges of the canvas. */
+  right: 113,
+  bottom: 50
+} as const
+
 /** The three bands, as offsets from the top and the bottom of the reference screen. */
 export const BAND = {
   /** Non-actionable messages: the counter, the step line, the belt announcement. */

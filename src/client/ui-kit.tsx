@@ -148,7 +148,12 @@ export const Pouce = (props: {
   const d = props.taille
   const cle = `pouce|${props.icone}`
   const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
-  const fond = props.primaire === true ? SKIN.primary : SKIN.secondary
+  /*
+    The disc, not the plate. The nine-sliced plate passed for round at 86 px and showed
+    its flat sides at 168: the one orange square among the client's round controls
+    (mobile tester's photo, 3 Sep).
+  */
+  const fond = props.primaire === true ? SKIN.primaryDisc : SKIN.secondaryDisc
   return (
     <UiEntity
       uiTransform={{

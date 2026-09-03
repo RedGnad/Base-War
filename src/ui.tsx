@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -434,7 +434,13 @@ const PhoneControls = () => {
     <UiEntity
       uiTransform={{
         width: ARC_BOITE, height: ARC_BOITE, positionType: 'absolute',
-        position: { bottom: BAND.bottom, right: clientEdges().right + 16 }
+        /*
+          Where the client puts its own pad, not where the client says its pad is. The
+          interactable area it reports reserves the whole native control strip, and adding
+          our margin to that pushed the arc a full button left of where the thumb rests.
+          The native controls are hidden here, so the strip is ours to stand in.
+        */
+        position: { bottom: THUMB.bottom, right: THUMB.right }
       }}
     >
       {/* Sa propre ligne au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
@@ -483,15 +489,12 @@ const DesktopControls = () => {
 }
 
 /*
-  Les proportions du pave du client, a notre echelle.
-
-  Chez lui: central 156, satellite 80, orbite 167. Les rapports 80/156 et 167/156 sont ce qui
-  donne a l'arc sa forme, et ils sont conserves tels quels; seule la taille du central est la
-  notre, choisie pour un pouce.
+  The pad's numbers live in layout.ts as THUMB, measured on the client's own pad. The arc
+  below only decides where the three satellites go on that orbit.
 */
-const POUCE_GROS = 168
-const POUCE = Math.round(POUCE_GROS * 80 / 156)
-const ORBITE = POUCE_GROS * 167 / 156
+const POUCE_GROS = THUMB.big
+const POUCE = THUMB.small
+const ORBITE = THUMB.orbit
 
 /** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule. */
 const ARC = ((): Array<{ droite: number; bas: number }> => {
@@ -519,6 +522,14 @@ const ARC_BOITE = POUCE_GROS + Math.max(...ARC.map((p) => Math.max(p.droite, p.b
 
 /** A handset, or the desktop preview asked to measure like one. */
 function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
+
+/*
+  The top-right column sits against the edge on a phone. That corner is empty there (the
+  client's four icons are top LEFT on a handset, see COIN_HAUT_DROIT), and a column held
+  96 px in from the edge read as misplaced next to the flush native controls (mobile
+  tester, 3 Sep). The desktop keeps the margin for the client's two corner icons.
+*/
+function rightCornerMargin(): number { return phone() ? 20 : COIN_HAUT_DROIT }
 
 const PANNEAU = C.plate
 const BTN_H = TAP.height
@@ -1172,7 +1183,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           height: 52, positionType: 'absolute', padding: { left: 20, right: 20 },
-          position: { top: coinDroit(0), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(0), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -1321,7 +1332,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
-          position: { top: coinDroit(2), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(2), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
@@ -1335,7 +1346,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           width: 320, height: 52, positionType: 'absolute',
-          position: { top: coinDroit(1), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(1), right: rightCornerMargin() },
           flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
         }}
         uiBackground={SKIN.panel}
@@ -1371,7 +1382,7 @@ const uiComponent = () => {
             three, and centring lines of different lengths turned a list into a shape.
           */
           width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
-          position: { top: coinDroit(3), right: COIN_HAUT_DROIT },
+          position: { top: coinDroit(3), right: rightCornerMargin() },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
         uiBackground={{ color: SURF.voile }}
