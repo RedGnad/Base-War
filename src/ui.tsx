@@ -19,7 +19,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
-import { bannerLine, nextBigText } from './client/events'
+import { bannerLine, nextBigText, rushChip } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
@@ -181,7 +181,7 @@ const SCROLLBAR_COVER_W = 26
  * pixels apart, which reads as one panel that has split rather than two panels. One place
  * decides, and it leaves a real gap.
  */
-const COIN_H = [64, 52, 40, 62]
+const COIN_H = [64, 40, 52, 40, 62]
 /** The step chip grows a line once its hint is due. */
 const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
@@ -191,6 +191,7 @@ const COIN_GAP = STACK_GAP
 function coinDroit(rang: number): number {
   const present = [
     tutoView.etape < tutoView.total,
+    rushChip() !== null,
     giftView.leftS > 0,
     nextBigText() !== null
   ]
@@ -1297,6 +1298,22 @@ const uiComponent = () => {
     )}
 
 
+    {/* The rush running now: a standing fact for minutes, so it lives with the other standing facts. */}
+    {hud() && rushChip() !== null && (
+      <UiEntity
+        uiTransform={{
+          height: COIN_H[1], positionType: 'absolute', padding: { left: 16, right: 16 },
+          position: { top: coinDroit(1), right: rightCornerMargin() },
+          flexDirection: 'row', alignItems: 'center'
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label value={rushChip()?.text ?? ''} fontSize={TYPE.caption}
+          color={Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff')}
+          uiTransform={{ height: COIN_H[1] }} textAlign="middle-center" textWrap="nowrap" />
+      </UiEntity>
+    )}
+
     {/*
       The counter, with nothing behind it.
 
@@ -1429,13 +1446,14 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           height: 40, positionType: 'absolute', padding: { left: 16, right: 16 },
-          position: { top: coinDroit(2), right: rightCornerMargin() },
+          position: { top: coinDroit(3), right: rightCornerMargin() },
           flexDirection: 'row', alignItems: 'center'
         }}
         uiBackground={SKIN.panel}
       >
         <Label value={nextBigText() ?? ''} fontSize={TYPE.caption}
-          color={Color4.fromHexString('#ffd166ff')} textWrap="nowrap" />
+          color={Color4.fromHexString('#ffd166ff')}
+          uiTransform={{ height: 40 }} textAlign="middle-center" textWrap="nowrap" />
       </UiEntity>
     )}
 
@@ -1443,7 +1461,7 @@ const uiComponent = () => {
       <UiEntity
         uiTransform={{
           width: 320, height: 52, positionType: 'absolute',
-          position: { top: coinDroit(1), right: rightCornerMargin() },
+          position: { top: coinDroit(2), right: rightCornerMargin() },
           flexDirection: 'column', padding: { left: 14, right: 14, top: 6 }
         }}
         uiBackground={SKIN.panel}
@@ -1479,7 +1497,7 @@ const uiComponent = () => {
             three, and centring lines of different lengths turned a list into a shape.
           */
           width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
-          position: { top: coinDroit(3), right: rightCornerMargin() },
+          position: { top: coinDroit(4), right: rightCornerMargin() },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
         uiBackground={{ color: SURF.voile }}
@@ -1517,7 +1535,8 @@ const uiComponent = () => {
           <Label
             value={bannerLine()?.text ?? ''}
             fontSize={TYPE.label}
-            color={Color4.fromHexString((bannerLine()?.color ?? '#ffffff') + 'ff')} textWrap="nowrap" />
+            color={Color4.fromHexString((bannerLine()?.color ?? '#ffffff') + 'ff')}
+            uiTransform={{ width: '100%', height: 64 }} textAlign="middle-center" textWrap="nowrap" />
         </UiEntity>
       </Centre>
     )}

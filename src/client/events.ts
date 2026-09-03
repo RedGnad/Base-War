@@ -26,7 +26,17 @@ export const eventView = { theme: -1, name: '', color: '#ffffff', leftS: 0, gran
 
 const mmss = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-/** The band's one line: the rush RUNNING, or nothing. A rush lasts minutes and earns the centre. */
+/**
+ * The band's one line: the raid boss, or nothing.
+
+ * The running rush used to sit here too, for its whole span: a plate in the top centre for
+ * three to five minutes, wider than its words and with the words off their middle (mobile
+ * tester's screenshot, 3 Sep). The conveyance this file follows says a timer, once
+ * announced in the player's gaze, moves to a PERMANENT location; and the rest of this HUD
+ * says where permanent things go: the corner column, with the free-crate clock and the
+ * countdown to the next grand rush, at caption size. The centre stays for the raid, which
+ * is a fight with a health figure and a direction, not a clock.
+ */
 export function bannerLine(): { text: string; color: string } | null {
   if (raidView.active) {
     // The distance is what turns the banner into a direction: the beam says which way, this
@@ -34,8 +44,13 @@ export function bannerLine(): { text: string; color: string } | null {
     const loin = raidView.distance > 0 ? `   ·   ${raidView.distance} m` : ''
     return { text: `RAID BOSS   ${mmss(raidView.leftS)}   ·   ${Math.round((raidView.hp / raidView.hpMax) * 100)}%${loin}${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
   }
+  return null
+}
+
+/** The rush now running, for the corner column: its name, in its colour, and the time left. */
+export function rushChip(): { text: string; color: string } | null {
   if (eventView.theme < 0) return null
-  return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}   ${mmss(eventView.leftS)}`, color: eventView.color }
+  return { text: `${eventView.grand ? 'GRAND ' : ''}${eventView.name}  ${mmss(eventView.leftS)}`, color: eventView.color }
 }
 
 /**
