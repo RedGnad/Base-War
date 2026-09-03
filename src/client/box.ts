@@ -7,7 +7,7 @@ import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { Plot, SLOTS_PER_FLOOR, OPEN_RANGE, occupe } from '../shared/schemas'
-import { rarity, crate, mutation, itemName, itemColor } from '../shared/loot-table'
+import { rarity, crate, mutation, itemName, itemColor, rarityOf, mutationDe } from '../shared/loot-table'
 import { alerter } from './theft'
 import { verbe } from './verbe'
 import { carryView } from './carry'
@@ -49,6 +49,15 @@ export const boxView = {
   progres: 0,
   /** When the strip stopped, for the pop and the flash the interface draws from it. */
   gagneA: 0,
+  /*
+    Une revelation SANS roulette: la fusion n'a pas tire au sort, elle a produit.
+
+    La roulette est le tambour d'une caisse, et elle se dessine des que `resultat` est pose.
+    La fusion reutilise la meme revelation, qui est deja le moment "vous avez obtenu quelque
+    chose" du jeu, mais elle arrive sans tirage: montrer une bande qui s'arrete mentirait sur
+    ce qui vient de se passer.
+  */
+  sansRoulette: false,
   /** The last card that crossed the line, so the tick plays once per card. */
   dernierPas: 0,
   resultat: -1,
@@ -197,6 +206,7 @@ export function setupBox(): void {
         boxView.phase = 'land'
         boxView.phaseJusqua = Date.now() + 5000
         boxView.progres = REEL_WIN
+        boxView.sansRoulette = false
         boxView.gagneA = Date.now()
         jouer(sonReveal)
         // Long enough to read the name once, gone before it outstays the win: the
@@ -252,6 +262,24 @@ export function frapper(): void {
 }
 
 let sonRefus: Entity
+/**
+ * Montre la revelation pour un code deja decide, sans tirage: la sortie du fuser.
+ *
+ * Le fuser n'annoncait son resultat que par une ligne de texte de cinq secondes. C'est le
+ * seul acte DETERMINISTE du jeu, celui qu'on paie plus cher que le hasard justement pour
+ * l'obtenir, et il n'avait aucun moment. La revelation des caisses existe deja, elle est
+ * centree, elle a son rayon, sa pop et son son: la reutiliser donne au fuser son evenement
+ * sans une seule interface de plus (proprietaire, 3 Sep).
+ */
+export function revelerPiece(code: number): void {
+  boxView.sansRoulette = true
+  boxView.resultat = rarityOf(code)
+  boxView.resultatMutation = mutationDe(code)
+  boxView.gagneA = Date.now()
+  boxView.resultatJusqua = Date.now() + 2600
+  jouer(sonReveal)
+}
+
 export function refuserAuSon(): void { jouer(sonRefus) }
 
 let lastPosition: Vector3 | null = null

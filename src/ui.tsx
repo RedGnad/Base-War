@@ -1398,7 +1398,7 @@ const uiComponent = () => {
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
-    {hud() && (boxView.roule || boxView.resultat >= 0) && Roulette()}
+    {hud() && !boxView.sansRoulette && (boxView.roule || boxView.resultat >= 0) && Roulette()}
     {hud() && !boxView.roule && boxView.resultat >= 0 && Revelation()}
 
 

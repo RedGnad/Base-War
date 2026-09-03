@@ -1,5 +1,6 @@
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, LightSource, ColliderLayer
+  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, LightSource, ColliderLayer,
+  Tween, EasingFunction
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Fusion, FUSION_POS, FUSION_NEEDS } from '../shared/schemas'
@@ -8,6 +9,7 @@ import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/l
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
 import { alerter, pushToFeed } from './theft'
+import { revelerPiece } from './box'
 import { openFusion } from './fusion-ui'
 
 /**
@@ -79,7 +81,10 @@ export function setupFusion(): void {
   room.onMessage('fusionState', (d) => {
     fusionView.codes = [...d.codes]
     if (d.made >= 0) {
-      alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', 5000)
+      // La meme revelation que pour une caisse: c'est deja le moment "vous avez obtenu
+      // quelque chose", et le fuser n'en avait aucun. Le texte reste, plus court.
+      revelerPiece(d.made)
+      alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', 3200)
     }
   })
   room.onMessage('fused', (d) => {
@@ -87,6 +92,17 @@ export function setupFusion(): void {
   })
 
   let dessine = ''
+  /*
+    Le dome ENCAISSE le coup, au lieu de s'allumer doucement.
+
+    Il brillait quarante-cinq secondes apres une fusion, ce qui raconte "il s'est passe quelque
+    chose ici recemment", pas "ca vient d'arriver". Le fuser est le seul acte deterministe du
+    jeu, celui qu'on paie plus cher que le hasard pour l'obtenir, et il n'avait aucun instant.
+    Une secousse elastique d'une demi-seconde sur une entite qui existe deja, declenchee sur le
+    changement de `atMs`, donne l'impact sans un objet ni une interface de plus.
+  */
+  let dernierCoup = 0
+  const DOME = Vector3.create(1.3, 1.3, 1.3)
   engine.addSystem(() => {
     // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
     if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, tambour)) {
@@ -102,6 +118,16 @@ export function setupFusion(): void {
     const rareteMienne = mienne > 0 ? rarityOf(fusionView.codes[0]) : -1
     // One string for everything drawn, rewritten only when it changes: a material or a light
     // written every frame is a network update every frame.
+    if (f !== null && f.atMs > dernierCoup && f.lastCode >= 0) {
+      dernierCoup = f.atMs
+      // Une seule secousse, sans sequence: elle part large et revient a sa taille.
+      Tween.createOrReplace(dome, {
+        mode: Tween.Mode.Scale({ start: Vector3.create(DOME.x * 1.55, DOME.y * 1.55, DOME.z * 1.55), end: DOME }),
+        duration: 520,
+        easingFunction: EasingFunction.EF_EASEOUTELASTIC
+      })
+    }
+
     const cle = `${mienne}|${rareteMienne}|${brille ? f!.lastCode : -1}|${f?.count ?? 0}|${f?.rarity ?? -1}|${f?.byName ?? ''}`
     if (cle === dessine) return
     dessine = cle
