@@ -120,8 +120,9 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         <Puce width={187} height={TAP.menu}>
           <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 8 }, opacity: 0.4 }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
+          {/* Never wrapped: at 80 wide the renderer broke it into LOCKE and D (owner, 3 Sep). */}
           <Label value="LOCKED" fontSize={TYPE.caption} color={Color4.fromHexString('#8a94a6ff')}
-            uiTransform={{ width: 80, height: 44 }} textAlign="middle-left" />
+            uiTransform={{ width: 110, height: 44 }} textAlign="middle-left" textWrap="nowrap" />
         </Puce>
       )}
       </UiEntity>

@@ -462,6 +462,30 @@ const VERBES = [
   ['outbid', () => verbeIcon('outbid')]
 ]
 
+/**
+ * The close cross: two bars at forty-five degrees, centred by construction.
+ *
+ * The dialogs closed on a text "X" set through the bitmap font, and on a phone the glyph
+ * sat off the middle of its plate (owner, 3 Sep). A drawn cross has no baseline, no side
+ * bearing and no advance: it is symmetric about the centre of its own image, so centring
+ * the image centres the cross.
+ */
+function closeIcon() {
+  const px = Buffer.alloc(SIZE * SIZE * 4)
+  const S = SIZE
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const fx = x + 0.5, fy = y + 0.5
+      let a = tilted(fx, fy, S * 0.5, S * 0.5, S * 0.30, S * 0.06, S * 0.05, 45)
+      a = Math.max(a, tilted(fx, fy, S * 0.5, S * 0.5, S * 0.30, S * 0.06, S * 0.05, -45))
+      const o = (y * S + x) * 4
+      px[o] = ENCRE[0]; px[o + 1] = ENCRE[1]; px[o + 2] = ENCRE[2]
+      px[o + 3] = Math.round(Math.min(1, a) * 255)
+    }
+  }
+  return png(S, S, px)
+}
+
 const fichiers = []
 // Les satellites restent blancs quoi qu'il arrive: ils sont sur la plaque BLEUE, ou le blanc
 // mesure 3,76 contre 1, au-dessus du plancher de 3 que ce depot s'impose dans theme.ts.
@@ -470,6 +494,7 @@ fichiers.push(['icon-menu.png', menuIcon(false)])
 fichiers.push(['icon-menu-alert.png', menuIcon(true)])
 fichiers.push(['icon-gun.png', gunIcon(false)])
 fichiers.push(['icon-holster.png', gunIcon(true)])
+fichiers.push(['ui-close.png', closeIcon()])
 // Les verbes du bouton contextuel, dans les deux encres. Le marteau de BUILD n'est pas ici:
 // The BUILD glyph is not drawn here: see tools/ui/build-mallet-icon.py.
 for (const [nom, dessin] of VERBES) {

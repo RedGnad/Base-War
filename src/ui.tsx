@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
+import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -280,7 +280,7 @@ const MenuWindow = () => {
             badge={o === 'goals' && questsToClaim() > 0}
             label={o.toUpperCase()} />
         ))}
-        <Btn label="X" width={fermer} onClick={closeMenu} />
+        <CloseBtn size={fermer} onClick={closeMenu} />
       </UiEntity>
 
       <UiEntity
@@ -379,7 +379,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]

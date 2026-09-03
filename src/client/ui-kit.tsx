@@ -210,6 +210,36 @@ export const Pouce = (props: {
   )
 }
 
+/**
+ * The close control of a dialog: a red plate and a drawn cross.
+ *
+ * It was a blue plate with a text "X" through the bitmap font, which on a phone sat off
+ * centre and read as one more tab (owner, 3 Sep). Red is the one value this interface
+ * reserves for leaving and refusing, so the eye finds the way out without reading; and
+ * the cross is an image, symmetric about its own centre, so centring the image is enough.
+ */
+export const CloseBtn = (props: { size: number; onClick: () => void }) => {
+  const cle = `close|${props.size}`
+  const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
+  return (
+    <UiEntity
+      uiTransform={{
+        width: props.size, height: TAP.height,
+        justifyContent: 'center', alignItems: 'center', pointerFilter: 'block'
+      }}
+      uiBackground={SKIN.danger}
+      onMouseDown={() => { presse.set(cle, Date.now()); tic(); props.onClick() }}
+    >
+      <UiEntity
+        uiTransform={{
+          width: Math.round(TAP.height * 0.40), height: Math.round(TAP.height * 0.40),
+          margin: { top: enfonce ? 3 : 0 }
+        }}
+        uiBackground={{ texture: { src: 'assets/ui/ui-close.png' }, textureMode: 'stretch' }} />
+    </UiEntity>
+  )
+}
+
 export const Btn = (props: {
   key?: string
   label: string
