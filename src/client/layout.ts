@@ -78,6 +78,17 @@ export const THUMB = {
   bottom: 50
 } as const
 
+/**
+ * The air between two stacked plates, everywhere a stack is drawn.
+ *
+ * The toasts, the corner column and the notices each carried their own number (8, 14, 10),
+ * and on the tester's phone the plates touched (3 Sep). The reference rule is Material's
+ * 8 dp grid: at least 8 dp between components. A phone at 2412x1080 renders our canvas at
+ * 1.5 px per unit and lays about 2.6 px per dp, so 8 dp is 14 of our units; 16 clears it
+ * with the plates' outlines counted in.
+ */
+export const STACK_GAP = 16
+
 /** The three bands, as offsets from the top and the bottom of the reference screen. */
 export const BAND = {
   /** Non-actionable messages: the counter, the step line, the belt announcement. */
@@ -119,7 +130,7 @@ export function topBand(blocks: Array<[string, boolean, number]>): Record<string
   for (const [name, present, height] of blocks) {
     const room = y + height <= BAND.top + BAND.topHeight
     out[name] = room ? y : -1
-    if (present && room) y += height + 8
+    if (present && room) y += height + STACK_GAP
   }
   return out
 }
@@ -162,7 +173,7 @@ export function noticeBand(blocks: Array<[string, boolean, number]>): Record<str
   let y = row(2)
   for (const [name, present, height] of blocks) {
     out[name] = y
-    if (present) y += height + 10
+    if (present) y += height + STACK_GAP
   }
   return out
 }

@@ -144,9 +144,27 @@ export const Pouce = (props: {
   /** Sa place sur l'arc, en pixels depuis le coin bas droit du pave. */
   droite?: number
   bas?: number
+  /**
+   * Two extra poses shown in turn at the start of every period, the icon itself being the
+   * pose at rest: [raised, halfway]. A texture swap, so it costs the same as a still icon.
+   */
+  frames?: [string, string]
+  /** How often the swing plays, in ms. */
+  periodMs?: number
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
+  /*
+    The swing: raised for the first 80 ms of the period, halfway for the next 60, then at
+    rest. No source fixes the cadence of an idle cue (searched 3 Sep: the references give
+    100 to 200 ms for a press and 200 to 400 for a transition, nothing for a loop), so the
+    period is the owner's call and comes in as a prop.
+  */
+  let icone = props.icone
+  if (props.frames !== undefined) {
+    const t = Date.now() % (props.periodMs ?? 800)
+    icone = t < 80 ? props.frames[0] : t < 140 ? props.frames[1] : props.icone
+  }
   const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
     The disc, not the plate. The nine-sliced plate passed for round at 86 px and showed
@@ -168,7 +186,7 @@ export const Pouce = (props: {
     >
       <UiEntity
         uiTransform={{ width: Math.round(d * 0.56), height: Math.round(d * 0.56), positionType: 'absolute' }}
-        uiBackground={{ texture: { src: `assets/ui/${props.icone}.png` }, textureMode: 'stretch' }} />
+        uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
       {props.badge === true && (
         <UiEntity
           uiTransform={{

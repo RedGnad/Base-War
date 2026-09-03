@@ -471,7 +471,7 @@ fichiers.push(['icon-menu-alert.png', menuIcon(true)])
 fichiers.push(['icon-gun.png', gunIcon(false)])
 fichiers.push(['icon-holster.png', gunIcon(true)])
 // Les verbes du bouton contextuel, dans les deux encres. Le marteau de BUILD n'est pas ici:
-// il vient d'un SVG, voir build-hammer-icon.py.
+// The BUILD glyph is not drawn here: see tools/ui/build-mallet-icon.py.
 for (const [nom, dessin] of VERBES) {
   ENCRE = BLANC
   fichiers.push([`icon-${nom}.png`, dessin()])

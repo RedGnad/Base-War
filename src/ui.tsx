@@ -10,7 +10,7 @@ import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
 import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
-import { strip, row, topBand, noticeBand, active, BAND, THUMB, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
+import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
 import { Btn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
@@ -175,7 +175,7 @@ const MENU_W = 1088
 const COIN_H = [52, 52, 40, 62]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
 const FIL_LIGNE = 26
-const COIN_GAP = 14
+const COIN_GAP = STACK_GAP
 
 function coinDroit(rang: number): number {
   const present = [
@@ -374,7 +374,7 @@ const PRECHAUFFE = [
   // Les trois boutons satellites, puis les quatorze verbes du bouton contextuel dans la
   // famille active, quelle qu'elle soit: voir `client/icones.ts`.
   'icon-gun', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu',
-  ...ICONES_VERBES,
+  ...ICONES_VERBES, `${ico('build')}-raised`, `${ico('build')}-mid`,
   // The interface icon family and the reveal's ray fan. A texture named for the first time
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
@@ -462,7 +462,9 @@ const PhoneControls = () => {
         badge={questsToClaim() > 0} onClick={basculerMenu} />
       {a !== null && (
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={POUCE_GROS}
-          bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]} />
+          bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
+          frames={!combatView.aiming && a.icon === ico('build') ? BUILD_FRAMES : undefined}
+          periodMs={BUILD_SWING_MS} />
       )}
     </UiEntity>
   )
@@ -496,6 +498,10 @@ const DesktopControls = () => {
   The pad's numbers live in layout.ts as THUMB, measured on the client's own pad. The arc
   below only decides where the three satellites go on that orbit.
 */
+/** The mallet's two swing poses, in the active icon family, and the beat they play on. */
+const BUILD_FRAMES: [string, string] = [`${ico('build')}-raised`, `${ico('build')}-mid`]
+const BUILD_SWING_MS = 800
+
 const POUCE_GROS = THUMB.big
 const POUCE = THUMB.small
 const ORBITE = THUMB.orbit
@@ -1572,7 +1578,7 @@ const uiComponent = () => {
             <UiEntity key={`toast${a.ne}`}
               uiTransform={{
                 width: w, height: h,
-                margin: { top: Math.round(-(1 - entree) * 14), bottom: 8 },
+                margin: { top: Math.round(-(1 - entree) * 14), bottom: STACK_GAP },
                 justifyContent: 'center', alignItems: 'center'
               }}
               uiBackground={SKIN.panel}
