@@ -454,6 +454,7 @@ async function loadBases(): Promise<void> {
   const efface = await remiseAZero()
   try {
     const res = await Storage.getValues({ prefix: 'base:' })
+    let budgetRestauration = COUT_DECOR
     const loaded = res.data
       .map(({ key, value }) => {
         const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
@@ -489,7 +490,24 @@ async function loadBases(): Promise<void> {
       */
       .filter((l) => Date.now() - l.lastSeen < BASE_FRAICHEUR_MS)
       .sort((a, b) => b.lastSeen - a.lastSeen)
-      .slice(0, MAX_BASES_AFFICHEES)
+      /*
+        On restaure tant que le BUDGET suit, pas jusqu'a un nombre fixe.
+
+        Le plafond etait un compte, `MAX_BASES_AFFICHEES`, calcule sur une base moyenne de trois
+        etages. Vingt-quatre tours de quatre etages passaient donc la porte et depassaient le
+        budget de cinquante objets, sans que rien ne le voie (proprietaire, 3 Sep, "et si il y a
+        20 bases de 4 etages ?"). On additionne maintenant le cout reel de chacune, de la plus
+        recemment vue a la plus ancienne, et on s'arrete quand la somme est atteinte: une carte
+        de petites bases en accueille davantage qu'une carte de tours, ce qui est exactement la
+        realite de ce que le telephone dessine.
+      */
+      .filter((l) => {
+        const etages = Math.max(1, Math.min(openFloors(l.vitrine?.floorsBought ?? 0), MAX_FLOORS))
+        const cout = COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
+        if (budgetRestauration + cout > BUDGET_OBJETS) return false
+        budgetRestauration += cout
+        return true
+      })
     /*
       The shopfront travels with the base, so a building whose owner is away still stands.
 
@@ -1550,6 +1568,22 @@ export function buyFloorFor(address: string): { ok: boolean; reason?: string; fl
   const palier = floorPrestigeRequired(actuels + 1)
   if ((p.rebirths ?? 0) < palier) return { ok: false, reason: `floor ${actuels + 1} opens at prestige ${palier}` }
   if (p.coins < cost) return { ok: false, reason: `need ${Math.ceil(cost - p.coins)} more coins` }
+
+  /*
+    Un etage de plus coute au budget comme une base de plus, en plus petit.
+
+    La liberation sous pression ne se declenchait qu'a la POSE d'une base, donc le monde
+    pouvait grossir par le haut sans que rien ne le borne: quarante bases deja posees, chacune
+    qui monte d'un etage, et on franchit le plafond du telephone sans qu'un seul joueur ne soit
+    arrive (proprietaire, 3 Sep). Le budget est desormais la seule porte, et elle s'applique a
+    toutes les facons de faire grandir le monde, pas seulement a la premiere.
+
+    On fait de la place avant de facturer: si un absent peut ceder, il cede; si tout le monde
+    est present et que le budget est plein, l'etage est refuse et l'or n'est pas pris.
+  */
+  if (!faireDeLaPlace(address, COUT_ETAGE_LOIN)) {
+    return { ok: false, reason: 'the field is full right now, try again in a moment' }
+  }
 
   p.coins -= cost
   p.floorsBought = (p.floorsBought ?? 0) + 1
