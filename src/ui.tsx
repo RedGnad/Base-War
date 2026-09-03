@@ -53,11 +53,18 @@ const REEL_H = 200
 const REEL_GAP = 14
 /** The result line lives inside the reel's panel, above the strip: one vertical budget for the whole reveal. */
 const REEL_TITRE = 48
+/** How much the winning card grows when the strip lands on it. */
+const REEL_POP = 1.22
 
-const ETATS: Record<string, (r: number) => string> = {
-  // The item lands in the hand now, so the line under the reveal says what to do with it.
-  main: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  IN YOUR HAND: put it on any pedestal`,
-  expose: (r) => `+${INCOME_UI[r] ?? 1} coins/s  ·  placed on your base`,
+/*
+  What happened to the piece, and what to do next. Only that: the yield used to open
+  every line and was already on screen twice, on the reveal and on the winning card, and
+  the name sat beside it while the reveal showed it huge (owner, 3 Sep). The reel's title
+  row now carries the one thing nothing else says.
+*/
+const ETATS: Record<string, () => string> = {
+  main: () => 'IN YOUR HAND  ·  put it on any pedestal',
+  expose: () => 'placed on your base',
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
 }
@@ -1059,7 +1066,9 @@ function Roulette(): ReactEcs.JSX.Element {
   const gagneHex = fini ? itemColor(boxView.resultat, boxView.resultatMutation) : '#ffffff'
   const gagne = Color4.fromHexString(gagneHex + 'ff')
   const mut = mutation(boxView.resultatMutation)
-  const bande = REEL_H + 12
+  // Tall enough for the winner at its full pop: at REEL_H + 12 the popped card ran past the
+  // strip and the panel's clip cut its top and bottom off (owner, 3 Sep).
+  const bande = Math.round(REEL_H * REEL_POP) + 12
   return (
     <Centre bottom={250}>
       <UiEntity
@@ -1074,13 +1083,7 @@ function Roulette(): ReactEcs.JSX.Element {
 
         <UiEntity uiTransform={{ width: '100%', height: REEL_TITRE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
           {fini && (
-            <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
-              fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
-              color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
-              uiTransform={{ height: REEL_TITRE, margin: { right: 24 } }} />
-          )}
-          {fini && (
-            <Label value={ETATS[boxView.state]?.(boxView.resultat) ?? ''}
+            <Label value={ETATS[boxView.state]?.() ?? ''}
               fontSize={TYPE.label} textWrap="nowrap" textAlign="middle-center"
               color={boxView.state === 'expose' ? C.money : C.bonus}
               uiTransform={{ height: REEL_TITRE }} />
@@ -1091,7 +1094,7 @@ function Roulette(): ReactEcs.JSX.Element {
           {boxView.reel.map((r, i) => {
             const rar = RARITIES[r] ?? RARITIES[0]
             const gagnant = fini && i === REEL_WIN
-            const s = gagnant ? 1 + 0.22 * pop : 1
+            const s = gagnant ? 1 + (REEL_POP - 1) * pop : 1
             const w = REEL_W * s, h = REEL_H * s
             const x = large / 2 - w / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
             if (x < -w || x > large) return null
