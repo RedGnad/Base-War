@@ -4,7 +4,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import {
   Raid, Event, RAID_ENABLED, RAID_MINUTES, RAID_MS, RAID_POS, RAID_RADIUS,
   RAID_HP_BASE, RAID_HP_PER_PLAYER, RAID_SWIPE_MS, RAID_SWIPE_RANGE, RAID_SWIPE_SHARE, RAID_HIT_RANGE,
-  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF,
+  RAID_SWIPE_CAP_S, RAID_REWARD_CRATE, RAID_SPAWN_MARGIN, RAID_AGGRO_RANGE, RAID_SPEED, RAID_TURN, RAID_STANDOFF, RAID_THREAT_SWITCH,
   SCENE_SIDE, forceDuTir
 , RAID_DEAGGRO_RANGE, RAID_BORD, BASE_SIDE, PLINTH_SIDE} from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -132,6 +132,15 @@ export function raidHit(a: string, from: Vector3, vise: { x: number; z: number }
   m.hitAtMs = Date.now()
   degats.set(a, (degats.get(a) ?? 0) + degat)
   m.topName = meneur()?.name ?? ''
+  // Threat: whoever has hurt it most is who it hunts, once they are clearly ahead.
+  if (targetAddr !== a) {
+    const mine = degats.get(a) ?? 0
+    const theirs = targetAddr === null ? 0 : (degats.get(targetAddr) ?? 0)
+    if (mine > theirs * RAID_THREAT_SWITCH) {
+      targetAddr = a
+      log(`the raid boss turns on ${displayName(a)}, top threat`)
+    }
+  }
   if (m.hp <= 0) finir(true)
   return true
 }

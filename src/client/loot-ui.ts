@@ -1,4 +1,4 @@
-import { plasticDe } from './toy'
+import { plasticDe, remonter, rarityShape } from './toy'
 import {
   engine, Transform, MeshRenderer, Material, Entity, Billboard, BillboardMode, TextShape,
   Tween, TweenSequence, TweenLoop, EasingFunction
@@ -30,12 +30,18 @@ export function setupLootUi(): void {
       const r = rarityOf(d.code)
       const teinte = Color4.fromHexString(itemColor(r, mutationDe(d.code)) + 'ff')
 
+      /*
+        The real piece, not a box.
+
+        On the ground nothing stops a model from rendering: the box was a stand-in from the
+        days the hand could not show a GLB, and it followed the item down to the floor, where
+        it read as a plain cube (mobile tester, 3 Sep). Same pair as the carry marker: the
+        rarity's model, tinted by its mutation.
+      */
       const corps = engine.addEntity()
       Transform.create(corps, { position: t.position, scale: Vector3.create(0.5, 0.5, 0.5) })
-      MeshRenderer.setBox(corps)
-      Material.setPbrMaterial(corps, {
-        ...plasticDe(teinte, 2.0)
-      })
+      remonter(corps, `item-${r}.glb`)
+      rarityShape(corps, r, plasticDe(teinte, 2.0))
       Tween.setRotate(corps, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1400, EasingFunction.EF_LINEAR)
       TweenSequence.createOrReplace(corps, { sequence: [], loop: TweenLoop.TL_RESTART })
 

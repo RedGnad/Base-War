@@ -1378,6 +1378,15 @@ export const RAID_HP_PER_PLAYER = 50
  * leaving it visible in front of you, which is the whole point of a boss.
  */
 export const RAID_STANDOFF = 2.8
+/**
+ * How much more damage a challenger must have dealt before the boss turns on them.
+ *
+ * The boss locked onto whoever was nearest when it woke and walked past everyone else until
+ * that player left its range (mobile tester, 3 Sep). Genre rule: a boss holds a THREAT table
+ * and attacks the top of it; the margin stops it flip-flopping between two players trading
+ * blows. 1.1 is the classic value.
+ */
+export const RAID_THREAT_SWITCH = 1.1
 export const RAID_SWIPE_MS = 5_000
 export const RAID_SWIPE_RANGE = 4
 /** A swipe shakes a tenth of the purse loose, capped at two minutes of income, onto the floor. */

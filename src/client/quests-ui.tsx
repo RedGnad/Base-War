@@ -110,11 +110,18 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           player the interface lies (owner, 1 Sep). A quiet chip with the crate icon says
           "this is what you are earning", and only CLAIM ever looks pressable.
         */
+        /*
+          LOCKED, in so many words. The "+1" chip with the crate was liked and then tapped: a
+          reward drawn in full colour reads as something to collect, the tap did nothing, and
+          that is the kind of silence that erodes trust (mobile tester, 3 Sep). The crate stays,
+          dimmed, so the player still sees what they are earning; the word says why not yet.
+          Same vocabulary as the set bonus below, which already says LOCKED.
+        */
         <Puce width={187} height={TAP.menu}>
-          <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 8 } }}
+          <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 8 }, opacity: 0.4 }}
             uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
-          <Label value="+1" fontSize={TYPE.label} color={C.money}
-            uiTransform={{ width: 44, height: 44 }} textAlign="middle-left" />
+          <Label value="LOCKED" fontSize={TYPE.caption} color={Color4.fromHexString('#8a94a6ff')}
+            uiTransform={{ width: 80, height: 44 }} textAlign="middle-left" />
         </Puce>
       )}
       </UiEntity>
