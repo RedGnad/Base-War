@@ -206,9 +206,28 @@ export const RAD = { card: 14, bar: 10 } as const
  */
 export const TOAST = { result: 2500, warning: 4000, event: 6000 } as const
 
-export const AVANCE = 0.52
+/*
+  How wide the client sets a string, estimated by character CLASS.
+
+  One average advance (0.52 em) for every character is what made LOCKED wrap inside an
+  80 px box and long toasts spill out of plates sized for fewer lines (owner, 3 Sep): the
+  interface is mostly capitals, and capitals are half again as wide as the average. Measured
+  on desktop screenshots against the 1920 reference: WHERE TO at 32 px = 168 px (0.71 em per
+  capital), LOGIN STREAK at 26 px = 189 px (0.64), "Bring 6 items home to your base" at
+  32 px = 397 px (0.40 per lowercase letter). Still an estimate, since the client reports no
+  text metrics; err on the wide side, a plate a little roomy beats a word cut off.
+*/
+const ADVANCE = { upper: 0.68, lower: 0.44, digit: 0.58, space: 0.26, other: 0.36 }
 export function largeurTexte(t: string, taille: number): number {
-  return Math.round(t.length * taille * AVANCE)
+  let em = 0
+  for (const ch of t) {
+    if (ch === ' ') em += ADVANCE.space
+    else if (ch >= '0' && ch <= '9') em += ADVANCE.digit
+    else if (ch >= 'A' && ch <= 'Z') em += ADVANCE.upper
+    else if (ch >= 'a' && ch <= 'z') em += ADVANCE.lower
+    else em += ADVANCE.other
+  }
+  return Math.round(em * taille)
 }
 /** Lines after wrapping, counting the newlines already in the string. */
 export function lignesDeTexte(t: string, taille: number, largeur: number): number {

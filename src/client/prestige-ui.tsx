@@ -2,10 +2,10 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs } from './glyphs'
-import { Btn , SURF} from './ui-kit'
+import { Btn, SURF } from './ui-kit'
 import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
-import { prestigeTier, REBIRTH_MAX } from '../shared/schemas'
+import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
 export const prestigeView = { open: false }
@@ -33,53 +33,48 @@ export function closePrestige(): void { prestigeView.open = false }
  * The shape stays, because the shape was right: what you get, what it costs, what it takes
  * away, one control that commits. Only the content is now what the server actually does.
  */
-/** A card at module scope: a component declared inside a render is never mounted. */
-const Carte = (props: { titre: string; note: string; large: number; teinte?: Color4 }) => (
+/*
+  Laid out the way the genre lays out a rebirth: one hero figure, the price under it, what
+  stays and what goes as two short lines, one gold control. It was three headed sections of
+  cards each carrying a sentence, then two more sentences in amber: a form to read, not a
+  moment to want (owner, 3 Sep). Every figure still comes from `prestigeTier`, the function
+  the server decides with.
+*/
+const Chip = (props: { width: number; height: number; children?: ReactEcs.JSX.Element | ReactEcs.JSX.Element[]; right?: number }) => (
   <UiEntity
     uiTransform={{
-      width: props.large, height: 124, margin: { right: TAP.gap },
-      flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: 10
+      width: props.width, height: props.height, margin: props.right !== undefined ? { right: props.right } : undefined,
+      flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
     }}
     uiBackground={SKIN.card}
   >
-    <Label value={props.titre} fontSize={TYPE.title} color={props.teinte ?? C.money}
-      uiTransform={{ width: '100%', height: 60 }} textAlign="middle-center" />
-    <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
-      uiTransform={{ width: '100%', height: 44 }} textAlign="middle-center" />
+    {props.children}
   </UiEntity>
 )
 
-const Section = (props: { titre: string }) => (
-  <Label value={props.titre} fontSize={TYPE.label} color={C.name}
-    uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
-)
+const KEEP = Color4.fromHexString('#8fe08fff')
 
 export const PrestigePanel = () => {
   if (!prestigeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
 
-  /*
-    Every figure below comes from `prestigeTier`, the same function the server calls to decide.
-    Four numbers arriving from four places is how a screen ends up disagreeing with the rule
-    it is describing, which is exactly what happened here.
-  */
   const palier = prestigeTier(theftView.prestige)
   const max = theftView.prestige >= REBIRTH_MAX
   const cout = theftView.nextPrestige
   const exige = RARITIES[palier.minRarity]
+  const maintenant = incomeMultiplier(theftView.prestige)
 
   const assezDeCoins = cout > 0 && theftView.coins >= cout
   const aLObjet = theftView.bestRarity >= palier.minRarity
   const pret = !max && assezDeCoins && aLObjet
 
-  /*
-    The button names what is missing, because a control that offers what the server will refuse
-    is a defect this project has already written down once. The item requirement is tested here
-    for the first time: until now only the coins were, so a rich player with nothing on their
-    shelves was invited to press, and then told no.
-  */
+  // The button names what is missing: a control that offers what the server will refuse
+  // is a defect this project has already written down once.
   const manque = max ? 'MAX PRESTIGE'
     : !assezDeCoins ? 'NEED MORE COINS'
     : `NEED ${(exige?.name ?? '').toUpperCase()}`
+  const mange = theftView.prestigeEats >= 0
+    ? nomDuCode(theftView.prestigeEats).toUpperCase()
+    : `${(exige?.name ?? '').toUpperCase()} OR BETTER`
 
   return (
     <UiEntity
@@ -90,42 +85,74 @@ export const PrestigePanel = () => {
         uiTransform={{ width: 940, height: 600, flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
-        <UiEntity uiTransform={{ width: '100%', height: 56 }}>
-          <Glyphs value="PRESTIGE" size={TYPE.title} role="bonus" />
+        {/* The badge and the word: what this screen is, read in one glance. */}
+        <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
+          <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 14 } }}
+            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }} />
+          <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />
         </UiEntity>
 
-        <Section titre="YOU GET" />
-        <UiEntity uiTransform={{ width: 440, height: 124, flexDirection: 'row', justifyContent: 'center' }}>
-          <Carte large={420} titre={`x${palier.multiplier}`} note="on everything you earn, for good" />
+        {/* The hero: the multiplier you have, and the one you would have. */}
+        <UiEntity uiTransform={{ width: '100%', height: 140, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 6 } }}>
+          <Chip width={220} height={124} right={TAP.gap}>
+            <Label value={`x${maintenant}`} fontSize={TYPE.title} color={C.dim}
+              uiTransform={{ width: '100%', height: 64 }} textAlign="middle-center" textWrap="nowrap" />
+            <Label value="NOW" fontSize={TYPE.caption} color={C.dim}
+              uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+          </Chip>
+          <Chip width={300} height={140}>
+            <Label value={`x${palier.multiplier}`} fontSize={TYPE.hero} color={C.money}
+              uiTransform={{ width: '100%', height: 84 }} textAlign="middle-center" textWrap="nowrap" />
+            <Label value="AFTER" fontSize={TYPE.caption} color={C.bonus}
+              uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" />
+          </Chip>
+        </UiEntity>
+        <Label value="ON EVERYTHING YOU EARN, FOR GOOD" fontSize={TYPE.caption} color={C.dim}
+          uiTransform={{ width: '100%', height: 30, margin: { bottom: 12 } }} textAlign="middle-center" />
+
+        {/* The price: coins, and one item eaten. Red where the player falls short. */}
+        <UiEntity uiTransform={{ width: '100%', height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 12 } }}>
+          <Chip width={300} height={96} right={TAP.gap}>
+            <Label value={formatIncome(cout)} fontSize={TYPE.title} color={assezDeCoins ? C.money : C.danger}
+              uiTransform={{ width: '100%', height: 54 }} textAlign="middle-center" textWrap="nowrap" />
+            <Label value="COINS" fontSize={TYPE.caption} color={C.dim}
+              uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
+          </Chip>
+          <UiEntity
+            uiTransform={{ width: 360, height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
+            uiBackground={SKIN.card}
+          >
+            <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 12 } }}
+              uiBackground={{ texture: { src: `assets/ui/toy-${palier.minRarity}.png` }, textureMode: 'stretch' }} />
+            <UiEntity uiTransform={{ width: 250, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
+              <Label value={mange} fontSize={TYPE.label} color={aLObjet ? C.money : C.danger}
+                uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
+              <Label value="EATEN FROM YOUR SHELVES" fontSize={TYPE.caption} color={C.dim}
+                uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
+            </UiEntity>
+          </UiEntity>
         </UiEntity>
 
-        <Section titre="IT COSTS" />
-        <UiEntity uiTransform={{ width: 640, height: 124, flexDirection: 'row', justifyContent: 'center' }}>
-          <Carte large={300} titre={formatIncome(cout)} note="coins, taken off your balance"
-            teinte={assezDeCoins ? C.money : C.danger} />
-          <Carte large={300} titre={(exige?.name ?? '').toUpperCase()}
-            note={theftView.prestigeEats >= 0 ? `eaten: your ${nomDuCode(theftView.prestigeEats)}` : 'one is consumed: your cheapest of it, or better'}
-            teinte={aLObjet ? C.money : C.danger} />
+        {/* What stays and what goes, one line each, no sentence. */}
+        <UiEntity uiTransform={{ width: 660, height: 62, flexDirection: 'column', margin: { bottom: 14 } }}>
+          <UiEntity uiTransform={{ width: '100%', height: 30, flexDirection: 'row', alignItems: 'center' }}>
+            <Label value="KEEP" fontSize={TYPE.caption} color={KEEP}
+              uiTransform={{ width: 70, height: 30 }} textAlign="middle-left" />
+            <Label value={`best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}  ·  floors  ·  sentries  ·  crates  ·  gear`} fontSize={TYPE.caption} color={C.name}
+              uiTransform={{ width: 590, height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+          </UiEntity>
+          <UiEntity uiTransform={{ width: '100%', height: 30, flexDirection: 'row', alignItems: 'center' }}>
+            <Label value="LOSE" fontSize={TYPE.caption} color={C.danger}
+              uiTransform={{ width: 70, height: 30 }} textAlign="middle-left" />
+            <Label value={`every other item  ·  coins above ${formatIncome(cout * PRESTIGE_CASH_SHARE)}`} fontSize={TYPE.caption} color={C.name}
+              uiTransform={{ width: 590, height: 30 }} textAlign="middle-left" textWrap="nowrap" />
+          </UiEntity>
         </UiEntity>
 
-        {/*
-          The amber line is the only part a hurried player reads, so it is the line that has to
-          be exactly true. It used to name a loss twice the size of the real one.
-        */}
-        <UiEntity uiTransform={{ width: '100%', height: 66, flexDirection: 'column' }}>
-          <Label
-            value={`${theftView.prestigeEats >= 0 ? `your ${nomDuCode(theftView.prestigeEats)}` : `the ${(exige?.name ?? '').toUpperCase()}`} is eaten, you keep your best ${palier.guard === 1 ? 'item' : palier.guard + ' items'}, every other item is gone`}
-            fontSize={TYPE.label} color={C.bonus}
-            uiTransform={{ width: '100%', height: 33 }} textAlign="middle-center" />
-          <Label value={`your coins reset to ${formatIncome(cout * PRESTIGE_CASH_SHARE)}  ·  floors, sentries, crates and gear stay`}
-            fontSize={TYPE.label} color={C.dim}
-            uiTransform={{ width: '100%', height: 33 }} textAlign="middle-center" />
-        </UiEntity>
-
-        <UiEntity uiTransform={{ width: 640, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
-          <Btn label={pret ? 'PRESTIGE' : manque} width={340} primary={pret}
+        <UiEntity uiTransform={{ width: 660, height: TAP.height, flexDirection: 'row', justifyContent: 'center' }}>
+          <Btn label={pret ? 'PRESTIGE' : manque} width={400} primary={pret}
             right={TAP.gap} onClick={() => { if (pret) { doPrestige(); closePrestige() } }} />
-          <Btn label="BACK" width={220} onClick={closePrestige} />
+          <Btn label="BACK" width={200} onClick={closePrestige} />
         </UiEntity>
       </UiEntity>
     </UiEntity>
