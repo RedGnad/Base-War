@@ -169,6 +169,16 @@ export function setupBox(): void {
 
   room.onMessage('boxResult', (d) => {
     boxView.phase = 'roll'
+    /*
+      Le drapeau se leve ICI, au depart du tambour, pas a son arret.
+
+      Il etait remis a faux quand la bande s'immobilise, or la roulette se dessine pendant
+      TOUT son tour: apres une fusion, qui l'avait mis a vrai, la caisse suivante tournait
+      sans que rien ne s'affiche, et le joueur n'a vu que le resultat surgir de nulle part
+      (proprietaire, 3 Sep). Un drapeau qui gouverne un affichage se remet a zero au debut de
+      cet affichage, jamais a sa fin.
+    */
+    boxView.sansRoulette = false
     boxView.roule = true
     boxView.resultat = d.rarity
     boxView.resultatMutation = d.mutation
