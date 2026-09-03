@@ -9,14 +9,14 @@ export const MESSAGES = {
   serverLog: Schemas.Map({ line: Schemas.String }),
 
   stealItem: Schemas.Map({ ownerId: Schemas.String, slot: Schemas.Int }),
-  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int, offlineGain: Schemas.Int, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, luckSec: Schemas.Int, luckPrice: Schemas.Int, coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int, rechargeSec: Schemas.Int, pending: Schemas.Int, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int, presents: Schemas.Int, prime: Schemas.Float }),
+  wallet: Schemas.Map({ floorNeedsPrestige: Schemas.Int, prestigeEats: Schemas.Int64, offlineGain: Schemas.Int64, offlineSec: Schemas.Int, offlineAt: Schemas.Int64, luckSec: Schemas.Int, luckPrice: Schemas.Int64, coins: Schemas.Float, nextPrestige: Schemas.Int, prestige: Schemas.Int, minRarity: Schemas.Int, bestRarity: Schemas.Int, multiplier: Schemas.Int, income: Schemas.Float, basePosee: Schemas.Boolean, lockSec: Schemas.Int, canRecover: Schemas.Boolean, floorPrice: Schemas.Int64, rechargeSec: Schemas.Int, pending: Schemas.Int64, tutoEtape: Schemas.Int, sentries: Schemas.Int, sentryPrice: Schemas.Int64, presents: Schemas.Int, prime: Schemas.Float }),
 
   claimSlot: Schemas.Map({ x: Schemas.Float, z: Schemas.Float }),
   basePositions: Schemas.Map({ xs: Schemas.Array(Schemas.Float), zs: Schemas.Array(Schemas.Float) }),
 
   buyBelt: Schemas.Map({ articleId: Schemas.Int }),
   beltAlert: Schemas.Map({ crateTier: Schemas.Int }),
-  bought: Schemas.Map({ byName: Schemas.String, crateTier: Schemas.Int, price: Schemas.Int }),
+  bought: Schemas.Map({ byName: Schemas.String, crateTier: Schemas.Int, price: Schemas.Int64 }),
 
   openBox: Schemas.Map({ crateTier: Schemas.Int }),
   boxResult: Schemas.Map({ traits: Schemas.Int, crateTier: Schemas.Int, rarity: Schemas.Int, mutation: Schemas.Int, state: Schemas.String }),
@@ -30,7 +30,7 @@ export const MESSAGES = {
   setSkin: Schemas.Map({ mutation: Schemas.Int }),
 
   collect: Schemas.Map({}),
-  collected: Schemas.Map({ gain: Schemas.Int }),
+  collected: Schemas.Map({ gain: Schemas.Int64 }),
   quests: Schemas.Map({
     ids: Schemas.Array(Schemas.Int), progres: Schemas.Array(Schemas.Int),
     cibles: Schemas.Array(Schemas.Int), pris: Schemas.Array(Schemas.Int),
@@ -59,22 +59,22 @@ export const MESSAGES = {
   /** client -> server: I swung at this point. Same shape as a shot, resolved with an arm's reach. */
   slap: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> shooter: what the shot did. */
-  shotResult: Schemas.Map({ hitName: Schemas.String, dropped: Schemas.Int, reason: Schemas.String, loot: Schemas.Int }),
+  shotResult: Schemas.Map({ hitName: Schemas.String, dropped: Schemas.Int, reason: Schemas.String, loot: Schemas.Int64 }),
   /** server -> the target: they were hit and lost coins on the spot. */
-  wasShot: Schemas.Map({ byName: Schemas.String, lost: Schemas.Int }),
+  wasShot: Schemas.Map({ byName: Schemas.String, lost: Schemas.Int64 }),
   /** server -> the picker: they collected a pile. */
-  pickedUp: Schemas.Map({ amount: Schemas.Int }),
+  pickedUp: Schemas.Map({ amount: Schemas.Int64 }),
 
   outbid: Schemas.Map({ convoyId: Schemas.Int }),
-  outbidLost: Schemas.Map({ byName: Schemas.String, rembourse: Schemas.Int, crateTier: Schemas.Int }),
-  outbidWon: Schemas.Map({ fromName: Schemas.String, price: Schemas.Int, crateTier: Schemas.Int }),
-  outbidFeed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, price: Schemas.Int }),
+  outbidLost: Schemas.Map({ byName: Schemas.String, rembourse: Schemas.Int64, crateTier: Schemas.Int }),
+  outbidWon: Schemas.Map({ fromName: Schemas.String, price: Schemas.Int64, crateTier: Schemas.Int }),
+  outbidFeed: Schemas.Map({ byName: Schemas.String, fromName: Schemas.String, price: Schemas.Int64 }),
   convoyArrived: Schemas.Map({ crateTier: Schemas.Int }),
 
   buySentry: Schemas.Map({ tier: Schemas.Int }),
-  sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int, floor: Schemas.Int }),
-  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int, floor: Schemas.Int }),
-  sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int, taken: Schemas.Int }),
+  sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int64, floor: Schemas.Int }),
+  sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int64, floor: Schemas.Int }),
+  sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int, taken: Schemas.Int64 }),
 
   /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
   pickUp: Schemas.Map({ slot: Schemas.Int }),
@@ -91,7 +91,7 @@ export const MESSAGES = {
   /* Gear: buy one into your pocket, put one down where you stand. */
   buyGear: Schemas.Map({ gear: Schemas.Int }),
   placeGear: Schemas.Map({ gear: Schemas.Int }),
-  gearBought: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int, cost: Schemas.Int }),
+  gearBought: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int, cost: Schemas.Int64 }),
   gearPlaced: Schemas.Map({ gear: Schemas.Int, held: Schemas.Int }),
   /** server -> the one who stepped on it. */
   trapped: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, mine: Schemas.Boolean }),
@@ -102,14 +102,14 @@ export const MESSAGES = {
   taser: Schemas.Map({ x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   tased: Schemas.Map({ byName: Schemas.String, gelMs: Schemas.Int }),
   buyLuck: Schemas.Map({}),
-  luckBought: Schemas.Map({ cost: Schemas.Int, sec: Schemas.Int }),
+  luckBought: Schemas.Map({ cost: Schemas.Int64, sec: Schemas.Int }),
   feedFusion: Schemas.Map({}),
   /** Fuse three of a rarity straight off the player's shelves, hopper first. */
   fuseFromBase: Schemas.Map({ rarity: Schemas.Int }),
   /** Empty the player's hopper back onto their shelves. */
   takeBackFusion: Schemas.Map({}),
   /** The raid boss's swipe on you: what fell on the floor (0 when the purse was empty). */
-  raidSwipe: Schemas.Map({ lost: Schemas.Int }),
+  raidSwipe: Schemas.Map({ lost: Schemas.Int64 }),
   raidWon: Schemas.Map({ crate: Schemas.Int }),
   raidOver: Schemas.Map({ winner: Schemas.String, slain: Schemas.Boolean }),
   /** What a rush hands to whoever is present when it opens: a crate, and the toy that gained a trait, or -1. */
@@ -127,12 +127,12 @@ export const MESSAGES = {
   dailyReward: Schemas.Map({ log: Schemas.Int, crate: Schemas.Int }),
   questReward: Schemas.Map({ crate: Schemas.Int }),
 
-  offlineEarnings: Schemas.Map({ gain: Schemas.Int, seconds: Schemas.Int }),
+  offlineEarnings: Schemas.Map({ gain: Schemas.Int64, seconds: Schemas.Int }),
 
   buyFloor: Schemas.Map({}),
-  floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int }),
+  floorBought: Schemas.Map({ floors: Schemas.Int, cost: Schemas.Int64 }),
 
-  sold: Schemas.Map({ gain: Schemas.Int, rarity: Schemas.Int }),
+  sold: Schemas.Map({ gain: Schemas.Int64, rarity: Schemas.Int }),
 
   activateLock: Schemas.Map({}),
   reclaim: Schemas.Map({}),

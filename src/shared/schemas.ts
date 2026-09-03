@@ -51,7 +51,7 @@ export const Loot = engine.defineComponent('basetycoon::loot', {
 export const Belt = engine.defineComponent('basetycoon::belt', {
   articleId: Schemas.Int,
   crateTier: Schemas.Int,
-  price: Schemas.Int,
+  price: Schemas.Int64,
   progres: Schemas.Float,
   buyerName: Schemas.String
 })
@@ -285,7 +285,7 @@ export const CARRY_OWN_SHARE = 0.85
 export const CARRY_TIMEOUT_MS = 90_000
 
 export const DroppedCoins = engine.defineComponent('basetycoon::dropped', {
-  amount: Schemas.Int,
+  amount: Schemas.Int64,
   droppedBy: Schemas.String,
   untilMs: Schemas.Int64
 })
@@ -681,7 +681,7 @@ export const OUTBID_IMMUNITY_MS = 30_000
 export const Convoy = engine.defineComponent('basetycoon::convoy', {
   convoyId: Schemas.Int,
   crateTier: Schemas.Int,
-  pricePaid: Schemas.Int,
+  pricePaid: Schemas.Int64,
   owner: Schemas.String,
   holderName: Schemas.String,
   progres: Schemas.Float,

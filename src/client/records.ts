@@ -259,7 +259,10 @@ export function setupRecords(): void {
   // side, not planted on one (tester, 28 Aug: "one arbitrary side"). Two-faced, high enough to
   // clear the crates passing under it.
   const racine = engine.addEntity()
-  Transform.create(racine, { position: Vector3.create(CENTER.x, BELT_HEIGHT + HAUTEUR / 2 + 2.4, CENTER.z) })
+  // Lifted so the tallest crate's price label clears its bottom edge. A big crate's label sits
+  // at BELT_HEIGHT + 2.5 and the old +2.4 put the panel's bottom right through it, so a price
+  // vanished behind the board as the crate crossed the centre (owner, 3 Sep). +3.1 leaves 0.6 m.
+  Transform.create(racine, { position: Vector3.create(CENTER.x, BELT_HEIGHT + HAUTEUR / 2 + 3.1, CENTER.z) })
   // Billboard so it turns to face each viewer wherever they stand (tester preferred this). The
   // two faces stay: whichever way the billboard turns, one readable face is toward the camera,
   // which sidesteps the undocumented "which side of a billboard faces you" (advanced-rendering).
