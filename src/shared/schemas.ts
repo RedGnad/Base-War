@@ -578,8 +578,26 @@ export const EVENT_WEIGHT = 60
 export const LUCK_MS = 15 * 60_000
 export const LUCK_MULT = 2
 export const LUCK_RATIO = 0.0020
-export function prixLuck(prestige: number): number {
-  return Math.max(GEAR_MIN_PRICE, Math.round(LUCK_RATIO * coutPrestige(Math.min(prestige, MAX_PRESTIGE - 1) + 1)))
+/*
+  Le porte-bonheur RENCHERIT a chaque achat, tant qu'il est actif.
+
+  Son prix ne dependait que du prestige, donc il etait CONSTANT, et les achats CUMULENT leur
+  duree (`until = max(now, luckUntil) + LUCK_MS`). Un joueur riche en enchainait dix au meme
+  tarif et se posait deux heures et demie de chance x2, le plus fort multiplicateur du jeu
+  puisqu'il double chaque tirage de mutation. Ce n'etait pas un desequilibre de valeur, c'etait
+  une boucle ouverte: rien dans le jeu ne montait avec l'usage (proprietaire, 3 Sep).
+
+  Le compteur repart de zero des que le charme a expire, donc laisser filer sa chance ramene au
+  prix de base: on paye l'EMPILEMENT, jamais la fidelite. Facteur 1,75, plafonne a huit crans
+  (x88), ce qui laisse deux ou trois recharges confortables puis rend la quatrieme discutable,
+  ce qui est exactement le choix qu'on veut lui poser.
+*/
+export const LUCK_ESCALADE = 1.75
+export const LUCK_ESCALADE_MAX = 8
+
+export function prixLuck(prestige: number, achats = 0): number {
+  const base = Math.max(GEAR_MIN_PRICE, Math.round(LUCK_RATIO * coutPrestige(Math.min(prestige, MAX_PRESTIGE - 1) + 1)))
+  return Math.round(base * Math.pow(LUCK_ESCALADE, Math.min(Math.max(achats, 0), LUCK_ESCALADE_MAX)))
 }
 /** Which mutations can headline an event, and the world colour each one brings. */
 /** Five minutes is a rush, not an hour: the tester read "HOUR" against the countdown and was right. */

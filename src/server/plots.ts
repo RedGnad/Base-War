@@ -109,6 +109,8 @@ type Profil = {
   annonceHL?: { gain: number; seconds: number; at: number }
   /** Bought luck: every mutation's odds doubled until this instant. */
   luckUntil?: number
+  /** Achats de chance empiles depuis la derniere expiration: c'est lui qui fait monter le prix. */
+  luckAchats?: number
   /** What this player has fed the fusion machine so far, all of one rarity. */
   fusion?: number[]
 }
@@ -1241,6 +1243,19 @@ export function choisirSkin(address: string, mut: number): { ok: boolean; reason
 }
 
 export function luckUntilOf(address: string): number { return profiles.get(address)?.luckUntil ?? 0 }
+export function luckAchatsDe(address: string): number {
+  const p = profiles.get(address)
+  if (p === undefined) return 0
+  // Le charme a expire: la pile retombe, le prochain achat repart au prix de base.
+  if ((p.luckUntil ?? 0) <= Date.now()) return 0
+  return p.luckAchats ?? 0
+}
+export function noterAchatLuck(address: string): void {
+  const p = profiles.get(address)
+  if (p === undefined) return
+  p.luckAchats = luckAchatsDe(address) + 1
+  dirtyProfiles.add(address)
+}
 export function setLuckUntil(address: string, until: number): void {
   const p = profiles.get(address)
   if (!p) return
@@ -1662,7 +1677,7 @@ export function startPlots(): void {
         offlineGain: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.gain : 0,
         offlineSec: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.seconds : 0,
         offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
-        luckPrice: prixLuck(prestige),
+        luckPrice: prixLuck(prestige, luckAchatsDe(address)),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),
         floorNeedsPrestige: floorPrestigeRequired(1 + (p.floorsBought ?? 0) + 1),

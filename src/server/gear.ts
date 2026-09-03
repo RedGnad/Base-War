@@ -9,7 +9,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import {
   displayName, presents, positionOf, spend, prestigeOf,
-  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil,
+  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil, luckAchatsDe, noterAchatLuck,
   minesDe, poserMine, retirerMine, toutesLesBases
 } from './plots'
 import { portePour, frapperPorteur } from './carry'
@@ -133,13 +133,14 @@ export function startGear(): void {
   room.onMessage('buyLuck', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    const cost = prixLuck(prestigeOf(a))
+    const cost = prixLuck(prestigeOf(a), luckAchatsDe(a))
     if (!spend(a, cost)) {
       void room.send('actionRejected', { action: 'luck', reason: `you need ${cost} coins`, antiCheat: false }, { to: [a] })
       return
     }
     const now = Date.now()
     const until = Math.max(now, luckUntilOf(a)) + LUCK_MS
+    noterAchatLuck(a)
     setLuckUntil(a, until)
     void room.send('luckBought', { cost, sec: Math.ceil((until - now) / 1000) }, { to: [a] })
     log(`${displayName(a)} bought x2 luck for ${cost}, ${Math.ceil((until - now) / 60000)} min left`)

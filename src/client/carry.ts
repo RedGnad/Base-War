@@ -219,7 +219,21 @@ export function pickUp(slot: number): void { void room.send('pickUp', { slot }) 
  * libre (proprietaire, 1 Sep).
  */
 export function placeDown(ownerId: string): void {
-  if (cibleIndex < 0) { refuserAuSon(); return }
+  if (cibleIndex < 0) {
+    /*
+      Un son ET un mot, une seconde et demie.
+
+      Le 1er Sep on avait tranche pour le son seul: "on l'entend une fois, on a comprit, et
+      l'ecran reste libre". A l'usage ce n'etait pas vrai, parce que le son ne dit pas POURQUOI
+      rien ne se passe, et la meme pression refusee peut vouloir dire etage plein, hors de
+      portee, ou mauvais etage. Le proprietaire redemande un mot le 3 Sep, tres bref: c'est un
+      toast d'une seconde et demie, la plus courte duree du jeu, et pas la plaque qu'on avait
+      refusee alors.
+    */
+    refuserAuSon()
+    alerter('FLOOR FULL  ·  GO UP OR MAKE ROOM', '#ffd166', 1500)
+    return
+  }
   void room.send('placeDown', { ownerId, slot: cibleIndex })
 }
 export function dropCarried(): void { void room.send('dropCarried', {}) }
