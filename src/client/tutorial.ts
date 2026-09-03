@@ -37,6 +37,12 @@ export function stepExpects(id: string | undefined): boolean {
   return STEP_TEXTS[tutoView.etape].actions.includes(id)
 }
 
+/** The verb icon of the current step, or the collect icon once the tutorial is done. */
+export function stepVerb(): 'build' | 'crate' | 'collect' | 'steal' {
+  if (tutoView.etape >= tutoView.total) return 'collect'
+  return STEP_TEXTS[tutoView.etape].verb as 'build' | 'crate' | 'collect' | 'steal'
+}
+
 export function stepHintDue(): boolean {
   return tutoView.etape < tutoView.total && Date.now() - tutoView.since > HINT_AFTER_MS
 }

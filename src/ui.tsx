@@ -32,7 +32,7 @@ import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { verb } from './client/verb'
 import { volView } from './client/locomotion'
-import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue } from './client/tutorial'
+import { tutoView, STEP_TEXTS, giftView, stepExpects, stepHintDue, stepVerb } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
 
@@ -514,12 +514,23 @@ const PhoneControls = () => {
       <Pouce icone="icon-menu" taille={POUCE}
         bas={ARC[2].bas} droite={ARC[2].droite}
         badge={questsToClaim() > 0} onClick={basculerMenu} />
-      {a !== null && (
+      {/*
+        The central disc is always there. It used to be drawn only while a verb was
+        available, so a player standing in the middle of the map saw a pad with a hole in
+        it and asked where the button went (mobile tester's screenshot, 3 Sep). With nothing
+        to do here it stays, dimmed and inert, showing the verb the current step waits for:
+        what the thumb will press once the beacon is reached.
+      */}
+      {a !== null ? (
         <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={POUCE_GROS}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           frames={!combatView.aiming && a.icon === ico('build') ? BUILD_FRAMES : undefined}
           pulse={!combatView.aiming && stepExpects(a.id)}
           periodMs={BUILD_SWING_MS} />
+      ) : (
+        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={POUCE_GROS}
+          bas={0} droite={0} primaire disabled={!combatView.aiming}
+          actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined} />
       )}
     </UiEntity>
   )

@@ -156,6 +156,13 @@ export const Pouce = (props: {
    * Ignored when frames are given, since a swing already is that cue.
    */
   pulse?: boolean
+  /**
+   * Drawn but not pressable: the disc stays where the thumb knows it, at a lower value,
+   * with no binding and no handler. The genre and the platform guidelines keep a disabled
+   * control's container and let value carry the state; a button that vanishes reads as a
+   * pad that changed shape (mobile tester's screenshot, 3 Sep).
+   */
+  disabled?: boolean
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -190,11 +197,12 @@ export const Pouce = (props: {
         width: d, height: d,
         justifyContent: 'center', alignItems: 'center', positionType: 'absolute',
         // Sa place sur l'arc, plus trois pixels vers le bas tant que le doigt appuie.
-        position: { right: props.droite ?? 0, bottom: (props.bas ?? 0) - (enfonce ? 3 : 0) }
+        position: { right: props.droite ?? 0, bottom: (props.bas ?? 0) - (enfonce ? 3 : 0) },
+        opacity: props.disabled === true ? 0.42 : 1
       }}
       uiBackground={fond}
-      uiInputBinding={props.actions !== undefined ? { actions: props.actions } : undefined}
-      onMouseDown={() => { presse.set(cle, Date.now()); props.onClick?.() }}
+      uiInputBinding={props.actions !== undefined && props.disabled !== true ? { actions: props.actions } : undefined}
+      onMouseDown={props.disabled === true ? undefined : () => { presse.set(cle, Date.now()); props.onClick?.() }}
     >
       <UiEntity
         uiTransform={{ width: Math.round(d * 0.56 * gonfle), height: Math.round(d * 0.56 * gonfle), positionType: 'absolute' }}
