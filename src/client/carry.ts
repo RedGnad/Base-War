@@ -6,12 +6,12 @@ import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
 import { itemColor, rarity, rarityOf, mutationDe, traitsDe, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
-import { monAdresseClient, alerter } from './theft'
+import { myClientAddress, alerter } from './theft'
 import { setCarrying } from './locomotion'
-import { cibleDePose } from './plots'
-import { refuserAuSon } from './box'
+import { placeTarget } from './plots'
+import { refuseWithSound } from './box'
 import { verbe } from './verbe'
-import { formeDeRarete, formeEnMain, effacerForme, demonter, remonter, plasticDe, SOCLE_EPAISSEUR } from './toy'
+import { rarityShape, handShape, clearShape, demonter, remonter, plasticDe, PEDESTAL_THICKNESS } from './toy'
 
 /**
  * What everyone sees while somebody is holding something.
@@ -41,7 +41,7 @@ const vues = new Map<number, { corps: Entity; etiquette: Entity; anneau: Entity 
 */
 const VERT = Color4.create(0.35, 0.95, 0.45, 0.42)
 let marqueur: Entity
-let cibleIndex = -1
+let targetIndex = -1
 /*
   Le fantome est LA PIECE, pas un cube.
 
@@ -79,29 +79,29 @@ export function setupCarry(): void {
       dehors il dit LACHER, et dans ces deux cas montrer un socle vise serait mentir sur ce que
       la touche va faire.
     */
-    const cible = verbe.id === 'poser-objet' ? cibleDePose() : null
+    const cible = verbe.id === 'poser-objet' ? placeTarget() : null
     const code = carryView.code
     if (cible === null || code < 0) {
-      cibleIndex = -1
+      targetIndex = -1
       if (t.scale.x !== 0) t.scale = Vector3.Zero()
       return
     }
-    cibleIndex = cible.index
+    targetIndex = cible.index
     /*
       Le modele ne se remonte qu'au CHANGEMENT de piece: `remonter` recharge un GLTF et
-      `formeDeRarete` reecrit les materiaux, deux choses qui n'ont rien a faire dans une
+      `rarityShape` reecrit les materiaux, deux choses qui n'ont rien a faire dans une
       image ou rien n'a change. La teinte differee est prevue: le module suit les modeles en
       cours de chargement et applique le dernier materiau demande a leur arrivee.
     */
     if (code !== vuCode) {
       vuCode = code
       remonter(marqueur, `item-${rarityOf(code)}.glb`)
-      formeDeRarete(marqueur, rarityOf(code), MAT_FANTOME)
+      rarityShape(marqueur, rarityOf(code), MAT_FANTOME)
     }
     // Exactement ou elle se posera: le dessus de la dalle, un jeu d'air, le socle, puis la
     // piece debout sur son centre. Le meme empilement que `plots.ts`.
     const taille = tailleDe(code)
-    t.position = Vector3.create(cible.pos.x, cible.pos.y + JEU + SOCLE_EPAISSEUR + taille / 2, cible.pos.z)
+    t.position = Vector3.create(cible.pos.x, cible.pos.y + JEU + PEDESTAL_THICKNESS + taille / 2, cible.pos.z)
     t.scale = Vector3.create(taille, taille, taille)
   })
 
@@ -112,7 +112,7 @@ export function setupCarry(): void {
   })
 
   engine.addSystem(() => {
-    const moi = monAdresseClient()
+    const moi = myClientAddress()
     let porteMoi = -1
     let volee = false
     const vivants = new Set<number>()
@@ -133,7 +133,7 @@ export function setupCarry(): void {
         /*
           La piece doit etre MONTEE, sinon la main est vide.
 
-          `formeDeRarete` ne dessine plus de silhouette pour les raretes zero a cinq: depuis que
+          `rarityShape` ne dessine plus de silhouette pour les raretes zero a cinq: depuis que
           le jeu d'echecs existe, ces paliers ont un vrai modele et l'ancienne silhouette ne
           faisait que clignoter avant son arrivee. Le socle, lui, monte ce modele; la main ne le
           montait pas, alors elle ne dessinait plus rien du tout, pour toutes les raretes sauf
@@ -141,7 +141,7 @@ export function setupCarry(): void {
           (proprietaire, 2 Sep, apres une fusion). C'est le meme geste qu'au socle et qu'au
           fantome de pose: monter, puis teindre.
         */
-        formeEnMain(corps, r, mat)
+        handShape(corps, r, mat)
         AvatarAttach.create(corps, {
           avatarId: c.holder,
           anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND
@@ -191,7 +191,7 @@ export function setupCarry(): void {
     for (const [id, v] of [...vues]) {
       if (vivants.has(id)) continue
       demonter(v.corps)
-      effacerForme(v.corps)
+      clearShape(v.corps)
       engine.removeEntity(v.corps)
       engine.removeEntity(v.etiquette)
       if (v.anneau !== null) engine.removeEntity(v.anneau)
@@ -201,7 +201,7 @@ export function setupCarry(): void {
     if (porteMoi !== carryView.code || volee !== carryView.vole) {
       carryView.code = porteMoi
       carryView.vole = volee
-      if (porteMoi < 0 && vuCode >= 0) { vuCode = -1; demonter(marqueur); effacerForme(marqueur) }
+      if (porteMoi < 0 && vuCode >= 0) { vuCode = -1; demonter(marqueur); clearShape(marqueur) }
       setCarrying(porteMoi < 0 ? 'non' : volee ? 'vole' : 'sien')
       carryView.name = porteMoi < 0 ? '' : nomDuCode(porteMoi)
     }
@@ -212,14 +212,14 @@ export function pickUp(slot: number): void { void room.send('pickUp', { slot }) 
 /**
  * Poser, ou dire au son qu'il n'y a pas de place, jamais rien entre les deux.
  *
- * `cibleIndex` est le socle libre le plus proche SUR L'ETAGE OU L'ON SE TIENT: un etage plein
+ * `targetIndex` est le socle libre le plus proche SUR L'ETAGE OU L'ON SE TIENT: un etage plein
  * ne renvoie rien, et le marqueur vert a deja disparu. Une pression dans cet etat ne doit ni
  * partir au serveur pour se faire refuser, ni afficher une plaque "FLOOR FULL" qu'il faudrait
  * relire a chaque fois. Un son suffit: on l'entend une fois, on a compris, et l'ecran reste
  * libre (proprietaire, 1 Sep).
  */
 export function placeDown(ownerId: string): void {
-  if (cibleIndex < 0) {
+  if (targetIndex < 0) {
     /*
       Un son ET un mot, une seconde et demie.
 
@@ -230,11 +230,11 @@ export function placeDown(ownerId: string): void {
       toast d'une seconde et demie, la plus courte duree du jeu, et pas la plaque qu'on avait
       refusee alors.
     */
-    refuserAuSon()
+    refuseWithSound()
     alerter('FLOOR FULL  ·  GO UP OR MAKE ROOM', '#ffd166', 1500)
     return
   }
-  void room.send('placeDown', { ownerId, slot: cibleIndex })
+  void room.send('placeDown', { ownerId, slot: targetIndex })
 }
 export function dropCarried(): void { void room.send('dropCarried', {}) }
 export function sellCarried(): void { void room.send('sellCarried', {}) }

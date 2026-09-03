@@ -60,7 +60,7 @@ function rafraichir(): void {
  * Le tableau se charge au demarrage et se resauvegarde toutes les dix secondes. Effacer la
  * clef sans vider la memoire aurait fait renaitre l'ancien palmares a la premiere ecriture.
  */
-export function viderJournal(): void {
+export function clearJournal(): void {
   journal = []
   sale = false
   rafraichir()

@@ -2,7 +2,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import {
   addCrate, cratesOf, etapeTuto, avancerTuto,
-  tempsJoue, ajouterTempsJoue, cadeauxPris, marquerCadeauPris
+  playedTime, addPlayedTime, giftsTaken, markGiftTaken
 } from './plots'
 
 export const ETAPES = [
@@ -38,12 +38,12 @@ export const ETAPES = [
  * Maintenant que la caisse de bienvenue s'en charge, six est le point ou l'attente cesse
  * d'etre une attente et devient un rendez-vous.
  */
-export const CADEAUX = [
+export const GIFTS = [
   { s: 6 * 60, crate: 2 }
 ] as const
 /** La derniere marche, pour la barre qui compte a rebours et pour les messages. */
-export const CADEAU_MS = CADEAUX[CADEAUX.length - 1].s * 1000
-export const GIFT_CRATE = CADEAUX[CADEAUX.length - 1].crate
+export const GIFT_MS = GIFTS[GIFTS.length - 1].s * 1000
+export const GIFT_CRATE = GIFTS[GIFTS.length - 1].crate
 
 /**
  * Seconds accrued this session, not yet folded into the player's profile.
@@ -82,7 +82,7 @@ export function depart(address: string): void {
 function replier(address: string): void {
   const s = sessionS.get(address) ?? 0
   if (s <= 0) return
-  ajouterTempsJoue(address, s)
+  addPlayedTime(address, s)
   sessionS.set(address, 0)
 }
 
@@ -105,7 +105,7 @@ function replier(address: string): void {
  * Sent every five seconds rather than every one: the number moves slowly enough that nobody
  * can tell, and a per-second broadcast to everybody present is a lot of traffic for a clock.
  */
-export function verifierCadeau(presents: Iterable<string>): void {
+export function checkGift(presents: Iterable<string>): void {
   for (const a of presents) {
     const s = (sessionS.get(a) ?? 0) + 1
     sessionS.set(a, s)
@@ -113,9 +113,9 @@ export function verifierCadeau(presents: Iterable<string>): void {
 
     // La barre compte vers la PROCHAINE marche, pas vers la derniere: une barre qui vise un
     // point deja depasse ne dit plus rien, et celle du debut est justement celle qui compte.
-    const pris = cadeauxPris(a)
-    const prochaine = pris < CADEAUX.length ? CADEAUX[pris] : null
-    const joue = tempsJoue(a) + (sessionS.get(a) ?? 0)
+    const pris = giftsTaken(a)
+    const prochaine = pris < GIFTS.length ? GIFTS[pris] : null
+    const joue = playedTime(a) + (sessionS.get(a) ?? 0)
     if (s % 5 === 0 || s === 1) {
       const reste = prochaine === null ? -1 : Math.max(0, prochaine.s - joue)
       void room.send('giftProgress', { leftS: reste, totalS: prochaine === null ? 0 : prochaine.s }, { to: [a] })
@@ -124,7 +124,7 @@ export function verifierCadeau(presents: Iterable<string>): void {
     if (prochaine === null) continue
     if (joue < prochaine.s) continue
     replier(a)
-    marquerCadeauPris(a)
+    markGiftTaken(a)
     addCrate(a, prochaine.crate)
     void room.send('inventory', { crates: cratesOf(a) }, { to: [a] })
     void room.send('timeGift', { crate: prochaine.crate, minutes: Math.round(prochaine.s / 60) }, { to: [a] })

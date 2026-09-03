@@ -8,7 +8,7 @@ import { TYPE, C, HUE, TAP, SKIN, btn, lisible, lignesDeTexte, largeurTexte, FOR
 import { Glyphs } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
-import { FusionPanel, fusionPanelView } from './client/fusion-ui'
+import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, COIN_HAUT_DROIT, decalageCentre, setReference, clientEdges } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
@@ -17,11 +17,11 @@ import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
-import { gearView, poserPiege } from './client/gear'
+import { gearView, placeTrap } from './client/gear'
 import { ligneDuBandeau, prochainGrandTexte } from './client/events'
-import { beltView, caisseAPortee, acheterCaisse } from './client/belt'
-import { convoiAPortee, surencherir } from './client/convoy'
-import { fuserAPortee, agirSurFuser } from './client/fusion'
+import { beltView, crateInReach, buyCrate } from './client/belt'
+import { convoyInReach, surencherir } from './client/convoy'
+import { fuserInReach, agirSurFuser } from './client/fusion'
 import { boxView, openBestCrate, peutOuvrirIci, frapper, REEL_WIN } from './client/box'
 
 import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
@@ -31,7 +31,7 @@ import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
 import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
 import { verbe } from './client/verbe'
 import { volView } from './client/locomotion'
-import { tutoView, ETAPES_TEXTE, cadeauView } from './client/tutorial'
+import { tutoView, STEP_TEXTS, giftView } from './client/tutorial'
 import { WelcomePanel, welcomeView } from './client/welcome'
 import { RARITIES, itemName, itemColor, mutation, formatIncome, prixDeRevente, crate } from './shared/loot-table'
 
@@ -60,10 +60,10 @@ const ETATS: Record<string, (r: number) => string> = {
   'en-stock': () => 'kept in stock  ·  BUILD YOUR BASE to earn from it',
   plein: () => 'your base is full  ·  make room'
 }
-import { slotView, basculerPose, placeHere } from './client/slots'
+import { slotView, togglePlacing, placeHere } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
-import { baseIci, padEnFace, agirSurPad, ascenseurAPortee, monterIci } from './client/plots'
+import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -179,7 +179,7 @@ const COIN_GAP = 14
 function coinDroit(rang: number): number {
   const present = [
     tutoView.etape < tutoView.total,
-    cadeauView.leftS > 0,
+    giftView.leftS > 0,
     prochainGrandTexte() !== null
   ]
   let y = BAND.top
@@ -591,7 +591,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   */
   if (carryView.code >= 0) {
     // A toy in hand at the fuser feeds the machine; that beats putting it on a shelf.
-    if (fuserAPortee()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: ico('fuse'), action: agirSurFuser }
+    if (fuserInReach()) return { id: 'fuser-nourrir', label: 'FEED THE FUSER', icon: ico('fuse'), action: agirSurFuser }
     const ou = baseIci()
     if (ou === null) return { id: 'lacher', label: 'DROP', icon: ico('drop'), action: dropCarried }
     return ou.mienne
@@ -605,8 +605,8 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     above building because a pocket with a trap in it is a state the player created on purpose
     a moment ago, which is exactly what this button is for.
   */
-  if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: ico('build'), action: poserPiege }
-  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: ico('build'), action: basculerPose }
+  if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: ico('build'), action: placeTrap }
+  if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: ico('build'), action: togglePlacing }
   /*
     What the place offers, so the phone needs no interaction button at all.
 
@@ -618,14 +618,14 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     keeps its clicks as well. Ordered by how deliberate the standing is: a belt or a convoy
     you walked to, an elevator you spam, a shelf you happen to face.
   */
-  const caisse = caisseAPortee()
+  const caisse = crateInReach()
   if (caisse !== null) {
-    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: ico('crate'), action: () => acheterCaisse(caisse.articleId) }
+    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: ico('crate'), action: () => buyCrate(caisse.articleId) }
   }
-  const convoi = convoiAPortee()
+  const convoi = convoyInReach()
   if (convoi !== null && !convoi.mine) return { id: 'surencherir', label: `OUTBID  ${formatIncome(convoi.price)}`, icon: ico('outbid'), action: () => surencherir(convoi.convoyId) }
-  if (fuserAPortee()) return { id: 'fuser', label: 'FUSER', icon: ico('fuse'), action: agirSurFuser }
-  if (ascenseurAPortee()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
+  if (fuserInReach()) return { id: 'fuser', label: 'FUSER', icon: ico('fuse'), action: agirSurFuser }
+  if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
   const pad = padEnFace()
   if (pad !== null && !pad.mine) return { id: 'voler', label: `STEAL ${pad.nom}`, icon: ico('steal'), action: () => agirSurPad(pad) }
   /*
@@ -713,7 +713,7 @@ const WaitBar = () => {
 
 /** A panel that takes the whole screen: nothing of the game draws behind it, not even tabs. */
 function modale(): boolean {
-  return welcomeView.open || prestigeView.open || fusionPanelView.open
+  return welcomeView.open || prestigeView.open || fuserPanelView.open
 }
 
 /**
@@ -1142,7 +1142,7 @@ const uiComponent = () => {
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ height: 32, margin: { right: 14 } }} textWrap="nowrap" />
         <Label
-          value={ETAPES_TEXTE[tutoView.etape]?.titre ?? ''}
+          value={STEP_TEXTS[tutoView.etape]?.titre ?? ''}
           fontSize={TYPE.label} color={C.bonus}
           uiTransform={{ height: 32 }} textWrap="nowrap" />
       </UiEntity>
@@ -1291,7 +1291,7 @@ const uiComponent = () => {
       </UiEntity>
     )}
 
-    {hud() && cadeauView.leftS > 0 && (
+    {hud() && giftView.leftS > 0 && (
       <UiEntity
         uiTransform={{
           width: 320, height: 52, positionType: 'absolute',
@@ -1301,11 +1301,11 @@ const uiComponent = () => {
         uiBackground={SKIN.panel}
       >
         <Label
-          value={`FREE CRATE IN ${Math.floor(cadeauView.leftS / 60)}:${String(cadeauView.leftS % 60).padStart(2, '0')}`}
+          value={`FREE CRATE IN ${Math.floor(giftView.leftS / 60)}:${String(giftView.leftS % 60).padStart(2, '0')}`}
           fontSize={TYPE.caption} color={C.bonus}
           uiTransform={{ width: '100%', height: 26 }} textAlign="middle-left" textWrap="nowrap" />
         <Barre hauteur={8} couleur={C.bonus}
-          pct={(1 - cadeauView.leftS / Math.max(1, cadeauView.totalS)) * 100} />
+          pct={(1 - giftView.leftS / Math.max(1, giftView.totalS)) * 100} />
       </UiEntity>
     )}
 

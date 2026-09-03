@@ -69,7 +69,7 @@ export const boxView = {
 }
 
 let crateMesh: Entity
-let sonCoup: Entity
+let hitSound: Entity
 let sonBurst: Entity
 let sonReveal: Entity
 const eclats: Entity[] = []
@@ -111,7 +111,7 @@ function rareteDecor(): number {
 }
 
 export function setupBox(): void {
-  setupFantomeCaisse()
+  setupCrateGhost()
 
   crateMesh = engine.addEntity()
   Transform.create(crateMesh, { position: Vector3.create(0, -10, 0), scale: Vector3.create(0, 0, 0) })
@@ -142,13 +142,13 @@ export function setupBox(): void {
     AudioSource.create(e, { audioClipUrl: clip, playing: false, loop: false, volume: steal })
     return e
   }
-  sonCoup = emetteur('assets/sounds/hit.wav', 0.9)
+  hitSound = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
   sonTic = emetteur('assets/sounds/tick.wav', 0.5)
   // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
   // et qu'on comprend, la ou une plaque "FLOOR FULL" reste a lire a chaque tentative.
-  sonRefus = emetteur('assets/sounds/tick.wav', 0.35)
+  refuseSound = emetteur('assets/sounds/tick.wav', 0.35)
 
   /*
     Plus d'eclats en attente sous le sol.
@@ -251,7 +251,7 @@ export function frapper(): void {
     easingFunction: EasingFunction.EF_EASEOUTELASTIC,
     currentTime: 0
   })
-  jouer(sonCoup)
+  jouer(hitSound)
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
   // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque
@@ -271,7 +271,7 @@ export function frapper(): void {
   }
 }
 
-let sonRefus: Entity
+let refuseSound: Entity
 /**
  * Montre la revelation pour un code deja decide, sans tirage: la sortie du fuser.
  *
@@ -281,7 +281,7 @@ let sonRefus: Entity
  * centree, elle a son rayon, sa pop et son son: la reutiliser donne au fuser son evenement
  * sans une seule interface de plus (proprietaire, 3 Sep).
  */
-export function revelerPiece(code: number): void {
+export function revealItem(code: number): void {
   boxView.sansRoulette = true
   boxView.resultat = rarityOf(code)
   boxView.resultatMutation = mutationDe(code)
@@ -290,7 +290,7 @@ export function revelerPiece(code: number): void {
   jouer(sonReveal)
 }
 
-export function refuserAuSon(): void { jouer(sonRefus) }
+export function refuseWithSound(): void { jouer(refuseSound) }
 
 let lastPosition: Vector3 | null = null
 
@@ -446,23 +446,23 @@ export function peutOuvrirIci(): boolean {
  * la pose d'objet, avec la ligne du couvercle pour qu'il se lise comme une caisse et pas comme
  * un cube. Il disparait des que l'ouverture commence, la vraie caisse prenant sa place.
  */
-let fantomeCaisse: Entity
+let crateGhost: Entity
 let fantomeCouvercle: Entity
-const VERT_CAISSE = Color4.create(0.35, 0.95, 0.45, 0.34)
+const CRATE_GREEN = Color4.create(0.35, 0.95, 0.45, 0.34)
 
-function setupFantomeCaisse(): void {
-  fantomeCaisse = engine.addEntity()
-  Transform.create(fantomeCaisse, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
-  MeshRenderer.setBox(fantomeCaisse)
-  Material.setPbrMaterial(fantomeCaisse, plasticDe(VERT_CAISSE, 0.5))
+function setupCrateGhost(): void {
+  crateGhost = engine.addEntity()
+  Transform.create(crateGhost, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
+  MeshRenderer.setBox(crateGhost)
+  Material.setPbrMaterial(crateGhost, plasticDe(CRATE_GREEN, 0.5))
 
   fantomeCouvercle = engine.addEntity()
-  Transform.create(fantomeCouvercle, { parent: fantomeCaisse, position: Vector3.create(0, 0.32, 0), scale: Vector3.create(1.04, 0.1, 1.04) })
+  Transform.create(fantomeCouvercle, { parent: crateGhost, position: Vector3.create(0, 0.32, 0), scale: Vector3.create(1.04, 0.1, 1.04) })
   MeshRenderer.setBox(fantomeCouvercle)
   Material.setPbrMaterial(fantomeCouvercle, plasticDe(Color4.create(0.35, 0.95, 0.45, 0.6), 0.9))
 
   engine.addSystem(() => {
-    const t = Transform.getMutableOrNull(fantomeCaisse)
+    const t = Transform.getMutableOrNull(crateGhost)
     if (t === null) return
     /*
       Le marqueur obeit au BOUTON, pas a ses propres conditions.
@@ -548,7 +548,7 @@ export function openBestCrate(): void {
 }
 
 /** The crate currently standing at the base, if one is being opened: the beacon's target. */
-export function positionCaisse(): Vector3 | null {
+export function cratePosition(): Vector3 | null {
   if (!boxView.opening) return null
   const t = Transform.getOrNull(crateMesh)
   if (t === null || t.scale.x <= 0) return null

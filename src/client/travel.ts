@@ -1,13 +1,13 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, orientToBase } from '../shared/schemas'
-import { allerA } from './deplacer'
+import { moveTo } from './deplacer'
 import { poseView } from './pose'
-import { monAdresseClient } from './theft'
+import { myClientAddress } from './theft'
 import { alerter } from './theft'
 
 function maBase(): Vector3 | null {
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   if (moi === '') return null
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== moi) continue
@@ -67,17 +67,17 @@ function apparaitreChezSoi(): void {
     const chez = maBase()
     if (chez === null) return
     fait = true
-    allerA('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
+    moveTo('apparition', chez, Vector3.create(CENTER.x, 1.6, CENTER.z))
   })
 }
 
 export function rentrer(): void {
   const p = maBase()
   if (p === null) { alerter('YOU HAVE NO BASE YET', '#ffd166', 3000); return }
-  allerA('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
+  moveTo('retour-base', p, Vector3.create(p.x, FLOOR_HEIGHT, p.z - 4))
 }
 
 export function goToBelt(): void {
   const p = Vector3.create(CENTER.x, 0, CENTER.z - 4.5)
-  allerA('tapis', p, Vector3.create(CENTER.x, 2.5, CENTER.z))
+  moveTo('tapis', p, Vector3.create(CENTER.x, 2.5, CENTER.z))
 }

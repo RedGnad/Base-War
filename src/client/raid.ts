@@ -115,7 +115,7 @@ export function setupRaid(): void {
 
   let etaitActif = false
   let vu = { x: 0, z: 0 }
-  let barreTexte = ''
+  let barText = ''
   engine.addSystem((dt) => {
     let r: ReturnType<typeof Raid.get> | null = null
     for (const [, v] of engine.getEntitiesWith(Raid)) { r = v; break }
@@ -182,8 +182,8 @@ export function setupRaid(): void {
     const part = Math.max(0, Math.min(1, r.hp / Math.max(1, r.hpMax)))
     const pleins = Math.round(part * 20)
     const ligne = `${'#'.repeat(pleins)}${'-'.repeat(20 - pleins)}  ${Math.round(part * 100)}%${r.topName !== '' ? `   top: ${r.topName}` : ''}`
-    if (ligne !== barreTexte) {
-      barreTexte = ligne
+    if (ligne !== barText) {
+      barText = ligne
       const tb = TextShape.getMutableOrNull(barre)
       if (tb !== null) tb.text = ligne
     }

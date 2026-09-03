@@ -12,7 +12,7 @@ import { rarityOf, mutationDe } from '../shared/loot-table'
 import { log } from './log'
 import {
   baseDe, removeItem, addItem, displayName, presents, positionOf, crediterVente,
-  advanceQuest, pushQuests, aPortee, positionObjet, enregistrerDon, storeAlert
+  advanceQuest, pushQuests, inReach, positionObjet, recordGift, storeAlert
 } from './plots'
 import { tutoFait } from './onboarding'
 import { rompreCape } from './gear'
@@ -33,14 +33,14 @@ import { rompreCape } from './gear'
 /** One entity per carrier, created here, synced to everyone so the item shows in their hand. */
 const portes = new Map<string, ReturnType<typeof engine.addEntity>>()
 
-export function porteQuoi(address: string): number | null {
+export function carriesWhat(address: string): number | null {
   const e = portes.get(address)
   if (e === undefined) return null
   return Carried.getOrNull(e)?.code ?? null
 }
 
 /** What is in the hand and where it came from, for the callers that must know both. */
-export function porteDetail(address: string): { code: number; origin: string } | null {
+export function carriedDetail(address: string): { code: number; origin: string } | null {
   const e = portes.get(address)
   if (e === undefined) return null
   const c = Carried.getOrNull(e)
@@ -51,8 +51,8 @@ export function prendreDesMains(address: string): { code: number; origin: string
   return lacher(address)
 }
 
-export function portePour(address: string): boolean {
-  return porteQuoi(address) !== null
+export function carriesFor(address: string): boolean {
+  return carriesWhat(address) !== null
 }
 
 function poser(address: string, code: number, origin: string, repris = false): void {
@@ -178,7 +178,7 @@ function jeterAuSol(code: number, origin: string, par: string, ou: Vector3): voi
  * target has nothing to give: a thief who has just spent everything, or who never had
  * anything, was the one player a bullet could not disarm.
  */
-export function frapperPorteur(address: string, force: number): 'rien' | 'ebranle' | 'lache' {
+export function hitCarrier(address: string, force: number): 'rien' | 'ebranle' | 'lache' {
   const e = portes.get(address)
   if (e === undefined) return 'rien'
   const c = Carried.getMutableOrNull(e)
@@ -209,7 +209,7 @@ export function startCarry(): void {
   room.onMessage('pickUp', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    if (portePour(a)) { void room.send('carryResult', { ok: false, reason: 'hands full', rarity: 0, mutation: 0 }, { to: [a] }); return }
+    if (carriesFor(a)) { void room.send('carryResult', { ok: false, reason: 'hands full', rarity: 0, mutation: 0 }, { to: [a] }); return }
     const b = baseDe(a)
     if (b === undefined) { void room.send('carryResult', { ok: false, reason: 'you have no base', rarity: 0, mutation: 0 }, { to: [a] }); return }
     const slot = d?.slot
@@ -218,7 +218,7 @@ export function startCarry(): void {
       Reaching your own shelf is reaching a shelf, and it was the one the server never checked.
 
       Taking from a rival is checked twice, by the pointer collider on the client and by
-      `aPortee` here, because a modified client cannot be trusted about where it stands.
+      `inReach` here, because a modified client cannot be trusted about where it stands.
       Lifting from your OWN base had no check of any kind: the message named a slot and the
       server obeyed, from anywhere on the map, through any number of floors. That is a free
       remote hand, and worse, it is the way to arrive at `poser` with hands that are already
@@ -226,7 +226,7 @@ export function startCarry(): void {
     */
     const p = positionOf(a)
     const objet = positionObjet(a, slot)
-    if (p === null || objet === null || !aPortee(p, objet, STEAL_REACH)) {
+    if (p === null || objet === null || !inReach(p, objet, STEAL_REACH)) {
       void room.send('carryResult', { ok: false, reason: 'too far, or not on this floor', rarity: 0, mutation: 0 }, { to: [a] })
       return
     }
@@ -274,12 +274,12 @@ export function startCarry(): void {
       Beyond the top of the shelf it clamps rather than refuses, since the shelf is a dense
       queue and an index past the end would be a hole.
     */
-    const etageVise = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
-    const bas = etageVise * SLOTS_PER_FLOOR
+    const targetFloor = Math.max(0, Math.round(p.y / FLOOR_HEIGHT))
+    const bas = targetFloor * SLOTS_PER_FLOOR
     const propose = Number.isInteger(d?.slot) ? d.slot : bas
     // The storey is the server's, the pedestal within it is the client's wish; capacity bounds both.
     const ou = Math.max(bas, Math.min(propose, bas + SLOTS_PER_FLOOR - 1))
-    const etageReel = Math.floor(ou / SLOTS_PER_FLOOR)
+    const realFloor = Math.floor(ou / SLOTS_PER_FLOOR)
 
     // Same word-not-a-boolean trap: a full base used to accept the item and lose it.
     if (addItem(vise, c.code, ou) === 'plein') {
@@ -291,7 +291,7 @@ export function startCarry(): void {
     const code = c.code, origine = c.origin, repris = c.repris
     lacher(a)
     void room.send('carryResult', {
-      ok: true, reason: vise === a ? `placed on floor ${etageReel + 1}` : 'given', rarity: rar, mutation: mut
+      ok: true, reason: vise === a ? `placed on floor ${realFloor + 1}` : 'given', rarity: rar, mutation: mut
     }, { to: [a] })
 
     /*
@@ -317,11 +317,11 @@ export function startCarry(): void {
       */
       if (!repris) { advanceQuest(a, 'poser'); pushQuests(a) }
       void origine
-      log(`carry: ${displayName(a)} placed a ${rar} on floor ${etageReel + 1} of their own base`)
+      log(`carry: ${displayName(a)} placed a ${rar} on floor ${realFloor + 1} of their own base`)
       return
     }
 
-    enregistrerDon(a, vise)
+    recordGift(a, vise)
     noter('don', displayName(a), displayName(vise), 0)
     advanceQuest(a, 'gift')
     pushQuests(a)
@@ -431,7 +431,7 @@ export function startCarry(): void {
       let plusPres = LOOT_ITEM_PICKUP_RANGE
       for (const addr of ici) {
         if (addr === d.droppedBy && now < ouvert) continue
-        if (portePour(addr)) continue
+        if (carriesFor(addr)) continue
         const p = positionOf(addr)
         if (p === null) continue
         const dist = Math.sqrt((p.x - t.position.x) ** 2 + (p.z - t.position.z) ** 2)

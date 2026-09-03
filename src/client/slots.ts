@@ -7,7 +7,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { BASE_SIDE, SCENE_SIDE, snapToGrid, invalidReason } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { Plot } from '../shared/schemas'
-import { monAdresseClient, theftView } from './theft'
+import { myClientAddress, theftView } from './theft'
 import { welcomeView } from './welcome'
 import { envoyerOuAttendre } from './intent'
 import { poseView } from './pose'
@@ -22,7 +22,7 @@ let autres: Array<{ x: number; z: number }> = []
 /** Vrai quand le marqueur s'est allume tout seul, faux quand le joueur l'a demande. */
 let auto = false
 
-export function basculerPose(): void {
+export function togglePlacing(): void {
   slotView.active = !slotView.active
   auto = false
   slotView.auto = false
@@ -35,7 +35,7 @@ export function basculerPose(): void {
 }
 
 function myBasePoint(): { x: number; z: number } | null {
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   if (moi === '') return null
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== moi) continue
@@ -128,6 +128,6 @@ export function placeHere(): void {
   const x = snapToGrid(p.x), z = snapToGrid(p.z)
   poseView.demandee = true
   envoyerOuAttendre(() => { void room.send('claimSlot', { x, z }) })
-  basculerPose()
+  togglePlacing()
 }
 

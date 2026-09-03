@@ -1,5 +1,5 @@
 import {
-  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, formeDeRarete, effacerForme, socleDuJouet, effacerSocle, SOCLE_EPAISSEUR, lumiereDuJouet, effacerLumiere, LUMIERE_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, matiereMetal
+  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial
 } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode,
@@ -10,7 +10,7 @@ import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
-import { poserTexte3D, Segment3D } from './texte3d'
+import { place3DText, Segment3D } from './texte3d'
 
 const INCOME_UI = PRODUCTION_PER_RARITY
 /** The elevator's local spot in a base (its +x, -z corner); shared by the model and the ride. */
@@ -41,16 +41,16 @@ function goUpOneFloor(v: View): void {
   // elevator across the rail, which a click clears since the pillar is storey-tall.
   const pied = orientToBase(t.position.z, ASC_X - 3.5, ASC_Z + 1.6)
   const el = orientToBase(t.position.z, ASC_X, ASC_Z)
-  allerA(
+  moveTo(
     'ascenseur',
     Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
     Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
   )
 }
-import { steal, monAdresseClient, alerter } from './theft'
+import { steal, myClientAddress, alerter } from './theft'
 import { pickUp } from './carry'
 import { HUE } from './theme'
-import { allerA } from './deplacer'
+import { moveTo } from './deplacer'
 import { isMobile } from '@dcl/sdk/platform'
 
 type Floor = {
@@ -228,7 +228,7 @@ const LOD_TOUJOURS_PRES = 24
 const LOD_FIDELITE = 0.85
 
 /** Ce que cette base coutera en objets rendus, au detail complet ou reduite. */
-function coutDeLaBase(p: { floors: number; items: readonly number[] }, pres: boolean): number {
+function baseCost(p: { floors: number; items: readonly number[] }, pres: boolean): number {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
   if (!pres) return BASE_FIXED_COST + etages * STOREY_COST_FAR
   let pieces = 0
@@ -260,7 +260,7 @@ function place(x: number, y: number, z: number): Entity {
  * donc aucune raison que le client rende un cylindre et un modele a l'echelle zero sur chaque
  * etage de chaque base. On monte a la premiere charge, on demonte a la derniere.
  */
-function armerSentinelle(sentry: Entity, armee: boolean): void {
+function armSentry(sentry: Entity, armee: boolean): void {
   const monte = MeshRenderer.has(sentry)
   if (armee && !monte) {
     MeshRenderer.setCylinder(sentry, 0.25, 0.45)
@@ -372,7 +372,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     position: Vector3.create(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1),
     scale: Vector3.create(0, 0, 0)
   })
-  // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armerSentinelle`.
+  // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armSentry`.
   // A l'echelle zero ils comptaient deja deux objets rendus par etage, arme ou non.
 
   return { coque, verre, accent, montee, sols, murs, ramp, rails, sentry }
@@ -412,13 +412,13 @@ function expulser(base: Vector3, floors: number): void {
   if (!dedans) return
   const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
-  if (allerA('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
+  if (moveTo('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
     alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
   }
 }
 
 /** One pedestal: a small box under the floor until something stands on it, with the steal handle. */
-function creerSocle(racine: Entity, k: number): Entity {
+function createPedestal(racine: Entity, k: number): Entity {
   const o = engine.addEntity()
   const d = slotPosition(k)
   Transform.create(o, {
@@ -586,7 +586,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     for nothing, which is the entity count the workshop said to cut first (28 Aug).
   */
   const items: Entity[] = []
-  for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(creerSocle(racine, k))
+  for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
   return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
 }
@@ -627,7 +627,7 @@ function destroyView(v: View): void {
 export function baseIci(): { ownerId: string; mienne: boolean } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   /*
     The NEAREST base, not the first one the iterator happens to yield.
 
@@ -662,7 +662,7 @@ export function baseIci(): { ownerId: string; mienne: boolean } | null {
 export function maDefense(): { etage: number; charges: number } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   for (const [e, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== moi) continue
     const bt = Transform.getOrNull(e)
@@ -680,7 +680,7 @@ export function maDefense(): { etage: number; charges: number } | null {
  * Which pedestal an item would land on, if it were put down right now.
  *
  * The storey comes from where the player is standing, because that is the part that decides
- * anything: `aPortee` gates theft on `|dy| <= SAME_STOREY`, so only the same floor is
+ * anything: `inReach` gates theft on `|dy| <= SAME_STOREY`, so only the same floor is
  * reachable. Within a floor the six pedestals span 7.2 m against a 10 m reach, so which one
  * you pick changes nothing a thief cares about. It is offered anyway, because arranging your
  * own building is worth doing for its own sake and because the marker makes the choice legible
@@ -690,7 +690,7 @@ export function maDefense(): { etage: number; charges: number } | null {
  * the end would be a hole, and the shelf is a dense queue. A floor above what the shelf
  * reaches falls back to the top of it.
  */
-export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } | null {
+export function placeTarget(): { ownerId: string; index: number; pos: Vector3 } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
   let base: { p: ReturnType<typeof Plot.get>; x: number; z: number } | null = null
@@ -746,7 +746,7 @@ export function setupPlots(): void {
             wearing the clothes of a world object. Now it simply lifts the thing, and where you
             walk with it is the rest of the sentence.
           */
-          if (v.ownerId.toLowerCase() === monAdresseClient()) pickUp(k)
+          if (v.ownerId.toLowerCase() === myClientAddress()) pickUp(k)
           else steal(v.ownerId, k)
           return
         }
@@ -755,7 +755,7 @@ export function setupPlots(): void {
       if (
         inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.ascenseur)
       ) {
-        if (v.ownerId.toLowerCase() !== monAdresseClient()) {
+        if (v.ownerId.toLowerCase() !== myClientAddress()) {
           alerter('NOT YOUR ELEVATOR  ·  TAKE THE RAMP', '#ffd166', 3500)
           return
         }
@@ -776,7 +776,7 @@ export function setupPlots(): void {
       mais de sa PLACE parmi les autres. La base du lecteur passe devant tout le monde.
     */
     const moiT = Transform.getOrNull(engine.PlayerEntity)
-    const moiAdr = monAdresseClient()
+    const moiAdr = myClientAddress()
     const distances = new Map<number, number>()
     const rangs: Array<{ id: number; rang: number; pres: number; loin: number }> = []
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
@@ -789,8 +789,8 @@ export function setupPlots(): void {
       rangs.push({
         id,
         rang: sienne ? -1 : dejaPres ? d * LOD_FIDELITE : d,
-        pres: coutDeLaBase(p, true),
-        loin: coutDeLaBase(p, false)
+        pres: baseCost(p, true),
+        loin: baseCost(p, false)
       })
     }
     rangs.sort((a, b) => a.rang - b.rang)
@@ -815,7 +815,7 @@ export function setupPlots(): void {
       const id = ent as unknown as number
       vivantes.add(id)
       const t = Transform.get(ent)
-      const monBaseLod = p.ownerId.toLowerCase() === monAdresseClient()
+      const monBaseLod = p.ownerId.toLowerCase() === myClientAddress()
       const dist = distances.get(id) ?? 0
       let v = views.get(id)
       /*
@@ -835,7 +835,7 @@ export function setupPlots(): void {
       }
 
       const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
-      const monBase = p.ownerId.toLowerCase() === monAdresseClient()
+      const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
       /*
         The signature is computed here rather than further down, because it guards twice.
@@ -905,9 +905,9 @@ export function setupPlots(): void {
             const n = p.sentryFloors[e] ?? 0
             const k = n === 0 ? 0 : 0.6 + n * 0.18
             ts.scale = Vector3.create(k, k, k)
-            armerSentinelle(v.floors[e].sentry, n > 0 && !v.loin)
+            armSentry(v.floors[e].sentry, n > 0 && !v.loin)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
-            lumiereDuJouet(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
+            toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
           }
         }
         /*
@@ -944,7 +944,7 @@ export function setupPlots(): void {
           if (v.plaqueGlyphes !== null) engine.removeEntityWithChildren(v.plaqueGlyphes)
           const segs: Segment3D[] = [{ texte: p.ownerName.slice(0, 14), role: 'name', taille: 0.78 }]
           if (p.rebirths > 0) segs.push({ texte: `  x${p.rebirths + 1}`, role: 'money', taille: 0.78 })
-          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : poserTexte3D(v.plaque, segs, !p.ownerPresent)
+          v.plaqueGlyphes = (p.ownerName === '' || v.loin) ? null : place3DText(v.plaque, segs, !p.ownerPresent)
           // The floating pair rides just above the storeys that exist, not the theoretical top.
           const rp = Transform.getOrNull(v.racine)
           if (rp !== null) {
@@ -977,7 +977,7 @@ export function setupPlots(): void {
           v.floors.push(buildFloor(0, 0, v.floors.length, modelesDe(p), accentPour(p), v.loin))
           parentCourant = null
           // The storey's six pedestals arrive with it.
-          while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(creerSocle(v.racine, v.items.length))
+          while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(createPedestal(v.racine, v.items.length))
         }
 
         for (let e = 0; e < v.floors.length; e++) {
@@ -999,10 +999,10 @@ export function setupPlots(): void {
 
       // Meme regle pour le bouclier: sa taille ne change qu'a la seconde ou il se leve.
       const lockedNow = p.lockedUntil > Date.now()
-      const etatBouclier = `${lockedNow}|${p.floors}|${monBase}`
-      const ptr = etatBouclier === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
+      const shieldState = `${lockedNow}|${p.floors}|${monBase}`
+      const ptr = shieldState === v.vuBouclier ? null : Transform.getMutableOrNull(v.door)
       if (ptr !== null) {
-        v.vuBouclier = etatBouclier
+        v.vuBouclier = shieldState
         const locked = lockedNow
         const h = p.floors * FLOOR_HEIGHT + 0.6
         /*
@@ -1088,9 +1088,9 @@ export function setupPlots(): void {
           tr.position = Vector3.create(0, -5, 0)
           tr.scale = Vector3.Zero()
           demonter(ent)
-          effacerForme(ent)
-          effacerSocle(ent)
-          effacerLumiere(ent)
+          clearShape(ent)
+          clearPedestal(ent)
+          clearLight(ent)
           continue
         }
 
@@ -1103,17 +1103,17 @@ export function setupPlots(): void {
         const size = r.size * (m.mult > 1 ? 1.12 : 1) * (1 + 0.05 * traits)
         // `dy` is the slab's top face. A hair of air, the pad, then the toy standing on the pad
         // with its centre half its size up. Nothing shares a plane with anything.
-        tr.position = Vector3.create(d.dx, d.dy + JEU + SOCLE_EPAISSEUR + size / 2, d.dz)
+        tr.position = Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size / 2, d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
         const hex = itemColor(rarityOf(code), mutationDe(code))
         const c = Color4.fromHexString(hex + 'ff')
         const mutId = mutationDe(code)
         // Gold and Diamond are metal and gem; every other mutation, and rarity itself, glow.
-        const mat = estMetal(mutId) ? matiereMetal(hex, mutId, r.glow) : plasticDe(c, r.glow)
+        const mat = estMetal(mutId) ? metalMaterial(hex, mutId, r.glow) : plasticDe(c, r.glow)
         Material.setPbrMaterial(ent, mat)
         // The toy of this rarity, as children: the same silhouette the hand and the belt show.
-        formeDeRarete(ent, rarityOf(code), mat)
+        rarityShape(ent, rarityOf(code), mat)
         /*
           Every toy stands on a pad; a mutation colours it, and so does a Rare-or-better even
           without a mutation. The pad is emissive geometry, so unlike the point light and the
@@ -1123,12 +1123,12 @@ export function setupPlots(): void {
         // Glow comes from RARITY, not from the mutation: a Common Candy is matte pink, a Rare
         // Candy glows (tester, 28 Aug). The mutation only sets the COLOUR of the glow when
         // there is one. Below the rarity threshold, no pad glow whatever the mutation.
-        const padHex = r.glow >= LUMIERE_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
-        socleDuJouet(ent, size, padHex)
+        const padHex = r.glow >= LIGHT_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
+        toyPedestal(ent, size, padHex)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         // Rarity drives the light; a trait is earned so it adds; a mutation does not (it is colour).
         const eclat = r.glow + 0.8 * traits
-        lumiereDuJouet(ent, eclat >= LUMIERE_MIN_GLOW ? hex : null, eclat)
+        toyLight(ent, eclat >= LIGHT_MIN_GLOW ? hex : null, eclat)
         /*
           One shared model per rarity, and the artist decides the silhouette.
 
@@ -1200,7 +1200,7 @@ export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: s
   if (choisi < 0) return null
   return {
     ownerId: base.p.ownerId, k: choisi,
-    mine: base.p.ownerId.toLowerCase() === monAdresseClient(),
+    mine: base.p.ownerId.toLowerCase() === myClientAddress(),
     nom: nomDuCode(base.p.items[choisi])
   }
 }
@@ -1216,14 +1216,14 @@ export function agirSurPad(pad: { ownerId: string; k: number; mine: boolean }): 
  * the player on (about four metres, facing it), so the spam-press climb keeps working.
  */
 export const ELEVATOR_REACH = 4.4
-function monAscenseur(): View | null {
-  const moi = monAdresseClient()
+function myElevator(): View | null {
+  const moi = myClientAddress()
   for (const v of views.values()) if (v.ownerId.toLowerCase() === moi) return v
   return null
 }
-export function ascenseurAPortee(): boolean {
+export function elevatorInReach(): boolean {
   const t = Transform.getOrNull(engine.PlayerEntity)
-  const v = monAscenseur()
+  const v = myElevator()
   if (t === null || v === null) return false
   // Un seul etage: la cabine n'est pas dessinee, le bouton ne doit pas la proposer non plus.
   if (v.floors.length < 2) return false
@@ -1233,6 +1233,6 @@ export function ascenseurAPortee(): boolean {
   return Math.hypot(t.position.x - (r.position.x + el.dx), t.position.z - (r.position.z + el.dz)) <= ELEVATOR_REACH
 }
 export function monterIci(): void {
-  const v = monAscenseur()
+  const v = myElevator()
   if (v !== null) goUpOneFloor(v)
 }

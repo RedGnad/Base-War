@@ -14,8 +14,8 @@ export function main(): void {
     void import('./server/server').then(({ startServer }) => startServer())
   } else {
     void import('./client/setup').then(async ({ startClient }) => {
-      const { installerProfil } = await import('./client/profil')
-      installerProfil()
+      const { setupProfile } = await import('./client/profil')
+      setupProfile()
       startClient()
       const { setupUi } = await import('./ui')
       setupUi()

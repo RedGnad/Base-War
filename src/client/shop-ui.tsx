@@ -5,7 +5,7 @@ import { Btn, SURF } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
-import { gearView, acheterGear, acheterLuck, wield, basculerPose as basculerPosePiege, peutPoser, estPosable } from './gear'
+import { gearView, acheterGear, buyLuckCharm, wield, togglePlacing as basculerPosePiege, canPlace, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry } from './theft'
@@ -210,7 +210,7 @@ export const ShopContent = () => {
         const posable = estPosable(g.id)
         // Worn gear is bought once and then simply held: the row says so instead of offering it again.
         const porte = !posable && held > 0
-        const peutPoserCe = peutPoser(g.id)
+        const peutPoserCe = canPlace(g.id)
         // The two weapons (slap id 2, taser id 5) are WIELDED from here: tap to hold, tap again for the gun.
         const armeDeG = g.id === 2 ? 'slap' as const : g.id === 5 ? 'taser' as const : null
         const estArme = armeDeG !== null && held > 0
@@ -237,7 +237,7 @@ export const ShopContent = () => {
         detail={`x2 mutations, ${Math.round(LUCK_MS / 60000)} min`}
         bouton="BUY" prix={theftView.luckPrice}
         possible={theftView.luckPrice > 0 && argent >= theftView.luckPrice}
-        onClick={() => acheterLuck()} />
+        onClick={() => buyLuckCharm()} />
 
       <Famille titre="PRESTIGE" />
       <Rang

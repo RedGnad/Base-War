@@ -10,7 +10,7 @@ import {
   itemIncome, rarityOf, prixDeRevente, rarity, traitsDe, TRAITS_MAX, encoder, mutationDe, skinDebloque, SKIN_NEEDS, RARITIES, mutation
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
-import { viderJournal } from './records'
+import { clearJournal } from './records'
 import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsFor, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
@@ -280,20 +280,20 @@ function createBase(
   Et si TOUT le monde est present et que le budget est plein, on refuse, en le disant. Ce n'est
   plus notre limite a ce moment-la, c'est celle du telephone.
 */
-function coutAffichage(b: Base): number {
+function displayCost(b: Base): number {
   const etages = Math.max(1, Math.min(openFloors(b.floorsBought), MAX_FLOORS))
   return BASE_FIXED_COST + etages * STOREY_COST_FAR
 }
 
-function budgetUtilise(): number {
+function budgetUsed(): number {
   let n = DECOR_COST
-  for (const b of bases.values()) n += coutAffichage(b)
+  for (const b of bases.values()) n += displayCost(b)
   return n
 }
 
 /** Vrai si une base de plus tient, quitte a retirer celle du plus anciennement absent. */
-function faireDeLaPlace(pourQui: string, cout: number): boolean {
-  if (budgetUtilise() + cout <= OBJECT_BUDGET) return true
+function makeRoom(pourQui: string, cout: number): boolean {
+  if (budgetUsed() + cout <= OBJECT_BUDGET) return true
   const ici = presents()
   let victime: string | null = null
   let vu = Number.POSITIVE_INFINITY
@@ -305,7 +305,7 @@ function faireDeLaPlace(pourQui: string, cout: number): boolean {
   const heures = Math.round((Date.now() - vu) / 3600_000)
   log(`budget plein: la base de ${nameOf(victime)} se retire (absent depuis ${heures} h) pour ${nameOf(pourQui)}`)
   removeBase(victime)
-  return budgetUtilise() + cout <= OBJECT_BUDGET || faireDeLaPlace(pourQui, cout)
+  return budgetUsed() + cout <= OBJECT_BUDGET || makeRoom(pourQui, cout)
 }
 
 function removeBase(address: string): void {
@@ -324,14 +324,14 @@ function removeBase(address: string): void {
  * derriere: le serveur enumere lui-meme les bases enregistrees, en tire la liste des adresses,
  * et efface les deux cotes du stockage.
  *
- * `MONDE_REMIS_A_ZERO` est une DATE, pas un booleen. Une fois le nettoyage fait, elle est
+ * `WORLD_RESET_MARK` est une DATE, pas un booleen. Une fois le nettoyage fait, elle est
  * ecrite dans le stockage, et un demarrage suivant qui lit la meme valeur ne recommence pas.
  * Laisser la constante en place est donc sans danger; il faut la CHANGER pour provoquer une
  * nouvelle remise a zero. Un booleen oublie a `true`, lui, aurait vide le monde a chaque
  * redemarrage du serveur, c'est-a-dire plusieurs fois par jour.
  */
-const MONDE_REMIS_A_ZERO = '2026-09-02-place-reservee'
-const CLEF_REMISE = 'reset'
+const WORLD_RESET_MARK = '2026-09-02-place-reservee'
+const RESET_KEY = 'reset'
 
 /**
  * Le marqueur relu, qu'il ait ete ecrit brut ou encode.
@@ -346,7 +346,7 @@ const CLEF_REMISE = 'reset'
  *
  * On tolere les deux formes, parce que le stockage de production contient deja l'ancienne.
  */
-function marqueurLu(brut: string | null | undefined): string | null {
+function readMarker(brut: string | null | undefined): string | null {
   if (typeof brut !== 'string' || brut.length === 0) return null
   if (brut[0] !== '"') return brut
   try {
@@ -361,19 +361,19 @@ function marqueurLu(brut: string | null | undefined): string | null {
   Les comptes que la remise a zero est en train d'effacer, tant qu'elle n'a pas fini.
 
   Le menage tourne en tache de fond pour ne pas tuer le demarrage, et cela ouvre une fenetre:
-  un joueur qui arrive pendant que son profil existe encore le fait relire par `accueillir`,
+  un joueur qui arrive pendant que son profil existe encore le fait relire par `welcome`,
   qui lui REFABRIQUE sa base depuis les coordonnees du profil, puis la marque a sauvegarder.
   La remise a zero effacait donc ce que l'arrivee venait de ressusciter, et en pire: reecrit,
   donc definitif (proprietaire, 3 Sep, "il y a toujours ma base"). Un compte inscrit ici
   arrive VIERGE jusqu'a ce que son effacement soit passe.
 */
-const effacementEnCours = new Set<string>()
+const beingErased = new Set<string>()
 
-async function remiseAZero(): Promise<Set<string>> {
+async function worldReset(): Promise<Set<string>> {
   const efface = new Set<string>()
   try {
-    const fait = marqueurLu(await Storage.get<string>(CLEF_REMISE))
-    if (fait === MONDE_REMIS_A_ZERO) return efface
+    const fait = readMarker(await Storage.get<string>(RESET_KEY))
+    if (fait === WORLD_RESET_MARK) return efface
 
     /*
       Le marqueur AVANT le menage, jamais apres.
@@ -386,16 +386,16 @@ async function remiseAZero(): Promise<Set<string>> {
       3 Sep). Marqueur d'abord, le pire cas devient un menage incomplet, qui se rattrape;
       marqueur apres, le pire cas est un monde qu'on ne peut plus charger du tout.
     */
-    const pose = await Storage.set(CLEF_REMISE, MONDE_REMIS_A_ZERO)
-    log(`remise a zero ${MONDE_REMIS_A_ZERO}: marqueur pose (${pose}), lu avant "${fait ?? 'aucun'}"`)
+    const pose = await Storage.set(RESET_KEY, WORLD_RESET_MARK)
+    log(`remise a zero ${WORLD_RESET_MARK}: marqueur pose (${pose}), lu avant "${fait ?? 'aucun'}"`)
 
     const res = await Storage.getValues({ prefix: 'base:' })
     for (const e of res.data) {
       const a = e.key.slice('base:'.length)
-      if (a.length > 0) { efface.add(a); effacementEnCours.add(a) }
+      if (a.length > 0) { efface.add(a); beingErased.add(a) }
     }
     await Storage.delete(JOURNAL_KEY)
-    viderJournal()
+    clearJournal()
     bases.clear()
     profiles.clear()
     dirtyBases.clear()
@@ -414,15 +414,15 @@ async function remiseAZero(): Promise<Set<string>> {
         for (const a of efface) {
           await Storage.delete(BASE_KEY(a))
           await Storage.player.delete(a, PLAYER_KEY)
-          effacementEnCours.delete(a)
+          beingErased.delete(a)
           n += 1
         }
       } catch (e) {
         log(`remise a zero: menage interrompu apres ${n}: ${e}`)
-        effacementEnCours.clear()
+        beingErased.clear()
         return
       }
-      effacementEnCours.clear()
+      beingErased.clear()
       log(`remise a zero: ${n} compte(s) effaces`)
     })()
   } catch (e) {
@@ -442,7 +442,7 @@ async function remiseAZero(): Promise<Set<string>> {
  * "unknown profile" jusqu'a ce qu'il quitte le monde (proprietaire, 2 Sep, premiere base apres
  * la remise a zero).
  *
- * La course existait aussi sans nettoyage, en plus discret: accueillir quelqu'un avant que les
+ * La course existait aussi sans nettoyage, en plus discret: welcome quelqu'un avant que les
  * bases soient relues, c'est risquer d'en creer une deuxieme sur les coordonnees de son profil.
  * Le drapeau se leve dans un `finally`, donc meme une lecture qui echoue laisse le monde
  * ouvrir, sans quoi une panne de stockage fermerait la porte a tout le monde.
@@ -451,10 +451,10 @@ let pret = false
 export function plotsPrets(): boolean { return pret }
 
 async function loadBases(): Promise<void> {
-  const efface = await remiseAZero()
+  const efface = await worldReset()
   try {
     const res = await Storage.getValues({ prefix: 'base:' })
-    let budgetRestauration = DECOR_COST
+    let restoreBudget = DECOR_COST
     const loaded = res.data
       .map(({ key, value }) => {
         const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
@@ -504,8 +504,8 @@ async function loadBases(): Promise<void> {
       .filter((l) => {
         const etages = Math.max(1, Math.min(openFloors(l.vitrine?.floorsBought ?? 0), MAX_FLOORS))
         const cout = BASE_FIXED_COST + etages * STOREY_COST_FAR
-        if (budgetRestauration + cout > OBJECT_BUDGET) return false
-        budgetRestauration += cout
+        if (restoreBudget + cout > OBJECT_BUDGET) return false
+        restoreBudget += cout
         return true
       })
     /*
@@ -593,13 +593,13 @@ async function save(): Promise<void> {
   }
 }
 
-export async function accueillir(address: string): Promise<void> {
+export async function welcome(address: string): Promise<void> {
   const raw = await Storage.player.get<string>(address, PLAYER_KEY)
   // Un compte que la remise a zero est en train d'effacer arrive neuf, jamais avec son
   // ancien profil: sinon l'arrivee refabrique la base que le menage vient de supprimer.
-  const enEffacement = effacementEnCours.has(address)
+  const enEffacement = beingErased.has(address)
   if (enEffacement) {
-    effacementEnCours.delete(address)
+    beingErased.delete(address)
     log(`${nameOf(address)} arrive pendant la remise a zero: profil ignore, compte neuf`)
     await Storage.player.delete(address, PLAYER_KEY)
     await Storage.delete(BASE_KEY(address))
@@ -628,7 +628,7 @@ export async function accueillir(address: string): Promise<void> {
   const name = nameOf(address)
   // Celui qui arrive est PRESENT: il passe devant tous les absents et retrouve sa base.
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    faireDeLaPlace(address, BASE_FIXED_COST + STOREY_COST_FAR)
+    makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)
   }
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     // Sa position d'avant si elle est enregistree, un emplacement libre seulement s'il n'y en
@@ -685,8 +685,8 @@ export function auRevoir(address: string): void {
 export function coinsOf(address: string): number { return Math.floor(profiles.get(address)?.coins ?? 0) }
 
 /** Time already spent here, across every visit and every server this scene has had. */
-export function tempsJoue(address: string): number { return profiles.get(address)?.playedS ?? 0 }
-export function ajouterTempsJoue(address: string, seconds: number): void {
+export function playedTime(address: string): number { return profiles.get(address)?.playedS ?? 0 }
+export function addPlayedTime(address: string, seconds: number): void {
   const p = profiles.get(address)
   if (p === undefined) return
   p.playedS = (p.playedS ?? 0) + seconds
@@ -702,12 +702,12 @@ export function ajouterTempsJoue(address: string, seconds: number): void {
   derniere fois pour les profils qui l'ont: qui avait deja pris le cadeau des dix minutes a
   droit aux deux, il ne les redemandera pas.
 */
-export function cadeauxPris(address: string): number {
+export function giftsTaken(address: string): number {
   const p = profiles.get(address)
   if (p === undefined) return 0
   return p.giftsTaken ?? (p.giftTaken === true ? 99 : 0)
 }
-export function marquerCadeauPris(address: string): void {
+export function markGiftTaken(address: string): void {
   const p = profiles.get(address)
   if (p === undefined) return
   p.giftsTaken = (p.giftsTaken ?? 0) + 1
@@ -738,7 +738,7 @@ export type BaseView = { address: string; name: string; items: number[]; entity:
  * building stopped being a candidate the moment they climbed the stairs. Height is the job of
  * the per-item reach; this one only asks which address the player is inside.
  */
-export function basesProches(p: Vector3, range: number, sauf: string): BaseView[] {
+export function nearbyBases(p: Vector3, range: number, sauf: string): BaseView[] {
   const out: BaseView[] = []
   for (const b of bases.values()) {
     if (b.address === sauf) continue
@@ -764,7 +764,7 @@ export function basesProches(p: Vector3, range: number, sauf: string): BaseView[
  * theft module, so only theft asked it, and lifting an item off your OWN base was checked
  * for nothing at all.
  */
-export function aPortee(joueur: Vector3, objet: Vector3, rayon: number): boolean {
+export function inReach(joueur: Vector3, objet: Vector3, rayon: number): boolean {
   if (Math.abs(joueur.y - objet.y) > SAME_STOREY) return false
   return Vector3.distance(joueur, objet) <= rayon
 }
@@ -900,9 +900,9 @@ export function addItem(address: string, rarity: number, ou?: number): Rangement
         deplacement. Sans cible (une recolte, un don automatique) l'ancien comportement tient:
         le premier trou libre, ou la fin.
       */
-      const memeEtage = ou !== undefined
-      const bas = memeEtage ? Math.floor(at / SLOTS_PER_FLOOR) * SLOTS_PER_FLOOR : 0
-      const haut = memeEtage ? Math.min(bas + SLOTS_PER_FLOOR, places) : places
+      const sameFloor = ou !== undefined
+      const bas = sameFloor ? Math.floor(at / SLOTS_PER_FLOOR) * SLOTS_PER_FLOOR : 0
+      const haut = sameFloor ? Math.min(bas + SLOTS_PER_FLOOR, places) : places
       let k = -1
       for (let i = bas; i < haut; i++) {
         if (i >= suite.length || suite[i] === VIDE) { k = i; break }
@@ -1091,7 +1091,7 @@ export function takeAlerts(address: string): object[] {
  * quietly dropping the two counters the shopfront reads. Every base has advertised `0 given`
  * and `0 received` since. This is that bookkeeping, and nothing else.
  */
-export function enregistrerDon(giver: string, receiver: string): void {
+export function recordGift(giver: string, receiver: string): void {
   const pd = profiles.get(giver)
   const pr = profiles.get(receiver)
   if (pd) { pd.given = (pd.given ?? 0) + 1; dirtyProfiles.add(giver) }
@@ -1126,14 +1126,14 @@ export function absenceDe(address: string): number {
 }
 
 /** What one item on this base produces, which is what a charge is priced against. */
-export function revenuParObjet(address: string): number {
+export function incomePerItem(address: string): number {
   const n = occupe(bases.get(address)?.items ?? [])
   return n === 0 ? 0 : incomePerSecond(address) / n
 }
 
 export function sentryPrice(address: string, tier = 0): number {
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
-  return Math.max(SENTRY_MIN_PRICE, prixParCharge(revenuParObjet(address), tier) * t.charges)
+  return Math.max(SENTRY_MIN_PRICE, prixParCharge(incomePerItem(address), tier) * t.charges)
 }
 
 /**
@@ -1143,7 +1143,7 @@ export function sentryPrice(address: string, tier = 0): number {
  * something you walk to rather than something you tick in a list. It also means the shop cannot
  * arm anything from across the plaza, which is the point: choosing the floor IS the purchase.
  */
-export function etageChezSoi(address: string): number {
+export function homeFloor(address: string): number {
   const b = bases.get(address)
   if (b === undefined) return -1
   const t = Transform.getOrNull(b.entity)
@@ -1160,7 +1160,7 @@ export function buySentryFor(address: string, tier = 0): { ok: boolean; reason?:
   if (!p) return { ok: false, reason: 'unknown profile' }
   const b = bases.get(address)
   if (b === undefined) return { ok: false, reason: 'place your base first' }
-  const etage = etageChezSoi(address)
+  const etage = homeFloor(address)
   if (etage < 0) return { ok: false, reason: 'stand inside your base, on the floor you want to defend' }
 
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
@@ -1200,7 +1200,7 @@ export function useSentryCharge(address: string, etage: number): number {
 }
 
 /** Charges left on that storey, which is what the owner and the thief both need to read. */
-export function sentriesSurEtage(address: string, etage: number): number {
+export function sentriesOnFloor(address: string, etage: number): number {
   return chargesA(bases.get(address)?.sentryFloors, etage)
 }
 
@@ -1274,7 +1274,7 @@ export function marquerTrait(address: string): number | null {
   permanent trap for everyone, which is griefing, not defence.
 */
 export function minesDe(address: string): Mine[] { return [...(bases.get(address)?.mines ?? [])] }
-export function poserMine(address: string, m: Mine): boolean {
+export function placeMine(address: string, m: Mine): boolean {
   const b = bases.get(address)
   if (!b) return false
   if (Math.abs(m.x - b.x) > BASE_SIDE / 2 || Math.abs(m.z - b.z) > BASE_SIDE / 2) return false
@@ -1310,17 +1310,17 @@ export function choisirSkin(address: string, mut: number): { ok: boolean; reason
 }
 
 export function luckUntilOf(address: string): number { return profiles.get(address)?.luckUntil ?? 0 }
-export function luckAchatsDe(address: string): number {
+export function luckBuysOf(address: string): number {
   const p = profiles.get(address)
   if (p === undefined) return 0
   // Le charme a expire: la pile retombe, le prochain achat repart au prix de base.
   if ((p.luckUntil ?? 0) <= Date.now()) return 0
   return p.luckAchats ?? 0
 }
-export function noterAchatLuck(address: string): void {
+export function noteLuckBuy(address: string): void {
   const p = profiles.get(address)
   if (p === undefined) return
-  p.luckAchats = luckAchatsDe(address) + 1
+  p.luckAchats = luckBuysOf(address) + 1
   dirtyProfiles.add(address)
 }
 export function setLuckUntil(address: string, until: number): void {
@@ -1483,7 +1483,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
 
   const previous = bases.get(address)
   // Deplacer sa propre base ne coute rien de plus: la place n'est demandee qu'a la premiere pose.
-  if (previous === undefined && !faireDeLaPlace(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
+  if (previous === undefined && !makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }
   if (previous) removeBase(address)
@@ -1598,7 +1598,7 @@ export function buyFloorFor(address: string): { ok: boolean; reason?: string; fl
     On fait de la place avant de facturer: si un absent peut ceder, il cede; si tout le monde
     est present et que le budget est plein, l'etage est refuse et l'or n'est pas pris.
   */
-  if (!faireDeLaPlace(address, STOREY_COST_FAR)) {
+  if (!makeRoom(address, STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }
 
@@ -1781,7 +1781,7 @@ export function startPlots(): void {
         offlineGain: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.gain : 0,
         offlineSec: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.seconds : 0,
         offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
-        luckPrice: luckCost(prestige, luckAchatsDe(address)),
+        luckPrice: luckCost(prestige, luckBuysOf(address)),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),
         floorNeedsPrestige: floorPrestigeRequired(1 + (p.floorsBought ?? 0) + 1),

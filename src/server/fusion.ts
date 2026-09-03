@@ -6,7 +6,7 @@ import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES }
 import { PRODUCTION_PER_RARITY, fusionCost } from '../shared/economy'
 import { log } from './log'
 import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf, spend, coinsOf } from './plots'
-import { porteDetail, prendreDesMains, remettreEnMain } from './carry'
+import { carriedDetail, prendreDesMains, remettreEnMain } from './carry'
 import { rollMutation } from './loot'
 import { noter } from './records'
 
@@ -68,7 +68,7 @@ function produire(machine: Machine, a: string, r: number, resteHopper: number[],
   log(`fusion: ${name} made a ${itemName(r + 1, mutationDe(sortie))} out of three ${rarity(r).name}s for ${prix}`)
 }
 
-export function startFusion(): void {
+export function startFuser(): void {
   for (const [e] of engine.getEntitiesWith(Fusion)) {
     if ((e & 0xffff) < 512) continue
     engine.removeEntity(e)
@@ -81,7 +81,7 @@ export function startFusion(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (!pres(a)) { refuser(a, 'walk up to the fuser'); return }
-    const main = porteDetail(a)
+    const main = carriedDetail(a)
     if (main === null) { refuser(a, 'carry a toy to the fuser, or open it with empty hands'); return }
     if (main.origin !== a) { refuser(a, 'not yours to fuse, put it down at home first'); return }
     const r = rarityOf(main.code)
@@ -123,7 +123,7 @@ export function startFusion(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (!pres(a)) { refuser(a, 'walk up to the fuser'); return }
-    if (porteDetail(a) !== null) { refuser(a, 'hands full: feed the fuser by hand, or put it down first'); return }
+    if (carriedDetail(a) !== null) { refuser(a, 'hands full: feed the fuser by hand, or put it down first'); return }
     const r = Number.isInteger(d?.rarity) ? d.rarity : -1
     if (r < 0 || r >= RARITIES.length - 1) { refuser(a, 'nothing above that'); return }
     const b = baseDe(a)
@@ -131,20 +131,20 @@ export function startFusion(): void {
     const hopper = fusionOf(a)
     const dedans = hopper.filter((c) => rarityOf(c) === r)
     const reste = hopper.filter((c) => rarityOf(c) !== r)
-    const surEtagere = b.items
+    const onShelf = b.items
       .map((c, i) => ({ c, i }))
       .filter((x) => x.c !== VIDE && rarityOf(x.c) === r)
       .sort((x, y) => itemIncome(x.c, PRODUCTION_PER_RARITY) - itemIncome(y.c, PRODUCTION_PER_RARITY))
     const besoin = FUSION_NEEDS - dedans.length
-    if (surEtagere.length < besoin) {
-      const total = surEtagere.length + dedans.length
+    if (onShelf.length < besoin) {
+      const total = onShelf.length + dedans.length
       refuser(a, `you own ${total} ${rarity(r).name}${total === 1 ? '' : 's'}, ${FUSION_NEEDS} needed`)
       return
     }
     const prix = fusionCost(r)
     if (coinsOf(a) < prix) { refuser(a, `fusing needs ${prix} coins`); return }
     // Holes are left where the toys stood (removeItem), so earlier indices stay valid.
-    const pris = surEtagere.slice(0, besoin)
+    const pris = onShelf.slice(0, besoin)
     for (const x of pris) removeItem(a, x.i)
     log(`fusion: ${displayName(a)} fused ${besoin} ${rarity(r).name}(s) off the shelf${dedans.length > 0 ? ` and ${dedans.length} from the hopper` : ''}`)
     produire(machine, a, r, reste, [...dedans, ...pris.map((x) => x.c)])

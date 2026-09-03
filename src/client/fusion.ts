@@ -9,8 +9,8 @@ import { RARITIES, rarityOf, mutationDe, itemName, itemColor } from '../shared/l
 import { plasticDe, plastic, vif, TOY } from './toy'
 import { carryView } from './carry'
 import { alerter, pushToFeed } from './theft'
-import { revelerPiece } from './box'
-import { openFusion } from './fusion-ui'
+import { revealItem } from './box'
+import { openFuser } from './fusion-ui'
 
 /**
  * The fusion machine, client side: a drum on a plinth beside the records board, three
@@ -22,7 +22,7 @@ import { openFusion } from './fusion-ui'
  * player crossing the plaza sees that somebody just made a Rare, which is the point of
  * putting the machine where people walk.
  */
-export const fusionView = { codes: [] as number[] }
+export const fuserView = { codes: [] as number[] }
 
 const NOIR = Color3.create(0, 0, 0)
 const DOME_BRILLE_MS = 45_000
@@ -32,7 +32,7 @@ function couleur(rarete: number, mut = 0): Color4 {
   return vif(itemColor(Math.max(0, Math.min(rarete, RARITIES.length - 1)), mut))
 }
 
-export function setupFusion(): void {
+export function setupFuser(): void {
   const racine = engine.addEntity()
   Transform.create(racine, { position: Vector3.create(FUSION_POS.x, 0, FUSION_POS.z) })
 
@@ -79,11 +79,11 @@ export function setupFusion(): void {
   TextShape.create(ligne, { text: `${FUSION_NEEDS} of a kind become one better  ·  tap it to fuse from your base`, fontSize: 2.4, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
 
   room.onMessage('fusionState', (d) => {
-    fusionView.codes = [...d.codes]
+    fuserView.codes = [...d.codes]
     if (d.made >= 0) {
       // La meme revelation que pour une caisse: c'est deja le moment "vous avez obtenu
       // quelque chose", et le fuser n'en avait aucun. Le texte reste, plus court.
-      revelerPiece(d.made)
+      revealItem(d.made)
       alerter(`FUSED  ·  a ${itemName(rarityOf(d.made), mutationDe(d.made)).toUpperCase()} is in your hand`, '#4dd2ff', 3200)
     }
   })
@@ -101,12 +101,12 @@ export function setupFusion(): void {
     Une secousse elastique d'une demi-seconde sur une entite qui existe deja, declenchee sur le
     changement de `atMs`, donne l'impact sans un objet ni une interface de plus.
   */
-  let dernierCoup = 0
+  let lastPulse = 0
   const DOME = Vector3.create(1.3, 1.3, 1.3)
   engine.addSystem(() => {
     // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
     if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, tambour)) {
-      if (carryView.code < 0) openFusion()
+      if (carryView.code < 0) openFuser()
       else void room.send('feedFusion', {})
     }
 
@@ -114,12 +114,12 @@ export function setupFusion(): void {
     for (const [, v] of engine.getEntitiesWith(Fusion)) { f = v; break }
     const now = Date.now()
     const brille = f !== null && f.lastCode >= 0 && now - f.atMs < DOME_BRILLE_MS
-    const mienne = fusionView.codes.length
-    const rareteMienne = mienne > 0 ? rarityOf(fusionView.codes[0]) : -1
+    const mienne = fuserView.codes.length
+    const rareteMienne = mienne > 0 ? rarityOf(fuserView.codes[0]) : -1
     // One string for everything drawn, rewritten only when it changes: a material or a light
     // written every frame is a network update every frame.
-    if (f !== null && f.atMs > dernierCoup && f.lastCode >= 0) {
-      dernierCoup = f.atMs
+    if (f !== null && f.atMs > lastPulse && f.lastCode >= 0) {
+      lastPulse = f.atMs
       // Une seule secousse, sans sequence: elle part large et revient a sa taille.
       Tween.createOrReplace(dome, {
         mode: Tween.Mode.Scale({ start: Vector3.create(DOME.x * 1.55, DOME.y * 1.55, DOME.z * 1.55), end: DOME }),
@@ -158,12 +158,12 @@ export function setupFusion(): void {
 
 /** Standing at the fuser: empty hands open the panel, a toy in hand feeds the machine. */
 export const FUSER_REACH = 3
-export function fuserAPortee(): boolean {
+export function fuserInReach(): boolean {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return false
   return Math.hypot(t.position.x - FUSION_POS.x, t.position.z - FUSION_POS.z) <= FUSER_REACH
 }
 export function agirSurFuser(): void {
-  if (carryView.code < 0) openFusion()
+  if (carryView.code < 0) openFuser()
   else void room.send('feedFusion', {})
 }

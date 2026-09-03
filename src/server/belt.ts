@@ -10,7 +10,7 @@ import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce, eventTheme } from './loot'
 import { tempoDuTapis } from './events'
 import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf } from './plots'
-import { remettreEnMain, portePour } from './carry'
+import { remettreEnMain, carriesFor } from './carry'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
 import { CRATES, encoder, itemName } from '../shared/loot-table'
@@ -24,7 +24,7 @@ type Article = {
   entity: ReturnType<typeof engine.addEntity>
 }
 
-const POSE_DIFFEREE_MS = 2700
+const DEFERRED_PLACE_MS = 2700
 
 const articles: Article[] = []
 let prochainId = 1
@@ -185,7 +185,7 @@ export function startBelt(): void {
       hand already holding something, or a reel already spinning. A full base is not a
       reason: they can still open, hold, and go sell or make room.
     */
-    if (portePour(a) || inFlight.get(a) !== undefined) {
+    if (carriesFor(a) || inFlight.get(a) !== undefined) {
       void room.send('actionRejected', { action: 'opening', reason: 'put down what you are carrying first', antiCheat: false }, { to: [a] })
       return
     }
@@ -214,7 +214,7 @@ export function startBelt(): void {
     timers.setTimeout(() => {
       inFlight.delete(a)
       remettreEnMain(a, code, a)
-    }, POSE_DIFFEREE_MS)
+    }, DEFERRED_PLACE_MS)
   })
 
   log('belt ready')

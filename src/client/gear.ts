@@ -4,7 +4,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
-import { monAdresseClient, alerter, pushToFeed } from './theft'
+import { myClientAddress, alerter, pushToFeed } from './theft'
 import { applyFreeze, setCoil } from './locomotion'
 import { carryView } from './carry'
 
@@ -37,17 +37,17 @@ const vues = new Map<number, Entity>()
 
 let marqueur: Entity
 
-export function peutPoser(gear: number): boolean {
+export function canPlace(gear: number): boolean {
   return estPosable(gear) && gearView.held[gear] > 0 && carryView.code < 0
 }
 /** Only placeable gear goes to the floor; worn gear is used by being held. */
 export function estPosable(gear: number): boolean { return GEARS[gear]?.kind === 'place' }
 
-export function basculerPose(gear = 0): void {
+export function togglePlacing(gear = 0): void {
   gearView.placing = gearView.placing === gear ? -1 : gear
 }
 
-export function poserPiege(): void {
+export function placeTrap(): void {
   const gear = gearView.placing
   gearView.placing = -1
   if (gear < 0) return
@@ -57,7 +57,7 @@ export function poserPiege(): void {
 export function acheterGear(gear: number): void {
   void room.send('buyGear', { gear })
 }
-export function acheterLuck(): void {
+export function buyLuckCharm(): void {
   void room.send('buyLuck', {})
 }
 
@@ -122,7 +122,7 @@ export function setupGear(): void {
   })
 
   engine.addSystem(() => {
-    const moi = monAdresseClient()
+    const moi = myClientAddress()
     const vivants = new Set<number>()
     for (const [e, t] of engine.getEntitiesWith(Trap)) {
       const id = e as unknown as number
@@ -164,10 +164,10 @@ export function setupGear(): void {
     }
 
     // Cloaks: one hiding volume per cloaked player, excluding everyone but them.
-    const presentsIci: string[] = []
+    const presentHere: string[] = []
     for (const [, id] of engine.getEntitiesWith(PlayerIdentityData)) {
       const a = id.address?.toLowerCase()
-      if (a) presentsIci.push(a)
+      if (a) presentHere.push(a)
     }
     const capesVivantes = new Set<number>()
     gearView.cloaked = false
@@ -203,7 +203,7 @@ export function setupGear(): void {
       }
       // Rewritten only when the room changed: a mutable write is a serialise-and-compare
       // every frame otherwise, for a list that is identical almost every frame.
-      const voulu = presentsIci.filter((a) => a !== qui)
+      const voulu = presentHere.filter((a) => a !== qui)
       const actuel = AvatarModifierArea.getOrNull(zone)?.excludeIds ?? []
       if (actuel.length !== voulu.length || actuel.some((a, i) => a !== voulu[i])) {
         const am = AvatarModifierArea.getMutableOrNull(zone)
@@ -219,7 +219,7 @@ export function setupGear(): void {
     // The marker sits at the player's feet while they are choosing, and nowhere otherwise.
     const m = Transform.getMutableOrNull(marqueur)
     if (m === null) return
-    if (gearView.placing < 0 || !peutPoser(gearView.placing)) {
+    if (gearView.placing < 0 || !canPlace(gearView.placing)) {
       gearView.placing = -1
       if (m.scale.x !== 0) m.scale = Vector3.Zero()
       return

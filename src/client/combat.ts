@@ -103,8 +103,8 @@ const BOUCHE = Vector3.create(0, 0.138, 0.250)
 const MAIN_POS = Vector3.create(0.045, 0.015, 0)
 const MAIN_ROT = Quaternion.fromEulerDegrees(-90, 0, 180)
 /** Where the view model sits relative to the camera: right, below, ahead. */
-const VUE_POS = Vector3.create(0.13, -0.20, 0.52)
-const VUE_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
+const VIEW_POS = Vector3.create(0.13, -0.20, 0.52)
+const VIEW_ROT = Quaternion.fromEulerDegrees(0, 0, 0)
 /** The same, pulled to centre and closer when aiming down the barrel. */
 const VISEE_POS = Vector3.create(0.05, -0.16, 0.58)
 /** Beyond this many other players, distant ones go unarmed: one renderer per mesh adds up. */
@@ -124,7 +124,7 @@ const RECUL_DEG = 20
  * still appears in the hand, the reticle still locks, and the weapon still kicks, because
  * none of those go through an emote.
  */
-function poseDisponible(): boolean { return !isMobile() }
+function placeAvailable(): boolean { return !isMobile() }
 /**
  * The first-person volume that rides the player while the weapon is out. A camera area is
  * a region and not a per-player flag, so it stays barely wider than one body: anyone
@@ -141,17 +141,17 @@ let moi = ''
 let dernierTir = 0
 let flashScale = 0
 let zoneVisee: Entity | null = null
-let vueVisibleApres = 0
+let viewVisibleAfter = 0
 let dernierClipTir = 0
 let degainages = 0
 let armeAffichee: ArmeType = 'shoot'
 let enRafale = false
 let rafaleJusqua = 0
 /** Whether first person was the player's own setting when the weapon came out. */
-let prefereVuePremiere = false
+let prefersFirstPerson = false
 let dernierRecensement = 0
-let nomCible = ''
-let adresseCible = ''
+let targetName = ''
+let cbtTargetAddr = ''
 let recul = 0
 /** Addresses whose weapon is drawn right now, as relayed by the server. */
 const enJoue = new Set<string>()
@@ -170,7 +170,7 @@ const piles = new Map<number, { chute: Entity; body: Entity; label: Entity }>()
   two prongs and a lit tip. The player sees which weapon they hold, which is the whole point
   of a gear that "replaces the gun" (tester, 28 Aug: "I still see a gun").
 */
-function pieceArme(poignee: Entity, pos: Vector3, scale: Vector3, hex: string, glow = 0, cyl = false): Entity {
+function weaponItem(poignee: Entity, pos: Vector3, scale: Vector3, hex: string, glow = 0, cyl = false): Entity {
   const e = engine.addEntity()
   Transform.create(e, { parent: poignee, position: pos, scale })
   if (cyl) MeshRenderer.setCylinder(e, 0.5, 0.5); else MeshRenderer.setBox(e)
@@ -181,18 +181,18 @@ function modeleArme(poignee: Entity, type: ArmeType): Entity[] {
   const V = Vector3.create
   if (type === 'slap') {
     return [
-      pieceArme(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#7a4a2a'),                 // handle
-      pieceArme(poignee, V(0, 0.10, 0), V(0.26, 0.20, 0.03), '#f2e9d8'),                  // paddle
-      pieceArme(poignee, V(0, 0.10, 0), V(0.30, 0.04, 0.035), '#e63946')                 // red rim
+      weaponItem(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#7a4a2a'),                 // handle
+      weaponItem(poignee, V(0, 0.10, 0), V(0.26, 0.20, 0.03), '#f2e9d8'),                  // paddle
+      weaponItem(poignee, V(0, 0.10, 0), V(0.30, 0.04, 0.035), '#e63946')                 // red rim
     ]
   }
   if (type === 'taser') {
     return [
-      pieceArme(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#2b2d42'),                 // handle
-      pieceArme(poignee, V(0, 0.06, 0), V(0.05, 0.12, 0.05), '#4dabf7'),                  // body
-      pieceArme(poignee, V(-0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),            // prong L
-      pieceArme(poignee, V(0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),             // prong R
-      pieceArme(poignee, V(0, 0.27, 0), V(0.05, 0.05, 0.05), '#7cf0ff', 3, true)          // lit tip
+      weaponItem(poignee, V(0, -0.10, 0), V(0.04, 0.24, 0.04), '#2b2d42'),                 // handle
+      weaponItem(poignee, V(0, 0.06, 0), V(0.05, 0.12, 0.05), '#4dabf7'),                  // body
+      weaponItem(poignee, V(-0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),            // prong L
+      weaponItem(poignee, V(0.03, 0.20, 0), V(0.015, 0.10, 0.015), '#c9d6ff'),             // prong R
+      weaponItem(poignee, V(0, 0.27, 0), V(0.05, 0.05, 0.05), '#7cf0ff', 3, true)          // lit tip
     ]
   }
   const modele = engine.addEntity()
@@ -239,7 +239,7 @@ function rafraichirVisibilite(): void {
   // The camera slides between the two modes while CameraMode flips at once, so a view
   // model shown on the flip is briefly drawn at third-person distance and fills the
   // screen. It waits for the move to finish.
-  montrer(vue, combatView.aiming && combatView.firstPerson && Date.now() >= vueVisibleApres)
+  montrer(vue, combatView.aiming && combatView.firstPerson && Date.now() >= viewVisibleAfter)
 
   const porteur = combatView.firstPerson ? vue : (armes.get(moi) ?? null)
   if (porteur !== null) {
@@ -258,7 +258,7 @@ export function setupCombat(): void {
 
   // View model: one entity parented to the camera, shown only in first person.
   const ancre = engine.addEntity()
-  Transform.create(ancre, { parent: engine.CameraEntity, position: VUE_POS, rotation: VUE_ROT })
+  Transform.create(ancre, { parent: engine.CameraEntity, position: VIEW_POS, rotation: VIEW_ROT })
   vue = construireArme(ancre, Vector3.Zero(), Quaternion.Identity())
   montrer(vue, false)
 
@@ -271,7 +271,7 @@ export function setupCombat(): void {
 
   CameraMode.onChange(engine.CameraEntity, (c) => {
     if (c === undefined) return
-    appliquerVue(c.mode === CameraType.CT_FIRST_PERSON)
+    applyView(c.mode === CameraType.CT_FIRST_PERSON)
   })
 
   /*
@@ -320,8 +320,8 @@ export function setupCombat(): void {
   engine.addSystem(pileSystem)
 }
 
-function appliquerVue(fp: boolean): void {
-  if (fp && !combatView.firstPerson) vueVisibleApres = Date.now() + TRANSITION_MS
+function applyView(fp: boolean): void {
+  if (fp && !combatView.firstPerson) viewVisibleAfter = Date.now() + TRANSITION_MS
   combatView.firstPerson = fp
   rafraichirVisibilite()
 }
@@ -372,7 +372,7 @@ function reconcilierArmes(): void {
 }
 
 /** The muzzle flash, written through one door that tolerates a missing entity. */
-function poserFlash(scale: number): void {
+function placeFlash(scale: number): void {
   const t = Transform.getMutableOrNull(flash)
   if (t !== null) t.scale = Vector3.create(scale, scale, scale)
 }
@@ -389,7 +389,7 @@ function gunSystem(dt: number): void {
     if (me === null) return
     moi = me.userId.toLowerCase()
     const c = CameraMode.getOrNull(engine.CameraEntity)
-    appliquerVue(c !== null && c.mode === CameraType.CT_FIRST_PERSON)
+    applyView(c !== null && c.mode === CameraType.CT_FIRST_PERSON)
   }
   const now = Date.now()
   // The roster changes when someone joins or leaves, not every frame.
@@ -408,7 +408,7 @@ function gunSystem(dt: number): void {
   // The burst is over: the arm returns to the held aim, once.
   if (enRafale && now > rafaleJusqua) {
     enRafale = false
-    if (combatView.aiming && poseDisponible()) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    if (combatView.aiming && placeAvailable()) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
   }
 
   // One control, and it toggles rather than being held.
@@ -469,7 +469,7 @@ function gunSystem(dt: number): void {
       sixty-round raid (28 Aug). `CLIP_TIR` stays for a single shot's feel: the burst loop is
       only started on the second round within the window.
     */
-    if (poseDisponible()) {
+    if (placeAvailable()) {
       if (!enRafale) {
         enRafale = true
         dernierClipTir = now
@@ -482,7 +482,7 @@ function gunSystem(dt: number): void {
   // The view model pulls to centre while aiming, and stops being written once it is
   // there: asking for a mutable Transform every frame dirties the component every frame.
   if (vue !== null && combatView.firstPerson) {
-    const cible = combatView.aiming ? VISEE_POS : VUE_POS
+    const cible = combatView.aiming ? VISEE_POS : VIEW_POS
     const t = Transform.getOrNull(vue.racine)
     if (t !== null && Vector3.distance(t.position, cible) > 0.002) {
       Transform.getMutable(vue.racine).position = Vector3.lerp(t.position, cible, Math.min(1, dt * 12))
@@ -491,7 +491,7 @@ function gunSystem(dt: number): void {
 
   if (flashScale > 0) {
     flashScale = Math.max(0, flashScale - dt * 1.8)
-    poserFlash(flashScale)
+    placeFlash(flashScale)
   }
 
   // Recoil. The avatar's arm cannot move, so the weapon does: it rises on the shot and
@@ -537,7 +537,7 @@ function degainer(on: boolean): void {
     combatView.aideVisee = degainages <= 2
     if (combatView.aideVisee) timers.setTimeout(() => { combatView.aideVisee = false }, 6000)
     const c = CameraMode.getOrNull(engine.CameraEntity)
-    prefereVuePremiere = c !== null && c.mode === CameraType.CT_FIRST_PERSON
+    prefersFirstPerson = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
     // Parented, not chased. Written to the player's position every frame it trailed by a
     // frame, so a running player reached the leading edge of a box this tight, dropped out
@@ -547,7 +547,7 @@ function degainer(on: boolean): void {
     CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
     enRafale = false
-    if (poseDisponible()) void stopEmote({})
+    if (placeAvailable()) void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
     // The cursor is NOT given back here any more. This used to release the capture on the
     // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
@@ -565,7 +565,7 @@ function degainer(on: boolean): void {
 function viser(): void {
   combatView.targetName = ''
   combatView.targetDist = 0
-  if (!combatView.aiming) { adresseCible = ''; return }
+  if (!combatView.aiming) { cbtTargetAddr = ''; return }
   const cam = Transform.getOrNull(engine.CameraEntity)
   const moiT = Transform.getOrNull(engine.PlayerEntity)
   if (cam === null || moiT === null) return
@@ -585,7 +585,7 @@ function viser(): void {
     const dx = t.position.x - moiT.position.x
     const dz = t.position.z - moiT.position.z
     const d = Math.sqrt(dx * dx + dz * dz)
-    if (d > porteeArme() || d < 0.5) continue
+    if (d > weaponReach() || d < 0.5) continue
     if ((dx * ax + dz * az) / d < SHOT_CONE_DOT) continue
     if (best === null || d < best.d) best = { addr: a, d }
   }
@@ -596,20 +596,20 @@ function viser(): void {
     const d = Math.sqrt(dx * dx + dz * dz)
     // The boss locks out to the raid range whatever the weapon: a taser (2.5 m) still aims at it.
     if (d <= RAID_HIT_RANGE && d >= 0.5 && (dx * ax + dz * az) / d >= SHOT_CONE_DOT && (best === null || d < best.d)) {
-      adresseCible = 'raid-boss'
-      nomCible = 'RAID BOSS'
-      combatView.targetName = nomCible
+      cbtTargetAddr = 'raid-boss'
+      targetName = 'RAID BOSS'
+      combatView.targetName = targetName
       combatView.targetDist = d
       return
     }
   }
-  if (best === null) { adresseCible = ''; return }
+  if (best === null) { cbtTargetAddr = ''; return }
   // Resolving a display name is a lookup: do it when the target changes, not every frame.
-  if (best.addr !== adresseCible) {
-    adresseCible = best.addr
-    nomCible = getPlayer({ userId: best.addr })?.name ?? 'PLAYER'
+  if (best.addr !== cbtTargetAddr) {
+    cbtTargetAddr = best.addr
+    targetName = getPlayer({ userId: best.addr })?.name ?? 'PLAYER'
   }
-  combatView.targetName = nomCible
+  combatView.targetName = targetName
   combatView.targetDist = best.d
 }
 
@@ -635,7 +635,7 @@ function armeEnMain(): ArmeType {
   if (possedeArme(gearView.armeChoisie)) return gearView.armeChoisie
   return gearView.held[5] > 0 ? 'taser' : gearView.held[2] > 0 ? 'slap' : 'shoot'
 }
-function porteeArme(): number { return armeEnMain() === 'shoot' ? SHOT_RANGE : SLAP_RANGE }
+function weaponReach(): number { return armeEnMain() === 'shoot' ? SHOT_RANGE : SLAP_RANGE }
 function cadenceArme(): number {
   const arme = armeEnMain()
   return arme === 'taser' ? TASER_COOLDOWN_MS : arme === 'slap' ? SLAP_COOLDOWN_MS : SHOT_COOLDOWN_MS
@@ -656,7 +656,7 @@ function tirer(now: number): boolean {
     full force at every hit; the server checks the pocket before honouring it, so the client
     asking is only ever a preference.
   */
-  const portee = porteeArme()
+  const portee = weaponReach()
   void room.send(armeEnMain(), {
     x: moiT.position.x + (f.x / plat) * portee,
     y: moiT.position.y,
@@ -666,7 +666,7 @@ function tirer(now: number): boolean {
   // A gun flashes and cracks; a melee weapon swings. No bullets out of a paddle (tester, 28 Aug).
   const gun = armeEnMain() === 'shoot'
   flashScale = gun ? 0.5 : 0
-  poserFlash(flashScale)
+  placeFlash(flashScale)
   recul = 1
   combatView.lastShotAt = now
   /*

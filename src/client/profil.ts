@@ -23,7 +23,7 @@ let frames = 0
 let anonymes = 0
 const fautifs = new Set<string>()
 
-export function installerProfil(): void {
+export function setupProfile(): void {
   if (!PROFIL) return
   const brut = engine.addSystem.bind(engine)
   engine.addSystem = ((fn: (dt: number) => void, priority?: number, name?: string) => {

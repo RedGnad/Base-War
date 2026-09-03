@@ -3,8 +3,8 @@ import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { Plot, CENTER, BELT_HEIGHT } from '../shared/schemas'
 import { plastic } from './toy'
 import { tutoView } from './tutorial'
-import { positionCaisse } from './box'
-import { monAdresseClient } from './theft'
+import { cratePosition } from './box'
+import { myClientAddress } from './theft'
 
 /**
  * The step beacon: where to go, said without a word.
@@ -29,9 +29,9 @@ function cible(): Vector3 | null {
   if (tutoView.etape >= tutoView.total) return null
   if (tutoView.etape === 1) {
     // The crate being opened; before it stands, home, where the OPEN button will put it.
-    const caisse = positionCaisse()
+    const caisse = cratePosition()
     if (caisse !== null) return caisse
-    const moi = monAdresseClient()
+    const moi = myClientAddress()
     for (const [e, p] of engine.getEntitiesWith(Plot)) {
       if (p.ownerId.toLowerCase() !== moi) continue
       const t = Transform.getOrNull(e)
@@ -42,7 +42,7 @@ function cible(): Vector3 | null {
   if (tutoView.etape === 3) return Vector3.create(CENTER.x, BELT_HEIGHT, CENTER.z)
   if (tutoView.etape === 4) {
     // The nearest base that is not mine and has something on its shelves worth taking.
-    const moi = monAdresseClient()
+    const moi = myClientAddress()
     const ici = Transform.getOrNull(engine.PlayerEntity)
     if (ici === null) return null
     let best: Vector3 | null = null

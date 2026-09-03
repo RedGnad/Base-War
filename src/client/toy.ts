@@ -165,7 +165,7 @@ export function plastic(hex: string, glow = 0): PBMaterial_PbrMaterial {
 */
 const METAL = new Set<number>([1, 2])   // Gold, Diamond
 export function estMetal(mut: number): boolean { return METAL.has(mut) }
-export function matiereMetal(hex: string, mut: number, glow = 0): PBMaterial_PbrMaterial {
+export function metalMaterial(hex: string, mut: number, glow = 0): PBMaterial_PbrMaterial {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
   // The mutation gives the SURFACE (metal or gem); the RARITY still gives the glow, added on
   // top. A Mythic Diamond blazes because it is Mythic, not just a dull gem (tester, 28 Aug).
@@ -236,7 +236,7 @@ const enAttente = new Set<Entity>()
 
 /*
   The mount owns ONE fact about its primitive: whether the GLB has loaded. It never draws the
-  stand-in itself. That is the silhouette's job (`formeDeRarete`), or the caller's, and two
+  stand-in itself. That is the silhouette's job (`rarityShape`), or the caller's, and two
   functions each "guaranteeing" a renderer on the same entity is how a pedestal ended up with
   a cube drawn back over its toy every time the rarity was mounted (invariant 184: one owner
   per fact).
@@ -264,7 +264,7 @@ export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip
   'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
 }
 
-function poserFit(modele: Entity, fichier: string): void {
+function applyFit(modele: Entity, fichier: string): void {
   const f = FIT[fichier]
   const t = Transform.getMutableOrNull(modele)
   if (t === null) return
@@ -277,7 +277,7 @@ export function montable(primitive: Entity, fichier: string): void {
   const modele = engine.addEntity()
   // Child of the stand-in: it inherits position, rotation and scale, then the fit above.
   Transform.create(modele, { parent: primitive })
-  poserFit(modele, fichier)
+  applyFit(modele, fichier)
   GltfContainer.create(modele, { src: TOY_DIR + fichier, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   /*
     Animation policy lives in the FIT table. A clip named there loops (the crown spins,
@@ -305,7 +305,7 @@ export function remonter(primitive: Entity, fichier: string): void {
   m.fichier = fichier
   // A new file is a new load: the arrival has to be watched for again.
   if (m.charge === true) { montages.set(primitive, { ...m, charge: false }); enAttente.add(primitive) }
-  poserFit(m.modele, fichier)
+  applyFit(m.modele, fichier)
   const g = GltfContainer.getMutableOrNull(m.modele)
   if (g !== null) g.src = TOY_DIR + fichier
 }
@@ -399,7 +399,7 @@ const teintes = new Map<Entity, string>()
 /*
   The material each pedestal last asked for, remembered for the load system.
 
-  `formeDeRarete` runs when the Plot CHANGES, and the GLB finishes seconds later: at flip
+  `rarityShape` runs when the Plot CHANGES, and the GLB finishes seconds later: at flip
   time nobody calls it again, so painting from there alone left every piece black (31 Aug,
   read in the mount logs: the tint line never printed). The shelf loop writes the wish
   here; whoever erases the stand-in paints the model with it.
@@ -437,9 +437,9 @@ export function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial):
  * Donc la main garde les silhouettes. Ce sont les "bracelets et boules autour du poignet"
  * d'avant, que le proprietaire a redemandes le 2 Sep ("visuellement c'etait tres bien, on
  * voyait tout de suite qu'on tient un truc"). Sur un socle ou un fantome de pose, ou le
- * modele s'affiche, `formeDeRarete` reste la regle et n'en dessine aucune.
+ * modele s'affiche, `rarityShape` reste la regle et n'en dessine aucune.
  */
-export function formeEnMain(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
+export function handShape(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
   const cur = formes.get(parent)
   if (cur !== undefined && cur.rarete === rarete) {
     for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
@@ -453,12 +453,12 @@ export function formeEnMain(parent: Entity, rarete: number, materiau: PBMaterial
   if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent)
 }
 
-export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
+export function rarityShape(parent: Entity, rarete: number, materiau: PBMaterial_PbrMaterial): void {
   // A loaded model is the body; the silhouette only stands in while there is none, and the
   // body takes the silhouette's colours: rarity, mutation, metal and glow survive the swap.
   dernierMateriau.set(parent, materiau)
   const monte = montages.get(parent)
-  if (monte?.charge === true) { teindreModele(monte.modele, materiau); effacerForme(parent); return }
+  if (monte?.charge === true) { teindreModele(monte.modele, materiau); clearShape(parent); return }
   const cur = formes.get(parent)
   if (cur !== undefined && cur.rarete === rarete) {
     for (const e of cur.parts) Material.setPbrMaterial(e, materiau)
@@ -495,13 +495,13 @@ export function formeDeRarete(parent: Entity, rarete: number, materiau: PBMateri
  * darker than the slab; a mutated toy's pad takes the mutation's colour, with an emissive
  * term below 1 so no hue clips to white. The same fact is written for every occupied slot,
  * which is what makes it read as a rule. The toy stands ON the pad, so the pedestal's height
- * includes the pad's thickness (`SOCLE_EPAISSEUR`) and a hair of air above the slab.
+ * includes the pad's thickness (`PEDESTAL_THICKNESS`) and a hair of air above the slab.
  */
-export const SOCLE_DIAMETRE = 1.4
-export const SOCLE_EPAISSEUR = 0.08
+export const PEDESTAL_DIAMETER = 1.4
+export const PEDESTAL_THICKNESS = 0.08
 const socles = new Map<Entity, Entity>()
 
-export function socleDuJouet(parent: Entity, size: number, mutationHex: string | null): void {
+export function toyPedestal(parent: Entity, size: number, mutationHex: string | null): void {
   let e = socles.get(parent)
   if (e === undefined) {
     e = engine.addEntity()
@@ -512,15 +512,15 @@ export function socleDuJouet(parent: Entity, size: number, mutationHex: string |
   // Its top face is the cube's bottom face: the toy stands on it.
   Transform.createOrReplace(e, {
     parent,
-    position: Vector3.create(0, -0.5 - SOCLE_EPAISSEUR / 2 / size, 0),
-    scale: Vector3.create(SOCLE_DIAMETRE / size, SOCLE_EPAISSEUR / size, SOCLE_DIAMETRE / size)
+    position: Vector3.create(0, -0.5 - PEDESTAL_THICKNESS / 2 / size, 0),
+    scale: Vector3.create(PEDESTAL_DIAMETER / size, PEDESTAL_THICKNESS / size, PEDESTAL_DIAMETER / size)
   })
   // The lit pad is an emissive material, not a light: it survives a Low preset, where scene
   // lights and bloom are both off, so a valuable toy always sits on a visible ring of colour.
   Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8))
 }
 
-export function effacerSocle(parent: Entity): void {
+export function clearPedestal(parent: Entity): void {
   const cur = socles.get(parent)
   if (cur === undefined) return
   engine.removeEntity(cur)
@@ -551,7 +551,7 @@ export function effacerSocle(parent: Entity): void {
  * The light sits at the toy's centre: half a toy above the slab is where a point source makes
  * a pool about one toy wide, rather than a pin-prick at floor level.
  */
-export const LUMIERE_MIN_GLOW = 0.8     // Rare and above; a mutation adds 1 and lights anything
+export const LIGHT_MIN_GLOW = 0.8     // Rare and above; a mutation adds 1 and lights anything
 const AMPOULE = 16000                    // candela; the documentation's "average lightbulb"
 const lumieres = new Map<Entity, Entity>()
 
@@ -568,13 +568,13 @@ export function vif(hex: string): Color4 {
   Every Rare-or-better and every mutated toy asks for a point light, and so does every lit
   crate; sixty bases full of them is hundreds of lights, which the workshop names first among
   what a phone cannot carry ("don't overuse lights, use emission"). The wish is recorded here;
-  a system every half second lights only the `LUMIERES_MAX` nearest to the player and takes
+  a system every half second lights only the `LIGHTS_MAX` nearest to the player and takes
   the light off the rest. Emission on the toy's own plastic carries the rest of the glow.
 */
-const LUMIERES_MAX = 16
+const LIGHTS_MAX = 16
 const souhaits = new Map<Entity, { hex: string; glow: number }>()
 
-export function lumiereDuJouet(parent: Entity, hex: string | null, glow: number): void {
+export function toyLight(parent: Entity, hex: string | null, glow: number): void {
   // No point lights on a phone: the client disables scene lights on the mobile preset, so
   // the budget would sort and create lights nobody renders, spending CPU for nothing (tester,
   // 28 Aug). The emissive material carries the whole glow there, which is free on every preset.
@@ -625,7 +625,7 @@ function allumer(parent: Entity, hex: string, glow: number): void {
   })
 }
 
-function budgetDeLumiere(): void {
+function lightBudget(): void {
   const moi = Transform.getOrNull(engine.PlayerEntity)
   if (moi === null) return
   // The game is played by floor, so a toy on the player's own storey wins a light before one
@@ -640,7 +640,7 @@ function budgetDeLumiere(): void {
     classes.push({ parent, etage: Math.abs(Math.round(p.y / FLOOR_HEIGHT) - monEtage), d: Vector3.distanceSquared(p, moi.position) })
   }
   classes.sort((a, b) => a.etage - b.etage || a.d - b.d)
-  const garder = new Set(classes.slice(0, LUMIERES_MAX).map((c) => c.parent))
+  const garder = new Set(classes.slice(0, LIGHTS_MAX).map((c) => c.parent))
   for (const parent of garder) {
     const s = souhaits.get(parent)
     if (s !== undefined) allumer(parent, s.hex, s.glow)
@@ -652,7 +652,7 @@ function budgetDeLumiere(): void {
   }
 }
 
-export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, null, 0) }
+export function clearLight(parent: Entity): void { toyLight(parent, null, 0) }
 
 /**
  * Remove an entity and everything this module hung under it.
@@ -664,15 +664,15 @@ export function effacerLumiere(parent: Entity): void { lumiereDuJouet(parent, nu
  * The ramp's handrails had the same bug, and the same fix.
  */
 export function demolir(parent: Entity): void {
-  effacerForme(parent)
-  effacerCaisse(parent)
-  effacerSocle(parent)
-  effacerLumiere(parent)
+  clearShape(parent)
+  clearCrate(parent)
+  clearPedestal(parent)
+  clearLight(parent)
   demonter(parent)
   engine.removeEntity(parent)
 }
 
-export function effacerForme(parent: Entity): void {
+export function clearShape(parent: Entity): void {
   const cur = formes.get(parent)
   if (cur === undefined) return
   for (const e of cur.parts) engine.removeEntity(e)
@@ -714,7 +714,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = 
   const theme = c.theme >= 0 ? mutation(c.theme).color : null
   const eclaire = c.tier >= 2 || theme !== null
   let k = caisses.get(racine)
-  if (k !== undefined && k.crateId !== crateId) { effacerCaisse(racine); k = undefined }
+  if (k !== undefined && k.crateId !== crateId) { clearCrate(racine); k = undefined }
   if (k === undefined) {
     /*
       Le cube du support tient lieu de caisse le temps que le modele arrive, et le montage
@@ -727,7 +727,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = 
     caisses.set(racine, k)
   }
   remonter(racine, `crate-${crateId}.glb`)
-  lumiereDuJouet(racine, eclaire ? (theme ?? c.color) : null, 0.8 + c.tier * 0.6)
+  toyLight(racine, eclaire ? (theme ?? c.color) : null, 0.8 + c.tier * 0.6)
 
   /*
     La chauffe repeint le modele entier, texture comprise. Un modificateur de noeud REMPLACE
@@ -738,7 +738,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = 
   const chaud = Math.max(0, Math.min(8, Math.round(chauffe * 8)))
   if (k.chaud !== chaud) {
     k.chaud = chaud
-    chaufferCaisse(racine, chaud / 8)
+    heatCrate(racine, chaud / 8)
   }
 
   /*
@@ -761,7 +761,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = 
 }
 
 /** Chauffe la caisse montee: blanc croissant sur l'atlas, rendu au modele et pas au support. */
-function chaufferCaisse(racine: Entity, chauffe: number): void {
+function heatCrate(racine: Entity, chauffe: number): void {
   const m = montages.get(racine)
   if (m === undefined) return
   if (chauffe <= 0) { GltfNodeModifiers.deleteFrom(m.modele); return }
@@ -795,7 +795,7 @@ function chaufferCaisse(racine: Entity, chauffe: number): void {
   })
 }
 
-export function eteindreCaisse(racine: Entity): void {
+export function dimCrate(racine: Entity): void {
   const k = caisses.get(racine)
   if (k === undefined || k.halo === null) return
   const halo = k.halo
@@ -819,10 +819,10 @@ export function eteindreCaisse(racine: Entity): void {
   */
   engine.removeEntity(halo)
   caisses.set(racine, { ...k, halo: null })
-  lumiereDuJouet(racine, null, 0)
+  toyLight(racine, null, 0)
 }
 
-export function effacerCaisse(racine: Entity): void {
+export function clearCrate(racine: Entity): void {
   const k = caisses.get(racine)
   if (k === undefined) return
   if (k.halo !== null) engine.removeEntity(k.halo)
@@ -833,10 +833,10 @@ export function effacerCaisse(racine: Entity): void {
 export function setupToy(): void {
   // The light budget only runs where there are lights to budget: not on a phone.
   if (!isMobile()) {
-    let accLumiere = 0
+    let lightAcc = 0
     engine.addSystem((dt) => {
-      accLumiere += dt
-      if (accLumiere >= 0.5) { accLumiere = 0; budgetDeLumiere() }
+      lightAcc += dt
+      if (lightAcc >= 0.5) { lightAcc = 0; lightBudget() }
     })
   }
   engine.addSystem(() => {
@@ -849,7 +849,7 @@ export function setupToy(): void {
         enAttente.delete(primitive)
         // The model is in: the stand-in, box or toy, stops drawing but keeps its collider and slot.
         if (MeshRenderer.has(primitive)) MeshRenderer.deleteFrom(primitive)
-        effacerForme(primitive)
+        clearShape(primitive)
         montages.set(primitive, { ...m, charge: true })
         // And it takes the colours the shelf asked for while it was still loading.
         const voulu = dernierMateriau.get(primitive)

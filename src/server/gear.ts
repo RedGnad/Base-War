@@ -9,10 +9,10 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import {
   displayName, presents, positionOf, spend, prestigeOf,
-  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil, luckAchatsDe, noterAchatLuck,
-  minesDe, poserMine, retirerMine, toutesLesBases
+  gearsOf, addGear, removeGear, storeAlert, baseDe, luckUntilOf, setLuckUntil, luckBuysOf, noteLuckBuy,
+  minesDe, placeMine, retirerMine, toutesLesBases
 } from './plots'
-import { portePour, frapperPorteur } from './carry'
+import { carriesFor, hitCarrier } from './carry'
 
 /**
  * Gear, server side: bought into a pocket, put down where you stand, and it acts on its own.
@@ -23,7 +23,7 @@ import { portePour, frapperPorteur } from './carry'
  * count and a lifetime, so the floor never fills with old plates.
  */
 
-function piegesPoses(address: string, gear: number): number {
+function placedTraps(address: string, gear: number): number {
   let n = 0
   if (gear === 0) for (const [, t] of engine.getEntitiesWith(Trap)) if (t.owner === address && !t.mine) n += 1
   if (gear === 7) n += minesDe(address).length
@@ -71,7 +71,7 @@ export function startGear(): void {
       return
     }
     // The cap counts pocket AND floor together, as the reference does: five, wherever they are.
-    if (gearsOf(a)[gear] + piegesPoses(a, gear) >= g.max) {
+    if (gearsOf(a)[gear] + placedTraps(a, gear) >= g.max) {
       void room.send('actionRejected', { action: 'gear', reason: `you already have ${g.max} ${g.name.toLowerCase()}s out or in your pocket`, antiCheat: false }, { to: [a] })
       return
     }
@@ -91,7 +91,7 @@ export function startGear(): void {
     const gear = Number.isInteger(d?.gear) ? d.gear : -1
     const g = GEARS[gear]
     if (g === undefined || g.kind !== 'place') return
-    if (portePour(a)) {
+    if (carriesFor(a)) {
       void room.send('actionRejected', { action: 'gear', reason: 'not while carrying something', antiCheat: false }, { to: [a] })
       return
     }
@@ -104,7 +104,7 @@ export function startGear(): void {
     if (gear === 7) {
       // A mine is a record on the base, not an entity: the entity is grown from the record
       // below, now and after every restart, until somebody steps on it (invariant 222).
-      if (!poserMine(a, { x: p.x, y: p.y, z: p.z })) {
+      if (!placeMine(a, { x: p.x, y: p.y, z: p.z })) {
         void room.send('actionRejected', { action: 'gear', reason: 'a mine goes inside your own base', antiCheat: false }, { to: [a] })
         return
       }
@@ -133,14 +133,14 @@ export function startGear(): void {
   room.onMessage('buyLuck', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    const cost = luckCost(prestigeOf(a), luckAchatsDe(a))
+    const cost = luckCost(prestigeOf(a), luckBuysOf(a))
     if (!spend(a, cost)) {
       void room.send('actionRejected', { action: 'luck', reason: `you need ${cost} coins`, antiCheat: false }, { to: [a] })
       return
     }
     const now = Date.now()
     const until = Math.max(now, luckUntilOf(a)) + LUCK_MS
-    noterAchatLuck(a)
+    noteLuckBuy(a)
     setLuckUntil(a, until)
     void room.send('luckBought', { cost, sec: Math.ceil((until - now) / 1000) }, { to: [a] })
     log(`${displayName(a)} bought x2 luck for ${cost}, ${Math.ceil((until - now) / 60000)} min left`)
@@ -150,7 +150,7 @@ export function startGear(): void {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
     if (gearsOf(a)[3] <= 0) return
-    if (portePour(a)) {
+    if (carriesFor(a)) {
       void room.send('actionRejected', { action: 'gear', reason: 'not while carrying something', antiCheat: false }, { to: [a] })
       return
     }
@@ -178,7 +178,7 @@ export function startGear(): void {
   */
   let acc = 0
   let reconcile = 4
-  const minesVues = new Map<string, { cle: string; entites: Array<ReturnType<typeof engine.addEntity>> }>()
+  const seenMines = new Map<string, { cle: string; entites: Array<ReturnType<typeof engine.addEntity>> }>()
   engine.addSystem((dt) => {
     acc += dt
     if (acc < 0.25) return
@@ -199,7 +199,7 @@ export function startGear(): void {
       for (const b of toutesLesBases()) {
         vivantes.add(b.address)
         const cle = b.mines.map((m) => `${m.x.toFixed(2)},${m.y.toFixed(2)},${m.z.toFixed(2)}`).join('|')
-        const cur = minesVues.get(b.address)
+        const cur = seenMines.get(b.address)
         if (cur !== undefined && cur.cle === cle) continue
         if (cur !== undefined) for (const e of cur.entites) engine.removeEntity(e)
         const entites = b.mines.map((m) => {
@@ -209,12 +209,12 @@ export function startGear(): void {
           syncEntity(e, [Trap.componentId, Transform.componentId])
           return e
         })
-        minesVues.set(b.address, { cle, entites })
+        seenMines.set(b.address, { cle, entites })
       }
-      for (const [a, cur] of [...minesVues]) {
+      for (const [a, cur] of [...seenMines]) {
         if (vivantes.has(a)) continue
         for (const e of cur.entites) engine.removeEntity(e)
-        minesVues.delete(a)
+        seenMines.delete(a)
       }
     }
 
@@ -240,7 +240,7 @@ export function startGear(): void {
         if (p === null) continue
         const d = Math.sqrt((p.x - tr.position.x) ** 2 + (p.z - tr.position.z) ** 2)
         if (d > BOMB_RADIUS || Math.abs(p.y - tr.position.y) > 2.5) continue
-        const lache = frapperPorteur(addr, 5) === 'lache'
+        const lache = hitCarrier(addr, 5) === 'lache'
         void room.send('bombed', { ownerName: proprio, dropped: lache }, { to: [addr] })
       }
       log(`${proprio}'s bomb went off`)
@@ -255,7 +255,7 @@ export function startGear(): void {
         if (addr === t.owner) continue
         // A plate catches them on the way in; a mine is the one placed thing that also
         // catches them on the way out, because that is what it is sold for.
-        if (!t.mine && portePour(addr)) continue
+        if (!t.mine && carriesFor(addr)) continue
         const p = positionOf(addr)
         if (p === null) continue
         const d = Math.sqrt((p.x - tr.position.x) ** 2 + (p.z - tr.position.z) ** 2)
@@ -263,7 +263,7 @@ export function startGear(): void {
         const gel = t.mine ? MINE_FREEZE_MS : TRAP_FREEZE_MS
         engine.removeEntity(e)
         const proprio = baseDe(t.owner)?.name ?? displayName(t.owner)
-        if (t.mine) { retirerMine(t.owner, tr.position); frapperPorteur(addr, 5) }
+        if (t.mine) { retirerMine(t.owner, tr.position); hitCarrier(addr, 5) }
         void room.send('trapped', { ownerName: proprio, gelMs: gel, mine: t.mine }, { to: [addr] })
         const info = { type: 'trap', byName: displayName(addr) }
         if (ici.has(t.owner)) void room.send('trapSprung', { byName: displayName(addr) }, { to: [t.owner] })

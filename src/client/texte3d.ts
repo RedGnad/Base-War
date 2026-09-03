@@ -50,7 +50,7 @@ function largeurDe(texte: string, taille: number): number {
  * returns that root so the caller can retire the whole line with one call. `estompe`
  * greys the letters the way the plate greys an absent owner.
  */
-export function poserTexte3D(parent: Entity, segments: Segment3D[], estompe: boolean): Entity {
+export function place3DText(parent: Entity, segments: Segment3D[], estompe: boolean): Entity {
   const racine = engine.addEntity()
   Transform.create(racine, { parent })
 

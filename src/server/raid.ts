@@ -10,7 +10,7 @@ import {
 import { room } from '../shared/messages'
 import { encoder } from '../shared/loot-table'
 import { presents, positionOf, displayName, spend, coinsOf, incomePerSecond, addCrate, cratesOf, toutesLesBases, memeEspace, meilleureRarete } from './plots'
-import { frapperPorteur } from './carry'
+import { hitCarrier } from './carry'
 import { dropAt } from './coins'
 import { noter } from './records'
 import { log } from './log'
@@ -44,7 +44,7 @@ function prochainCreneau(apres: number): number {
   }
   return base + 3_600_000 + RAID_MINUTES[0] * 60_000
 }
-let cibleAddr: string | null = null
+let targetAddr: string | null = null
 let dernierBalai = 0
 let spawnX = 0, spawnZ = 0
 
@@ -276,18 +276,18 @@ export function startRaid(): void {
       distance; only then does it look for somebody else within its notice radius. With
       nobody in reach it walks home, which is the only use the spawn point still has.
     */
-    let vise = cibleAddr === null ? null : positionOf(cibleAddr)
+    let vise = targetAddr === null ? null : positionOf(targetAddr)
     if (vise !== null && Math.hypot(vise.x - m.x, vise.z - m.z) > RAID_DEAGGRO_RANGE) vise = null
     if (vise === null) {
-      cibleAddr = null
+      targetAddr = null
       let best = RAID_AGGRO_RANGE
       for (const addr of presents()) {
         const p = positionOf(addr)
         if (p === null) continue
         const d = Math.hypot(p.x - m.x, p.z - m.z)
-        if (d < best) { best = d; cibleAddr = addr; vise = p }
+        if (d < best) { best = d; targetAddr = addr; vise = p }
       }
-      if (cibleAddr !== null && vise !== null) log(`the raid boss locks onto ${displayName(cibleAddr)}`)
+      if (targetAddr !== null && vise !== null) log(`the raid boss locks onto ${displayName(targetAddr)}`)
     }
     const vers = vise !== null ? { x: vise.x, z: vise.z } : { x: spawnX, z: spawnZ }
     let vx = vers.x - m.x, vz = vers.z - m.z
@@ -318,7 +318,7 @@ export function startRaid(): void {
       if (p === null) continue
       if (Math.hypot(p.x - m.x, p.z - m.z) > RAID_SWIPE_RANGE || Math.abs(p.y - 0) > 3) continue
       // Full force: whatever they carried is on the floor, like a bomb.
-      frapperPorteur(addr, 5)
+      hitCarrier(addr, 5)
       const perte = Math.floor(Math.min(coinsOf(addr) * RAID_SWIPE_SHARE, incomePerSecond(addr) * RAID_SWIPE_CAP_S + 500))
       if (perte > 0 && spend(addr, perte)) {
         dropAt(addr, perte, { x: p.x, y: p.y, z: p.z })

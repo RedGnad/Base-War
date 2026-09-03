@@ -120,17 +120,17 @@ export function setAiming(active: boolean): void {
  * est exactement le moment ou l'icone n'a encore rien a dire.
  */
 export const volView = { descend: false }
-let hauteurVue = -1
+let viewHeight = -1
 let descenteDepuis = 0
 
-function suivreLaChute(): void {
+function followFall(): void {
   engine.addSystem((dt: number) => {
     const t = Transform.getOrNull(engine.PlayerEntity)
     if (t === null) return
     const y = t.position.y
-    if (hauteurVue < 0) { hauteurVue = y; return }
-    const vitesse = (y - hauteurVue) / Math.max(dt, 0.001)
-    hauteurVue = y
+    if (viewHeight < 0) { viewHeight = y; return }
+    const vitesse = (y - viewHeight) / Math.max(dt, 0.001)
+    viewHeight = y
     if (vitesse < -1.2) descenteDepuis += dt
     else descenteDepuis = 0
     volView.descend = descenteDepuis > 0.12
@@ -138,7 +138,7 @@ function suivreLaChute(): void {
 }
 
 export function setupTouchHud(): void {
-  suivreLaChute()
+  followFall()
   /*
     Les boutons du client s'effacent, nous dessinons les notres.
 
@@ -204,7 +204,7 @@ export function setupTouchHud(): void {
  */
 const CACHES = new Set<InputAction>()
 
-function poserIcone(action: InputAction, nom: string | null): boolean {
+function setIcon(action: InputAction, nom: string | null): boolean {
   // A button the scene draws itself has no native picture to carry.
   if (CACHES.has(action)) return true
   const ctrl = TouchScreenControls.getMutableOrNull(engine.RootEntity)
@@ -234,7 +234,7 @@ let menuAlerte: boolean | null = null
  */
 export function setMenuIcone(alerte: boolean): void {
   if (menuAlerte === alerte) return
-  if (poserIcone(InputAction.IA_ACTION_3, alerte ? 'icon-menu-alert' : 'icon-menu')) menuAlerte = alerte
+  if (setIcon(InputAction.IA_ACTION_3, alerte ? 'icon-menu-alert' : 'icon-menu')) menuAlerte = alerte
 }
 
 let iconePrimaire: string | null = null
@@ -270,7 +270,7 @@ export function setReticuleClient(visible: boolean): void {
 
 export function setIconePrimaire(nom: string | null): void {
   if (iconePrimaire === nom) return
-  if (poserIcone(InputAction.IA_PRIMARY, nom)) iconePrimaire = nom
+  if (setIcon(InputAction.IA_PRIMARY, nom)) iconePrimaire = nom
 }
 
 let armeSortie: boolean | null = null
@@ -289,7 +289,7 @@ let armeSortie: boolean | null = null
  */
 export function setArmeIcone(sortie: boolean): void {
   if (armeSortie === sortie) return
-  if (poserIcone(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')) armeSortie = sortie
+  if (setIcon(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')) armeSortie = sortie
 }
 
 export function reportPlatform(): void {

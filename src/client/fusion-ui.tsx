@@ -9,9 +9,9 @@ import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode, forma
 import { fusionCost } from '../shared/economy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
-import { monAdresseClient, theftView } from './theft'
+import { myClientAddress, theftView } from './theft'
 import { eventView } from './events'
-import { fusionView } from './fusion'
+import { fuserView } from './fusion'
 
 /**
  * The fuser's panel: fuse straight from your shelves.
@@ -23,22 +23,22 @@ import { fusionView } from './fusion'
  * machine already holds for you, and fuses three of them from where they stand. The result
  * still lands in your hand, so the new toy is carried home like any other.
  */
-export const fusionPanelView = { open: false }
-export function openFusion(): void { fusionPanelView.open = true }
-export function closeFusion(): void { fusionPanelView.open = false }
+export const fuserPanelView = { open: false }
+export function openFuser(): void { fuserPanelView.open = true }
+export function closeFuser(): void { fuserPanelView.open = false }
 
 const RANG = 84
 
 /** The player's toys: what the machine already holds for them first, then the shelves. */
 function miens(): { hopper: number[]; etagere: number[] } {
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   let etagere: number[] = []
   for (const [, p] of engine.getEntitiesWith(Plot)) {
     if (p.ownerId.toLowerCase() !== moi) continue
     etagere = p.items.filter((c) => c !== VIDE)
     break
   }
-  return { hopper: [...fusionView.codes], etagere }
+  return { hopper: [...fuserView.codes], etagere }
 }
 
 /**
@@ -65,7 +65,7 @@ function chances(pris: number[]): string {
 }
 
 export const FusionPanel = () => {
-  if (!fusionPanelView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+  if (!fuserPanelView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   const m = miens()
   const fusibles = RARITIES.slice(0, RARITIES.length - 1)
   return (
@@ -94,7 +94,7 @@ export const FusionPanel = () => {
             <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
               color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
             <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
-              <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { void room.send('takeBackFusion', {}); closeFusion() }} />
+              <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { void room.send('takeBackFusion', {}); closeFuser() }} />
             </UiEntity>
           </UiEntity>
         )}
@@ -119,13 +119,13 @@ export const FusionPanel = () => {
               <UiEntity uiTransform={{ width: 440, height: TAP.menu, justifyContent: 'flex-end' }}>
                 <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE INTO A ${suivant.name.toUpperCase()}  ${formatIncome(prix)}`}
                   width={420} height={TAP.menu} primary={assez && paye}
-                  onClick={() => { if (assez && paye) { void room.send('fuseFromBase', { rarity: r.id }); closeFusion() } }} />
+                  onClick={() => { if (assez && paye) { void room.send('fuseFromBase', { rarity: r.id }); closeFuser() } }} />
               </UiEntity>
             </UiEntity>
           )
         })}
         <UiEntity uiTransform={{ width: '100%', height: TAP.height, flexDirection: 'row', justifyContent: 'center', margin: { top: 12 } }}>
-          <Btn label="BACK" width={220} onClick={closeFusion} />
+          <Btn label="BACK" width={220} onClick={closeFuser} />
         </UiEntity>
       </UiEntity>
     </UiEntity>

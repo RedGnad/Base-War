@@ -8,14 +8,14 @@ import {
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, aPortee, etatPrevisible, incomePerSecond, spend, revenuParObjet, absenceDe, sentriesSurEtage, compterVol, choisirSkin, reclamerQuotidienne } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
-import { remettreEnMain, portePour, forcerLacher, arracherDesMains } from './carry'
+import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
-  basesProches, lockOf, setLock, removeItem, addItem,
+  nearbyBases, lockOf, setLock, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
   placeBase, basePoints, buyFloorFor, lockCooldown, collectPending
 } from './plots'
@@ -152,7 +152,7 @@ export function startTheft(): void {
       */
       const p = positionOf(thief)
       const cible = positionObjet(v.victim, v.slot)
-      if (p === null || cible === null || !aPortee(p, cible, STEAL_HOLD_REACH)) {
+      if (p === null || cible === null || !inReach(p, cible, STEAL_HOLD_REACH)) {
         enCours.delete(thief)
         void room.send('stealFailed', { reason: 'you left the item' }, { to: [thief] })
         continue
@@ -167,11 +167,11 @@ export function startTheft(): void {
         the soft floor is the attacker's counterplay. That is the base-raid genre's own answer,
         and it costs no new item to give.
       */
-      const etageVise = Math.floor(v.slot / SLOTS_PER_FLOOR)
+      const targetFloor = Math.floor(v.slot / SLOTS_PER_FLOOR)
       // `>= 0` et pas une verite: la fonction rend le TIER qui a tire, et le tier zero existe.
-      const tier = useSentryCharge(v.victim, etageVise)
+      const tier = useSentryCharge(v.victim, targetFloor)
       if (tier >= 0) {
-        const left = sentriesSurEtage(v.victim, etageVise)
+        const left = sentriesOnFloor(v.victim, targetFloor)
         setLock(v.victim, maintenant + SENTRY_LOCK_MS)
         enCours.delete(thief)
 
@@ -189,7 +189,7 @@ export function startTheft(): void {
         let pris = 0
         if (palier.tithe > 0) {
           // The ceiling is what this charge cost, times what the tier promises back.
-          const prixCharge = prixParCharge(revenuParObjet(v.victim), tier)
+          const prixCharge = prixParCharge(incomePerItem(v.victim), tier)
           const plafond = Math.max(SHOT_MIN_YIELD, Math.floor(prixCharge * palier.retour))
           const voulu = Math.floor(coinsOf(thief) * palier.tithe)
           const montant = Math.max(0, Math.min(voulu, plafond))
@@ -198,14 +198,14 @@ export function startTheft(): void {
 
         void room.send('sentryBlocked', {
           ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
-          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris, floor: etageVise + 1
+          lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris, floor: targetFloor + 1
         }, { to: [thief] })
         void room.send('stealFailed', { reason: 'the sentry stopped you' }, { to: [thief] })
         const info = { type: 'sentry', byName: displayName(thief), left, taken: pris }
-        noter('garde', displayName(thief), b.name, etageVise + 1)
+        noter('garde', displayName(thief), b.name, targetFloor + 1)
         if (presents().has(v.victim)) void room.send('sentryTriggered', info, { to: [v.victim] })
         else storeAlert(v.victim, info)
-        log(`${b.name} sentry (${palier.name}) on floor ${etageVise + 1} blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left there`)
+        log(`${b.name} sentry (${palier.name}) on floor ${targetFloor + 1} blocked ${displayName(thief)}, ${pris} shaken loose, ${left} charge(s) left there`)
         continue
       }
 
@@ -277,7 +277,7 @@ export function startTheft(): void {
     const p = positionOf(thief)
     if (p === null) { refus(thief, 'steal', 'position unknown'); return }
 
-    const inRange = basesProches(p, STEAL_RANGE, thief)
+    const inRange = nearbyBases(p, STEAL_RANGE, thief)
     if (inRange.length === 0) { refus(thief, 'steal', 'no base in range'); return }
     const cibles = vise === '' ? inRange : inRange.filter((b) => b.address === vise)
     if (cibles.length === 0) { refus(thief, 'steal', 'that base is out of range'); return }
@@ -298,12 +298,12 @@ export function startTheft(): void {
       }
       // Say server-side what the building already says: that item is on another storey.
       const objet = positionObjet(c.address, slot)
-      if (objet === null || !aPortee(p, objet, STEAL_REACH)) {
+      if (objet === null || !inReach(p, objet, STEAL_REACH)) {
         refus(thief, 'steal', 'not on this floor, or too far')
         continue
       }
       if (enCours.has(thief)) { refus(thief, 'steal', 'you are already taking something'); return }
-      if (portePour(thief)) { refus(thief, 'steal', 'your hands are full, put it down first'); return }
+      if (carriesFor(thief)) { refus(thief, 'steal', 'your hands are full, put it down first'); return }
 
       // ON NE TRANSFERE RIEN ICI. On ouvre une tentative minutee: c'est pendant celle-ci
       // que la defense agit et que le voleur est vulnerable.
@@ -460,7 +460,7 @@ export function startTheft(): void {
       /*
         Their hands first, then their shelves. It used to be neither.
 
-        This looked the stolen item up with `basesProches(pv, 0.1, '')`, a proximity query with
+        This looked the stolen item up with `nearbyBases(pv, 0.1, '')`, a proximity query with
         a ten-centimetre radius, so it only ever found anything if the thief happened to be
         standing on the exact centre point of their own building. And even standing there it
         would have found nothing, because the whole point of the rework is that a fresh theft

@@ -2,9 +2,9 @@ import { engine, timers } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { ServerBeat, SYNC_ID, BEAT_MS } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { startPlots, plotsPrets, accueillir, auRevoir, cashOfflineEarnings, pushQuests, presents as presentsAvecGrace } from './plots'
-import { arrivee, depart, verifierCadeau } from './onboarding'
-import { runConvoys, balayerConvois } from './convoy'
+import { startPlots, plotsPrets, welcome, auRevoir, cashOfflineEarnings, pushQuests, presents as presentsAvecGrace } from './plots'
+import { arrivee, depart, checkGift } from './onboarding'
+import { runConvoys, sweepConvoys } from './convoy'
 import { startCombat } from './combat'
 import { startCarry } from './carry'
 import { startGear } from './gear'
@@ -13,7 +13,7 @@ import { log, flushLog, replayLog } from './log'
 import { startTheft, lockOnArrival, delivrerAlertes } from './theft'
 import { startBelt } from './belt'
 import { startRecords } from './records'
-import { startFusion } from './fusion'
+import { startFuser } from './fusion'
 import { startRaid } from './raid'
 
 /*
@@ -46,10 +46,10 @@ export function startServer(): void {
   startEvents()
   startBelt()
   startRecords()
-  startFusion()
+  startFuser()
   startRaid()
   runConvoys()
-  balayerConvois()
+  sweepConvoys()
   startCombat()
 
   const presents = new Set<string>()
@@ -68,7 +68,7 @@ export function startServer(): void {
       if (presents.has(address)) continue
       presents.add(address)
       void (async () => {
-        await accueillir(address)
+        await welcome(address)
         const hl = cashOfflineEarnings(address)
         if (hl !== null) void room.send('offlineEarnings', hl, { to: [address] })
         // The daily is no longer handed over on join; the player claims it from the day strip,
@@ -82,7 +82,7 @@ export function startServer(): void {
       })()
     }
 
-    verifierCadeau(presents)
+    checkGift(presents)
 
     for (const address of [...presents]) {
       if (ici.has(address)) continue

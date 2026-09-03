@@ -333,5 +333,5 @@ export function armSentry(tier = 0): void { envoyerOuAttendre(() => { void room.
 export function collectPending(): void { envoyerOuAttendre(() => { void room.send('collect', {}) }) }
 
 let _adresse = ''
-export function monAdresseClient(): string { return _adresse }
-export function setAdresseClient(a: string): void { _adresse = a }
+export function myClientAddress(): string { return _adresse }
+export function setClientAddress(a: string): void { _adresse = a }

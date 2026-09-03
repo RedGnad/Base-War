@@ -6,7 +6,7 @@ import {
 , MELEE_FORCE} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
-import { frapperPorteur } from './carry'
+import { hitCarrier } from './carry'
 import { interrompreVol } from './theft'
 import { positionOf, displayName, incomePerSecond, crediter, spend, coinsOf, presents, gearsOf, memeEspace } from './plots'
 import { dropAt } from './coins'
@@ -112,7 +112,7 @@ export function startCombat(): void {
     */
     // An arm at full reach lands with everything; a bullet fades with the square of the range.
     const force = pleineForce ? MELEE_FORCE : forceDuTir(best.d)
-    const butin = frapperPorteur(best.addr, force)
+    const butin = hitCarrier(best.addr, force)
     // A shot lands on the prying too, which is the one window a gun used to do nothing about.
     const coupe = interrompreVol(best.addr, force)
     const codeButin = butin === 'lache' ? 2

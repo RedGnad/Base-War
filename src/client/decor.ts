@@ -55,7 +55,7 @@ const SPIRALE = 'assets/Models/balloon-group01.glb'
  * `tx` et `tz` comptent en TUILES: la rue les calcule depuis sa taille, l'anneau porte deja
  * ses tuiles dans ses UV (une tous les quatre metres) et demande donc 1 sur 1.
  */
-function matiereDeLaRue(tx: number, tz: number): PBMaterial_PbrMaterial {
+function streetMaterial(tx: number, tz: number): PBMaterial_PbrMaterial {
   return {
     ...plastic(TOY.street), roughness: 0.95,
     texture: Material.Texture.Common({
@@ -187,7 +187,7 @@ export function setupDecor(): void {
     scale: Vector3.create(SCENE_SIDE, 0.06, LARGEUR_RUE)
   })
   MeshRenderer.setBox(rue)
-  Material.setPbrMaterial(rue, matiereDeLaRue(SCENE_SIDE / 4, LARGEUR_RUE / 4))
+  Material.setPbrMaterial(rue, streetMaterial(SCENE_SIDE / 4, LARGEUR_RUE / 4))
 
   /*
     Le trait au sol qui EST la regle qu'on ne peut pas construire ici.
@@ -213,7 +213,7 @@ export function setupDecor(): void {
     modifiers: [{
       path: '',
       castShadows: false,
-      material: { material: { $case: 'pbr', pbr: matiereDeLaRue(1, 1) } }
+      material: { material: { $case: 'pbr', pbr: streetMaterial(1, 1) } }
     }]
   })
 

@@ -86,7 +86,7 @@ export function startConvoy(buyer: string, crateTier: number, price: number, fro
 }
 
 /** Convoys left by a previous server: same trail as the belt and the loot piles. */
-export function balayerConvois(): void {
+export function sweepConvoys(): void {
   let n = 0
   for (const [e] of engine.getEntitiesWith(Convoy)) {
     if ((e & 0xffff) < 512) continue

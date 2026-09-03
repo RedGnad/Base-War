@@ -1,4 +1,4 @@
-import { TOY, plastic, caisse, demolir , eteindreCaisse} from './toy'
+import { TOY, plastic, caisse, demolir , dimCrate} from './toy'
 import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
 } from '@dcl/sdk/ecs'
@@ -39,7 +39,7 @@ const MAILLE = 2.6
  * -1 is the sign that follows. If a device shows the tread running against the crates, this
  * one number is the fix.
  */
-const SENS_DU_TAPIS = -1
+const BELT_DIRECTION = -1
 
 type View = { racine: Entity; item: Entity; label: Entity; nom: Entity; rendement: Entity; progres: number; vu: number; tombe: boolean }
 const views = new Map<number, View>()
@@ -98,7 +98,7 @@ export function setupBelt(): void {
     metallic: 0,
     roughness: 0.55
   })
-  Tween.setTextureMoveContinuous(tapis, Vector2.create(SENS_DU_TAPIS, 0), (BELT_LENGTH / BELT_DURATION_S) / LONG_TAPIS, TextureMovementType.TMT_OFFSET)
+  Tween.setTextureMoveContinuous(tapis, Vector2.create(BELT_DIRECTION, 0), (BELT_LENGTH / BELT_DURATION_S) / LONG_TAPIS, TextureMovementType.TMT_OFFSET)
 
   for (let i = -3; i <= 3; i++) {
     const pied = engine.addEntity()
@@ -220,7 +220,7 @@ export function setupBelt(): void {
           const t = Math.min((v.progres - 1) / FALL_END, 1)
           tr.rotation = Quaternion.fromEulerDegrees(0, 0, -t * 540)
           // Per frame: the glow has a tween to lose, and losing it takes more than one try.
-          eteindreCaisse(v.item)
+          dimCrate(v.item)
           /*
             And once the fall is over, nothing of this crate is drawn at all. The server
             retires it a breath later; until then a crate that has landed would sit in the
@@ -283,7 +283,7 @@ export function setupBelt(): void {
  * player walking past the belt is never offered a purchase they did not come for.
  */
 export const BELT_REACH = 2.6
-export function caisseAPortee(): { articleId: number; price: number; crateTier: number } | null {
+export function crateInReach(): { articleId: number; price: number; crateTier: number } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
   let best: { articleId: number; price: number; crateTier: number } | null = null
@@ -296,4 +296,4 @@ export function caisseAPortee(): { articleId: number; price: number; crateTier: 
   }
   return best
 }
-export function acheterCaisse(articleId: number): void { void room.send('buyBelt', { articleId }) }
+export function buyCrate(articleId: number): void { void room.send('buyBelt', { articleId }) }

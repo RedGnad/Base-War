@@ -631,9 +631,9 @@ export const SENTRY_TIERS = [
 export const SENTRY_MAX_CHARGES = SENTRY_TIERS[SENTRY_TIERS.length - 1].charges
 
 /** One charge, priced off what ONE item on the shelf produces. Both sides call this. */
-export function prixParCharge(revenuParObjet: number, tier: number): number {
+export function prixParCharge(incomePerItem: number, tier: number): number {
   const t = SENTRY_TIERS[Math.max(0, Math.min(tier, SENTRY_TIERS.length - 1))]
-  return Math.max(SENTRY_MIN_PRICE, Math.floor(revenuParObjet * t.itemSecondsPerCharge))
+  return Math.max(SENTRY_MIN_PRICE, Math.floor(incomePerItem * t.itemSecondsPerCharge))
 }
 export const SENTRY_MIN_PRICE = 240
 

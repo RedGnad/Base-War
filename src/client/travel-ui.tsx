@@ -5,7 +5,7 @@ import { strip } from './layout'
 import { Btn } from './ui-kit'
 import { travelView, rentrer, goToBelt } from './travel'
 import { theftView } from './theft'
-import { slotView, basculerPose } from './slots'
+import { slotView, togglePlacing } from './slots'
 import { closeMenu } from './menu'
 
 /**
@@ -51,7 +51,7 @@ export const TravelContent = () => {
       {theftView.basePosee && (
         <Rang label={slotView.active ? 'CANCEL MOVE' : 'MOVE MY BASE'}
           note="pick a new plot for your base" primary={slotView.active}
-          onClick={() => { basculerPose(); closeMenu() }} />
+          onClick={() => { togglePlacing(); closeMenu() }} />
       )}
     </UiEntity>
   )

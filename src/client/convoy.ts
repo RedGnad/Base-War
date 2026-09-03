@@ -7,7 +7,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
-import { alerter, monAdresseClient } from './theft'
+import { alerter, myClientAddress } from './theft'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
@@ -69,7 +69,7 @@ export function setupConvoy(): void {
       const te = Transform.getMutableOrNull(v.label)
       if (te !== null) te.position = Vector3.create(x, 0.5 + b.size + 0.6, z)
 
-      const mine = c.owner.toLowerCase() === monAdresseClient()
+      const mine = c.owner.toLowerCase() === myClientAddress()
       const price = Math.ceil(c.pricePaid * CONVOY_OUTBID)
       const voulu = mine
         ? `${b.name}\nyours - ${formatIncome(price)} to take it`
@@ -107,10 +107,10 @@ export function setupConvoy(): void {
 
 /** The convoy within reach of the player, with the price it would take to outbid it. */
 export const CONVOY_REACH = 3
-export function convoiAPortee(): { convoyId: number; price: number; mine: boolean } | null {
+export function convoyInReach(): { convoyId: number; price: number; mine: boolean } | null {
   const t = Transform.getOrNull(engine.PlayerEntity)
   if (t === null) return null
-  const moi = monAdresseClient()
+  const moi = myClientAddress()
   let best: { convoyId: number; price: number; mine: boolean } | null = null
   let dist = CONVOY_REACH
   for (const [, c] of engine.getEntitiesWith(Convoy)) {

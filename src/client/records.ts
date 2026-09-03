@@ -30,7 +30,7 @@ const MARGE = 0.35
 /** Rows are 0.45 m apart: glyphs about 0.3 m tall, which is 26 px from twelve metres on a phone. */
 const PAS = 0.45
 const RANGS = 5
-const LIGNES_JOURNAL = 6
+const JOURNAL_LINES = 6
 /** Gold, silver and bronze, as metals rather than as pastels: #e0a466 was a tan. */
 const RANG_COULEUR = ['#ffd447', '#c9d1dc', '#cd7f32']
 /**
@@ -226,14 +226,14 @@ function face(pivot: Entity): Face {
 
   const journal: Ligne[] = []
   const pleine = LARGEUR - 2 * MARGE
-  for (let i = 0; i < LIGNES_JOURNAL; i++) {
+  for (let i = 0; i < JOURNAL_LINES; i++) {
     journal.push(ligne(pivot, xg1, null, y, pleine, i % 2 === 0, TEXTE, -1, PAS))
     y -= PAS
   }
   return { earners, thieves, journal, surbE: cadre(pivot), surbT: cadre(pivot) }
 }
 
-function ligneDuJournal(e: { t: number; kind: string; a: string; b: string; code: number }, now: number): string {
+function journalLine(e: { t: number; kind: string; a: string; b: string; code: number }, now: number): string {
   const min = Math.max(0, Math.round((now - e.t) / 60000))
   const quand = min < 1 ? 'now' : min < 60 ? `${min}m` : min < 1440 ? `${Math.round(min / 60)}h` : `${Math.round(min / 1440)}d`
   const objet = nomDuCode(e.code)
@@ -308,7 +308,7 @@ export function setupRecords(): void {
       const me = getPlayer()
       if (me !== null) moi = me.name.toLowerCase()
     }
-    const dernier = [...r.journal].reverse().slice(0, LIGNES_JOURNAL)
+    const dernier = [...r.journal].reverse().slice(0, JOURNAL_LINES)
     const mienE = moi === '' ? -1 : r.earners.findIndex((e) => e.name.toLowerCase() === moi)
     const mienT = moi === '' ? -1 : r.thieves.findIndex((v) => v.name.toLowerCase() === moi)
     for (const f of faces) {
@@ -324,9 +324,9 @@ export function setupRecords(): void {
         visage(f.earners[i], e?.id ?? '')
         visage(f.thieves[i], v?.id ?? '')
       }
-      for (let i = 0; i < LIGNES_JOURNAL; i++) {
+      for (let i = 0; i < JOURNAL_LINES; i++) {
         const e = dernier[i]
-        ecrire(f.journal[i], e ? ligneDuJournal(e, now) : i === 0 ? 'quiet so far' : '')
+        ecrire(f.journal[i], e ? journalLine(e, now) : i === 0 ? 'quiet so far' : '')
       }
     }
   })
