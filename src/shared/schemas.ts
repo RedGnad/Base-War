@@ -817,14 +817,40 @@ export const FLOOR_HEIGHT = 4.0
 export const SAME_STOREY = FLOOR_HEIGHT * 0.75
 export const RECOVER_RANGE = 6
 
+/*
+  Le budget d'objets rendus, partage entre le client qui dessine et le serveur qui restaure.
+
+  Le telephone plafonne a 500 objets rendus et en recommande 400
+  (`docs.decentraland.org/creator/build-for-mobile/develop/optimize-performance`). On vise 385:
+  l'estimation se trompe d'environ un pour cent et le tapis porte un nombre de caisses qui
+  bouge. Les couts viennent de la mesure du 2 Sep sur le client, pas d'une estimation.
+*/
+export const BUDGET_OBJETS = 385
+/** Vegetation, place, tapis, panneau, convois: mesure a 133 objets, on en reserve 145. */
+export const COUT_DECOR = 145
+/** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
+export const COUT_BASE_FIXE = 4
+/** Un etage complet: coque, accent, verre, montee. Reduit: coque et accent seuls. */
+export const COUT_ETAGE_PRES = 4
+export const COUT_ETAGE_LOIN = 2
+/** Une piece exposee: son modele et sa forme de rarete. */
+export const COUT_PIECE = 2
+
 /**
- * As many bases as there are spots to stand on, and not one more.
+ * Autant de bases que le budget en supporte, et pas une de plus.
  *
- * Kept as a literal rather than `PLOT_SPOTS.length` only because this line is read before that
- * list is built; the two numbers are the same two rows of eight, and changing one means
- * changing the other.
+ * C'etait 60, un nombre pose a la main qui ne savait rien du budget graphique. Or une base
+ * REDUITE au minimum coute encore son socle plus deux objets par etage: passe un certain
+ * compte, meme en degradant tout, le plafond du telephone tombe et la scene cesse de charger.
+ * Laisser entrer une base de plus dans cet etat ne sert personne, ni celui qui la pose ni les
+ * autres (proprietaire, 3 Sep). Le nombre DERIVE donc du budget, sur une base moyenne de trois
+ * etages, et les deux ne peuvent plus diverger.
+ *
+ * Il borne les bases RESTAUREES depuis le stockage, triees par derniere visite: ce sont les
+ * absents qu'on cesse d'afficher en premier, jamais quelqu'un qui joue.
  */
-export const MAX_BASES_AFFICHEES = 60
+const COUT_BASE_REDUITE = COUT_BASE_FIXE + 3 * COUT_ETAGE_LOIN
+export const MAX_BASES_AFFICHEES = Math.floor((BUDGET_OBJETS - COUT_DECOR) / COUT_BASE_REDUITE)
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.

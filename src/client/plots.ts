@@ -7,7 +7,7 @@ import { PBMaterial_PbrMaterial, TextureWrapMode,
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_PRES, COUT_ETAGE_LOIN, COUT_PIECE, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { poserTexte3D, Segment3D } from './texte3d'
@@ -222,20 +222,6 @@ function collisionneur(x: number, y: number, z: number, sx: number, sy: number, 
   caisses qui bouge, et franchir 400 allume l'avertissement du client. Quinze objets de marge
   achetent la certitude de rester sous le seuil doux, pour a peu pres un demi-etage de detail.
 */
-const BUDGET_OBJETS = 385
-/*
-  Ce que coute le decor fixe. Mesure le 2 Sep, scene vide de bases: 133 objets, vegetation,
-  place, tapis, panneau et convois compris. On en reserve 145: le tapis porte sept caisses
-  dont le nombre bouge, et un budget qui se trompe vers le haut degrade pour rien.
-*/
-const COUT_DECOR = 145
-/** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quel que soit sa hauteur. */
-const COUT_BASE_FIXE = 4
-/** Un etage complet: coque, accent, verre, montee. Reduit: coque et accent seuls. */
-const COUT_ETAGE_PRES = 4
-const COUT_ETAGE_LOIN = 2
-/** Une piece exposee: son modele et sa forme de rarete. */
-const COUT_PIECE = 2
 /** Sa propre base et celles a portee de main restent completes, budget ou non. */
 const LOD_TOUJOURS_PRES = 24
 /** Une base deja complete compte comme un peu plus proche: sans ca elle clignoterait au seuil. */
