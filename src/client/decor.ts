@@ -217,21 +217,5 @@ export function setupDecor(): void {
     }]
   })
 
-  // SONDE TEMPORAIRE D'AXE (a retirer): un modele avec une boite BLEUE a x local = +3, un
-  // temoin CODE ROUGE a x = +3 en dessous, un temoin CODE JAUNE a x = +6 pour lire le sens de +X.
-  const SX = 96, SZ = 70
-  const sonde = engine.addEntity()
-  Transform.create(sonde, { position: Vector3.create(SX, 0, SZ) })
-  GltfContainer.create(sonde, { src: 'assets/Models/probe-x.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
-  const rouge = engine.addEntity()
-  Transform.create(rouge, { position: Vector3.create(SX + 3, 1, SZ), scale: Vector3.create(1, 2, 1) })
-  MeshRenderer.setBox(rouge)
-  Material.setPbrMaterial(rouge, { albedoColor: Color4.create(1, 0.05, 0.05, 1) })
-  const jaune = engine.addEntity()
-  Transform.create(jaune, { position: Vector3.create(SX + 6, 0.5, SZ), scale: Vector3.create(1, 1, 1) })
-  MeshRenderer.setBox(jaune)
-  Material.setPbrMaterial(jaune, { albedoColor: Color4.create(1, 0.9, 0.05, 1) })
-  console.log('[CLIENT] SONDE AXE posee a', SX, SZ)
-
   console.log('[CLIENT] decor: rim, treeline, bushes, balloons, street, plaza placed')
 }
