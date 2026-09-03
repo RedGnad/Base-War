@@ -3,9 +3,9 @@ import {
   engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
-import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , CHUTE_FIN} from '../shared/schemas'
+import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
 import { room } from '../shared/messages'
-import { crate, formatIncome, ligneDeCaisse } from '../shared/loot-table'
+import { crate, formatIncome, crateSummary } from '../shared/loot-table'
 import { HUE } from './theme'
 
 export const beltView = {
@@ -178,7 +178,7 @@ export function setupBelt(): void {
         const haut = r.size - 0.27
         PointerEvents.create(item, {
           pointerEvents: [
-            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${ligneDeCaisse(b.crateTier)}` } }
+            { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: `Buy ${r.name}  ${formatIncome(b.price)}  ·  ${crateSummary(b.crateTier)}` } }
           ]
         })
 
@@ -195,7 +195,7 @@ export function setupBelt(): void {
         const rendement = engine.addEntity()
         Transform.create(rendement, { parent: racine, position: Vector3.create(0, haut + 0.28, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(rendement, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(rendement, { text: ligneDeCaisse(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
+        TextShape.create(rendement, { text: crateSummary(b.crateTier), fontSize: 2.2, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
 
         v = { racine, item, label, nom, rendement, progres: b.progres, vu: b.progres, tombe: false }
         views.set(b.articleId, v)
@@ -217,7 +217,7 @@ export function setupBelt(): void {
         // little show a conveyor owes its spectators. The price tags vanish at the lip,
         // because a thing falling into a pit is no longer for sale.
         if (v.progres > 1) {
-          const t = Math.min((v.progres - 1) / CHUTE_FIN, 1)
+          const t = Math.min((v.progres - 1) / FALL_END, 1)
           tr.rotation = Quaternion.fromEulerDegrees(0, 0, -t * 540)
           // Per frame: the glow has a tween to lose, and losing it takes more than one try.
           eteindreCaisse(v.item)
@@ -227,7 +227,7 @@ export function setupBelt(): void {
             pit as scenery, which is what a witness photographed. The view is dropped in the
             same pass that drops a crate the server has already taken away.
           */
-          if (v.progres > 1 + CHUTE_FIN + 0.004) tr.scale = Vector3.Zero()
+          if (v.progres > 1 + FALL_END + 0.004) tr.scale = Vector3.Zero()
           if (!v.tombe) {
             v.tombe = true
             for (const e of [v.label, v.nom, v.rendement]) {
@@ -260,7 +260,7 @@ export function setupBelt(): void {
 
   room.onMessage('beltAlert', (d) => {
     const r = crate(d.crateTier)
-    beltView.annonce = `${r.name} on the belt!  ${ligneDeCaisse(d.crateTier)}`
+    beltView.annonce = `${r.name} on the belt!  ${crateSummary(d.crateTier)}`
     beltView.annonceColor = r.color
     beltView.annonceTier = d.crateTier
     // A rarer crate stays on screen longer: it deserves more attention, and it is also

@@ -2,7 +2,7 @@ import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, MINE_FREEZE_MS, prixGear, prixLuck, LUCK_MS,
+  GEARS, Trap, TRAP_LIFETIME_MS, TRAP_TRIGGER_RANGE, TRAP_FREEZE_MS, MINE_FREEZE_MS, prixGear, luckCost, LUCK_MS,
   Cloaked, CLOAK_MS, CLOAK_COOLDOWN_MS, Bomb, BOMB_FUSE_MS, BOMB_RADIUS
 } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -133,7 +133,7 @@ export function startGear(): void {
   room.onMessage('buyLuck', (_d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    const cost = prixLuck(prestigeOf(a), luckAchatsDe(a))
+    const cost = luckCost(prestigeOf(a), luckAchatsDe(a))
     if (!spend(a, cost)) {
       void room.send('actionRejected', { action: 'luck', reason: `you need ${cost} coins`, antiCheat: false }, { to: [a] })
       return

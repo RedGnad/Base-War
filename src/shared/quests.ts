@@ -39,7 +39,7 @@ export function questsOfDay(dayKey: number): number[] {
  * que trois jours sur neuf (les jours 0, 2 et 7 du cycle), donc six nouveaux joueurs sur neuf
  * n'avaient devant eux que des quetes qui supposent la boucle deja comprise.
  */
-export const QUETE_DEBUT = 2
+export const BEGINNER_QUEST = 2
 
 /**
  * Les trois quetes d'UN joueur pour la journee: la rotation du jour, sauf pour un debutant.
@@ -48,8 +48,8 @@ export const QUETE_DEBUT = 2
  * premiere du jour. Les deux autres restent celles de tout le monde, pour qu'il decouvre la
  * rotation en meme temps qu'il apprend la boucle.
  */
-export function questsPour(dayKey: number, debutant: boolean): number[] {
+export function questsFor(dayKey: number, debutant: boolean): number[] {
   const ids = questsOfDay(dayKey)
-  if (!debutant || ids.includes(QUETE_DEBUT)) return ids
-  return [QUETE_DEBUT, ids[1], ids[2]]
+  if (!debutant || ids.includes(BEGINNER_QUEST)) return ids
+  return [BEGINNER_QUEST, ids[1], ids[2]]
 }

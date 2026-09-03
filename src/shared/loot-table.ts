@@ -218,7 +218,7 @@ export function chanceDuTheme(crateId: number): number {
 }
 
 /** The one line a crate carries wherever it is shown: yield, and the theme odds if it has one. */
-export function ligneDeCaisse(crateId: number): string {
+export function crateSummary(crateId: number): string {
   const c = crate(crateId)
   const base = `~${formatIncome(rendementAttendu(crateId))}/s`
   return c.theme < 0 ? base : `${base}  ${Math.round(chanceDuTheme(crateId) * 100)}% ${mutation(c.theme).name}`

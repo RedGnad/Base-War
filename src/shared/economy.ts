@@ -80,7 +80,7 @@ export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
  */
 export const FUSION_HORIZON_S = 480
 
-export function prixFusion(rarete: number): number {
+export function fusionCost(rarete: number): number {
   const r = Math.max(0, Math.min(rarete, PRODUCTION_PER_RARITY.length - 2))
   const cree = PRODUCTION_PER_RARITY[r + 1] - 3 * PRODUCTION_PER_RARITY[r]
   if (cree <= 0) return 0
@@ -148,7 +148,7 @@ export function floorCost(targetFloor: number): number {
  * the milestones it produces.
  *
  * A price paid in coins held, not a lifetime total reached. The cost then multiplies by
- * `PRESTIGE_GROWTH` a rung (see `coutPrestige`); the cube it replaced read "106 hours for
+ * `PRESTIGE_GROWTH` a rung (see `prestigeCost`); the cube it replaced read "106 hours for
  * the sixth tier" against a base that never held an Epic or a multiplier, and was measured
  * wrong on 27 Aug. A tycoon is a thing somebody can still be playing in three months, and a
  * threshold picked so a visitor reaches the top of it in an afternoon would have thrown that
@@ -202,7 +202,7 @@ export const PRESTIGE_CASH_SHARE = 0.01
  * a x12 on income bought in an afternoon (tester, 27 Aug: "I chained floors 2, 3, 4 and on").
  */
 export const FLOOR_PRESTIGE_GATE = 2
-export function coutPrestige(n: number): number {
+export function prestigeCost(n: number): number {
   return n <= 0 ? 0 : Math.round(PRESTIGE_THRESHOLD * Math.pow(PRESTIGE_GROWTH, n - 1))
 }
 

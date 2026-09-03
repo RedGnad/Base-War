@@ -3,7 +3,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
-import { PRODUCTION_PER_RARITY, prixFusion } from '../shared/economy'
+import { PRODUCTION_PER_RARITY, fusionCost } from '../shared/economy'
 import { log } from './log'
 import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf, spend, coinsOf } from './plots'
 import { porteDetail, prendreDesMains, remettreEnMain } from './carry'
@@ -51,7 +51,7 @@ function pres(a: string): boolean {
  */
 function produire(machine: Machine, a: string, r: number, resteHopper: number[], entrees: number[]): void {
   const name = displayName(a)
-  const prix = prixFusion(r)
+  const prix = fusionCost(r)
   if (prix > 0) spend(a, prix)
   setFusion(a, resteHopper)
   const pousses = entrees.map(mutationDe).filter((m) => m > 0)
@@ -99,7 +99,7 @@ export function startFusion(): void {
       ne facture qu'au moment ou elle PRODUIT, et on refuse avant si l'or manque.
     */
     if (hopper.length + 1 >= FUSION_NEEDS) {
-      const prix = prixFusion(r)
+      const prix = fusionCost(r)
       if (coinsOf(a) < prix) {
         refuser(a, `fusing needs ${prix} coins`)
         return
@@ -141,7 +141,7 @@ export function startFusion(): void {
       refuser(a, `you own ${total} ${rarity(r).name}${total === 1 ? '' : 's'}, ${FUSION_NEEDS} needed`)
       return
     }
-    const prix = prixFusion(r)
+    const prix = fusionCost(r)
     if (coinsOf(a) < prix) { refuser(a, `fusing needs ${prix} coins`); return }
     // Holes are left where the toys stood (removeItem), so earlier indices stay valid.
     const pris = surEtagere.slice(0, besoin)

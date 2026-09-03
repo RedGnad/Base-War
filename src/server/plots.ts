@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, placeLibre, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_LOIN, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -11,7 +11,7 @@ import {
 } from '../shared/loot-table'
 import { log, flushLog } from './log'
 import { viderJournal } from './records'
-import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsPour, QuestType } from '../shared/quests'
+import { QUESTS, QUEST_CRATE, QUEST_BONUS_CRATE, questsFor, QuestType } from '../shared/quests'
 import { hasSomethingToRecover } from './theft'
 import { room } from '../shared/messages'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -282,18 +282,18 @@ function createBase(
 */
 function coutAffichage(b: Base): number {
   const etages = Math.max(1, Math.min(openFloors(b.floorsBought), MAX_FLOORS))
-  return COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
+  return BASE_FIXED_COST + etages * STOREY_COST_FAR
 }
 
 function budgetUtilise(): number {
-  let n = COUT_DECOR
+  let n = DECOR_COST
   for (const b of bases.values()) n += coutAffichage(b)
   return n
 }
 
 /** Vrai si une base de plus tient, quitte a retirer celle du plus anciennement absent. */
 function faireDeLaPlace(pourQui: string, cout: number): boolean {
-  if (budgetUtilise() + cout <= BUDGET_OBJETS) return true
+  if (budgetUtilise() + cout <= OBJECT_BUDGET) return true
   const ici = presents()
   let victime: string | null = null
   let vu = Number.POSITIVE_INFINITY
@@ -305,7 +305,7 @@ function faireDeLaPlace(pourQui: string, cout: number): boolean {
   const heures = Math.round((Date.now() - vu) / 3600_000)
   log(`budget plein: la base de ${nameOf(victime)} se retire (absent depuis ${heures} h) pour ${nameOf(pourQui)}`)
   removeBase(victime)
-  return budgetUtilise() + cout <= BUDGET_OBJETS || faireDeLaPlace(pourQui, cout)
+  return budgetUtilise() + cout <= OBJECT_BUDGET || faireDeLaPlace(pourQui, cout)
 }
 
 function removeBase(address: string): void {
@@ -454,7 +454,7 @@ async function loadBases(): Promise<void> {
   const efface = await remiseAZero()
   try {
     const res = await Storage.getValues({ prefix: 'base:' })
-    let budgetRestauration = COUT_DECOR
+    let budgetRestauration = DECOR_COST
     const loaded = res.data
       .map(({ key, value }) => {
         const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
@@ -503,8 +503,8 @@ async function loadBases(): Promise<void> {
       */
       .filter((l) => {
         const etages = Math.max(1, Math.min(openFloors(l.vitrine?.floorsBought ?? 0), MAX_FLOORS))
-        const cout = COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
-        if (budgetRestauration + cout > BUDGET_OBJETS) return false
+        const cout = BASE_FIXED_COST + etages * STOREY_COST_FAR
+        if (budgetRestauration + cout > OBJECT_BUDGET) return false
         budgetRestauration += cout
         return true
       })
@@ -628,7 +628,7 @@ export async function accueillir(address: string): Promise<void> {
   const name = nameOf(address)
   // Celui qui arrive est PRESENT: il passe devant tous les absents et retrouve sa base.
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    faireDeLaPlace(address, COUT_BASE_FIXE + COUT_ETAGE_LOIN)
+    faireDeLaPlace(address, BASE_FIXED_COST + STOREY_COST_FAR)
   }
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     // Sa position d'avant si elle est enregistree, un emplacement libre seulement s'il n'y en
@@ -776,7 +776,7 @@ export function positionObjet(address: string, slot: number): Vector3 | null {
   const t = Transform.getOrNull(b.entity)
   if (t === null) return null
   const d = slotPosition(slot)
-  const o = tourner(t.position.z, d.dx, d.dz)
+  const o = orientToBase(t.position.z, d.dx, d.dz)
   return Vector3.create(t.position.x + o.dx, t.position.y + d.dy, t.position.z + o.dz)
 }
 
@@ -946,9 +946,9 @@ function estDebutant(p: Profil): boolean {
   return (p.playedS ?? 0) < DEBUTANT_S
 }
 
-/** Les trois quetes ecrites au profil, tirees si la journee vient de tourner. */
+/** The three quests drawn for the day, refreshed when the calendar day has turned over. */
 function idsDuJour(p: Profil): number[] {
-  return p.questIds ?? questsPour(p.questDay ?? 0, false)
+  return p.questIds ?? questsFor(p.questDay ?? 0, false)
 }
 
 function questState(address: string): Profil | null {
@@ -957,7 +957,7 @@ function questState(address: string): Profil | null {
   const k = todayKey()
   if (p.questDay !== k || p.questIds === undefined || p.questIds.length !== 3) {
     p.questDay = k
-    p.questIds = questsPour(k, estDebutant(p))
+    p.questIds = questsFor(k, estDebutant(p))
     p.questProgress = [0, 0, 0]
     p.questsClaimed = [0, 0, 0, 0]   // 4th flag is the all-three bonus
     dirtyProfiles.add(address)
@@ -1465,7 +1465,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
     Le marqueur au sol montre deja rouge ou vert, donc un refus n'arrive que dans les cas que
     le joueur ne pouvait pas voir: deux joueurs qui posent au meme endroit a la meme seconde,
     ou un client qui a une demi-seconde de retard sur l'etat du terrain. Lui renvoyer "cannot
-    build there" le laisse chercher sans savoir quoi corriger. `placeLibre` balaie en anneaux
+    build there" le laisse chercher sans savoir quoi corriger. `freeSpotNear` balaie en anneaux
     depuis le point voulu et rend le premier carre legal: il pose donc a quelques metres de son
     choix, ce qui est ce qu'il aurait fait lui-meme, et on le lui dit.
   */
@@ -1474,7 +1474,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   let deplace = false
   const mauvais = invalidReason(x, z, SCENE_SIDE, basePoints(address))
   if (mauvais !== null) {
-    const proche = placeLibre(x, z, SCENE_SIDE, basePoints(address))
+    const proche = freeSpotNear(x, z, SCENE_SIDE, basePoints(address))
     if (proche === null) return { ok: false, reason: mauvais }
     x = proche.x
     z = proche.z
@@ -1483,7 +1483,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
 
   const previous = bases.get(address)
   // Deplacer sa propre base ne coute rien de plus: la place n'est demandee qu'a la premiere pose.
-  if (previous === undefined && !faireDeLaPlace(address, COUT_BASE_FIXE + COUT_ETAGE_LOIN)) {
+  if (previous === undefined && !faireDeLaPlace(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }
   if (previous) removeBase(address)
@@ -1598,7 +1598,7 @@ export function buyFloorFor(address: string): { ok: boolean; reason?: string; fl
     On fait de la place avant de facturer: si un absent peut ceder, il cede; si tout le monde
     est present et que le budget est plein, l'etage est refuse et l'or n'est pas pris.
   */
-  if (!faireDeLaPlace(address, COUT_ETAGE_LOIN)) {
+  if (!faireDeLaPlace(address, STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }
 
@@ -1781,7 +1781,7 @@ export function startPlots(): void {
         offlineGain: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.gain : 0,
         offlineSec: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.seconds : 0,
         offlineAt: p.annonceHL !== undefined && Date.now() - p.annonceHL.at < 180_000 ? p.annonceHL.at : 0,
-        luckPrice: prixLuck(prestige, luckAchatsDe(address)),
+        luckPrice: luckCost(prestige, luckAchatsDe(address)),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),
         floorNeedsPrestige: floorPrestigeRequired(1 + (p.floorsBought ?? 0) + 1),

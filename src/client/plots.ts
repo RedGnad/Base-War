@@ -7,7 +7,7 @@ import { PBMaterial_PbrMaterial, TextureWrapMode,
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_PRES, COUT_ETAGE_LOIN, COUT_PIECE, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, sensDeBase, tourner
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { poserTexte3D, Segment3D } from './texte3d'
@@ -39,8 +39,8 @@ function goUpOneFloor(v: View): void {
   // lip of the very hole left for jumping down (tester, 28 Aug, second pass). The slab proper
   // ends at the rail, x = c/2 - STAIRWELL_WIDTH = 3.4; land a stride inside it, facing the
   // elevator across the rail, which a click clears since the pillar is storey-tall.
-  const pied = tourner(t.position.z, ASC_X - 3.5, ASC_Z + 1.6)
-  const el = tourner(t.position.z, ASC_X, ASC_Z)
+  const pied = orientToBase(t.position.z, ASC_X - 3.5, ASC_Z + 1.6)
+  const el = orientToBase(t.position.z, ASC_X, ASC_Z)
   allerA(
     'ascenseur',
     Vector3.create(t.position.x + pied.dx, y, t.position.z + pied.dz),
@@ -230,10 +230,10 @@ const LOD_FIDELITE = 0.85
 /** Ce que cette base coutera en objets rendus, au detail complet ou reduite. */
 function coutDeLaBase(p: { floors: number; items: readonly number[] }, pres: boolean): number {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
-  if (!pres) return COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
+  if (!pres) return BASE_FIXED_COST + etages * STOREY_COST_FAR
   let pieces = 0
   for (const it of p.items) if (it > 0) pieces++
-  return COUT_BASE_FIXE + etages * COUT_ETAGE_PRES + pieces * COUT_PIECE
+  return BASE_FIXED_COST + etages * STOREY_COST_NEAR + pieces * ITEM_COST
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -410,7 +410,7 @@ function expulser(base: Vector3, floors: number): void {
   const dx = Math.abs(moi.position.x - base.x), dz = Math.abs(moi.position.z - base.z)
   const dedans = dx <= BASE_SIDE / 2 + 0.6 && dz <= BASE_SIDE / 2 + 0.6 && moi.position.y <= floors * FLOOR_HEIGHT + 1
   if (!dedans) return
-  const o = tourner(base.z, 0, BASE_SIDE / 2 + 2.5)
+  const o = orientToBase(base.z, 0, BASE_SIDE / 2 + 2.5)
   const porte = Vector3.create(base.x + o.dx, 0.3, base.z + o.dz)
   if (allerA('expulsion', porte, Vector3.create(base.x, 2, base.z))) {
     alerter('SEALED  ·  you were pushed out', '#ffd166', 3000)
@@ -453,7 +453,7 @@ function creerSocle(racine: Entity, k: number): Entity {
 function createView(x: number, z: number, mods: { accent: string; climb: string; verre: string }, teinte: string, loin = false): View {
   // One root at the centre, turned so the door faces the belt; everything below is local to it.
   const racine = engine.addEntity()
-  Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, sensDeBase(z) === -1 ? 180 : 0, 0) })
+  Transform.create(racine, { position: Vector3.create(x, 0, z), rotation: Quaternion.fromEulerDegrees(0, baseFacing(z) === -1 ? 180 : 0, 0) })
   parentCourant = racine
   const plinth = bloc(0, 0.06, 0, PLINTH_SIDE, 0.12, PLINTH_SIDE, TOY.plinth)
   Material.setPbrMaterial(plinth, plastiqueMoule(TOY.plinth, PLINTH_SIDE, PLINTH_SIDE))
@@ -718,7 +718,7 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
   let meilleur = Infinity
   for (let k = bas; k < bas + SLOTS_PER_FLOOR; k++) {
     if (k < base.p.items.length && base.p.items[k] !== VIDE) continue
-    const s = tourner(base.z, slotPosition(k).dx, slotPosition(k).dz)
+    const s = orientToBase(base.z, slotPosition(k).dx, slotPosition(k).dz)
     const dx = t.position.x - (base.x + s.dx), dz = t.position.z - (base.z + s.dz)
     const d = dx * dx + dz * dz
     if (d >= meilleur) continue
@@ -727,7 +727,7 @@ export function cibleDePose(): { ownerId: string; index: number; pos: Vector3 } 
   }
   if (choisi < 0) return null
   const s = slotPosition(choisi)
-  const o = tourner(base.z, s.dx, s.dz)
+  const o = orientToBase(base.z, s.dx, s.dz)
   return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + o.dx, s.dy, base.z + o.dz) }
 }
 
@@ -800,12 +800,12 @@ export function setupPlots(): void {
       loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
-    let facture = COUT_DECOR
+    let facture = DECOR_COST
     for (const r of rangs) facture += r.loin
     const complets = new Set<number>()
     for (const r of rangs) {
       const surcout = r.pres - r.loin
-      if (r.rang < 0 || facture + surcout <= BUDGET_OBJETS) {
+      if (r.rang < 0 || facture + surcout <= OBJECT_BUDGET) {
         facture += surcout
         complets.add(r.id)
       }
@@ -1189,7 +1189,7 @@ export function padEnFace(): { ownerId: string; k: number; mine: boolean; nom: s
     if (base.p.items[k] === VIDE) continue
     const s = slotPosition(k)
     if (Math.abs(s.dy - t.position.y) > FLOOR_HEIGHT / 2) continue     // this storey only
-    const o = tourner(base.z, s.dx, s.dz)
+    const o = orientToBase(base.z, s.dx, s.dz)
     const dx = base.x + o.dx - t.position.x, dz = base.z + o.dz - t.position.z
     const d = Math.hypot(dx, dz)
     if (d >= meilleur) continue
@@ -1229,7 +1229,7 @@ export function ascenseurAPortee(): boolean {
   if (v.floors.length < 2) return false
   const r = Transform.getOrNull(v.racine)
   if (r === null) return false
-  const el = tourner(r.position.z, ASC_X, ASC_Z)
+  const el = orientToBase(r.position.z, ASC_X, ASC_Z)
   return Math.hypot(t.position.x - (r.position.x + el.dx), t.position.z - (r.position.z + el.dz)) <= ELEVATOR_REACH
 }
 export function monterIci(): void {

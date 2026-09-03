@@ -3,7 +3,7 @@ import { engine, Transform, PlayerIdentityData, timers } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import {
-  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, CHUTE_FIN, OPEN_RANGE, LUCK_MULT, RUSH_TRAIT_CHANCE
+  Belt, beltPosition, BELT_DURATION_S, BELT_INTERVAL_S, BUY_RANGE, FALL_END, OPEN_RANGE, LUCK_MULT, RUSH_TRAIT_CHANCE
 } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { log } from './log'
@@ -113,7 +113,7 @@ export function startBelt(): void {
     if (publier) sync = 0
     for (const a of [...articles]) {
       a.progres += dt / BELT_DURATION_S
-      if (a.progres >= 1 + CHUTE_FIN) { retirer(a); continue }
+      if (a.progres >= 1 + FALL_END) { retirer(a); continue }
       if (!publier) continue
       const c = Belt.getMutableOrNull(a.entity)
       if (c !== null) c.progres = a.progres

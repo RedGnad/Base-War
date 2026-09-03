@@ -1,6 +1,6 @@
 import { engine, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, tourner } from '../shared/schemas'
+import { Plot, CENTER, BASE_SIDE, FLOOR_HEIGHT, orientToBase } from '../shared/schemas'
 import { allerA } from './deplacer'
 import { poseView } from './pose'
 import { monAdresseClient } from './theft'
@@ -14,8 +14,8 @@ function maBase(): Vector3 | null {
     const t = Transform.getOrNull(e)
     if (t === null) return null
     // In front of the DOOR, which faces the belt: a base north of the belt is turned round,
-    // so the door is on the -z side there. `tourner` puts the landing on the right side.
-    const o = tourner(t.position.z, 0, BASE_SIDE / 2 + 1.5)
+    // so the door is on the -z side there. `orientToBase` puts the landing on the right side.
+    const o = orientToBase(t.position.z, 0, BASE_SIDE / 2 + 1.5)
     return Vector3.create(t.position.x + o.dx, 0, t.position.z + o.dz)
   }
   return null

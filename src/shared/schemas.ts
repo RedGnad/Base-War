@@ -1,5 +1,5 @@
 import {
-  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, coutPrestige, prestigeMultiplier, FLOOR_PRESTIGE_GATE,
+  PRODUCTION_PER_RARITY, floorCost, MAX_PRESTIGE, prestigeCost, prestigeMultiplier, FLOOR_PRESTIGE_GATE,
   OFFLINE_RATE_V2, OFFLINE_CAP_PRODUCTION_S
 } from './economy'
 import { Schemas, engine } from '@dcl/sdk/ecs'
@@ -443,7 +443,7 @@ export const GEAR_MIN_PRICE = 240
 export function prixGear(gear: number): number {
   const g = GEARS[gear]
   if (g === undefined) return 0
-  return Math.max(GEAR_MIN_PRICE, Math.round(g.ratio * coutPrestige(g.prestige + 1)))
+  return Math.max(GEAR_MIN_PRICE, Math.round(g.ratio * prestigeCost(g.prestige + 1)))
 }
 
 export const TRAP_FREEZE_MS = 7_000
@@ -592,12 +592,12 @@ export const LUCK_RATIO = 0.0020
   (x88), ce qui laisse deux ou trois recharges confortables puis rend la quatrieme discutable,
   ce qui est exactement le choix qu'on veut lui poser.
 */
-export const LUCK_ESCALADE = 1.75
-export const LUCK_ESCALADE_MAX = 8
+export const LUCK_ESCALATION = 1.75
+export const LUCK_ESCALATION_MAX = 8
 
-export function prixLuck(prestige: number, achats = 0): number {
-  const base = Math.max(GEAR_MIN_PRICE, Math.round(LUCK_RATIO * coutPrestige(Math.min(prestige, MAX_PRESTIGE - 1) + 1)))
-  return Math.round(base * Math.pow(LUCK_ESCALADE, Math.min(Math.max(achats, 0), LUCK_ESCALADE_MAX)))
+export function luckCost(prestige: number, achats = 0): number {
+  const base = Math.max(GEAR_MIN_PRICE, Math.round(LUCK_RATIO * prestigeCost(Math.min(prestige, MAX_PRESTIGE - 1) + 1)))
+  return Math.round(base * Math.pow(LUCK_ESCALATION, Math.min(Math.max(achats, 0), LUCK_ESCALATION_MAX)))
 }
 /** Which mutations can headline an event, and the world colour each one brings. */
 /** Five minutes is a rush, not an hour: the tester read "HOUR" against the countdown and was right. */
@@ -700,8 +700,8 @@ export const BUY_RANGE = 5
   slow drift, not a drop (owner, 1 Sep). Three quarters of a second is what 1.3 metres of
   gravity feels like with a little arcade slack.
 */
-export const CHUTE_S = 0.75
-export const CHUTE_FIN = CHUTE_S / BELT_DURATION_S
+export const FALL_DURATION_S = 0.75
+export const FALL_END = FALL_DURATION_S / BELT_DURATION_S
 /*
   An unsold crate is CARRIED off the end, it does not sink where the tread stops.
 
@@ -713,15 +713,15 @@ export const CHUTE_FIN = CHUTE_S / BELT_DURATION_S
   bottom 0.27 under the root) instead of passing it.
 */
 export const BELT_HEIGHT = 1.35  // lowered twice on 28 Aug, the second time from the handset: crates at chest height read better on a small screen
-export const PORTEE_FOSSE = 1.3
+export const PIT_DRIFT = 1.3
 export const FOSSE_PROFONDEUR = BELT_HEIGHT + 0.45 - 0.47
 
 export function beltPosition(progres: number): { x: number; y: number; z: number } {
   const onBelt = Math.min(progres, 1)
   const x = CENTER.x - BELT_LENGTH / 2 + onBelt * BELT_LENGTH
   if (progres <= 1) return { x, y: BELT_HEIGHT + 0.45, z: CENTER.z }
-  const t = Math.min((progres - 1) / CHUTE_FIN, 1)
-  return { x: x + t * PORTEE_FOSSE, y: BELT_HEIGHT + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTER.z }
+  const t = Math.min((progres - 1) / FALL_END, 1)
+  return { x: x + t * PIT_DRIFT, y: BELT_HEIGHT + 0.45 - t * t * FOSSE_PROFONDEUR, z: CENTER.z }
 }
 
 /*
@@ -825,16 +825,16 @@ export const RECOVER_RANGE = 6
   l'estimation se trompe d'environ un pour cent et le tapis porte un nombre de caisses qui
   bouge. Les couts viennent de la mesure du 2 Sep sur le client, pas d'une estimation.
 */
-export const BUDGET_OBJETS = 385
+export const OBJECT_BUDGET = 385
 /** Vegetation, place, tapis, panneau, convois: mesure a 133 objets, on en reserve 145. */
-export const COUT_DECOR = 145
+export const DECOR_COST = 145
 /** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
-export const COUT_BASE_FIXE = 4
+export const BASE_FIXED_COST = 4
 /** Un etage complet: coque, accent, verre, montee. Reduit: coque et accent seuls. */
-export const COUT_ETAGE_PRES = 4
-export const COUT_ETAGE_LOIN = 2
+export const STOREY_COST_NEAR = 4
+export const STOREY_COST_FAR = 2
 /** Une piece exposee: son modele et sa forme de rarete. */
-export const COUT_PIECE = 2
+export const ITEM_COST = 2
 
 /**
  * Autant de bases que le budget en supporte, et pas une de plus.
@@ -849,8 +849,8 @@ export const COUT_PIECE = 2
  * Il borne les bases RESTAUREES depuis le stockage, triees par derniere visite: ce sont les
  * absents qu'on cesse d'afficher en premier, jamais quelqu'un qui joue.
  */
-const COUT_BASE_REDUITE = COUT_BASE_FIXE + 3 * COUT_ETAGE_LOIN
-export const MAX_BASES_AFFICHEES = Math.floor((BUDGET_OBJETS - COUT_DECOR) / COUT_BASE_REDUITE)
+const REDUCED_BASE_COST = BASE_FIXED_COST + 3 * STOREY_COST_FAR
+export const MAX_BASES_AFFICHEES = Math.floor((OBJECT_BUDGET - DECOR_COST) / REDUCED_BASE_COST)
 export const SLOTS_PER_FLOOR = 6
 /**
  * High enough that the cost curve is what stops you, not this number.
@@ -883,7 +883,7 @@ export const DOOR_WIDTH = 2.0
 export const PRESTIGE_TIERS = Array.from({ length: MAX_PRESTIGE }, (_, i) => {
   const n = i + 1
   return {
-    cost: coutPrestige(n),
+    cost: prestigeCost(n),
     minRarity: Math.min(1 + Math.floor(i / 2), PRODUCTION_PER_RARITY.length - 1),
     multiplier: prestigeMultiplier(n),
     guard: i < 2 ? 1 : 2
@@ -892,7 +892,7 @@ export const PRESTIGE_TIERS = Array.from({ length: MAX_PRESTIGE }, (_, i) => {
 export const REBIRTH_MAX = PRESTIGE_TIERS.length
 
 export function prestigeTier(n: number) { return PRESTIGE_TIERS[Math.min(n, PRESTIGE_TIERS.length - 1)] }
-export function coutRebirth(prestige: number): number { return prestigeTier(prestige).cost }
+export function rebirthCost(prestige: number): number { return prestigeTier(prestige).cost }
 
 export function incomeMultiplier(n: number): number {
   return n <= 0 ? 1 : PRESTIGE_TIERS[Math.min(n, PRESTIGE_TIERS.length) - 1].multiplier
@@ -1013,7 +1013,7 @@ const PLAZA_INTERDIT_A = PLAZA_A + BASE_SIDE / 2 + 2
 const PLAZA_INTERDIT_B = PLAZA_B + BASE_SIDE / 2 + 2
 
 /** Vrai quand ce point est dans l'ellipse de la place, grossie de `marge` sur les deux axes. */
-export function dansLaPlace(x: number, z: number, marge = 0): boolean {
+export function inPlaza(x: number, z: number, marge = 0): boolean {
   const dx = (x - CENTER.x) / (PLAZA_A + marge)
   const dz = (z - CENTER.z) / (PLAZA_B + marge)
   return dx * dx + dz * dz <= 1
@@ -1059,7 +1059,7 @@ export function invalidReason(
  * not stand in anybody's living room. Rings are square, like the rule itself, and the first
  * ring is the wanted spot, so a base that is still legal never moves at all.
  */
-export function placeLibre(
+export function freeSpotNear(
   xv: number, zv: number, cote: number, autres: Array<{ x: number; z: number }>
 ): { x: number; z: number } | null {
   const x0 = snapToGrid(xv)
@@ -1222,7 +1222,7 @@ function spotsDeDepart(): Array<{ x: number; z: number }> {
 export const PLOT_SPOTS: ReadonlyArray<{ x: number; z: number }> = spotsDeDepart()
 
 /** The nearest fixed spot to a point, and whether anything already stands on it. */
-export function spotLePlusProche(
+export function nearestSpot(
   x: number, z: number, pris: ReadonlyArray<{ x: number; z: number }>
 ): { x: number; z: number; libre: boolean } | null {
   let best: { x: number; z: number } | null = null
@@ -1237,7 +1237,7 @@ export function spotLePlusProche(
 }
 
 /** The first spot nobody stands on, in list order, exactly as the reference assigns them. */
-export function premierSpotLibre(pris: ReadonlyArray<{ x: number; z: number }>): { x: number; z: number } | null {
+export function firstFreeSpot(pris: ReadonlyArray<{ x: number; z: number }>): { x: number; z: number } | null {
   for (const s of PLOT_SPOTS) {
     if (!pris.some((q) => Math.abs(q.x - s.x) < 0.5 && Math.abs(q.z - s.z) < 0.5)) return { x: s.x, z: s.z }
   }
@@ -1250,11 +1250,11 @@ export function premierSpotLibre(pris: ReadonlyArray<{ x: number; z: number }>):
   placed north of the belt is that same base turned half a turn, so its door still opens on
   the lane everybody walks. Until 27 Aug every base opened on +z whichever side it stood, and
   half of them showed the plaza their back wall (tester). Both sides read geometry through
-  `tourner`, so a thief's reach and a marker's spot agree with what is drawn.
+  `orientToBase`, so a thief's reach and a marker's spot agree with what is drawn.
 */
-export function sensDeBase(z: number): 1 | -1 { return z > CENTER.z ? -1 : 1 }
-export function tourner(z: number, dx: number, dz: number): { dx: number; dz: number } {
-  const s = sensDeBase(z)
+export function baseFacing(z: number): 1 | -1 { return z > CENTER.z ? -1 : 1 }
+export function orientToBase(z: number, dx: number, dz: number): { dx: number; dz: number } {
+  const s = baseFacing(z)
   return { dx: dx * s, dz: dz * s }
 }
 
