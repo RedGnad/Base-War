@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_LOIN, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, placeLibre, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_LOIN, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -1459,10 +1459,27 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
     se lit a l'ecran: n'importe ou, sauf sur le tapis, sauf au bord, et sauf dans les murs du
     voisin.
   */
-  const x = snapToGrid(xb)
-  const z = snapToGrid(zb)
+  /*
+    Un refus n'est pas une reponse: on pose au plus pres.
+
+    Le marqueur au sol montre deja rouge ou vert, donc un refus n'arrive que dans les cas que
+    le joueur ne pouvait pas voir: deux joueurs qui posent au meme endroit a la meme seconde,
+    ou un client qui a une demi-seconde de retard sur l'etat du terrain. Lui renvoyer "cannot
+    build there" le laisse chercher sans savoir quoi corriger. `placeLibre` balaie en anneaux
+    depuis le point voulu et rend le premier carre legal: il pose donc a quelques metres de son
+    choix, ce qui est ce qu'il aurait fait lui-meme, et on le lui dit.
+  */
+  let x = snapToGrid(xb)
+  let z = snapToGrid(zb)
+  let deplace = false
   const mauvais = invalidReason(x, z, SCENE_SIDE, basePoints(address))
-  if (mauvais !== null) return { ok: false, reason: mauvais }
+  if (mauvais !== null) {
+    const proche = placeLibre(x, z, SCENE_SIDE, basePoints(address))
+    if (proche === null) return { ok: false, reason: mauvais }
+    x = proche.x
+    z = proche.z
+    deplace = true
+  }
 
   const previous = bases.get(address)
   // Deplacer sa propre base ne coute rien de plus: la place n'est demandee qu'a la premiere pose.
@@ -1478,8 +1495,8 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   p.z = z
   dirtyBases.add(address)
   dirtyProfiles.add(address)
-  log(`${b.name} placed a base at ${x},${z}${previous ? ` (deplacee from ${previous.x},${previous.z})` : ''}`)
-  return { ok: true }
+  log(`${b.name} placed a base at ${x},${z}${previous ? ` (deplacee from ${previous.x},${previous.z})` : ''}${deplace ? ' (repli sur le plus proche libre)' : ''}`)
+  return { ok: true, reason: deplace ? 'that spot was taken, your base went to the nearest free one' : undefined }
 }
 
 /*

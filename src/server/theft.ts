@@ -341,6 +341,9 @@ export function startTheft(): void {
     }
     const r = placeBase(a, d.x, d.z)
     if (!r.ok) { refus(a, 'build', r.reason ?? 'refused'); return }
+    // Une base qui atterrit ailleurs que la ou on a appuye doit le DIRE, sinon le joueur la
+    // cherche. Le meme canal que les refus: c'est une information, pas une erreur.
+    if (r.reason !== undefined) refus(a, 'build', r.reason)
     tutoFait(a, 0)
   })
 
