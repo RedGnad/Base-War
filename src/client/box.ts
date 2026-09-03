@@ -234,7 +234,10 @@ export function frapper(): void {
   jouer(sonCoup)
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
-  caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS)
+  // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque
+  // flottait avec elle, en plein milieu de rien (proprietaire, 3 Sep). Le disque est une
+  // flaque de lumiere pour une caisse POSEE, il n'a de sens que sur le tapis.
+  caisse(crateMesh, boxView.typeEnCours, boxView.coups / COUPS, false)
 
   if (boxView.coups >= COUPS) {
     boxView.opening = false
@@ -498,7 +501,7 @@ export function openCrate(crateTier: number): void {
     t.scale = Vector3.create(b.size, b.size, b.size)
     t.rotation = Quaternion.fromEulerDegrees(0, 25, 0)
   }
-  caisse(crateMesh, crateTier)
+  caisse(crateMesh, crateTier, 0, false)
 }
 
 export function openBestCrate(): void {

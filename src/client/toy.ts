@@ -709,7 +709,7 @@ const caisses = new Map<Entity, Caisse>()
   cinq objets par caisse. Ce qui reste: le disque de lumiere sous les caisses Rare et plus,
   qui lui respire toujours, et la chauffe pendant le cassage.
 */
-export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
+export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = true): void {
   const c = crate(crateId)
   const theme = c.theme >= 0 ? mutation(c.theme).color : null
   const eclaire = c.tier >= 2 || theme !== null
@@ -723,7 +723,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0): void {
     */
     MeshRenderer.setBox(racine)
     Material.setPbrMaterial(racine, plastic(c.color))
-    k = { halo: eclaire ? part(racine, Vector3.create(0, -0.52, 0), Vector3.Zero(), 'cyl') : null, crateId, chaud: -1 }
+    k = { halo: eclaire && avecHalo ? part(racine, Vector3.create(0, -0.52, 0), Vector3.Zero(), 'cyl') : null, crateId, chaud: -1 }
     caisses.set(racine, k)
   }
   remonter(racine, `crate-${crateId}.glb`)
@@ -808,11 +808,17 @@ export function eteindreCaisse(racine: Entity): void {
     dans la fosse restait allume au fond (proprietaire, 1er Sep). Idempotent, donc l'appeler a
     chaque image coute une comparaison une fois qu'il a pris.
   */
-  const ht = Transform.getMutableOrNull(halo)
-  if (ht !== null && ht.scale.x === 0) return
-  if (Tween.has(halo)) Tween.deleteFrom(halo)
-  if (TweenSequence.has(halo)) TweenSequence.deleteFrom(halo)
-  if (ht !== null) ht.scale = Vector3.Zero()
+  /*
+    On SUPPRIME le disque, on ne l'eteint plus.
+
+    L'extinction remettait son echelle a zero en luttant contre un tween qui reecrit le
+    Transform a chaque image, d'ou l'appel repete a chaque image de la chute. Ca ne suffisait
+    pas: la caisse fait un tour et demi en tombant, le disque tourne avec elle puisqu'il en est
+    l'enfant, et on le voyait DE PROFIL, une barre pale sous la caisse (proprietaire, 3 Sep).
+    Une entite detruite, elle, ne peut pas etre dessinee, quoi que fasse le tween.
+  */
+  engine.removeEntity(halo)
+  caisses.set(racine, { ...k, halo: null })
   lumiereDuJouet(racine, null, 0)
 }
 
