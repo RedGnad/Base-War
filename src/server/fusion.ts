@@ -1,11 +1,11 @@
 import { engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
-import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT } from '../shared/schemas'
+import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT, poidsDesMutations, incomeMultiplier } from '../shared/schemas'
 import { room } from '../shared/messages'
-import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
+import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, expectedMutationMult, RARITIES } from '../shared/loot-table'
 import { PRODUCTION_PER_RARITY, fusionCost } from '../shared/economy'
 import { log } from './log'
-import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf, spend, coinsOf } from './plots'
+import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf, spend, coinsOf, prestigeOf } from './plots'
 import { carriedDetail, prendreDesMains, remettreEnMain } from './carry'
 import { rollMutation } from './loot'
 import { noter } from './records'
@@ -49,9 +49,25 @@ function pres(a: string): boolean {
  * kept: they come from rushes, not from machines. The reference does not document its own
  * machine's rule; this is ours.
  */
+/**
+ * What this exact fusion costs this exact player.
+ *
+ * The price follows the value actually being created, so it needs the pieces going in (their
+ * mutations are known), the odds on the piece coming out (the same weights the roll uses,
+ * pushes included) and the owner's prestige. Pricing off the rarity alone is what made a
+ * Mythic pay for itself in six seconds.
+ */
+function prixDeLaFusion(a: string, r: number, entrees: readonly number[]): number {
+  const pousses = entrees.map(mutationDe).filter((m) => m > 0)
+  const poids = poidsDesMutations(0, -1, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1, pousses)
+  let revenuEntrees = 0
+  for (const c of entrees) revenuEntrees += itemIncome(c, PRODUCTION_PER_RARITY)
+  return fusionCost(r, revenuEntrees, expectedMutationMult(poids), incomeMultiplier(prestigeOf(a)))
+}
+
 function produire(machine: Machine, a: string, r: number, resteHopper: number[], entrees: number[]): void {
   const name = displayName(a)
-  const prix = fusionCost(r)
+  const prix = prixDeLaFusion(a, r, entrees)
   if (prix > 0) spend(a, prix)
   setFusion(a, resteHopper)
   const pousses = entrees.map(mutationDe).filter((m) => m > 0)
@@ -99,7 +115,7 @@ export function startFuser(): void {
       ne facture qu'au moment ou elle PRODUIT, et on refuse avant si l'or manque.
     */
     if (hopper.length + 1 >= FUSION_NEEDS) {
-      const prix = fusionCost(r)
+      const prix = prixDeLaFusion(a, r, [...hopper, main.code])
       if (coinsOf(a) < prix) {
         refuser(a, `fusing needs ${prix} coins`)
         return
@@ -141,10 +157,10 @@ export function startFuser(): void {
       refuser(a, `you own ${total} ${rarity(r).name}${total === 1 ? '' : 's'}, ${FUSION_NEEDS} needed`)
       return
     }
-    const prix = fusionCost(r)
-    if (coinsOf(a) < prix) { refuser(a, `fusing needs ${prix} coins`); return }
     // Holes are left where the toys stood (removeItem), so earlier indices stay valid.
     const pris = onShelf.slice(0, besoin)
+    const prix = prixDeLaFusion(a, r, [...dedans, ...pris.map((x) => x.c)])
+    if (coinsOf(a) < prix) { refuser(a, `fusing needs ${prix} coins`); return }
     for (const x of pris) removeItem(a, x.i)
     log(`fusion: ${displayName(a)} fused ${besoin} ${rarity(r).name}(s) off the shelf${dedans.length > 0 ? ` and ${dedans.length} from the hopper` : ''}`)
     produire(machine, a, r, reste, [...dedans, ...pris.map((x) => x.c)])

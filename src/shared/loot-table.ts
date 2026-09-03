@@ -145,6 +145,23 @@ export function encoder(rarity: number, mut: number, traits = 0): number {
 export function rarityOf(code: number): number { return Math.floor(code / 100) % 10 }
 export function mutationDe(code: number): number { return code % 100 }
 export function traitsDe(code: number): number { return code < 0 ? 0 : Math.floor(code / 1000) }
+/**
+ * The average mutation multiplier a roll with these weights will produce.
+ *
+ * The fusion price needs the value of the piece it is about to hand over, and that value is
+ * decided by a roll. Reading the same weights the roll uses means the price follows the odds
+ * rather than assuming the plain case, which matters most when the inputs push the odds up.
+ */
+export function expectedMutationMult(weights: readonly number[]): number {
+  let total = 0
+  let sum = 0
+  for (let i = 0; i < weights.length && i < MUTATIONS.length; i++) {
+    total += weights[i]
+    sum += weights[i] * MUTATIONS[i].mult
+  }
+  return total > 0 ? sum / total : 1
+}
+
 export function itemIncome(code: number, incomeTable: readonly number[]): number {
   const base = incomeTable[rarityOf(code)] ?? 1
   return base * mutation(mutationDe(code)).mult + base * TRAIT_BONUS * traitsDe(code)

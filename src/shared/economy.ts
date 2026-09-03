@@ -48,43 +48,47 @@ export const CRATE_PRICE = [2018, 34848, 660529, 11785149, 179901757, 2196893933
 */
 export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
 
-/**
- * Ce que coute une fusion, en or.
- *
- * Elle etait gratuite, au motif qu'elle "coutait deja trois objets". C'etait faux, et le
- * proprietaire l'a vu avant moi: un palier rapporte 6,5 fois le precedent alors que la fusion
- * n'en consomme que trois, donc chaque fusion MULTIPLIE le revenu par 2,2 et rend deux
- * emplacements par-dessus. En chaine, 729 Commons deviennent un Secret a 82 654/s contre 729/s
- * si on les gardait: cent treize fois plus, gratuitement. On n'achetait que des caisses Basic
- * et on montait toute l'echelle sans jamais payer le prix des paliers (3 Sep).
- *
- * Le prix est le revenu CREE par la fusion, multiplie par un horizon FIXE.
- *
- * Premiere version: le revenu cree multiplie par le temps de retour d'une caisse de ce palier.
- * Elle fermait l'exploit et le fermait trop. Les deux facteurs grandissent d'environ 6,5 par
- * palier, donc le prix grandissait de 42 par palier pendant que la valeur de l'objet n'en
- * gagnait que 6,5: la formule composait deux fois. Monter jusqu'a un Secret coutait 3,13
- * MILLIARDS de frais pour 2,26 M de caisses, soit 1 385 fois le prix de la matiere premiere, et
- * le fuser devenait inutile a quiconque possede de l'or.
- *
- * Un horizon fixe de huit minutes met la fusion entre 1,0 et 1,6 fois le prix d'acheter la
- * meme rarete en caisses, a TOUS les paliers (mesure sur les tables reelles: Uncommon 1,45,
- * Rare 1,57, Epic 1,47, Legendary 1,32, Mythic 1,17, Secret 0,98). Jamais moins cher, donc on
- * ne court-circuite pas l'echelle; jamais absurde, donc la machine garde son role. Le
- * surcout achete trois choses reelles: la fusion est DETERMINISTE la ou une caisse est un
- * pari, elle compacte l'etagere, et elle retire la mutation.
- *
- * Le Secret a parite est voulu: il n'existe pas de caisse Secret, la seule autre voie est la
- * caisse Mythic et son quatre millieme de chance. La parite est le juste prix de la seule
- * route sure vers le sommet.
- */
+/** How long a fusion should take to pay for itself, in seconds of the income it creates. */
 export const FUSION_HORIZON_S = 480
 
-export function fusionCost(rarete: number): number {
-  const r = Math.max(0, Math.min(rarete, PRODUCTION_PER_RARITY.length - 2))
-  const cree = PRODUCTION_PER_RARITY[r + 1] - 3 * PRODUCTION_PER_RARITY[r]
-  if (cree <= 0) return 0
-  return Math.round(cree * FUSION_HORIZON_S)
+/**
+ * What a fusion costs, priced on the NET income it is actually expected to create.
+ *
+ * Two earlier versions were wrong in the same way, and the second is worth spelling out.
+ * Version one multiplied the created income by that tier's crate payback; since both grow
+ * about 6.5x per tier, the price grew 42x per tier while the item's value grew 6.5x, so
+ * reaching a Secret cost 1385 times the crates that fed it. Version two fixed that with a
+ * fixed horizon, and was still wrong, because it priced everything off PRODUCTION_PER_RARITY,
+ * the BASE table, while real income is that base multiplied by the item's mutation (up to
+ * 10x) and the owner's prestige (2x, 4x...). Measured on a real save: a Mythic worth 500k a
+ * second against a 3.28M price, a payback of six and a half seconds instead of eight minutes
+ * (owner, 3 Sep).
+ *
+ * So the price now takes the three things that actually decide the value:
+ *   - `inputIncome`, the real base income of the three pieces being consumed, mutations
+ *     included, which is known exactly at the moment of the fusion;
+ *   - `expectedMut`, the expected mutation multiplier of the OUTPUT, from the same weights the
+ *     roll itself uses, pushes from the inputs included;
+ *   - `incomeMult`, the owner's prestige multiplier.
+ *
+ * A fusion that would LOSE income still costs a floor of a quarter of the output. Melting
+ * three Divine Legendaries into one plain Mythic really is a downgrade on paper, but what the
+ * player is buying there is a REROLL of the mutation with the odds pushed by what they fed in,
+ * and a free reroll on the best pieces in the game is the exploit that pure net pricing opens.
+ */
+export function fusionCost(rarity: number, inputIncome: number, expectedMut: number, incomeMult: number): number {
+  const r = Math.max(0, Math.min(rarity, PRODUCTION_PER_RARITY.length - 2))
+  const out = PRODUCTION_PER_RARITY[r + 1] * Math.max(1, expectedMut)
+  /*
+    A floor of a quarter of the output, because pure net pricing hits zero and that is a hole.
+
+    Feeding three heavily mutated pieces is a net LOSS of income, so the net price falls to
+    nothing, which sounds fair until you notice what it buys: a free reroll of the mutation on
+    your best pieces, with the odds pushed by the very mutations you fed in. The floor keeps
+    that trade priced while leaving a genuine upgrade cheaper than a reroll.
+  */
+  const net = Math.max(out - inputIncome, out * 0.25)
+  return Math.round(net * Math.max(1, incomeMult) * FUSION_HORIZON_S)
 }
 /*
   Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.

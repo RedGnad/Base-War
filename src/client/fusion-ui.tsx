@@ -4,8 +4,8 @@ import { engine } from '@dcl/sdk/ecs'
 import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn , SURF} from './ui-kit'
-import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT } from '../shared/schemas'
-import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode, formatIncome } from '../shared/loot-table'
+import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT, incomeMultiplier } from '../shared/schemas'
+import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode, formatIncome, expectedMutationMult } from '../shared/loot-table'
 import { fusionCost } from '../shared/economy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
@@ -100,13 +100,22 @@ export const FusionPanel = () => {
         )}
         {fusibles.map((r) => {
           const total = m.hopper.filter((c) => rarityOf(c) === r.id).length + m.etagere.filter((c) => rarityOf(c) === r.id).length
-          // Le prix se calcule ici, pas au serveur: la formule est partagee, donc le bouton
-          // dit la verite sans un aller-retour et sans un champ de plus dans les messages.
-          const prix = fusionCost(r.id)
+          /*
+            The price is computed here, not fetched: the formula is shared, so the button
+            tells the truth without a round trip and without another field in the messages.
+            It needs the same three inputs the server uses, the pieces going in, the odds on
+            the piece coming out, and the owner's prestige, because a price read off the
+            rarity alone is wrong by the whole multiplier stack.
+          */
+          const pris = choix(m, r.id)
+          const pousses = pris.map(mutationDe).filter((mu) => mu > 0)
+          const poidsSortie = poidsDesMutations(0, -1, theftView.luckSec > 0 ? LUCK_MULT : 1, pousses)
+          let revenuEntrees = 0
+          for (const c of pris) revenuEntrees += itemIncome(c, PRODUCTION_PER_RARITY)
+          const prix = fusionCost(r.id, revenuEntrees, expectedMutationMult(poidsSortie), incomeMultiplier(theftView.prestige))
           const paye = theftView.coins >= prix
           const assez = total >= FUSION_NEEDS
           const suivant = RARITIES[r.id + 1]
-          const pris = choix(m, r.id)
           return (
             <UiEntity key={r.id} uiTransform={{ width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center' }}>
               <UiEntity uiTransform={{ width: 440, height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
