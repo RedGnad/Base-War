@@ -526,7 +526,8 @@ const DesktopControls = () => {
 */
 /** The mallet's two swing poses, in the active icon family, and the beat they play on. */
 const BUILD_FRAMES: [string, string] = [`${ico('build')}-raised`, `${ico('build')}-mid`]
-const BUILD_SWING_MS = 800
+// 800 was noise on the board (owner, 3 Sep); a beat and a fifth is the first value that was not.
+const BUILD_SWING_MS = 1200
 
 const POUCE_GROS = THUMB.big
 const POUCE = THUMB.small
