@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C, TAP, SKIN, RAD } from './theme'
+import { TYPE, C, TAP, SKIN, RAD, TOAST } from './theme'
 import { Btn, SURF } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -8,7 +8,7 @@ import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParChar
 import { gearView, acheterGear, buyLuckCharm, wield, togglePlacing as basculerPosePiege, canPlace, estPosable } from './gear'
 import { view } from './setup'
 import { maDefense } from './plots'
-import { theftView, buyFloorFor, armSentry } from './theft'
+import { theftView, buyFloorFor, armSentry, alerter } from './theft'
 import { openPrestige } from './prestige-ui'
 import { closeMenu } from './menu'
 
@@ -81,6 +81,12 @@ const Rang = (props: {
   prix: number
   possible: boolean
   onClick: () => void
+  /**
+   * Why the row cannot act right now, said on the tap. A blue BUY that swallowed the tap
+   * taught the player the shop was broken (tester, 4 Sep): a control that does nothing
+   * must say why, and a lock must not dress as a button at all.
+   */
+  refus?: string
 }) => (
   <UiEntity
     uiTransform={{
@@ -116,7 +122,10 @@ const Rang = (props: {
       {/* A lock must not dress as a button: LOCKED and OWNED take the quiet chip. */}
       <Btn label={props.bouton} width={200} height={TAP.menu} primary={props.possible}
         skin={props.bouton === 'LOCKED' || props.bouton === 'OWNED' ? 'disabled' : undefined}
-        onClick={() => { if (props.possible) props.onClick() }} />
+        onClick={() => {
+          if (props.possible) props.onClick()
+          else if (props.refus !== undefined && props.bouton !== 'LOCKED' && props.bouton !== 'OWNED') alerter(props.refus.toUpperCase(), '#ffd166', TOAST.warning)
+        }} />
     </UiEntity>
   </UiEntity>
 )
@@ -167,6 +176,7 @@ export const ShopContent = () => {
           : 'six more slots'}
         bouton={etage > 0 && theftView.prestige < theftView.floorNeedsPrestige ? 'LOCKED' : 'BUY'} prix={etage}
         possible={etage > 0 && argent >= etage && theftView.prestige >= theftView.floorNeedsPrestige}
+        refus={`need ${formatIncome(etage)} coins`}
         onClick={() => { buyFloorFor(); closeMenu() }} />
 
       {/*
@@ -192,6 +202,7 @@ export const ShopContent = () => {
               : `${t.charges} charges`}
             bouton="ARM" prix={prix}
             possible={ici !== null && !plein && theftView.basePosee && argent >= prix}
+            refus={!theftView.basePosee ? 'build your base first' : ici === null ? 'stand on the floor to defend' : plein ? 'this floor holds all the charges it can' : `need ${formatIncome(prix)} coins`}
             onClick={() => { armSentry(i); closeMenu() }} />
         )
       })}
@@ -220,9 +231,10 @@ export const ShopContent = () => {
             titre={estArme ? `${g.name}  ·  ${tenue ? 'WIELDING' : 'OWNED'}` : porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
             icone={`ui-gear-${g.id}.png`}
             detail={debloque ? (COURT[g.id] ?? g.verb) : `needs prestige ${g.prestige}`}
-            bouton={estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
+            bouton={!debloque ? 'LOCKED' : estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
             prix={estArme || porte || peutPoserCe ? 0 : prix}
             possible={debloque && (estArme || (!porte && (posable && held > 0 ? peutPoserCe : argent >= prix)))}
+            refus={posable && held > 0 && !peutPoserCe ? 'stand where it can be set' : `need ${formatIncome(prix)} coins`}
             onClick={() => {
               if (estArme) { wield(tenue ? 'shoot' : (armeDeG as 'slap' | 'taser')); closeMenu() }
               else if (peutPoserCe) { basculerPosePiege(g.id); closeMenu() }
@@ -237,6 +249,7 @@ export const ShopContent = () => {
         detail={`x2 mutations, ${Math.round(LUCK_MS / 60000)} min`}
         bouton="BUY" prix={theftView.luckPrice}
         possible={theftView.luckPrice > 0 && argent >= theftView.luckPrice}
+        refus={`need ${formatIncome(theftView.luckPrice)} coins`}
         onClick={() => buyLuckCharm()} />
 
       <Famille titre="PRESTIGE" />
@@ -245,7 +258,7 @@ export const ShopContent = () => {
         icone="ui-prestige.png"
         detail={`x${prestige.multiplier} forever  ·  keeps your best ${prestige.guard === 1 ? 'item' : prestige.guard + ' items'}`}
         bouton="OPEN" prix={palierPrestige}
-        possible={palierPrestige > 0 && argent >= palierPrestige}
+        possible={palierPrestige > 0}
         onClick={() => { closeMenu(); openPrestige() }} />
     </UiEntity>
   )
