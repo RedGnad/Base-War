@@ -895,8 +895,18 @@ export function setupPlots(): void {
           : ''
         const ta = structurel ? Transform.getMutableOrNull(v.ascenseur) : null
         if (ta !== null) {
+          /*
+            Pas d'ascenseur tant qu'il n'y a qu'un etage.
+
+            Une cabine qui monte vers rien est une promesse fausse: le joueur la voit, le
+            bouton contextuel la propose, il appuie, et il ne se passe rien. A l'echelle zero
+            elle ne se dessine plus ET son collisionneur disparait avec, donc ni le clic ni la
+            proximite ne peuvent l'atteindre. Elle reapparait avec le deuxieme etage, au
+            moment ou elle sert (proprietaire, 3 Sep).
+          */
           const h = p.floors * FLOOR_HEIGHT
-          ta.scale = Vector3.create(0.5, h, 0.5)
+          const utile = p.floors > 1
+          ta.scale = utile ? Vector3.create(0.5, h, 0.5) : Vector3.Zero()
           ta.position = Vector3.create(BASE_SIDE / 2 - 1.1, h / 2, -BASE_SIDE / 2 + 1.1)
         }
         const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
@@ -1229,6 +1239,8 @@ export function ascenseurAPortee(): boolean {
   const t = Transform.getOrNull(engine.PlayerEntity)
   const v = monAscenseur()
   if (t === null || v === null) return false
+  // Un seul etage: la cabine n'est pas dessinee, le bouton ne doit pas la proposer non plus.
+  if (v.floors.length < 2) return false
   const r = Transform.getOrNull(v.racine)
   if (r === null) return false
   const el = tourner(r.position.z, ASC_X, ASC_Z)

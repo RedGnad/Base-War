@@ -136,17 +136,21 @@ def placer_arbres_de_la_place():
 def placer_buissons():
     """Le long du couloir du tapis, puis au pied de la bordure entre les arbres."""
     out = []
-    for cote in (-1, 1):
-        dx = -BELT_LENGTH / 2 - 2
-        while dx <= BELT_LENGTH / 2 + 2:
-            x = CX + dx + (alea() - 0.5) * 2
-            z = CZ + cote * (BELT_CLEARANCE - 1.6) + (alea() - 0.5) * 1.4
-            k = 0 if alea() < 0.5 else 1
-            sc = 0.9 + alea() * 0.7
-            ry = alea() * 360
-            if not sur_spawn(x, z):
-                out.append((k, x, 0.0, z, sc, ry))
-            dx += 5
+    # Ils longeaient le tapis sur DEUX DROITES, un tous les cinq metres: l'oeil lisait la
+    # regle avant de voir la plante (proprietaire, 3 Sep, "alignes d'une maniere pas
+    # naturelle et il y en a trop"). Ils suivent maintenant l'ellipse de la place, a des
+    # angles irreguliers et avec un ecart radial de plus ou moins deux metres et demi, ce qui
+    # casse la courbe: on ne lit plus de trace, seulement des touffes. Neuf au lieu de vingt.
+    for deg in (18, 62, 104, 147, 196, 231, 268, 302, 338):
+        a_rad = math.radians(deg + (alea() - 0.5) * 14)
+        rayon = 1.0 + (alea() - 0.5) * 0.28
+        x = CX + 15.0 * rayon * math.cos(a_rad)
+        z = CZ + 10.5 * rayon * math.sin(a_rad)
+        k = 0 if alea() < 0.5 else 1
+        sc = 0.9 + alea() * 0.7
+        ry = alea() * 360
+        if not sur_spawn(x, z):
+            out.append((k, x, 0.0, z, sc, ry))
     d = 8.0
     while d < SCENE_SIDE - 8:
         for bx, bz in ((d, 2.6), (SCENE_SIDE - d, SCENE_SIDE - 2.6), (2.6, SCENE_SIDE - d), (SCENE_SIDE - 2.6, d)):
@@ -230,7 +234,9 @@ def ecrire(nom, prims, atlas, regions):
 
 if __name__ == '__main__':
     arbre, img_arbre = primitive_de(os.path.join(OUT, 'tree.glb'))
-    places = placer_arbres() + placer_arbres_de_la_place()
+    # La couronne de la place est retiree: les arbres restent sur les bords, decision
+    # du proprietaire une fois la vegetation enfin visible (3 Sep).
+    places = placer_arbres()
     prims = []
     for (x, y, z, sc, ry) in places:
         q = instancier(arbre, x, y, z, sc, ry)

@@ -774,8 +774,18 @@ function chaufferCaisse(racine: Entity, chauffe: number): void {
           pbr: {
             texture: Material.Texture.Common({ src: `${TOY_DIR}crate-atlas.png` }),
             albedoColor: Color4.White(),
-            emissiveColor: Color4.White(),
-            emissiveIntensity: chauffe * 2.4,
+            /*
+              La chauffe est ORANGE, jamais blanche.
+
+              Elle etait un emissif blanc jusqu'a 2,4: passe un coup ou deux la caisse virait
+              au blanc uni, texture comprise, et on ne voyait plus ce qu'on cassait. C'est
+              exactement le reproche deja fait a l'emissif des etages: "l'emissif permet mal
+              d'augmenter la clarte sans juste rendre tout blanc" (proprietaire, 2 puis 3 Sep).
+              Une braise chaude dans la teinte du metal chauffe, a intensite moderee, se lit
+              comme une montee en temperature et laisse l'albedo raconter la caisse.
+            */
+            emissiveColor: Color4.fromHexString('#ff6a28ff'),
+            emissiveIntensity: chauffe * 1.1,
             metallic: 0,
             roughness: 0.9
           }
