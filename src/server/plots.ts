@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, BUDGET_OBJETS, COUT_DECOR, COUT_BASE_FIXE, COUT_ETAGE_LOIN, PLOT_MAX_ITEMS, openFloors, openSlots, coutRebirth, REBIRTH_MAX, prixLuck, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, premierSpotLibre, spotLePlusProche, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, tourner, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -261,6 +261,51 @@ function createBase(
     log(`createBase THREW for ${address.slice(0, 8)}: ${err}`)
     return null
   }
+}
+
+/*
+  La place se libere sous PRESSION, jamais au chronometre.
+
+  Une base absente reste utile: c'est une cible de vol, et un monde vide de batiments est un
+  monde mort. On ne retire donc rien tant que le budget d'objets tient. Le jour ou il ne tient
+  plus, ce qui cede est la base de l'ABSENT vu il y a le plus longtemps: par construction celle
+  que personne ne regarde, et jamais celle de quelqu'un qui joue.
+
+  Rien n'est detruit. `removeBase` ne touche qu'a la memoire; l'enregistrement `base:` reste au
+  stockage avec ses objets, ses etages et ses sentinelles. Le proprietaire qui revient est
+  present, donc il reprend rang devant tous les absents et retrouve sa base. Le seul prix de
+  l'absence est qu'une base retiree ne rapporte plus: `incomePerSecond` rend zero sans base, ce
+  qui est exactement la regle voulue (proprietaire, 3 Sep, "pas d'or si base pas exposee").
+
+  Et si TOUT le monde est present et que le budget est plein, on refuse, en le disant. Ce n'est
+  plus notre limite a ce moment-la, c'est celle du telephone.
+*/
+function coutAffichage(b: Base): number {
+  const etages = Math.max(1, Math.min(openFloors(b.floorsBought), MAX_FLOORS))
+  return COUT_BASE_FIXE + etages * COUT_ETAGE_LOIN
+}
+
+function budgetUtilise(): number {
+  let n = COUT_DECOR
+  for (const b of bases.values()) n += coutAffichage(b)
+  return n
+}
+
+/** Vrai si une base de plus tient, quitte a retirer celle du plus anciennement absent. */
+function faireDeLaPlace(pourQui: string, cout: number): boolean {
+  if (budgetUtilise() + cout <= BUDGET_OBJETS) return true
+  const ici = presents()
+  let victime: string | null = null
+  let vu = Number.POSITIVE_INFINITY
+  for (const [a, b] of bases) {
+    if (a === pourQui || ici.has(a)) continue
+    if (b.lastSeen < vu) { vu = b.lastSeen; victime = a }
+  }
+  if (victime === null) return false
+  const heures = Math.round((Date.now() - vu) / 3600_000)
+  log(`budget plein: la base de ${nameOf(victime)} se retire (absent depuis ${heures} h) pour ${nameOf(pourQui)}`)
+  removeBase(victime)
+  return budgetUtilise() + cout <= BUDGET_OBJETS || faireDeLaPlace(pourQui, cout)
 }
 
 function removeBase(address: string): void {
@@ -563,6 +608,10 @@ export async function accueillir(address: string): Promise<void> {
   dirtyProfiles.add(address)
 
   const name = nameOf(address)
+  // Celui qui arrive est PRESENT: il passe devant tous les absents et retrouve sa base.
+  if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
+    faireDeLaPlace(address, COUT_BASE_FIXE + COUT_ETAGE_LOIN)
+  }
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     // Sa position d'avant si elle est enregistree, un emplacement libre seulement s'il n'y en
     // a pas: on ne redeplace jamais quelqu'un qui avait deja choisi.
@@ -1398,6 +1447,10 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   if (mauvais !== null) return { ok: false, reason: mauvais }
 
   const previous = bases.get(address)
+  // Deplacer sa propre base ne coute rien de plus: la place n'est demandee qu'a la premiere pose.
+  if (previous === undefined && !faireDeLaPlace(address, COUT_BASE_FIXE + COUT_ETAGE_LOIN)) {
+    return { ok: false, reason: 'the field is full right now, try again in a moment' }
+  }
   if (previous) removeBase(address)
 
   const items = [...p.items]
