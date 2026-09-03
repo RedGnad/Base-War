@@ -549,7 +549,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     // plate hangs at +0.05 LOCAL, which the half-turn below sends TOWARD the wall: the
     // sign was inside the glazing (owner, 1 Sep: "fondu dans la vitre"). A hand's width
     // of air keeps plate and letters in front of the reflections.
-    position: Vector3.create(0, WALL_HEIGHT + 0.35, BASE_SIDE / 2 + 0.22),
+    position: Vector3.create(0, WALL_HEIGHT + 0.35, BASE_SIDE / 2 + SIGN_OFFSET),
     // A TextShape reads correctly from its local -z side, so unrotated over the door it
     // greeted the street with MIRRORED letters (owner, 1 Sep). Half a turn faces it out.
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
@@ -730,6 +730,18 @@ export function placeTarget(): { ownerId: string; index: number; pos: Vector3 } 
   const o = orientToBase(base.z, s.dx, s.dz)
   return { ownerId: base.p.ownerId, index: choisi, pos: Vector3.create(base.x + o.dx, s.dy, base.z + o.dz) }
 }
+
+/**
+ * The sign hangs OUTSIDE the shield.
+ *
+ * The shield box reached 0.6 m past the walls and the sign hung 0.22 m past them, so a
+ * locked base showed its owner's name through the tinted glass of its own shield, half
+ * legible (mobile tester's screenshot, 3 Sep). The shield now stops 0.2 m past the walls,
+ * which changes nothing for a thief (the items are inside), and the sign hangs 0.34 m out,
+ * a hand's width in front of the shield's face.
+ */
+const SHIELD_MARGIN = 0.2
+const SIGN_OFFSET = SHIELD_MARGIN + 0.14
 
 export function setupPlots(): void {
   engine.addSystem(() => {
@@ -1017,7 +1029,7 @@ export function setupPlots(): void {
         */
         ptr.position = Vector3.create(0, h / 2, 0)
         ptr.scale = locked
-          ? Vector3.create(BASE_SIDE + 1.2, h, BASE_SIDE + 1.2)
+          ? Vector3.create(BASE_SIDE + 2 * SHIELD_MARGIN, h, BASE_SIDE + 2 * SHIELD_MARGIN)
           : Vector3.create(0, 0, 0)
 
         /*
