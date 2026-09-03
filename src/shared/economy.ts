@@ -58,18 +58,33 @@ export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
  * si on les gardait: cent treize fois plus, gratuitement. On n'achetait que des caisses Basic
  * et on montait toute l'echelle sans jamais payer le prix des paliers (3 Sep).
  *
- * Le prix n'est donc pas invente: c'est le revenu CREE par la fusion, multiplie par le temps de
- * retour d'une caisse de ce palier, les deux constantes que l'economie utilise deja partout.
- * Une fusion se rembourse ainsi dans le meme delai qu'une caisse du meme rang, ce qui la remet
- * a cote de l'echelle normale au lieu de la court-circuiter. Les premiers paliers restent
- * presque gratuits (240 or quand une caisse Basic en coute 2 018), donc la decouverte n'est pas
- * taxee; c'est en haut que le prix mord, la ou etait l'exploit.
+ * Le prix est le revenu CREE par la fusion, multiplie par un horizon FIXE.
+ *
+ * Premiere version: le revenu cree multiplie par le temps de retour d'une caisse de ce palier.
+ * Elle fermait l'exploit et le fermait trop. Les deux facteurs grandissent d'environ 6,5 par
+ * palier, donc le prix grandissait de 42 par palier pendant que la valeur de l'objet n'en
+ * gagnait que 6,5: la formule composait deux fois. Monter jusqu'a un Secret coutait 3,13
+ * MILLIARDS de frais pour 2,26 M de caisses, soit 1 385 fois le prix de la matiere premiere, et
+ * le fuser devenait inutile a quiconque possede de l'or.
+ *
+ * Un horizon fixe de huit minutes met la fusion entre 1,0 et 1,6 fois le prix d'acheter la
+ * meme rarete en caisses, a TOUS les paliers (mesure sur les tables reelles: Uncommon 1,45,
+ * Rare 1,57, Epic 1,47, Legendary 1,32, Mythic 1,17, Secret 0,98). Jamais moins cher, donc on
+ * ne court-circuite pas l'echelle; jamais absurde, donc la machine garde son role. Le
+ * surcout achete trois choses reelles: la fusion est DETERMINISTE la ou une caisse est un
+ * pari, elle compacte l'etagere, et elle retire la mutation.
+ *
+ * Le Secret a parite est voulu: il n'existe pas de caisse Secret, la seule autre voie est la
+ * caisse Mythic et son quatre millieme de chance. La parite est le juste prix de la seule
+ * route sure vers le sommet.
  */
+export const FUSION_HORIZON_S = 480
+
 export function prixFusion(rarete: number): number {
   const r = Math.max(0, Math.min(rarete, PRODUCTION_PER_RARITY.length - 2))
   const cree = PRODUCTION_PER_RARITY[r + 1] - 3 * PRODUCTION_PER_RARITY[r]
   if (cree <= 0) return 0
-  return Math.round(cree * CRATE_PAYBACK_S[Math.min(r, CRATE_PAYBACK_S.length - 1)])
+  return Math.round(cree * FUSION_HORIZON_S)
 }
 /*
   Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.
