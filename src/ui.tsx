@@ -229,9 +229,16 @@ const MenuWindow = () => {
     : indexView.open ? HAUTEUR_INDEX
     : shopView.open ? HAUTEUR_SHOP
     : HAUTEUR_TRAVEL
-  const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
+  /*
+    One window, whatever the tab. It used to shrink to each tab's declared height, so
+    switching from GOALS to TRAVEL made the frame jump (owner, 3 Sep): a window that
+    changes size under the tabs reads as four windows. The body is the same on a phone and
+    on a desktop, in the units everything here is authored in.
+  */
+  const h = BAND.dialogMaxHeight
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
-  // Whether this tab runs past its body, which is when the client draws its scrollbar.
+  // Whether this tab runs past its body. Only then does the body scroll: the client draws
+  // its scrollbar whenever a box is allowed to scroll, even with nothing to scroll to.
   const deborde = besoin > corps + 4
 
   return (
@@ -300,7 +307,7 @@ const MenuWindow = () => {
       <UiEntity uiTransform={{ width: '100%', height: corps }}>
         <UiEntity
           uiTransform={{
-            width: '100%', height: corps, overflow: 'scroll', flexDirection: 'column',
+            width: '100%', height: corps, overflow: deborde ? 'scroll' : 'hidden', flexDirection: 'column',
             positionType: 'absolute', position: { top: 0, left: 0 }
           }}
         >

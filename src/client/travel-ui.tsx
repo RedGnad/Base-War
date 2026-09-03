@@ -1,7 +1,4 @@
-import { Color4 } from '@dcl/sdk/math'
-import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
-import { TYPE, C } from './theme'
-import { strip } from './layout'
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { Btn } from './ui-kit'
 import { travelView, rentrer, goToBelt } from './travel'
 import { theftView } from './theft'
@@ -25,35 +22,36 @@ import { closeMenu } from './menu'
 
 const LARGEUR = 720
 const RANG = 96
+const ENTRE = 20
 
-const Rang = (props: { label: string; note: string; primary?: boolean; onClick: () => void }) => (
-  <UiEntity uiTransform={{ width: '100%', height: RANG + 26, flexDirection: 'column', margin: { bottom: 10 } }}>
+/*
+  Three destinations and no captions. Each button carried a line under it ("back to your
+  own base", "where the crates come past") that said again what the button already said,
+  and a WHERE TO heading that said again what the TRAVEL tab already said; the three
+  buttons also sat against the left edge of a body twice their width (owner, 3 Sep). What
+  is left is centred in the body, both ways.
+*/
+const Rang = (props: { label: string; primary?: boolean; onClick: () => void }) => (
+  <UiEntity uiTransform={{ width: LARGEUR, height: RANG, margin: { bottom: ENTRE } }}>
     <Btn label={props.label} width={LARGEUR} primary={props.primary} onClick={props.onClick} />
-    <Label value={props.note} fontSize={TYPE.caption} color={C.dim}
-      uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
   </UiEntity>
 )
 
-/** Heading plus the three rows, the most it can ever be. */
-export const HAUTEUR_TRAVEL = 52 + 3 * (RANG + 26 + 10)
+/** The three rows, the most it can ever be; the tab is laid out in the body it is given. */
+export const HAUTEUR_TRAVEL = 3 * (RANG + ENTRE)
 
 export const TravelContent = () => {
   if (!travelView.open) return null
   return (
-    <UiEntity uiTransform={{ width: '100%', height: HAUTEUR_TRAVEL, flexDirection: 'column' }}>
-      <Label value="WHERE TO" fontSize={TYPE.body} color={Color4.fromHexString('#4dd2ffff')}
-        uiTransform={{ width: '100%', height: 52 }} textAlign="middle-left" />
-
-      <Rang label="GO HOME" note="back to your own base" primary={travelView.peutRentrer}
+    <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <Rang label="GO HOME" primary={travelView.peutRentrer}
         onClick={() => { rentrer(); closeMenu() }} />
-      <Rang label="TO BELT" note="where the crates come past"
+      <Rang label="TO BELT"
         onClick={() => { goToBelt(); closeMenu() }} />
       {theftView.basePosee && (
-        <Rang label={slotView.active ? 'CANCEL MOVE' : 'MOVE MY BASE'}
-          note="pick a new plot for your base" primary={slotView.active}
+        <Rang label={slotView.active ? 'CANCEL MOVE' : 'MOVE MY BASE'} primary={slotView.active}
           onClick={() => { togglePlacing(); closeMenu() }} />
       )}
     </UiEntity>
   )
 }
-
