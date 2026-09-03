@@ -4,7 +4,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { InputAction, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
-import { TYPE, C, HUE, TAP, SKIN, btn, lisible, lignesDeTexte, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
+import { TYPE, C, HUE, TAP, SKIN, btn, lisible, largeurTexte, FORCE_MOBILE_LAYOUT } from './client/theme'
 import { Glyphs } from './client/glyphs'
 import { FONT_FILES } from './client/font-metrics'
 import { PrestigePanel, prestigeView } from './client/prestige-ui'
@@ -1728,10 +1728,17 @@ const uiComponent = () => {
             phone, whatever it said; a four-word refusal wore the same slab as a boss
             announcement. Capped under half the canvas so a long line wraps instead.
           */
+          /*
+            The estimate is an estimate: the client reports no text metrics, and WELCOME BACK
+            still ran past its plate on 7b7a (owner, 4 Sep). So the plate takes twelve percent
+            over the estimate and wraps explicitly, and the line count is taken on the same
+            widened figure: a plate a little roomy beats a word outside it.
+          */
           const maxW = Math.round(active.w * 0.46)
-          const w = Math.min(maxW, largeurTexte(a.t, TYPE.body) + 56)
-          const lignes = lignesDeTexte(a.t, TYPE.body, w - 40)
-          const h = 52 + (lignes - 1) * Math.round(TYPE.body * 1.3)
+          const estime = Math.round(largeurTexte(a.t, TYPE.body) * 1.12)
+          const w = Math.min(maxW, estime + 64)
+          const lignes = Math.max(1, Math.ceil(estime / (w - 44)))
+          const h = 52 + (lignes - 1) * Math.round(TYPE.body * 1.35)
           return (
             <UiEntity key={`toast${a.ne}`}
               uiTransform={{
@@ -1741,7 +1748,7 @@ const uiComponent = () => {
               }}
               uiBackground={SKIN.panel}
             >
-              <Label uiTransform={{ width: w - 40 }} value={a.t} fontSize={TYPE.body} textAlign="middle-center"
+              <Label uiTransform={{ width: w - 44, height: h - 12 }} value={a.t} fontSize={TYPE.body} textAlign="middle-center" textWrap="wrap"
                 color={(() => { const c = Color4.fromHexString(a.c + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
             </UiEntity>
           )

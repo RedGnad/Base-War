@@ -445,7 +445,8 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
     lockPadState = ''
     const rt = Transform.getOrNull(racine)
     const o = orientToBase(rt?.position.z ?? 0, 0, BASE_SIDE / 2 - 2.2)
-    Transform.create(lockPad, { parent: racine, position: Vector3.create(o.dx, 0.06, o.dz), scale: Vector3.create(1.2, 0.08, 1.2) })
+    // On the slab's top face, not inside it: the root sits under the slab (owner, 7b7a: "no pad").
+    Transform.create(lockPad, { parent: racine, position: Vector3.create(o.dx, SLAB_THICKNESS + 0.05, o.dz), scale: Vector3.create(1.2, 0.08, 1.2) })
     MeshRenderer.setCylinder(lockPad, 0.5, 0.5)
     MeshCollider.setCylinder(lockPad, 0.5, 0.5, ColliderLayer.CL_POINTER)
   }
