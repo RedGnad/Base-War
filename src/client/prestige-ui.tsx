@@ -1,7 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
-import { Glyphs } from './glyphs'
+import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
 import { theftView, doPrestige } from './theft'
 import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
@@ -85,11 +85,22 @@ export const PrestigePanel = () => {
         uiTransform={{ width: 940, height: 600, flexDirection: 'column', alignItems: 'center', padding: 22 }}
         uiBackground={SKIN.panel}
       >
-        {/* The badge and the word: what this screen is, read in one glance. */}
+        {/*
+          The badge and the word, as ONE centred group. The glyph text draws itself at the
+          left of whatever box holds it, so beside a centred row it sat in the corner while
+          the star sat in the middle (owner, 4 Sep): the box is now exactly the text's width,
+          and the star carries the level it is about to reach, so one star never reads as
+          "prestige one" on the screen for prestige two.
+        */}
         <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
-          <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 14 } }}
-            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }} />
-          <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />
+          <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 14 }, justifyContent: 'center', alignItems: 'center' }}
+            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }}>
+            <Label value={`${theftView.prestige + 1}`} fontSize={TYPE.label} color={Color4.fromHexString('#1a2f55ff')}
+              uiTransform={{ width: 40, height: 30, margin: { top: 4 } }} textAlign="middle-center" textWrap="nowrap" />
+          </UiEntity>
+          <UiEntity uiTransform={{ width: glyphWidth(`PRESTIGE ${theftView.prestige + 1}`, TYPE.title), height: TYPE.title + 8 }}>
+            <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />
+          </UiEntity>
         </UiEntity>
 
         {/* The hero: the multiplier you have, and the one you would have. */}
@@ -119,12 +130,13 @@ export const PrestigePanel = () => {
               uiTransform={{ width: '100%', height: 28 }} textAlign="middle-center" />
           </Chip>
           <UiEntity
-            uiTransform={{ width: 360, height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
+            uiTransform={{ width: 440, height: 96, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
             uiBackground={SKIN.card}
           >
             <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 12 } }}
               uiBackground={{ texture: { src: `assets/ui/toy-${palier.minRarity}.png` }, textureMode: 'stretch' }} />
-            <UiEntity uiTransform={{ width: 250, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
+            {/* 340 wide: the caption is 23 capitals, and 250 cut it at SHEL (owner, 4 Sep). */}
+            <UiEntity uiTransform={{ width: 340, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
               <Label value={mange} fontSize={TYPE.label} color={aLObjet ? C.money : C.danger}
                 uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
               <Label value="EATEN FROM YOUR SHELVES" fontSize={TYPE.caption} color={C.dim}

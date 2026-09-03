@@ -226,8 +226,9 @@ def ui_icone(nom, hexcol):
             a = math.pi / 2 + k * math.pi / 5
             r = 104 if k % 2 == 0 else 44
             pts.append((cx + math.cos(a) * r, cy - math.sin(a) * r))
+        # No pool of light in the centre: on the panel and in the shop it read as a hole
+        # punched through the star (owner, 4 Sep). A star is one shape.
         poly(pts)
-        ell((cx - 26, cy - 26, cx + 26, cy + 26), light)
     elif nom == 'luck':
         for dx, dy in ((0, -46), (46, 0), (0, 46), (-46, 0)):
             ell((cx + dx - 48, cy + dy - 48, cx + dx + 48, cy + dy + 48))
