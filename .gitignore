@@ -30,3 +30,6 @@ ytenv/
 # Third-party reference rig, fetched on demand by that builder.
 tools/emotes/reference-rig.glb
 __pycache__/
+
+# Tool sources are code, not build output.
+!tools/**/*.js
