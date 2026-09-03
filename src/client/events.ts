@@ -5,7 +5,7 @@ import { Event, EVENT_THEMES, SCENE_SIDE } from '../shared/schemas'
 import { mutation, CRATES, nomDuCode } from '../shared/loot-table'
 import { room } from '../shared/messages'
 import { raidView } from './raid'
-import { alerter, alerterEnFile } from './theft'
+import { alerterEnFile } from './theft'
 import { plastic, TOY } from './toy'
 import { TOAST } from './theme'
 
@@ -57,7 +57,38 @@ export function bannerLine(): { text: string; color: string } | null {
 export function rushChip(): { text: string; color: string; mult: number } | null {
   if (eventView.theme < 0) return null
   const m = mutation(eventView.theme)
-  return { text: `x${m.mult}   ${mmss(eventView.leftS)}`, color: eventView.color, mult: m.mult }
+  return { text: `${eventView.grand ? 'GRAND  ' : ''}x${m.mult}   ${mmss(eventView.leftS)}`, color: eventView.color, mult: m.mult }
+}
+
+/*
+  The rush card: what a rush IS, in one picture and two short lines, shown on demand.
+
+  The genre's event pattern: an icon on the HUD, and the explanation behind a tap on it,
+  never pushed as running text (a tester asked "what is a gold rush?" while the sentence
+  toast was on screen, 4 Sep). It shows itself once per session, at the first rush, for
+  four seconds; after that only a tap on the chip brings it back. It replaces the sentence
+  toast entirely: the chip flying in from the centre, the floor flowing in the colour, the
+  bell and the beacon on the belt are the announcement.
+*/
+export const rushCard = { open: false, until: 0 }
+let rushCardSeen = false
+
+export function openRushCard(auto: boolean): void {
+  rushCard.open = true
+  rushCard.until = Date.now() + (auto ? 4000 : 7000)
+}
+export function closeRushCard(): void { rushCard.open = false }
+export function rushCardVisible(): boolean {
+  if (!rushCard.open) return false
+  if (eventView.theme < 0 || Date.now() > rushCard.until) { rushCard.open = false; return false }
+  return true
+}
+
+/** What the card says: the rush's name and colour, what its crates carry, and the time left. */
+export function rushInfo(): { name: string; color: string; toy: string; mult: number; leftS: number; grand: boolean } | null {
+  if (eventView.theme < 0) return null
+  const m = mutation(eventView.theme)
+  return { name: eventView.name, color: eventView.color, toy: m.name.toUpperCase(), mult: m.mult, leftS: eventView.leftS, grand: eventView.grand }
 }
 
 /** Seconds since the running rush began, or -1. The beacon and the flight read it. */
@@ -180,11 +211,8 @@ export function setupEvents(): void {
     if (actif) eventView.sinceMs = now
 
     if (actif && t !== undefined) {
-      // Announced once where the eye is, then it lives at the top of the screen.
-      const minutes = Math.max(1, Math.round((until - now) / 60000))
-      alerter(grand
-        ? `GRAND ${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes, belt at double speed`
-        : `${t.name}  ·  ${mutation(theme).name} x${mutation(theme).mult} drops for ${minutes} minutes`, mutation(theme).color, TOAST.event)
+      // The first rush of the session explains itself once; the rest is the chip and the world.
+      if (!rushCardSeen) { rushCardSeen = true; openRushCard(true) }
       const a = cloche === null ? null : AudioSource.getMutableOrNull(cloche)
       if (a !== null) { a.playing = false; a.playing = true }
       const look = LOOK[theme] ?? LOOK[5]

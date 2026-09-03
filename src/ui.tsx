@@ -19,7 +19,7 @@ import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
-import { bannerLine, nextBigText, rushChip, eventView } from './client/events'
+import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
 import { fuserInReach, agirSurFuser } from './client/fusion'
@@ -185,6 +185,9 @@ const COIN_H = [64, 40, 52, 40, 62]
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
 const RUSH_FLIGHT_MS = 550
+/** The rush card: a picture and two lines, sized for its longest sentence at label size. */
+const RUSH_CARD_W = 720
+const RUSH_CARD_H = 132
 /** The step chip grows a line once its hint is due. */
 const stepChipH = (): number => stepHintDue() ? 100 : COIN_H[0]
 /** One feed row. Caption is 21, and 26 leaves the descenders somewhere to go. */
@@ -1323,9 +1326,10 @@ const uiComponent = () => {
         uiTransform={{
           height: COIN_H[1], positionType: 'absolute', padding: { left: 16, right: 16 },
           position: { top, right },
-          flexDirection: 'row', alignItems: 'center'
+          flexDirection: 'row', alignItems: 'center', pointerFilter: 'block'
         }}
         uiBackground={SKIN.panel}
+        onMouseDown={() => openRushCard(false)}
       >
         <UiEntity uiTransform={{ width: 28, height: 28, margin: { right: 10 } }}
           uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff') }} />
@@ -1675,10 +1679,43 @@ const uiComponent = () => {
       already the hierarchy (gold gain, red danger, grey info); the anatomy and the motion
       are what make it read as a system rather than a message that teleports.
     */}
+    {/*
+      The rush card, under the band, where a toast would sit; the toasts step down while it
+      is up. Closed by a tap on it, or by its own clock.
+    */}
+    {hud() && rushCardVisible() && rushInfo() !== null && (() => {
+      const r = rushInfo()
+      if (r === null) return null
+      const teinte = Color4.fromHexString(r.color + 'ff')
+      return (
+        <UiEntity
+          uiTransform={{
+            width: RUSH_CARD_W, height: RUSH_CARD_H, positionType: 'absolute',
+            position: { top: bandBottom + 12, left: '50%' }, margin: { left: -RUSH_CARD_W / 2 },
+            padding: { left: 20, right: 20 }, flexDirection: 'row', alignItems: 'center', pointerFilter: 'block'
+          }}
+          uiBackground={SKIN.panel}
+          onMouseDown={closeRushCard}
+        >
+          <UiEntity uiTransform={{ width: 84, height: 84, margin: { right: 18 } }}
+            uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: teinte }} />
+          <UiEntity uiTransform={{ width: RUSH_CARD_W - 40 - 102, height: RUSH_CARD_H - 20, flexDirection: 'column', justifyContent: 'center' }}>
+            <Label value={`${r.grand ? 'GRAND ' : ''}${r.name}`} fontSize={TYPE.label} color={teinte}
+              uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
+            <Label value={`belt crates drop ${r.toy} toys  ·  x${r.mult} income`} fontSize={TYPE.label} color={C.name}
+              uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
+            <Label value={`${Math.floor(r.leftS / 60)}:${String(r.leftS % 60).padStart(2, '0')} left  ·  at the belt${r.grand ? '  ·  belt at double speed' : ''}`}
+              fontSize={TYPE.caption} color={C.dim}
+              uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
+          </UiEntity>
+        </UiEntity>
+      )
+    })()}
+
     {alertesVisibles().length > 0 && hud() && (
       <UiEntity
         uiTransform={{
-          width: '100%', positionType: 'absolute', position: { top: bandBottom + 12, left: 0 },
+          width: '100%', positionType: 'absolute', position: { top: bandBottom + 12 + (rushCardVisible() ? RUSH_CARD_H + STACK_GAP : 0), left: 0 },
           flexDirection: 'column', alignItems: 'center'
         }}
       >
