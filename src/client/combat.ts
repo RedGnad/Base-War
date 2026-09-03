@@ -589,7 +589,13 @@ function degainer(on: boolean): void {
     if (combatView.aideVisee) timers.setTimeout(() => { combatView.aideVisee = false }, 6000)
     const c = CameraMode.getOrNull(engine.CameraEntity)
     prefersFirstPerson = c !== null && c.mode === CameraType.CT_FIRST_PERSON
-    void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
+    /*
+      Gated like every other emote here. This one call was not: a phone drew the weapon
+      and started the looping aim pose, and the stop below was gated, so the pose was
+      never stopped on that phone. On everyone else's screen that player slid across the
+      floor frozen in the aim (owner, playing with the testers, 4 Sep).
+    */
+    if (placeAvailable()) void triggerSceneEmote({ src: CLIP_VISEE, loop: true, mask: AvatarMask.AM_UPPER_BODY })
     // Parented, not chased. Written to the player's position every frame it trailed by a
     // frame, so a running player reached the leading edge of a box this tight, dropped out
     // of the region, and the camera flipped back and forth. As a child it cannot lag.
@@ -598,7 +604,9 @@ function degainer(on: boolean): void {
     CameraModeArea.create(zoneVisee, { area: ZONE_VISEE, mode: CameraType.CT_FIRST_PERSON })
   } else {
     enRafale = false
-    if (placeAvailable()) void stopEmote({})
+    // Unconditional: stopping an emote that is not playing costs nothing, and a pose that
+    // was started by an older build must still be stoppable.
+    void stopEmote({})
     if (zoneVisee !== null) { engine.removeEntity(zoneVisee); zoneVisee = null }
     // The cursor is NOT given back here any more. This used to release the capture on the
     // way out of first person, and since 27 Aug the desktop policy is the opposite: captured
