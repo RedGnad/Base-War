@@ -47,6 +47,30 @@ export const CRATE_PRICE = [2018, 34848, 660529, 11785149, 179901757, 2196893933
   five days, with the belt's rarity of those crates on top.
 */
 export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
+
+/**
+ * Ce que coute une fusion, en or.
+ *
+ * Elle etait gratuite, au motif qu'elle "coutait deja trois objets". C'etait faux, et le
+ * proprietaire l'a vu avant moi: un palier rapporte 6,5 fois le precedent alors que la fusion
+ * n'en consomme que trois, donc chaque fusion MULTIPLIE le revenu par 2,2 et rend deux
+ * emplacements par-dessus. En chaine, 729 Commons deviennent un Secret a 82 654/s contre 729/s
+ * si on les gardait: cent treize fois plus, gratuitement. On n'achetait que des caisses Basic
+ * et on montait toute l'echelle sans jamais payer le prix des paliers (3 Sep).
+ *
+ * Le prix n'est donc pas invente: c'est le revenu CREE par la fusion, multiplie par le temps de
+ * retour d'une caisse de ce palier, les deux constantes que l'economie utilise deja partout.
+ * Une fusion se rembourse ainsi dans le meme delai qu'une caisse du meme rang, ce qui la remet
+ * a cote de l'echelle normale au lieu de la court-circuiter. Les premiers paliers restent
+ * presque gratuits (240 or quand une caisse Basic en coute 2 018), donc la decouverte n'est pas
+ * taxee; c'est en haut que le prix mord, la ou etait l'exploit.
+ */
+export function prixFusion(rarete: number): number {
+  const r = Math.max(0, Math.min(rarete, PRODUCTION_PER_RARITY.length - 2))
+  const cree = PRODUCTION_PER_RARITY[r + 1] - 3 * PRODUCTION_PER_RARITY[r]
+  if (cree <= 0) return 0
+  return Math.round(cree * CRATE_PAYBACK_S[Math.min(r, CRATE_PAYBACK_S.length - 1)])
+}
 /*
   Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.
 

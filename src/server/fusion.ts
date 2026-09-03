@@ -3,9 +3,9 @@ import { syncEntity } from '@dcl/sdk/network'
 import { Fusion, FUSION_NEEDS, FUSION_RANGE, FUSION_POS, VIDE, LUCK_MULT } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { encoder, rarityOf, mutationDe, rarity, itemName, itemIncome, RARITIES } from '../shared/loot-table'
-import { PRODUCTION_PER_RARITY } from '../shared/economy'
+import { PRODUCTION_PER_RARITY, prixFusion } from '../shared/economy'
 import { log } from './log'
-import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf } from './plots'
+import { displayName, positionOf, fusionOf, setFusion, baseDe, removeItem, addItem, luckUntilOf, spend, coinsOf } from './plots'
 import { porteDetail, prendreDesMains, remettreEnMain } from './carry'
 import { rollMutation } from './loot'
 import { noter } from './records'
@@ -51,6 +51,8 @@ function pres(a: string): boolean {
  */
 function produire(machine: Machine, a: string, r: number, resteHopper: number[], entrees: number[]): void {
   const name = displayName(a)
+  const prix = prixFusion(r)
+  if (prix > 0) spend(a, prix)
   setFusion(a, resteHopper)
   const pousses = entrees.map(mutationDe).filter((m) => m > 0)
   const sortie = encoder(r + 1, rollMutation(0, luckUntilOf(a) > Date.now() ? LUCK_MULT : 1, pousses))
@@ -63,7 +65,7 @@ function produire(machine: Machine, a: string, r: number, resteHopper: number[],
   void room.send('fusionState', { codes: resteHopper, made: sortie }, { to: [a] })
   void room.send('fused', { byName: name, rarity: r + 1, mutation: mutationDe(sortie), code: sortie })
   noter('fusion', name, '', sortie)
-  log(`fusion: ${name} made a ${itemName(r + 1, mutationDe(sortie))} out of three ${rarity(r).name}s`)
+  log(`fusion: ${name} made a ${itemName(r + 1, mutationDe(sortie))} out of three ${rarity(r).name}s for ${prix}`)
 }
 
 export function startFusion(): void {
@@ -89,6 +91,19 @@ export function startFusion(): void {
       const tenu = rarity(rarityOf(hopper[0])).name
       refuser(a, `the fuser holds ${hopper.length} ${tenu} of yours: feed it a ${tenu}`)
       return
+    }
+    /*
+      Le prix se verifie AVANT de prendre l'objet des mains, jamais apres.
+
+      Une fusion qui echoue sur le prix apres avoir mange le troisieme objet serait un vol. On
+      ne facture qu'au moment ou elle PRODUIT, et on refuse avant si l'or manque.
+    */
+    if (hopper.length + 1 >= FUSION_NEEDS) {
+      const prix = prixFusion(r)
+      if (coinsOf(a) < prix) {
+        refuser(a, `fusing needs ${prix} coins`)
+        return
+      }
     }
     if (prendreDesMains(a) === null) { refuser(a, 'your hands are empty'); return }
     hopper.push(main.code)
@@ -126,6 +141,8 @@ export function startFusion(): void {
       refuser(a, `you own ${total} ${rarity(r).name}${total === 1 ? '' : 's'}, ${FUSION_NEEDS} needed`)
       return
     }
+    const prix = prixFusion(r)
+    if (coinsOf(a) < prix) { refuser(a, `fusing needs ${prix} coins`); return }
     // Holes are left where the toys stood (removeItem), so earlier indices stay valid.
     const pris = surEtagere.slice(0, besoin)
     for (const x of pris) removeItem(a, x.i)

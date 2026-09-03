@@ -5,7 +5,8 @@ import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn , SURF} from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT } from '../shared/schemas'
-import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode } from '../shared/loot-table'
+import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode, formatIncome } from '../shared/loot-table'
+import { prixFusion } from '../shared/economy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
 import { monAdresseClient, theftView } from './theft'
@@ -99,6 +100,10 @@ export const FusionPanel = () => {
         )}
         {fusibles.map((r) => {
           const total = m.hopper.filter((c) => rarityOf(c) === r.id).length + m.etagere.filter((c) => rarityOf(c) === r.id).length
+          // Le prix se calcule ici, pas au serveur: la formule est partagee, donc le bouton
+          // dit la verite sans un aller-retour et sans un champ de plus dans les messages.
+          const prix = prixFusion(r.id)
+          const paye = theftView.coins >= prix
           const assez = total >= FUSION_NEEDS
           const suivant = RARITIES[r.id + 1]
           const pris = choix(m, r.id)
@@ -112,8 +117,9 @@ export const FusionPanel = () => {
                   color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
               </UiEntity>
               <UiEntity uiTransform={{ width: 440, height: TAP.menu, justifyContent: 'flex-end' }}>
-                <Btn label={assez ? `FUSE ${FUSION_NEEDS} INTO A ${suivant.name.toUpperCase()}` : `${FUSION_NEEDS} NEEDED`} width={420} height={TAP.menu} primary={assez}
-                  onClick={() => { if (assez) { void room.send('fuseFromBase', { rarity: r.id }); closeFusion() } }} />
+                <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE INTO A ${suivant.name.toUpperCase()}  ${formatIncome(prix)}`}
+                  width={420} height={TAP.menu} primary={assez && paye}
+                  onClick={() => { if (assez && paye) { void room.send('fuseFromBase', { rarity: r.id }); closeFusion() } }} />
               </UiEntity>
             </UiEntity>
           )
