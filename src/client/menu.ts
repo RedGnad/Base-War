@@ -23,7 +23,22 @@ export function activeTab(): Onglet {
   return indexView.open ? 'index' : travelView.open ? 'travel' : shopView.open ? 'shop' : 'goals'
 }
 
+/**
+ * The page the dialog body is showing.
+ *
+ * The body used to scroll, and scrolling drew the client's own scrollbar: a grey bar with
+ * arrow buttons, the one element on screen not drawn by us, and this SDK offers no way to
+ * restyle or hide it (owner, 3 Sep). So the body pages instead: it clips to its height and
+ * two chevrons of ours turn the pages. A page is one body height; the last one is short.
+ */
+export const dialogPage = { n: 0 }
+
+export function turnPage(delta: number, pages: number): void {
+  dialogPage.n = Math.max(0, Math.min(pages - 1, dialogPage.n + delta))
+}
+
 export function closeMenu(): void {
+  dialogPage.n = 0
   questsView.open = false
   indexView.open = false
   travelView.open = false
@@ -32,10 +47,12 @@ export function closeMenu(): void {
 
 export function basculerMenu(): void {
   if (menuView.open) { closeMenu(); return }
+  dialogPage.n = 0
   questsView.open = true
 }
 
 export function chooseTab(o: Onglet): void {
+  dialogPage.n = 0
   questsView.open = o === 'goals'
   indexView.open = o === 'index'
   travelView.open = o === 'travel'

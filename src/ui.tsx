@@ -12,7 +12,7 @@ import { FusionPanel, fuserPanelView } from './client/fusion-ui'
 import { intentEnAttente } from './client/intent'
 import { strip, row, topBand, noticeBand, active, BAND, THUMB, STACK_GAP, COIN_HAUT_DROIT, decalageCentre, setReference } from './client/layout'
 import { forceDuTir, GEARS, CARRY_STOLEN_SHARE } from './shared/schemas'
-import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
+import { Btn, CloseBtn, PagerBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
@@ -29,7 +29,7 @@ import { IndexContent, indexView, HAUTEUR_INDEX } from './client/index-ui'
 import { ShopContent, shopView, HAUTEUR_SHOP } from './client/shop-ui'
 import { QuestsContent, questsToClaim, questsView, HAUTEUR_GOALS } from './client/quests-ui'
 import { TravelContent, HAUTEUR_TRAVEL } from './client/travel-ui'
-import { menuView, activeTab, basculerMenu, chooseTab, closeMenu } from './client/menu'
+import { menuView, activeTab, basculerMenu, chooseTab, closeMenu, dialogPage, turnPage } from './client/menu'
 import { verb } from './client/verb'
 import { volView } from './client/locomotion'
 import { tutoView, STEP_TEXTS, giftView } from './client/tutorial'
@@ -163,6 +163,8 @@ const Centre = (props: { top?: number; bottom?: number; children?: unknown }) =>
 )
 
 const MENU_W = 1088
+/** The strip on the right of a dialog body that holds the two page chevrons. */
+const PAGER_W = 72
 
 /**
  * The right-hand corner, as a stack with air between its tenants.
@@ -229,6 +231,9 @@ const MenuWindow = () => {
     : HAUTEUR_TRAVEL
   const h = Math.min(BAND.dialogMaxHeight, MENU_PAD * 2 + MENU_ENTETE + besoin)
   const corps = h - MENU_PAD * 2 - MENU_ENTETE
+  // A few pixels of slack, so a tab that declares exactly one body does not get a blank second page.
+  const pages = besoin > corps + 4 ? Math.ceil(besoin / corps) : 1
+  const page = Math.min(dialogPage.n, pages - 1)
 
   return (
     <UiEntity
@@ -283,15 +288,36 @@ const MenuWindow = () => {
         <CloseBtn size={fermer} onClick={closeMenu} />
       </UiEntity>
 
-      <UiEntity
-        uiTransform={{
-          width: '100%', height: corps, overflow: 'scroll', flexDirection: 'column'
-        }}
-      >
-        <QuestsContent />
-        <ShopContent />
-        <IndexContent />
-        <TravelContent />
+      {/*
+        Pages, not a scrollbar: see `dialogPage` in client/menu.ts. The body clips to its
+        height and the content slides up by whole bodies; when there is more than one page
+        the chevrons take the strip on the right, where the client's bar used to be.
+      */}
+      <UiEntity uiTransform={{ width: '100%', height: corps, flexDirection: 'row' }}>
+        <UiEntity
+          uiTransform={{
+            width: pages > 1 ? dedans - PAGER_W : '100%', height: corps,
+            overflow: 'hidden', flexDirection: 'column'
+          }}
+        >
+          <UiEntity uiTransform={{ width: '100%', height: besoin, margin: { top: -page * corps }, flexDirection: 'column' }}>
+            <QuestsContent />
+            <ShopContent />
+            <IndexContent />
+            <TravelContent />
+          </UiEntity>
+        </UiEntity>
+        {pages > 1 && (
+          <UiEntity
+            uiTransform={{
+              width: PAGER_W, height: corps, flexDirection: 'column',
+              justifyContent: 'space-between', alignItems: 'flex-end'
+            }}
+          >
+            <PagerBtn up enabled={page > 0} onClick={() => turnPage(-1, pages)} />
+            <PagerBtn up={false} enabled={page < pages - 1} onClick={() => turnPage(1, pages)} />
+          </UiEntity>
+        )}
       </UiEntity>
     </UiEntity>
   )
@@ -379,7 +405,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'ui-up', 'ui-down',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]

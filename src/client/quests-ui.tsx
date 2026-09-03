@@ -78,8 +78,8 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
   return (
     <UiEntity
       uiTransform={{
-        width: '100%', height: TAP.rangee, flexDirection: 'row', alignItems: 'center',
-        margin: { bottom: 10 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
+        width: '100%', height: ROW, flexDirection: 'row', alignItems: 'center',
+        margin: { bottom: ROW_GAP }, padding: { left: 16, right: 10 }, borderRadius: RAD.card
       }}
       uiBackground={{ color: SURF.carte }}
     >
@@ -136,9 +136,17 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
  * Added up rather than guessed: title, subtitle, three rows with their gaps, the
  * all-three strip, the streak heading and the streak cards.
  */
-const STREAK_H = 92
+const STREAK_H = 72
+/*
+  A goal row, and the gap under it. The rows stood at TAP.rangee with ten of air, and with
+  the streak the tab ran 94 px past the body a phone gives it, which is what drew the
+  scrollbar (owner, 3 Sep). 84 still clears the 80-tall controls it holds, and the whole
+  tab now lands in one body: 3 x 92 + 90 + 34 + 72 = 472 for a body of 474.
+*/
+const ROW = 84
+const ROW_GAP = 8
 
-export const HAUTEUR_GOALS = 3 * (TAP.rangee + 10) + (TAP.rangee + 6) + (30 + 10) + STREAK_H
+export const HAUTEUR_GOALS = 3 * (ROW + ROW_GAP) + (ROW + 6) + (26 + ROW_GAP) + STREAK_H
 
 export function QuestsContent(): ReactEcs.JSX.Element | null {
   if (!questsView.open) return null
@@ -151,7 +159,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
       {questsView.ids.map((_, i) => <QuestRow i={i} />)}
 
     <UiEntity
-        uiTransform={{ width: '100%', height: TAP.rangee, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
+        uiTransform={{ width: '100%', height: ROW, flexDirection: 'row', alignItems: 'center', margin: { top: 6 }, padding: { left: 16, right: 10 }, borderRadius: RAD.card }}
         uiBackground={{ color: SURF.carte }}
       >
         {/* Same three columns as a quest row: the text spans the first two, the action
@@ -171,7 +179,7 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
     </UiEntity>
 
     <Label value="LOGIN STREAK" fontSize={TYPE.label} color={Color4.fromHexString('#4dd2ffff')}
-        uiTransform={{ width: '100%', height: 30, margin: { top: 10 } }} textAlign="middle-left" />
+        uiTransform={{ width: '100%', height: 26, margin: { top: ROW_GAP } }} textAlign="middle-left" />
       {/*
         Seven chips sized as a share of the width, so the row can never wrap.
 

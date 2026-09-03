@@ -486,6 +486,32 @@ function closeIcon() {
   return png(S, S, px)
 }
 
+/**
+ * A chevron, for the page control that replaced the native scrollbar in the dialogs.
+ *
+ * The client's scrollbar cannot be restyled or hidden in this SDK, and a grey Windows-style
+ * bar with arrow buttons on our navy plates was the one element not drawn by us (owner,
+ * 3 Sep). Two bars meeting at a right angle, pointing up or down.
+ */
+function chevronIcon(up) {
+  const px = Buffer.alloc(SIZE * SIZE * 4)
+  const S = SIZE
+  const cy = up ? S * 0.58 : S * 0.42
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const fx = x + 0.5, fy = y + 0.5
+      const tip = up ? -1 : 1
+      // Each arm runs from the tip at the centre out to one side.
+      let a = tilted(fx, fy, S * 0.5 - S * 0.14, cy + tip * S * 0.0, S * 0.20, S * 0.06, S * 0.05, up ? -45 : 45)
+      a = Math.max(a, tilted(fx, fy, S * 0.5 + S * 0.14, cy + tip * S * 0.0, S * 0.20, S * 0.06, S * 0.05, up ? 45 : -45))
+      const o = (y * S + x) * 4
+      px[o] = ENCRE[0]; px[o + 1] = ENCRE[1]; px[o + 2] = ENCRE[2]
+      px[o + 3] = Math.round(Math.min(1, a) * 255)
+    }
+  }
+  return png(S, S, px)
+}
+
 const fichiers = []
 // Les satellites restent blancs quoi qu'il arrive: ils sont sur la plaque BLEUE, ou le blanc
 // mesure 3,76 contre 1, au-dessus du plancher de 3 que ce depot s'impose dans theme.ts.
@@ -495,6 +521,8 @@ fichiers.push(['icon-menu-alert.png', menuIcon(true)])
 fichiers.push(['icon-gun.png', gunIcon(false)])
 fichiers.push(['icon-holster.png', gunIcon(true)])
 fichiers.push(['ui-close.png', closeIcon()])
+fichiers.push(['ui-up.png', chevronIcon(true)])
+fichiers.push(['ui-down.png', chevronIcon(false)])
 // Les verbes du bouton contextuel, dans les deux encres. Le marteau de BUILD n'est pas ici:
 // The BUILD glyph is not drawn here: see tools/ui/build-mallet-icon.py.
 for (const [nom, dessin] of VERBES) {
