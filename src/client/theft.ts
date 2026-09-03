@@ -266,10 +266,15 @@ export function setupTheft(): void {
   room.onMessage('index', (d) => { indexView.vus = [...d.vus]; indexView.skin = d.skin })
 
   room.onMessage('collected', (d) => {
-    // The most repeated gesture in the game, and until now it was a line of text and silence.
+    /*
+      The number and the coin say it; the sentence said it a third time.
+
+      "+1.2K coins collected" carried exactly what the floating number now carries, on the
+      most repeated gesture in the game, so it was pure duplication once the quantity channel
+      existed (owner, 3 Sep). The grid puts quantity on the number, so the toast goes.
+    */
     floatAmount(d.gain, false)
     playCash()
-    alerter(`+${d.gain} coins collected`, '#8fe08f', 2200)
   })
 
   // The join-time message can arrive before this handler exists; the wallet tick carries the

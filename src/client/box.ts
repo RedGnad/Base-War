@@ -72,6 +72,8 @@ let crateMesh: Entity
 let hitSound: Entity
 let sonBurst: Entity
 let sonReveal: Entity
+let sonRevealBig: Entity
+let sonRevealHuge: Entity
 const eclats: Entity[] = []
 const ECLATS = 14
 let sonTic: Entity
@@ -145,6 +147,8 @@ export function setupBox(): void {
   hitSound = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
+  sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.85)
+  sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.9)
   sonTic = emetteur('assets/sounds/tick.wav', 0.5)
   // Le refus se dit au son, pas au texte: un etage plein est une chose qu'on entend une fois
   // et qu'on comprend, la ou une plaque "FLOOR FULL" reste a lire a chaque tentative.
@@ -218,7 +222,7 @@ export function setupBox(): void {
         boxView.progres = REEL_WIN
         boxView.sansRoulette = false
         boxView.gagneA = Date.now()
-        jouer(sonReveal)
+        jouerReveal(boxView.resultat)
         // Long enough to read the name once, gone before it outstays the win: the
         // genre closes its reveals fast and lets the item in the hand carry the memory.
         boxView.resultatJusqua = Date.now() + 2200
@@ -287,12 +291,24 @@ export function revealItem(code: number): void {
   boxView.resultatMutation = mutationDe(code)
   boxView.gagneA = Date.now()
   boxView.resultatJusqua = Date.now() + 2600
-  jouer(sonReveal)
+  jouerReveal(boxView.resultat)
 }
 
 export function refuseWithSound(): void { jouer(refuseSound) }
 
 let lastPosition: Vector3 | null = null
+
+/*
+  The reveal is a LADDER, not one clip.
+
+  Every rarity shared a single sting, which flattened the most emotional moment in the game:
+  a Secret sounded exactly like a Common. The genre's answer is that the higher the pull, the
+  longer the arpeggio climbs and the longer it rings. Three clips cover seven rarities, which
+  keeps the download small while making the top of the table feel like an arrival.
+*/
+function jouerReveal(rarete: number): void {
+  jouer(rarete >= 5 ? sonRevealHuge : rarete >= 3 ? sonRevealBig : sonReveal)
+}
 
 function jouer(e: Entity): void {
   const a = AudioSource.getMutableOrNull(e)

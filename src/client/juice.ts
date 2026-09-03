@@ -89,7 +89,9 @@ export function liveAmounts(): Array<{ amount: number; loss: boolean; t: number;
   nothing is added to the download.
 
   Emitters hang off the player, created once at setup: an AudioSource needs an entity, and one
-  per cue is cheaper than one per event.
+  per cue is cheaper than one per event. The cash cue is a purpose-built coin arpeggio rather
+  than the crate-smash clip it first borrowed: a payout and a burst are different events, and
+  reusing one for the other is heard immediately (owner, 3 Sep).
 */
 let hurtCue: Entity | null = null
 let cashCue: Entity | null = null
@@ -102,7 +104,7 @@ export function setupJuiceSound(): void {
     return e
   }
   hurtCue = emitter('assets/sounds/hit.wav', 0.9)
-  cashCue = emitter('assets/sounds/burst.wav', 0.55)
+  cashCue = emitter('assets/sounds/coin.wav', 0.7)
 }
 
 function play(e: Entity | null): void {
