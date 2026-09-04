@@ -271,7 +271,9 @@ function place(x: number, y: number, z: number): Entity {
 function armSentry(sentry: Entity, armee: boolean): void {
   const monte = MeshRenderer.has(sentry)
   if (armee && !monte) {
-    MeshRenderer.setCylinder(sentry, 0.25, 0.45)
+    // Slimmer than it was (0.25/0.45): a narrow cone can stand three metres tall in the
+    // elevator's square without touching a wall, and height is what reads from the door.
+    MeshRenderer.setCylinder(sentry, 0.15, 0.30)
     Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
   } else if (!armee && monte) {
     MeshRenderer.deleteFrom(sentry)
@@ -461,8 +463,13 @@ function expulser(base: Vector3, floors: number): void {
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
 /**
- * The sentry's largest scale. At 1.4 the cone is 1.4 m tall on a 0.63 m foot, which clears
- * the walls from the elevator's square (1.1 m from each).
+ * The sentry's largest scale. The cone is a unit cylinder of radius 0.30 at the foot and
+ * 0.15 at the top: at 3.0 it stands three metres tall on a 0.90 m foot, inside the four
+ * metres of a storey and clear of the walls from the elevator's square (1.1 m from each).
+ * The first cap (1.4, on the fat 0.45 cone) flattened the whole range: a battery of twenty
+ * and a turret of sixteen looked alike, after the uncapped days when twenty charges were a
+ * four-metre cone through the walls (owner, 4 Sep: "a regression, not a design choice").
+ * Tall and slim keeps both: the heavy defence towers, and nothing leaves the building.
  *
  * The cone stands ON the elevator column (ASC_X, ASC_Z), a collar around its foot on each
  * defended storey. It went to the free back-left corner for a day, and alone in a corner an
@@ -470,7 +477,7 @@ const RAYS_MIN_RARITY = 4
  * Wrapped around the column it is part of the building's machinery, which is what a
  * defence is, and the column tells which storey is guarded at a glance.
  */
-const SENTRY_SCALE_MAX = 1.4
+const SENTRY_SCALE_MAX = 3.0
 const SENTRY_SCALE_MIN = 0.6
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
