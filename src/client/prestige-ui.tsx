@@ -95,8 +95,10 @@ export const PrestigePanel = () => {
         <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
           <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 14 }, justifyContent: 'center', alignItems: 'center' }}
             uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }}>
-            <Label value={`${theftView.prestige + 1}`} fontSize={TYPE.label} color={Color4.fromHexString('#1a2f55ff')}
-              uiTransform={{ width: 40, height: 30, margin: { top: 4 } }} textAlign="middle-center" textWrap="nowrap" />
+            {/* Centred on the star's own centre: the label fills the icon's box and sits two
+                pixels low, where the five points balance (owner, 4 Sep: off-centre, overflowing). */}
+            <Label value={`${theftView.prestige + 1}`} fontSize={TYPE.caption} color={Color4.fromHexString('#1a2f55ff')}
+              uiTransform={{ width: 60, height: 60, positionType: 'absolute', position: { top: 3, left: 0 } }} textAlign="middle-center" textWrap="nowrap" />
           </UiEntity>
           <UiEntity uiTransform={{ width: glyphWidth(`PRESTIGE ${theftView.prestige + 1}`, TYPE.title), height: TYPE.title + 8 }}>
             <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />

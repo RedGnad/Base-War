@@ -642,6 +642,24 @@ export async function welcome(address: string): Promise<void> {
   const existing = bases.get(address)
   if (existing) {
     /*
+      One exception to "the profile follows the base": a prestige the base never saw.
+
+      A prestige rewrites the profile (fewer items, one more rebirth) and the base's record
+      in the same tick, but the two are two storage writes, five seconds apart at worst and
+      capped on failure. A server replaced between them (a deploy, 4 Sep) came back with the
+      profile at prestige 2 and the base's record still holding every item, so the owner
+      found their shelves full again. The rebirth count is in both records, so a base that
+      is BEHIND its owner's profile is one that missed a prestige, and it takes the
+      profile's shelves: the ones the prestige left.
+    */
+    if ((profile.rebirths ?? 0) > (existing.rebirths ?? 0)) {
+      log(`${name}: base record at prestige ${existing.rebirths}, profile at ${profile.rebirths}: the base takes the profile's shelves`)
+      existing.items = [...profile.items]
+      existing.rebirths = profile.rebirths ?? 0
+      dirtyBases.add(address)
+      publish(existing)
+    }
+    /*
       Le profil suit la base, jamais l'inverse.
 
       Une base restauree depuis le journal peut avoir ete posee sur un emplacement different
@@ -1410,6 +1428,9 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   dirtyProfiles.add(address)
   const b = bases.get(address)
   if (b) { b.items = [...p.items]; dirtyBases.add(address); publish(b) }
+  // Written now, not at the next five-second tick: a prestige is the one change a server
+  // replaced a moment later must not lose half of (4 Sep, items resurrected at prestige 2).
+  void save()
   const et = openFloors(p.floorsBought ?? 0)
   log(`${b?.name ?? address.slice(0, 8)} reached prestige ${p.rebirths}: -${exige.cost} coins, consumed a ${rarity(rarityOf(consomme)).name}, kept ${exige.guard} item(s), income x${exige.multiplier}, ${et} floors`)
   return { ok: true, prestige: p.rebirths, multiplier: incomeMultiplier(p.rebirths) }
