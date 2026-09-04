@@ -322,7 +322,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
-    const sentry = place(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1)
+    const sentry = place(x + c / 2 - SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET)
     return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
   }
 
@@ -369,7 +369,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const sentry = engine.addEntity()
   Transform.create(sentry, {
     parent: parentCourant ?? undefined,
-    position: Vector3.create(x + c / 2 - 1.1, y + 1.2, z - c / 2 + 1.1),
+    position: Vector3.create(x + c / 2 - SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET),
     scale: Vector3.create(0, 0, 0)
   })
   // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armSentry`.
@@ -454,6 +454,13 @@ function expulser(base: Vector3, floors: number): void {
 */
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
+/**
+ * The sentry's largest scale and its distance from the two walls of its corner. At 1.4 the
+ * turret is 1.85 m tall and its barrel sweeps a 1.12 m circle; set 1.4 m from the wall line
+ * it clears the inner face at every angle of its turn.
+ */
+const SENTRY_SCALE_MAX = 1.4
+const SENTRY_INSET = 1.4
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
 const FLOAT_AMPLITUDE = 0.22
@@ -493,25 +500,35 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
       one square nothing else uses, and it is the first thing met after the door (owner,
       4 Sep: "a corner not used by the elevator").
     */
+    /*
+      Two frames, not one. The post is a CHILD of the base root, and the root of a base
+      north of the belt is already turned half a turn (`baseFacing`), so the child takes the
+      corner in the base's OWN frame, the same numbers whichever side it stands. Only the
+      world point used for reach goes through `orientToBase`. Mirroring both put the post
+      of every north base in the back corner by the stairwell, inside the sentry's body:
+      "I cannot see the shield activator in my base" (owner, 4 Sep).
+    */
     const rt = Transform.getOrNull(racine)
-    const o = orientToBase(rt?.position.z ?? 0, -BASE_SIDE / 2 + 1.3, BASE_SIDE / 2 - 1.3)
+    const dx = -BASE_SIDE / 2 + 1.3
+    const dz = BASE_SIDE / 2 - 1.3
+    const o = orientToBase(rt?.position.z ?? 0, dx, dz)
     const y = SLAB_THICKNESS
     lockPostWorld = rt === null ? null : Vector3.create(rt.position.x + o.dx, rt.position.y + y, rt.position.z + o.dz)
     lockPost = engine.addEntity()
-    Transform.create(lockPost, { parent: racine, position: Vector3.create(o.dx, y + 0.5, o.dz), scale: Vector3.create(0.3, 1.0, 0.3) })
+    Transform.create(lockPost, { parent: racine, position: Vector3.create(dx, y + 0.5, dz), scale: Vector3.create(0.3, 1.0, 0.3) })
     MeshRenderer.setBox(lockPost)
     Material.setPbrMaterial(lockPost, plastic('#1a2f55', 0.2))
     lockEmblem = engine.addEntity()
-    Transform.create(lockEmblem, { parent: racine, position: Vector3.create(o.dx, y + 1.45, o.dz), scale: Vector3.create(0.8, 0.8, 1) })
+    Transform.create(lockEmblem, { parent: racine, position: Vector3.create(dx, y + 1.45, dz), scale: Vector3.create(0.8, 0.8, 1) })
     MeshRenderer.setPlane(lockEmblem)
     Billboard.create(lockEmblem, { billboardMode: BillboardMode.BM_Y })
     lockLine = engine.addEntity()
-    Transform.create(lockLine, { parent: racine, position: Vector3.create(o.dx, y + 2.05, o.dz), scale: Vector3.create(0.5, 0.5, 0.5) })
+    Transform.create(lockLine, { parent: racine, position: Vector3.create(dx, y + 2.05, dz), scale: Vector3.create(0.5, 0.5, 0.5) })
     Billboard.create(lockLine, { billboardMode: BillboardMode.BM_Y })
     TextShape.create(lockLine, { text: '', fontSize: 2.6, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: Color3.create(0, 0, 0) })
     // The tap lands on a tall invisible box around the whole post, easier to hit than a plane.
     lockTap = engine.addEntity()
-    Transform.create(lockTap, { parent: racine, position: Vector3.create(o.dx, y + 1.2, o.dz), scale: Vector3.create(1.0, 2.4, 1.0) })
+    Transform.create(lockTap, { parent: racine, position: Vector3.create(dx, y + 1.2, dz), scale: Vector3.create(1.0, 2.4, 1.0) })
     MeshCollider.setBox(lockTap, ColliderLayer.CL_POINTER)
   }
   const locked = lockedUntil > now
@@ -1051,8 +1068,15 @@ export function setupPlots(): void {
             const ts = Transform.getMutableOrNull(v.floors[e].sentry)
             if (ts === null) continue
             const n = p.sentryFloors[e] ?? 0
-            const k = n === 0 ? 0 : 0.6 + n * 0.18
+            /*
+              Bigger with its charges, up to a ceiling. Uncapped, a twenty-charge battery
+              was a four-metre cone through the walls (owner, 4 Sep). The stand-in hangs
+              1.2 m above the slab at scale one and the turret's foot is fitted 1.2 down,
+              so the stand-in rises with the scale and the foot stays on the slab.
+            */
+            const k = n === 0 ? 0 : Math.min(SENTRY_SCALE_MAX, 0.6 + n * 0.12)
             ts.scale = Vector3.create(k, k, k)
+            ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 1.2 * k, ts.position.z)
             armSentry(v.floors[e].sentry, n > 0 && !v.loin)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
             toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
