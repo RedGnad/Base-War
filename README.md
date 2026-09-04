@@ -37,32 +37,57 @@ rolls, prices, distances and anti-cheat checks run headless, clients only send i
 
 ## For judges
 
-The three explanations the Buildathon asks for, as answers.
+The three explanations the Buildathon asks for, as answers, then the question every tycoon
+world has to answer: what happens when it is full.
 
-**Designed for mobile.** The scene hides the native touch pad and lays out its own: one
-contextual action button whose glyph changes with what is in front of you (buy, smash, rob,
-lock, place, fuse), a jump disc that swaps to the client's own glider glyph after the second
-press in the air (the two pictures are the mobile explorer's own, see `NOTICE.md`), and a
-draw button for the pistol. Every HUD element sits inside the device safe area; held actions
-are buffered until the room is synced, so a tap never silently drops. There are no particles
-and no light sources (the mobile renderer has neither); every effect is geometry or a
-textured quad, and the whole world stays inside a measured object budget of 385 for the
-Godot client. Every tinted text is checked against a 4.5:1 contrast floor at build time.
-The desktop HUD is the same pad, scaled up, so the two platforms play identically.
+**Designed for mobile.** One thumb plays the whole game. A single action button does whatever
+is in front of you (buy, smash, rob, lock, place, fuse) and its glyph tells you which before
+you press. The pad is laid out from measurements of the mobile explorer's own controls, with
+its own jump and glider pictures, so nothing has to be learned twice. The risky moves, a
+theft or a fusion, are holds rather than taps, so a stray touch costs nothing. Every crate,
+door, sign and rush is readable at phone size, and the desktop HUD is the same pad scaled
+up, so both platforms play the same game.
 
-**Encourages social interaction.** Nothing you own is safe: every item on show can be
-carried away by another player, the owner gets a live alert with the thief's name, and the
-chase is a shootout. Convoys can be outbid by anyone watching the belt. You can leave a gift
-on a friend's base as well as rob it. Sentry shots, door seals and rush announcements are
-broadcast to everyone in the world, so a busy plaza is visibly busy. Base signs carry the
-owner's name and prestige, the leaderboard ranks the whole world.
+**Encourages social interaction.** Nothing on show is safe: any item can be carried away by
+another player, the owner is alerted with the thief's name, and the way out is a shootout.
+A crate walking to someone's base can be outbid by anyone watching the belt. You can leave a
+gift on a base as well as rob it. Sentry shots, door seals and rush calls are seen and heard
+by everyone on the plaza, base signs carry each owner's name and prestige, and the
+leaderboard ranks the whole world. Company pays: every other player present raises your
+income by 15 %, up to 60 %.
 
-**Why players come back.** Offline income makes leaving a decision, not an exit: your base
-keeps earning for four hours and the welcome-back screen pays it out. A daily reward on a
-seven-day cycle, quests, the grand rush at the same UTC hour every day, prestige tiers that
-reset the base for a permanent multiplier, twelve storeys to unlock, and a collection index
-of every rarity and mutation give a reason to return each day. And someone may have robbed
-you while you were gone.
+**Why players come back.** Leaving is a decision, not an exit: your base keeps earning for
+four hours (at 35 % of your rate) and the welcome-back screen pays it out, while your loot
+stays a target for everyone else. A daily reward on a seven-day cycle, quests, a grand rush
+at the same UTC hour every day, prestige tiers that reset the base for a permanent
+multiplier, twelve storeys to unlock and a collection index of every rarity and mutation
+each give a reason to open the app again.
+
+### A full world
+
+**A newcomer always gets a base.** The ground shows where a base can stand, and if the chosen
+square was taken in the half second before the tap, the server places the base on the
+nearest legal square and says so, instead of refusing. New bases start on sixteen spots
+along two streets facing the belt, then on any free square of the grid. A welcome crate
+arrives after ten minutes of play, with a bar that shows it coming.
+
+**Room is a budget, not a head count.** The phone renders about four hundred objects before
+it degrades, so the server keeps a ledger of 385: 145 for the plaza and its decor, the rest
+for bases, each charged what it really costs (a one-storey base 6, a twelve-storey tower 28).
+When a newcomer needs room and the ledger is full, the base of the player absent for longest
+steps off the field. Nothing is lost: it stays stored with its items, storeys and prestige,
+stops earning while it is off the field, and stands again on the owner's return. A player
+who is present is never removed; if everyone present fills the ledger, placing a base or
+buying a storey is refused and the coins are not taken. Bases unseen for a week stay stored
+but no longer occupy the ground.
+
+**Drawing a street of towers on a phone.** The same ledger picks the level of detail: the
+nearest bases are drawn in full, items included, the rest as a silhouette with its height and
+colour, and your own base and any within reach are always full. A storey is four merged
+meshes instead of twenty-three objects, collisions stay on invisible boxes, sixty bases
+share one copy of each item model, and every effect is geometry or a textured quad. The
+numbers come from measurements on the mobile client (2 Sep): decor alone 160 objects,
+sixteen full bases 530, a full base about 49, a distant one about 8.
 
 ### Verify in sixty seconds
 
