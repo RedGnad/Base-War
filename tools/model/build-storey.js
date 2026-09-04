@@ -377,6 +377,28 @@ function accent() {
   ]
 }
 
+/*
+  The kerb a skinned base stands in: a low square rim just outside the plinth, cut from the
+  same material as the skin's accent, so a Gold base is ringed with the same gold as its
+  pillars (owner, 4 Sep: "a solid frame in the real gold, like the base"). Four bars, one
+  mesh, one rendered object.
+*/
+const KERB_GAP = 0.9      // from the wall line to the kerb's inner face: clears the plinth's overhang
+const KERB_WIDTH = 0.6
+const KERB_HEIGHT = 0.32
+function cadre() {
+  const inner = c / 2 + KERB_GAP
+  const mid = inner + KERB_WIDTH / 2
+  const long = 2 * (inner + KERB_WIDTH)
+  const y = KERB_HEIGHT / 2
+  return [
+    [0, y, mid, long, KERB_HEIGHT, KERB_WIDTH],
+    [0, y, -mid, long, KERB_HEIGHT, KERB_WIDTH],
+    [mid, y, 0, KERB_WIDTH, KERB_HEIGHT, long - 2 * KERB_WIDTH],
+    [-mid, y, 0, KERB_WIDTH, KERB_HEIGHT, long - 2 * KERB_WIDTH]
+  ]
+}
+
 let n = 0, octetsTotal = 0
 /*
   A skin is a SURFACE, not only a colour. Every skin was matte plastic, so a Gold base was
@@ -416,7 +438,8 @@ n += 1
 for (const m of MUTATIONS) {
   const [r, g, b] = hex(m.color)
   octetsTotal += ecrire(path.join(OUT, `glass-skin-${m.id}.glb`), [{ nom: 'glass', couleur: [r, g, b, 0.3], boites: vitres(), rugosite: 0.15 }])
-  n += 1
+  octetsTotal += ecrire(path.join(OUT, `frame-skin-${m.id}.glb`), [{ nom: 'frame', couleur: hex(m.color), boites: cadre(), ...(SURFACE[m.id] ?? {}) }])
+  n += 2
 }
 console.log(`${n} modeles ecrits, ${(octetsTotal / 1024).toFixed(1)} Ko au total`)
 console.log(`  teintes: ${teintes.length} (${ACCENTS.length} accents proprietaire + ${MUTATIONS.length} skins)`)

@@ -404,20 +404,12 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   v.halo = null; v.couronne = null
   if (p.skin > 0) {
     const hex = mutation(p.skin).color
-    // A frame AROUND the walls, not a disc under the pieces (owner, 4 Sep): a hollow square
-    // on a flat plane, alpha-tested, the band running from the plinth's edge outward.
+    // A solid kerb around the plinth, cut from the skin's own material by the storey
+    // generator (`frame-skin-<id>.glb`): the same gold as the pillars, not a painted band
+    // (owner, 4 Sep). One rendered object, no collider: it is a rim, not a wall.
     v.halo = engine.addEntity()
-    Transform.create(v.halo, {
-      parent: v.racine, position: Vector3.create(0, 0.05, 0),
-      rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(FRAME_SIDE, FRAME_SIDE, 1)
-    })
-    MeshRenderer.setPlane(v.halo)
-    Material.setPbrMaterial(v.halo, {
-      texture: Material.Texture.Common({ src: 'assets/textures/frame.png' }),
-      emissiveTexture: Material.Texture.Common({ src: 'assets/textures/frame.png' }),
-      albedoColor: Color4.fromHexString(hex + 'ff'), emissiveColor: Color3.fromHexString(hex), emissiveIntensity: 1.6,
-      metallic: 0, roughness: 1, specularIntensity: 0, transparencyMode: 1, alphaTest: 0.5, castShadows: false
-    })
+    Transform.create(v.halo, { parent: v.racine })
+    GltfContainer.create(v.halo, { src: `assets/Models/frame-skin-${p.skin}.glb`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
     v.couronne = spawnRays(v.racine, Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0), 7, hex, 1.4, 10)
   }
   // The colour lives in the file, so repainting is swapping which file each storey shows.
@@ -462,8 +454,6 @@ function expulser(base: Vector3, floors: number): void {
 */
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
-/** The skinned base's frame: the band hugs the plinth's edge and runs 1.4 m outward; the hole is the base. */
-const FRAME_SIDE = (BASE_SIDE + 1.6) / 0.78
 const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
 /** How close to the post the contextual button takes the lock over from the tap. */
 const LOCK_POST_REACH = 2.2
