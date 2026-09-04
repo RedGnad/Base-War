@@ -1168,34 +1168,6 @@ export function setupPlots(): void {
         */
         const parEtage = Array.from({ length: p.floors }, (_, e) => p.sentryFloors[e] ?? 0)
         const guard = p.sentries > 0 ? `\nSENTRY ${parEtage.join(' \u00b7 ')}` : ''
-        if (structurel) {
-          // One marker per storey, sized by what that storey holds. An empty floor shows
-          // nothing at all, which is exactly the information a thief is looking for.
-          for (let e = 0; e < v.floors.length; e++) {
-            const ts = Transform.getMutableOrNull(v.floors[e].sentry)
-            if (ts === null) continue
-            const n = p.sentryFloors[e] ?? 0
-            /*
-              Bigger with its charges, up to a ceiling. Uncapped, a twenty-charge battery
-              was a four-metre cone through the walls (owner, 4 Sep). The cone is a unit
-              cylinder centred on its entity, so its centre rides at half its height and
-              its foot stays on the slab at every size.
-            */
-            /*
-              Size follows the charges over their WHOLE range, so a battery of twenty stands
-              taller than a turret of eight. The first cap (0.6 + 0.12 per charge, ceiling
-              1.4) was reached at seven charges, and every heavier defence looked the same
-              (owner, 4 Sep: "the ground floor and the first storey are the same size, and
-              one is heavier"). Linear from 0.6 at nothing to the ceiling at the maximum.
-            */
-            const k = n === 0 ? 0 : SENTRY_SCALE_MIN + (SENTRY_SCALE_MAX - SENTRY_SCALE_MIN) * Math.min(1, n / SENTRY_MAX_CHARGES)
-            ts.scale = Vector3.create(k, k, k)
-            ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 0.5 * k, ts.position.z)
-            armSentry(v.floors[e].sentry, n > 0 && !v.loin)
-            // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
-            toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
-          }
-        }
         /*
           The rank goes on the nameplate, because that is the only place it does its job.
 
@@ -1273,6 +1245,41 @@ export function setupPlots(): void {
         */
         const ct = v.couronne !== null ? Transform.getMutableOrNull(v.couronne) : null
         if (ct !== null) ct.position = Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0)
+
+        /*
+          The sentries, AFTER the storeys exist. This loop ran a hundred lines above the one
+          that appends a base's upper storeys, so on a base's first structural update it saw
+          one storey and armed one cone; the storeys pushed just after it waited for the NEXT
+          structural change (a purchase, a theft, a lock) to get theirs. Every fresh session
+          and every server replacement showed the ground floor's cone alone, and buying a
+          sentry "brought the others back" because the purchase was that next change (owner,
+          4 Sep, four reports). One marker per storey, sized by what that storey holds; an
+          empty floor shows nothing at all, which is the information a thief is looking for.
+        */
+          for (let e = 0; e < v.floors.length; e++) {
+            const ts = Transform.getMutableOrNull(v.floors[e].sentry)
+            if (ts === null) continue
+            const n = p.sentryFloors[e] ?? 0
+            /*
+              Bigger with its charges, up to a ceiling. Uncapped, a twenty-charge battery
+              was a four-metre cone through the walls (owner, 4 Sep). The cone is a unit
+              cylinder centred on its entity, so its centre rides at half its height and
+              its foot stays on the slab at every size.
+            */
+            /*
+              Size follows the charges over their WHOLE range, so a battery of twenty stands
+              taller than a turret of eight. The first cap (0.6 + 0.12 per charge, ceiling
+              1.4) was reached at seven charges, and every heavier defence looked the same
+              (owner, 4 Sep: "the ground floor and the first storey are the same size, and
+              one is heavier"). Linear from 0.6 at nothing to the ceiling at the maximum.
+            */
+            const k = n === 0 ? 0 : SENTRY_SCALE_MIN + (SENTRY_SCALE_MAX - SENTRY_SCALE_MIN) * Math.min(1, n / SENTRY_MAX_CHARGES)
+            ts.scale = Vector3.create(k, k, k)
+            ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 0.5 * k, ts.position.z)
+            armSentry(v.floors[e].sentry, n > 0 && !v.loin)
+            // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
+            toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
+          }
 
         for (let e = 0; e < v.floors.length; e++) {
           const open = e < p.floors
