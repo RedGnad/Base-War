@@ -818,6 +818,15 @@ function tirer(now: number): boolean {
   return true
 }
 
+/** A bolt from one world point to another, with a burst where it lands: the sentry's shot. */
+export function boltBetween(from: Vector3, to: Vector3): void {
+  if (traceurs.length === 0) return
+  const trait = Vector3.subtract(to, from)
+  const portee = Vector3.length(trait)
+  if (portee < 0.05) return
+  lancerTraceur(from, Vector3.scale(trait, 1 / portee), portee, true, false)
+}
+
 /** The bolt: metres per second, its length, and how far out of the muzzle it is drawn on the frame of the shot. */
 const TRACER_SPEED = 70
 const TRACER_LENGTH = 1.6

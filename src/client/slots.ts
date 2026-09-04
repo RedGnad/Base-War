@@ -86,6 +86,23 @@ export function setupSlots(): void {
       auto = true
       slotView.auto = true
     }
+    /*
+      And it goes OUT by itself. It lit while the wallet had not spoken yet (a fresh
+      connection, a server just replaced) and nothing ever turned it off once the wallet
+      said "you have a base": the owner stood in front of their own three-storey building
+      reading BUILD HERE and a PLACE HERE button (owner, 4 Sep). What lit on a guess is
+      put out by the fact.
+    */
+    if (auto && theftView.basePosee) {
+      auto = false
+      slotView.auto = false
+      slotView.active = false
+      const t = Transform.getMutableOrNull(fantome)
+      if (t !== null) t.scale = Vector3.Zero()
+      const e = Transform.getMutableOrNull(label)
+      if (e !== null) e.scale = Vector3.Zero()
+      return
+    }
     if (!slotView.active) return
     if (!Transform.has(engine.PlayerEntity)) return
     const p = Transform.get(engine.PlayerEntity).position

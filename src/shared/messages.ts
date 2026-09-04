@@ -75,6 +75,8 @@ export const MESSAGES = {
   sentryBought: Schemas.Map({ charges: Schemas.Int, cost: Schemas.Int64, floor: Schemas.Int }),
   sentryBlocked: Schemas.Map({ ownerName: Schemas.String, gelMs: Schemas.Int, left: Schemas.Int, lockSec: Schemas.Int, lost: Schemas.Int64, floor: Schemas.Int }),
   sentryTriggered: Schemas.Map({ byName: Schemas.String, left: Schemas.Int, taken: Schemas.Int64 }),
+  /** To everyone: which base's sentry fired, on which storey, at whom (their position), so every client draws the shot. */
+  sentryShot: Schemas.Map({ ownerId: Schemas.String, floor: Schemas.Int, x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
 
   /* Carry: lift one out of a base, put the one you hold into a base, or let go of it. */
   pickUp: Schemas.Map({ slot: Schemas.Int }),

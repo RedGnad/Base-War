@@ -1,6 +1,6 @@
 import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer } from '@dcl/sdk/ecs'
+import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS
@@ -44,6 +44,8 @@ function goUpOneFloor(v: View): void {
   )
 }
 import { steal, myClientAddress, alerter, lockBase, theftView } from './theft'
+import { boltBetween } from './combat'
+import { room } from '../shared/messages'
 import { moveTo } from './deplacer'
 import { pickUp } from './carry'
 import { HUE, TOAST } from './theme'
@@ -65,6 +67,8 @@ type View = {
   floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
+  /** The base's lock date the last time it was read: a jump forward is the door sealing, which is heard. */
+  lockSeen: number
   /** The skin last painted, and how many storeys it was painted on. */
   skin: number; peints: number
   /** What a skin adds beyond the walls: the disc on the ground and the crown over the roof. */
@@ -493,7 +497,8 @@ export function lockPostInReach(): boolean {
 
 function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
-function tenirLePave(racine: Entity, lockedUntil: number): void {
+let lockHex = ''
+function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: number): void {
   const now = Date.now()
   if (lockPost === null || lockParent !== racine) {
     for (const e of [lockPost, lockEmblem, lockLine, lockTap]) if (e !== null) engine.removeEntity(e)
@@ -524,7 +529,7 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
     lockPost = engine.addEntity()
     Transform.create(lockPost, { parent: racine, position: Vector3.create(dx, y + 0.5, dz), scale: Vector3.create(0.3, 1.0, 0.3) })
     MeshRenderer.setBox(lockPost)
-    Material.setPbrMaterial(lockPost, plastic('#1a2f55', 0.2))
+    lockHex = ''
     lockEmblem = engine.addEntity()
     Transform.create(lockEmblem, { parent: racine, position: Vector3.create(dx, y + 1.45, dz), scale: Vector3.create(0.8, 0.8, 1) })
     MeshRenderer.setPlane(lockEmblem)
@@ -537,6 +542,12 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
     lockTap = engine.addEntity()
     Transform.create(lockTap, { parent: racine, position: Vector3.create(dx, y + 1.2, dz), scale: Vector3.create(1.0, 2.4, 1.0) })
     MeshCollider.setBox(lockTap, ColliderLayer.CL_POINTER)
+  }
+  // The post is cut from the base's own material: the skin's metal or the owner's accent,
+  // like the pillars and the kerb, so it belongs to the building (owner, 4 Sep).
+  if (hex !== lockHex) {
+    lockHex = hex
+    Material.setPbrMaterial(lockPost as Entity, estMetal(skin) ? metalMaterial(hex, skin) : plastic(hex, 0.25))
   }
   const locked = lockedUntil > now
   // The recharge is the SERVER's word on the button (wallet tick), not the base's lock date:
@@ -749,7 +760,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
 }
 
 function destroyView(v: View): void {
@@ -905,7 +916,67 @@ export function placeTarget(): { ownerId: string; index: number; pos: Vector3 } 
 const SHIELD_MARGIN = 0.2
 const SIGN_OFFSET = SHIELD_MARGIN + 0.14
 
+/*
+  Two sounds the base makes, from two emitters moved to where the thing happens: the
+  sentry's zap at its cone, the seal at the door. Positional, so a player across the plaza
+  hears a base seal or a sentry fire without a line of text.
+*/
+let zapEmitter: Entity | null = null
+let sealEmitter: Entity | null = null
+function emitter(clip: string, volume: number): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { position: Vector3.create(0, -50, 0) })
+  AudioSource.create(e, { audioClipUrl: clip, playing: false, loop: false, volume })
+  return e
+}
+function jouerA(e: Entity | null, at: Vector3): void {
+  if (e === null) return
+  const t = Transform.getMutableOrNull(e)
+  if (t !== null) t.position = Vector3.create(at.x, at.y, at.z)
+  const a = AudioSource.getMutableOrNull(e)
+  if (a !== null) { a.playing = false; a.playing = true }
+}
+
+/** A base's world point from a local offset, through the base's own facing. */
+function pointDeBase(racine: Entity, dx: number, y: number, dz: number): Vector3 | null {
+  const rt = Transform.getOrNull(racine)
+  if (rt === null) return null
+  const o = orientToBase(rt.position.z, dx, dz)
+  return Vector3.create(rt.position.x + o.dx, rt.position.y + y, rt.position.z + o.dz)
+}
+
+/*
+  The sentry's shot, drawn by every client: a bolt from the top of the cone to the thief,
+  the burst on them, the cone kicking a size larger and settling, the zap at the cone. The
+  effect was only ever felt by the thief (flash, freeze, coins on the floor) and told to the
+  owner in a toast; a newcomer standing beside the base saw nothing connect the cone to
+  the thief (owner, 4 Sep). Nothing new is loaded: the gun's bolt and burst, one tween.
+*/
+function tirDeSentinelle(ownerId: string, floor: number, at: Vector3): void {
+  for (const v of views.values()) {
+    if (v.ownerId.toLowerCase() !== ownerId.toLowerCase()) continue
+    const s = v.floors[floor]?.sentry
+    if (s === undefined) return
+    const st = Transform.getOrNull(s)
+    if (st === null || st.scale.x <= 0) return
+    const k = st.scale.x
+    const from = pointDeBase(v.racine, st.position.x, st.position.y + k * 0.5, st.position.z)
+    if (from === null) return
+    boltBetween(from, Vector3.create(at.x, at.y + 1.0, at.z))
+    Tween.createOrReplace(s, {
+      mode: Tween.Mode.Scale({ start: Vector3.create(k * 1.3, k * 1.3, k * 1.3), end: Vector3.create(k, k, k) }),
+      duration: 260,
+      easingFunction: EasingFunction.EF_EASEOUTQUAD
+    })
+    jouerA(zapEmitter, from)
+    return
+  }
+}
+
 export function setupPlots(): void {
+  zapEmitter = emitter('assets/sounds/zap.wav', 0.9)
+  sealEmitter = emitter('assets/sounds/seal.wav', 1)
+  room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
   engine.addSystem(() => {
     for (const v of views.values()) {
       for (let k = 0; k < v.items.length; k++) {
@@ -1009,6 +1080,17 @@ export function setupPlots(): void {
       }
 
       const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
+      /*
+        The door sealing is HEARD, on every client near enough, whichever lock sealed it:
+        the owner's press, the sentry, the grace on arrival. A lock date that jumps forward
+        is a seal; the first read of a base is not.
+      */
+      if (v.lockSeen < 0) v.lockSeen = p.lockedUntil
+      else if (p.lockedUntil > v.lockSeen + 1000) {
+        v.lockSeen = p.lockedUntil
+        const porte = pointDeBase(v.racine, 0, 1.2, BASE_SIDE / 2)
+        if (porte !== null) jouerA(sealEmitter, porte)
+      } else if (p.lockedUntil < v.lockSeen) v.lockSeen = p.lockedUntil
       const monBase = p.ownerId.toLowerCase() === myClientAddress()
 
       /*
@@ -1235,7 +1317,7 @@ export function setupPlots(): void {
       }
 
       // The lock pad: the one control of the base that is a thing on its floor.
-      if (monBase) tenirLePave(v.racine, p.lockedUntil)
+      if (monBase) tenirLePave(v.racine, p.lockedUntil, accentPour(p), p.skin)
 
       // The signature only carries STRUCTURAL state. A value that ticks every second
       // (a countdown, a gauge) belongs on its own element: inside a cache key it forces

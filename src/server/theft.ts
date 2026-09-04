@@ -174,6 +174,9 @@ export function startTheft(): void {
         const left = sentriesOnFloor(v.victim, targetFloor)
         setLock(v.victim, maintenant + SENTRY_LOCK_MS)
         enCours.delete(thief)
+        // The shot is SEEN by everyone in the world, not only felt by the thief: a bolt from
+        // the cone to the thief on every client, so a newcomer reads the defence at work.
+        if (p !== null) void room.send('sentryShot', { ownerId: v.victim, floor: targetFloor, x: p.x, y: p.y, z: p.z })
 
         /*
           The tier's tithe, shaken out of the thief and left on the floor.

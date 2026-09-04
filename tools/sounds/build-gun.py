@@ -95,8 +95,51 @@ def taser():
     return out
 
 
+def zap():
+    """The sentry's shot: a bright crackle with a falling whine, over in a tenth of a second.
+
+    Kin to the taser (the sentry freezes the way the taser does) but shorter and higher, so
+    the two are told apart by ear: the taser is held in a hand, the sentry snaps from a cone.
+    """
+    random.seed(17)
+    n = int(RATE * 0.11)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        gate = 1.0 if (t * 90) % 1 < 0.4 else 0.2      # 90 Hz gating: crackle
+        noise = (random.random() * 2 - 1) * gate
+        whine = math.sin(2 * math.pi * (5200 - 3600 * t / 0.11) * t) * 0.6
+        click = math.exp(-t / 0.0015) * 0.8
+        env = math.exp(-t / 0.045)
+        out.append(math.tanh(1.8 * (noise * 0.7 + whine + click)) * env * 0.9)
+    return out
+
+
+def seal():
+    """The door sealing: a heavy thud and a metallic ring, a third of a second.
+
+    A lock is a low event, not a bright one: the thud carries the weight, the ring says
+    metal, and the ring's decay is what makes it read as "shut" rather than "hit".
+    """
+    random.seed(19)
+    n = int(RATE * 0.34)
+    out = []
+    lp = 0.0
+    for i in range(n):
+        t = i / RATE
+        raw = random.random() * 2 - 1
+        lp += (raw - lp) * 0.08                       # heavy low-pass: a padded thud
+        thud = math.sin(2 * math.pi * 70 * t) * math.exp(-t / 0.09) * 1.0
+        ring = (math.sin(2 * math.pi * 1450 * t) * 0.35 + math.sin(2 * math.pi * 2180 * t) * 0.2) * math.exp(-t / 0.12)
+        env = math.exp(-t / 0.16)
+        out.append(math.tanh(1.7 * (lp * 1.2 * env + thud + ring)) * 0.92)
+    return out
+
+
 if __name__ == '__main__':
     write('shot.wav', shot())
     write('hitmark.wav', hitmark())
     write('slap.wav', slap())
     write('taser.wav', taser())
+    write('zap.wav', zap())
+    write('seal.wav', seal())
