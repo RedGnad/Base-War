@@ -135,6 +135,8 @@ export const MESSAGES = {
   sold: Schemas.Map({ gain: Schemas.Int64, rarity: Schemas.Int }),
 
   activateLock: Schemas.Map({}),
+  /** client -> server: the player's own display name, as the client resolved it. */
+  hello: Schemas.Map({ name: Schemas.String }),
   reclaim: Schemas.Map({}),
   actionRejected: Schemas.Map({ action: Schemas.String, reason: Schemas.String, antiCheat: Schemas.Boolean }),
   youWereRobbed: Schemas.Map({ byName: Schemas.String, rarity: Schemas.Int, mutation: Schemas.Int, shieldSec: Schemas.Int }),

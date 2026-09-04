@@ -132,7 +132,24 @@ const dirtyProfiles = new Set<string>()
  * is. Four characters after the word Guest say the same thing, tell the reader it is a
  * placeholder, and stay short enough for a feed line.
  */
+/*
+  Names the clients declared for themselves, which win over the avatar component. That
+  component reaches the server late on a fresh instance, and a name inferred from it once
+  was written into the base for good: GUEST 20E0 on the owner's own sign (4 Sep).
+*/
+const declaredNames = new Map<string, string>()
+
+export function declareName(address: string, raw: string): void {
+  const clean = String(raw).replace(/[^\x20-\x7e]/g, '').trim().slice(0, 24)
+  if (clean === '' || declaredNames.get(address) === clean) return
+  declaredNames.set(address, clean)
+  const b = bases.get(address)
+  if (b !== undefined && b.name !== clean) { b.name = clean; dirtyBases.add(address); publish(b) }
+}
+
 function nameOf(address: string): string {
+  const declared = declaredNames.get(address)
+  if (declared !== undefined) return declared
   for (const [e, id] of engine.getEntitiesWith(PlayerIdentityData)) {
     if (id.address?.toLowerCase() !== address) continue
     const n = AvatarBase.getOrNull(e)?.name

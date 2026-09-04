@@ -11,6 +11,7 @@ import { setupTouchHud, reportPlatform, applyThiefPenalty } from './locomotion'
 import { setupBox } from './box'
 import { setupPlots } from './plots'
 import { setupTheft, setClientAddress, theftView, alerter } from './theft'
+import { sendOrHold } from './intent'
 import { setupBelt } from './belt'
 import { setupRecords } from './records'
 import { setupFuser } from './fusion'
@@ -140,6 +141,7 @@ export function startClient(): void {
   announceMoves()
 
   let myAddress = ''
+  let nameSaid = false
   engine.addSystem(() => {
     if (myAddress === '') {
       const me = getPlayer()
@@ -147,6 +149,20 @@ export function startClient(): void {
       myAddress = me.userId.toLowerCase()
       setClientAddress(myAddress)
       console.log(`[CLIENT] mon adresse: ${myAddress}`)
+    }
+    /*
+      The client tells the server its own name. The server read it off the avatar
+      component, which on a server just replaced arrives after the player's welcome, so a
+      base was christened "Guest 20e0" and the raid line called its top attacker that
+      (owner, 4 Sep). The client always knows its name; it says it once, as soon as the
+      platform hands it over, and the server takes that over anything it inferred.
+    */
+    if (!nameSaid) {
+      const me = getPlayer()
+      if (me !== null && me.name !== undefined && me.name !== '') {
+        nameSaid = true
+        sendOrHold(() => { void room.send('hello', { name: me.name }) })
+      }
     }
     for (const [, p] of engine.getEntitiesWith(Plot)) {
       if (p.ownerId.toLowerCase() !== myAddress) continue

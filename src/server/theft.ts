@@ -8,7 +8,7 @@ import {
 const BUILD_RANGE = 7
 import { room } from '../shared/messages'
 import { noter } from './records'
-import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne } from './plots'
+import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne, declareName } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
 import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains } from './carry'
@@ -416,6 +416,12 @@ export function startTheft(): void {
     if (!a) return
     const r = choisirSkin(a, Number.isInteger(d?.mutation) ? d.mutation : 0)
     if (!r.ok) refus(a, 'skin', r.reason ?? 'refused')
+  })
+
+  room.onMessage('hello', (d, ctx) => {
+    const a = ctx?.from?.toLowerCase()
+    if (!a) return
+    declareName(a, typeof d?.name === 'string' ? d.name : '')
   })
 
   room.onMessage('activateLock', (_d, ctx) => {

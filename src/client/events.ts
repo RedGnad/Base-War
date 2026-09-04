@@ -43,7 +43,7 @@ export function bannerLine(): { text: string; color: string } | null {
     // The distance is what turns the banner into a direction: the beam says which way, this
     // says how far, and together they answer "where is it" without a minimap.
     const loin = raidView.distance > 0 ? `   ·   ${raidView.distance} m` : ''
-    return { text: `RAID BOSS   ${mmss(raidView.leftS)}   ·   ${Math.round((raidView.hp / raidView.hpMax) * 100)}%${loin}${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
+    return { text: `RAID BOSS   ${mmss(raidView.leftS)}${loin}${raidView.topName !== '' ? `   ·   top: ${raidView.topName}` : ''}`, color: '#ff6b6b' }
   }
   return null
 }
