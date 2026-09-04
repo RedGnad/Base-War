@@ -750,28 +750,34 @@ function tirer(now: number): boolean {
   */
   if (gun && cam !== null) {
     /*
-      From the MUZZLE, not from the eye. The streak used to leave the camera's centre, a
-      hand below it, so it read as fired from the player's face (owner, 4 Sep). In first
-      person the view model hangs off the camera at a known offset and the muzzle at a known
-      offset inside it, so the muzzle's world position is one rotation away; the streak then
-      runs from there to the far end of the aim ray, converging on the line of fire.
+      From the MUZZLE, not from the eye, and RIDING the camera. The streak used to leave the
+      camera's centre, a hand below it, so it read as fired from the player's face; then it
+      was placed once in world space, so a player on the move saw it leave where the muzzle
+      WAS at the tap, not where it is (owner, 4 Sep). In first person the streak is now a
+      child of the camera, laid in camera space from the muzzle (the view model's live
+      position plus the muzzle offset) to the far end of the aim ray, so for its seventy
+      milliseconds it moves with the gun. In third person it stays a world-space streak.
     */
     const long = SHOT_RANGE * 0.9
-    const fin = Vector3.create(cam.position.x + f.x * long, cam.position.y + f.y * long, cam.position.z + f.z * long)
-    const bouche = combatView.aiming ? VISEE_POS : VIEW_POS
-    const local = Vector3.create(bouche.x + BOUCHE.x, bouche.y + BOUCHE.y, bouche.z + BOUCHE.z)
-    const debut = combatView.firstPerson
-      ? Vector3.add(cam.position, Vector3.rotate(local, cam.rotation))
-      : Vector3.create(cam.position.x + f.x * 0.7, cam.position.y - 0.12 + f.y * 0.7, cam.position.z + f.z * 0.7)
-    const trait = Vector3.subtract(fin, debut)
-    const portee = Vector3.length(trait)
     const t = traceurs[traceurSuivant]
     traceurSuivant = (traceurSuivant + 1) % traceurs.length
     const tt = Transform.getMutableOrNull(t.e)
-    if (tt !== null && portee > 0.01) {
-      tt.position = Vector3.create(debut.x + trait.x / 2, debut.y + trait.y / 2, debut.z + trait.z / 2)
-      tt.rotation = Quaternion.lookRotation(Vector3.normalize(trait), Vector3.Up())
-      tt.scale = Vector3.create(0.025, 0.025, portee)
+    if (tt !== null) {
+      const anchor = combatView.firstPerson && vue !== null ? Transform.getOrNull(vue.racine) : null
+      if (anchor !== null) {
+        const debut = Vector3.add(anchor.position, BOUCHE)
+        const trait = Vector3.create(-debut.x, -debut.y, long - debut.z)
+        tt.parent = engine.CameraEntity
+        tt.position = Vector3.create(debut.x + trait.x / 2, debut.y + trait.y / 2, debut.z + trait.z / 2)
+        tt.rotation = Quaternion.lookRotation(Vector3.normalize(trait), Vector3.Up())
+        tt.scale = Vector3.create(0.025, 0.025, Vector3.length(trait))
+      } else {
+        const debut = Vector3.create(cam.position.x + f.x * 0.7, cam.position.y - 0.12 + f.y * 0.7, cam.position.z + f.z * 0.7)
+        tt.parent = engine.RootEntity
+        tt.position = Vector3.create(debut.x + f.x * long / 2, debut.y + f.y * long / 2, debut.z + f.z * long / 2)
+        tt.rotation = cam.rotation
+        tt.scale = Vector3.create(0.025, 0.025, long)
+      }
     }
     t.until = now + 70
   }
