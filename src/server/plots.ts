@@ -199,6 +199,18 @@ function publish(b: Base, ici?: Set<string>): void {
       dirtyBases.add(b.address)
     }
   }
+  /*
+    The name heals itself. On a server just replaced, the owner's welcome runs before the
+    avatar's name has arrived, so the base was christened "Guest 20e0" and that fallback
+    was saved for good (owner, 4 Sep, sign reading GUEST 20E0). The real name is read
+    again every time the base is published while its owner is here, and the first time it
+    resolves to something better than the fallback it replaces it, on the sign and in the
+    record.
+  */
+  if (c.ownerPresent || (ici ?? presents()).has(b.address)) {
+    const n = nameOf(b.address)
+    if (n !== b.name && !n.startsWith('Guest ')) { b.name = n; dirtyBases.add(b.address) }
+  }
   c.floors = openFloors(b.floorsBought)
   c.rebirths = b.rebirths
   c.ownerId = b.address
