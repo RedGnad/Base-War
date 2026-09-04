@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN, RAD } from './theme'
-import { Glyphs } from './glyphs'
+import { Glyphs, glyphWidth } from './glyphs'
 
 /**
  * Two families, split by role.
@@ -260,6 +260,12 @@ export const CloseBtn = (props: { size: number; onClick: () => void }) => {
   )
 }
 
+/** Where a plate's rounded corner actually passes, measured in from the box's corner. */
+function pipInset(height: number): number {
+  const r = height * 0.3125
+  return Math.round(r * (1 - Math.SQRT1_2))
+}
+
 export const Btn = (props: {
   key?: string
   label: string
@@ -274,6 +280,8 @@ export const Btn = (props: {
   bind?: InputAction[]
   /** A red pip in the corner: something behind this control is waiting to be collected. */
   badge?: boolean
+  /** A picture before the word, inside the plate: what the control is about (a crate, a floor). */
+  icon?: string
 }) => {
   const size = props.size ?? TYPE.body
   const height = props.height ?? TAP.height
@@ -295,12 +303,28 @@ export const Btn = (props: {
     consistency instead: two shapes in one column, differing only by whether they answer a
     tap. The answer both times is the same plate at a lower value.
   */
+  /*
+    The word and its picture as one centred row, on every variant. The reward chips of the
+    goals used to be a different component with the system font beside buttons set in the
+    glyph font, and one of them had no crate (owner, 4 Sep): one control, one font, one
+    picture for all of them.
+  */
+  const contenu = (
+    <UiEntity uiTransform={{ width: props.width, height, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+      {props.icon !== undefined && (
+        <UiEntity uiTransform={{ width: Math.round(size * 1.6), height: Math.round(size * 1.6), margin: { right: Math.round(size * 0.45) } }}
+          uiBackground={{ texture: { src: `assets/ui/${props.icon}` }, textureMode: 'stretch' }} />
+      )}
+      <UiEntity uiTransform={{ width: glyphWidth(props.label.toUpperCase(), size), height: size + 8 }}>
+        <Glyphs value={props.label} size={size} role="name" top={4} />
+      </UiEntity>
+    </UiEntity>
+  )
   if (props.skin === 'disabled') {
     return (
       <Puce width={props.width} height={height} right={props.right}>
         <UiEntity uiTransform={{ width: props.width, height, opacity: 0.62 }}>
-          <Glyphs value={props.label} size={size} align="center" box={props.width}
-            top={(height - size) / 2} role="name" />
+          {contenu}
         </UiEntity>
       </Puce>
     )
@@ -316,10 +340,9 @@ export const Btn = (props: {
       uiInputBinding={props.bind !== undefined ? { actions: props.bind } : undefined}
       onMouseDown={actif ? () => { presse.set(cle, Date.now()); tic(); props.onClick?.() } : undefined}
     >
-      <Glyphs
-        value={props.label} size={size} align="center" box={props.width}
-        top={(height - size) / 2 + (enfonce ? 3 : 0)}
-        role="name" />
+      <UiEntity uiTransform={{ width: props.width, height, positionType: 'absolute', position: { top: enfonce ? 3 : 0, left: 0 } }}>
+        {contenu}
+      </UiEntity>
       {enfonce && (
         <UiEntity
           uiTransform={{
@@ -352,8 +375,15 @@ export const Btn = (props: {
               y a quelque chose a faire ICI". Posee entierement a l'exterieur elle flotte et
               se lit comme un objet separe (proprietaire, 1 Sep).
             */
+            /*
+              On the ROUNDED corner, not on the box's corner. The plate is nine-sliced with
+              corners a third of its height, so the box's corner is empty air; a pip centred
+              there floated beside the button (owner, 4 Sep, screenshot). The corner arc's
+              45-degree point is r(1 - 1/sqrt2) in from both edges, and that is where the
+              pip's centre goes, half in, half out of the plate's real edge.
+            */
             width: 28, height: 28, positionType: 'absolute',
-            position: { top: -14, right: -14 }, borderRadius: 14,
+            position: { top: pipInset(height) - 14, right: pipInset(height) - 14 }, borderRadius: 14,
             justifyContent: 'center', alignItems: 'center'
           }}
           uiBackground={{ color: Color4.fromHexString('#0b0e17ff') }}

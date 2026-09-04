@@ -1,6 +1,6 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, C, RAD, lisible } from './theme'
-import { Btn, Barre, Puce, SURF, pctAnime, flashDe, tic } from './ui-kit'
+import { Btn, Barre, SURF, pctAnime, flashDe, tic } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
 import { strip, BAND } from './layout'
 import { room } from '../shared/messages'
@@ -100,9 +100,9 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
         uiTransform={{ width: COL.compteur, height: TAP.menu }} textAlign="middle-center" />
       <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
       {pris ? (
-        <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" />
+        <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" icon="ui-crate.png" />
       ) : fini ? (
-        <Btn label="CLAIM" width={187} height={TAP.menu} size={TYPE.caption} skin="success" onClick={() => claim(i)} />
+        <Btn label="CLAIM" width={187} height={TAP.menu} size={TYPE.caption} skin="success" icon="ui-crate.png" onClick={() => claim(i)} />
       ) : (
         /*
           The reward, shown as a REWARD. It sat on a button plate reading "+1 CRATE" that
@@ -117,13 +117,7 @@ function QuestRow(props: { i: number }): ReactEcs.JSX.Element {
           dimmed, so the player still sees what they are earning; the word says why not yet.
           Same vocabulary as the set bonus below, which already says LOCKED.
         */
-        <Puce width={187} height={TAP.menu}>
-          <UiEntity uiTransform={{ width: 40, height: 40, margin: { right: 8 }, opacity: 0.4 }}
-            uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch' }} />
-          {/* Never wrapped: at 80 wide the renderer broke it into LOCKE and D (owner, 3 Sep). */}
-          <Label value="LOCKED" fontSize={TYPE.caption} color={Color4.fromHexString('#8a94a6ff')}
-            uiTransform={{ width: 110, height: 44 }} textAlign="middle-left" textWrap="nowrap" />
-        </Puce>
+        <Btn label="LOCKED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" icon="ui-crate.png" />
       )}
       </UiEntity>
     </UiEntity>
@@ -169,9 +163,9 @@ export function QuestsContent(): ReactEcs.JSX.Element | null {
           uiTransform={{ width: '74%', height: 60 }} textAlign="middle-left" />
         <UiEntity uiTransform={{ width: COL.action, height: TAP.menu, justifyContent: 'flex-end', alignItems: 'center' }}>
           {questsView.pris[3] === 1 ? (
-            <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" />
+            <Btn label="CLAIMED" width={187} height={TAP.menu} size={TYPE.caption} skin="disabled" icon="ui-crate.png" />
           ) : (
-            <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} height={TAP.menu} size={TYPE.caption}
+            <Btn label={allDone ? 'CLAIM' : 'LOCKED'} width={187} height={TAP.menu} size={TYPE.caption} icon="ui-crate.png"
               skin={allDone ? 'success' : 'disabled'}
               onClick={allDone ? () => claim(3) : undefined} />
           )}
