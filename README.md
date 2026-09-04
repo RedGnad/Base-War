@@ -16,20 +16,24 @@ Mobile Buildathon 2026. World: `basewar.dcl.eth`.
 
 ## The loop
 
-1. **Buy a crate** on the belt in the middle of the plaza. It walks to your base, and anyone
-   can outbid you for it at 150 % on the way.
-2. **Smash it** on your base to reveal an item: 7 rarities, 14 mutations, themed crates during
-   rushes.
-3. **Put it on show.** Everything on display earns coins, online and offline (35 % of your
-   income for up to four hours while you are away, collected on your next visit).
-4. **Rob a base.** Walk into someone else's, hold the action button, carry the item home.
+The first five steps are the in-game tutorial, in its order.
+
+1. **Place your base.** Tap BUILD BASE and pick a spot on the green ground in front of the
+   belt: one tap, and a starter crate is already waiting on it.
+2. **Smash the crate**, three hits, to reveal an item: 7 rarities, 14 mutations.
+3. **Put it on show and collect.** Everything on display earns into a pool, tap COLLECT to bank
+   it. It keeps earning while you are away (35 % of your rate for up to four hours), paid out
+   on your next visit.
+4. **Buy crates on the belt** before they fall off its end. A bought crate walks to your base,
+   and anyone can outbid you for it at 150 % on the way. Rushes bring themed crates.
+5. **Rob a base.** Walk into someone else's, hold the action button on an item, carry it home.
    The owner is alerted the moment you touch it and can shoot you down on the way out.
-5. **Defend yours.** A lock seals the door for a while (150 s recharge, only after use), a
+6. **Defend yours.** A lock seals the door for a while (150 s recharge, only after use), a
    sentry per storey blocks thieves and fires a tracer everyone sees and hears, and gear
    (traps, cloak, taser, bomb) turns a visit into a fight.
-6. **Grow.** Up to 12 storeys of 6 slots, fusion of items into rarer ones, luck upgrades,
+7. **Grow.** Up to 12 storeys of 6 slots, fusion of items into rarer ones, luck upgrades,
    base skins, prestige (rebirth), quests, a seven-day daily reward, and a global leaderboard.
-7. **Show up for the rush.** A random rush on a timer, a grand rush at a fixed UTC hour every
+8. **Show up for the rush.** A random rush on a timer, a grand rush at a fixed UTC hour every
    day, a boss on the plaza, and raids on other players' bases.
 
 Everything above is live in the world and served by one authoritative server: all state, loot
