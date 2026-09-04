@@ -88,12 +88,23 @@ const RAFALE_FIN_MS = 420
 /**
  * The model's own pivot is 87 cm away from the weapon: measured, its bounds run
  * y 0.563..0.778 and z 0.390..0.700, muzzle at +Z, wooden grip at low Y and low Z.
- * This offset brings the grip onto the holder's origin, so every placement below is
+ * PIVOT brings the grip onto the holder's origin, so every placement below is
  * expressed as "where the hand is", not as an arbitrary correction.
+ *
+ * The slide is SKEWED in the mesh: the rear sight sits at x +0.0008 (z 0.501) and the
+ * front sight at x -0.0154 (z 0.684), a sight line yawed 5.06 degrees; and the client
+ * mirrors X on import, so in hand the gun pointed five degrees RIGHT of the reticle and
+ * the bolt visibly left it sideways (owner, 4 Sep). The model is turned back by that
+ * angle about the grip. PIVOT and BOUCHE are the measured grip and bore centre (muzzle
+ * ring centre x -0.0088, y 0.7284, z 0.6996, mirrored) under that turn. The old BOUCHE
+ * sat at the top of the bounds, five centimetres ABOVE the bore: the flash and the bolt
+ * left the sights, not the barrel.
  */
-const PIVOT = Vector3.create(-0.010, -0.640, -0.450)
-/** Muzzle, relative to the grip, from the same measurement. */
-const BOUCHE = Vector3.create(0, 0.138, 0.250)
+const MODEL_YAW_DEG = -5.06
+const MODEL_ROT = Quaternion.fromEulerDegrees(0, MODEL_YAW_DEG, 0)
+const PIVOT = Vector3.create(0.0297, -0.640, -0.4491)
+/** Bore centre at the muzzle, relative to the grip, under the same turn. */
+const BOUCHE = Vector3.create(-0.0232, 0.0884, 0.2485)
 
 /**
  * Where the grip sits on the hand bone.
@@ -218,7 +229,7 @@ function modeleArme(poignee: Entity, type: ArmeType): Entity[] {
     ]
   }
   const modele = engine.addEntity()
-  Transform.create(modele, { parent: poignee, position: PIVOT })
+  Transform.create(modele, { parent: poignee, position: PIVOT, rotation: MODEL_ROT })
   GltfContainer.create(modele, { src: MODELE, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   return [modele]
 }
