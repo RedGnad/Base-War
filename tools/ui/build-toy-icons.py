@@ -422,7 +422,7 @@ def act_icone(nom, hexcol):
         # voyait rien changer (owner, 4 Sep). Une caisse en retrait, une piece devant.
         poly([(28, 96), (172, 96), (172, 212), (28, 212)])
         poly([(20, 56), (180, 56), (180, 100), (20, 100)], light)
-        trait((100, 100), (100, 212))
+        d.line([(100, 100), (100, 212)], fill=dark + (255,), width=W)
         ell((118, 128, 238, 248), light)
         ell((146, 156, 210, 220))
     return im
