@@ -30,15 +30,17 @@ SAFE_W, SAFE_H = 1200, 735
 NAVY = (0x1b, 0x30, 0x54)
 OR_HAUT, OR_BAS = (0xff, 0xef, 0xa8), (0xf5, 0xa5, 0x24)
 
-TITRE = 'ROB A BASE'
-# Where the thief's centre sits in the plate, as a fraction of its width, and how the plate
-# is laid on the canvas: scaled to PLATE_H, its top at PLATE_TOP, the bottom band filled by
-# stretching the plate's last rows (plain grass and path there).
-SUBJECT_X = 0.445
-PLATE_H = 880
-PLATE_TOP = 60
-TITRE_TAILLE = 140
-TITRE_CENTRE_Y = 790
+# Two lines, not one: the live world page crops the card PORTRAIT (about 0.77:1, centred),
+# and a single 140 px line lost its first and last letters there (owner, 4 Sep). Stacked,
+# each line stays inside the 760 px column that every crop keeps.
+TITRE = ('ROB A', 'BASE')
+# The plate is a 4:3 render laid at full canvas width; PLATE_TOP trims sky and foreground
+# equally. The avatar runs slightly left of centre with the base behind him to the right.
+PLATE_W = 1440
+PLATE_TOP = -40
+TITRE_TAILLE = 120
+TITRE_INTERLIGNE = 0.84
+TITRE_CENTRE_Y = 738
 
 
 def mix(a, b, t):
@@ -95,26 +97,17 @@ def ligne_promesse(texte, taille, couleur=(255, 255, 255)):
 
 def composer():
     plate = Image.open(PLATE).convert('RGB')
-    s = PLATE_H / plate.size[1]
-    plate = plate.resize((int(plate.size[0] * s), PLATE_H), Image.LANCZOS)
-    x0 = int(W / 2 - SUBJECT_X * plate.size[0])
+    s = PLATE_W / plate.size[0]
+    plate = plate.resize((PLATE_W, int(plate.size[1] * s)), Image.LANCZOS)
     im = Image.new('RGB', (W, H), (0, 0, 0))
-    im.paste(plate, (x0, PLATE_TOP))
-    # Fill whatever the plate does not cover by stretching its own edges.
-    bas = PLATE_TOP + PLATE_H
-    if bas < H:
-        bande = plate.crop((0, PLATE_H - 6, plate.size[0], PLATE_H)).resize((plate.size[0], H - bas), Image.LANCZOS)
-        im.paste(bande, (x0, bas))
-    if x0 > 0:
-        gauche = im.crop((x0, 0, x0 + 6, H)).resize((x0, H), Image.LANCZOS)
-        im.paste(gauche, (0, 0))
-    droite = x0 + plate.size[0]
-    if droite < W:
-        bord = im.crop((droite - 6, 0, droite, H)).resize((W - droite, H), Image.LANCZOS)
-        im.paste(bord, (droite, 0))
-    logo = logotype(TITRE, TITRE_TAILLE, arc=10)
+    im.paste(plate, (0, PLATE_TOP))
+    lignes = [logotype(t, TITRE_TAILLE, arc=8) for t in TITRE]
+    pas = int(TITRE_TAILLE * TITRE_INTERLIGNE)
+    bloc_h = pas * (len(lignes) - 1) + lignes[-1].size[1]
+    y = TITRE_CENTRE_Y - bloc_h // 2
     im = im.convert('RGBA')
-    im.alpha_composite(logo, ((W - logo.size[0]) // 2, TITRE_CENTRE_Y - logo.size[1] // 2))
+    for k, logo in enumerate(lignes):
+        im.alpha_composite(logo, ((W - logo.size[0]) // 2, y + k * pas))
     return im.convert('RGB')
 
 
