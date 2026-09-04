@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
@@ -454,6 +454,9 @@ function expulser(base: Vector3, floors: number): void {
 */
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
+/** From which rarity a piece floats above its pad, and by how much (metres). */
+const FLOAT_MIN_RARITY = 6
+const FLOAT_AMPLITUDE = 0.22
 const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
 /** How close to the post the contextual button takes the lock over from the tap. */
 const LOCK_POST_REACH = 2.2
@@ -1243,6 +1246,7 @@ export function setupPlots(): void {
           // 2a. Empty: under the floor, no size, no model. Material is irrelevant unseen.
           tr.position = Vector3.create(0, -5, 0)
           tr.scale = Vector3.Zero()
+          toyFloat(ent, null)
           demonter(ent)
           clearShape(ent)
           clearPedestal(ent)
@@ -1297,6 +1301,8 @@ export function setupPlots(): void {
           the whole item budget; sixty bases share them and the engine keeps one copy each.
         */
         remonter(ent, `item-${rarityOf(code)}.glb`)
+        // The Secret floats; in the parent's units, since the parent is scaled by `size`.
+        toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
 
         // 3. Tweens back on, last, for the pieces that turn.
         if (r.tours > 0 || m.mult > 1) {

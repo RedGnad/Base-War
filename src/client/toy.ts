@@ -571,6 +571,41 @@ export function toyRays(parent: Entity, size: number, hex: string | null): void 
 
 export function clearRays(parent: Entity): void { toyRays(parent, 1, null) }
 
+/*
+  A piece that floats: the Secret hangs a hand above its pad and breathes up and down.
+
+  The pedestal entity already turns (one tween per entity, and that one is the spin), so the
+  float rides on its CHILDREN: the mounted model when there is one, the silhouette's parts
+  otherwise. Each child keeps the position it was fitted at as its floor and yoyos a little
+  above it. Tweens run in the renderer, so this costs no object and no frame time in the
+  scene (owner, 4 Sep: "the Secret piece is good but does not move").
+*/
+const FLOAT_MS = 1800
+const floatFloor = new Map<Entity, Vector3>()
+
+function floatChild(child: Entity, amplitude: number | null): void {
+  const t = Transform.getOrNull(child)
+  if (t === null) return
+  let floor = floatFloor.get(child)
+  if (floor === undefined) { floor = Vector3.create(t.position.x, t.position.y, t.position.z); floatFloor.set(child, floor) }
+  if (amplitude === null) {
+    if (Tween.has(child)) { Tween.deleteFrom(child); TweenSequence.deleteFrom(child) }
+    Transform.getMutable(child).position = Vector3.create(floor.x, floor.y, floor.z)
+    floatFloor.delete(child)
+    return
+  }
+  Tween.setMove(child, Vector3.create(floor.x, floor.y, floor.z), Vector3.create(floor.x, floor.y + amplitude, floor.z), FLOAT_MS, EasingFunction.EF_EASESINE)
+  TweenSequence.createOrReplace(child, { sequence: [], loop: TweenLoop.TL_YOYO })
+}
+
+/** Float everything that draws this toy by `amplitude` (parent-local units), or ground it with null. */
+export function toyFloat(parent: Entity, amplitude: number | null): void {
+  const m = montages.get(parent)
+  if (m !== undefined) floatChild(m.modele, amplitude)
+  const f = formes.get(parent)
+  if (f !== undefined) for (const part of f.parts) floatChild(part, amplitude)
+}
+
 export function clearPedestal(parent: Entity): void {
   const cur = socles.get(parent)
   if (cur === undefined) return
