@@ -440,7 +440,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-lock', 'ui-prestige', 'ui-luck', 'ui-close',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]
@@ -672,6 +672,14 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   if (boxView.phase === 'smash') return { id: 'smash', label: 'SMASH', icon: ico('crate'), action: frapper }
   if (boxView.phase !== 'idle') return null
   /*
+    At the lock post with the lock ready, the thumb takes it, so a phone never has to aim a
+    tap at the post. Ahead of the carrying verbs: the post's reach is a two-metre corner, and
+    a player who ran there with full hands during a raid came to seal the door, not to shelve.
+    It sat INSIDE the full-hands branch by mistake, so it only ever showed while carrying
+    (owner, 4 Sep: "the button does not become the activation when I am at the post").
+  */
+  if (lockPostInReach()) return { id: 'verrouiller', label: 'LOCK BASE', icon: 'ui-lock', action: lockBase }
+  /*
     Hands first, because full hands are the loudest fact about your situation.
 
     Where you are standing is what the verb turns out to be. Inside your own building it is
@@ -691,8 +699,6 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     // An elevator in reach beats putting the thing down: a loaded player could never ride it,
     // and stepping one pace away to put something down costs nothing (mobile tester, 3 Sep).
     if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
-  // At the lock post, lock ready: the thumb takes it, so a phone never has to aim a tap at the post.
-  if (lockPostInReach()) return { id: 'verrouiller', label: 'LOCK BASE', icon: 'ui-shield', action: lockBase }
     const ou = baseIci()
     if (ou === null) return { id: 'lacher', label: 'DROP', icon: ico('drop'), action: dropCarried }
     return ou.mienne

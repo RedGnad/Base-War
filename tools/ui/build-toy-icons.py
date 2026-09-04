@@ -220,6 +220,15 @@ def ui_icone(nom, hexcol):
     elif nom == 'shield':
         poly([(128, 30), (216, 68), (216, 140), (128, 226), (40, 140), (40, 68)])
         poly([(128, 30), (216, 68), (216, 140), (128, 226)], mix(c, (0, 0, 0), 0.22))
+    elif nom == 'lock':
+        # A padlock: the shackle as a thick ring whose lower half the body covers, a body,
+        # a keyhole. The shield was the SHOP's defence glyph (the sentries); the base's own
+        # lock post wore the same one and read as a sentry (owner, 4 Sep). One sign, one thing.
+        d.ellipse((70, 30, 186, 146), outline=dark + (255,), width=40)
+        d.ellipse((70, 30, 186, 146), outline=light + (255,), width=16)
+        d.rounded_rectangle((44, 104, 212, 226), radius=24, fill=c + (255,), outline=dark + (255,), width=W)
+        ell((110, 136, 146, 172), dark)
+        d.rounded_rectangle((118, 160, 138, 202), radius=8, fill=dark + (255,))
     elif nom == 'prestige':
         pts = []
         for k in range(10):
@@ -418,7 +427,7 @@ ACT_ICONES = [
 ]
 
 UI_ICONES = [
-    ('crate', '#e0a24a'), ('floor', '#7cc4ff'), ('shield', '#6fb1f2'),
+    ('crate', '#e0a24a'), ('floor', '#7cc4ff'), ('shield', '#6fb1f2'), ('lock', '#e8b04a'),
     ('prestige', '#f5a524'), ('luck', '#6cc72e'),
     ('gear-0', '#e06a4a'), ('gear-1', '#4dd2ff'), ('gear-2', '#f2b45a'),
     ('gear-3', '#b48cf0'), ('gear-4', '#ff7a9c'), ('gear-5', '#ffd24a'),

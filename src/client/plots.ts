@@ -464,7 +464,8 @@ const SENTRY_INSET = 1.4
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
 const FLOAT_AMPLITUDE = 0.22
-const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
+/** The padlock, not the shop's shield: that one names the sentries, and the post read as one. */
+const LOCK_EMBLEM = 'assets/ui/ui-lock.png'
 /** How close to the post the contextual button takes the lock over from the tap. */
 const LOCK_POST_REACH = 2.2
 let lockPost: Entity | null = null
