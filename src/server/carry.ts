@@ -93,8 +93,15 @@ function lacher(address: string): { code: number; origin: string } | null {
  * where an absent owner's base refused everything, an item handed back to somebody who had
  * logged off was silently deleted from the game.
  */
+/** Set by the theft module: carry cannot import it without a cycle. */
+let landedHook: (address: string, code: number) => void = () => {}
+export function setLandedHook(fn: (address: string, code: number) => void): void { landedHook = fn }
+
 function rentrer(address: string, quoi: { code: number; origin: string }, pourquoi: string): void {
-  if (addItem(quoi.origin, quoi.code) === 'plein' && addItem(address, quoi.code) === 'plein') {
+  const chezOrigine = addItem(quoi.origin, quoi.code) !== 'plein'
+  const chezPorteur = !chezOrigine && addItem(address, quoi.code) !== 'plein'
+  if (chezPorteur && quoi.origin !== address) landedHook(address, quoi.code)
+  if (!chezOrigine && !chezPorteur) {
     /*
       Two full shelves is not a reason to delete somebody's trophy.
 
@@ -316,7 +323,7 @@ export function startCarry(): void {
         at home, opened, stolen or picked up off the floor, is a placement.
       */
       if (!repris) { advanceQuest(a, 'poser'); pushQuests(a) }
-      void origine
+      if (origine !== a) landedHook(a, code)
       log(`carry: ${displayName(a)} placed a ${rar} on floor ${realFloor + 1} of their own base`)
       return
     }

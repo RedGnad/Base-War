@@ -11,7 +11,7 @@ import { noter } from './records'
 import { advanceQuest, claimQuestReward, cratesOf, pushQuests, baseDe, useSentryCharge, sentriesOf, buySentryFor, presents, positionObjet, inReach, etatPrevisible, incomePerSecond, spend, incomePerItem, absenceDe, sentriesOnFloor, compterVol, choisirSkin, reclamerQuotidienne, declareName } from './plots'
 import { dropAt } from './coins'
 import { tutoFait } from './onboarding'
-import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains } from './carry'
+import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains, setLandedHook } from './carry'
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
@@ -26,8 +26,17 @@ import {
   a 402 as rarity 402, fell back to entry zero, and told the room that a Legendary recovered in
   front of witnesses was a Common.
 */
-type Larcin = { thief: string; victim: string; code: number; quand: number }
+type Larcin = { thief: string; victim: string; code: number; quand: number; landed: boolean }
 const larcins: Larcin[] = []
+
+/** Stolen loot reached the thief's own shelf: the most recent open entry for that code. */
+export function noteLanded(thief: string, code: number): void {
+  for (let i = larcins.length - 1; i >= 0; i--) {
+    const l = larcins[i]
+    if (l.thief === thief && l.code === code && !l.landed) { l.landed = true; return }
+  }
+}
+setLandedHook(noteLanded)
 
 function lockBonus(address: string): number {
   return prestigeOf(address) * LOCK_BONUS_MS
@@ -172,7 +181,8 @@ export function startTheft(): void {
       const tier = useSentryCharge(v.victim, targetFloor)
       if (tier >= 0) {
         const left = sentriesOnFloor(v.victim, targetFloor)
-        setLock(v.victim, maintenant + SENTRY_LOCK_MS)
+        // Never shorter than the shield already up: an 8 h absence shield must not fall to 60 s.
+        setLock(v.victim, Math.max(lockOf(v.victim), maintenant + SENTRY_LOCK_MS))
         enCours.delete(thief)
         // The shot is SEEN by everyone in the world, not only felt by the thief: a bolt from
         // the cone to the thief on every client, so a newcomer reads the defence at work.
@@ -237,7 +247,7 @@ export function startTheft(): void {
         something, and where anybody watching can see what this game is about.
       */
       remettreEnMain(thief, r, v.victim)
-      larcins.push({ thief, victim: v.victim, code: r, quand: maintenant })
+      larcins.push({ thief, victim: v.victim, code: r, quand: maintenant, landed: false })
       compterVol(thief)
       // The last tutorial step is the game's core verb: a theft that reached the hands (27 Aug).
       tutoFait(thief, 4)
@@ -480,7 +490,9 @@ export function startTheft(): void {
         they got home inside the twenty seconds.
       */
       let repris = arracherDesMains(l.thief, l.code)
-      if (!repris) {
+      // The shelf only when THIS loot landed there: otherwise the fallback would take an item
+      // the thief always owned, while the stolen one lies on the floor or in the fuser.
+      if (!repris && l.landed) {
         const bv = baseDe(l.thief)
         const idx = bv === undefined ? -1 : bv.items.lastIndexOf(l.code)
         repris = idx >= 0 && removeItem(l.thief, idx) !== null
