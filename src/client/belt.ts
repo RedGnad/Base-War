@@ -173,7 +173,10 @@ export function setupBelt(): void {
         const item = engine.addEntity()
         Transform.create(item, { parent: racine, position: Vector3.create(0, r.size / 2 - 0.27, 0), scale: Vector3.create(r.size, r.size, r.size) })
         // Pointer only: a crate on the belt is bought with a tap, and it rides above head height.
-        MeshCollider.setBox(item, ColliderLayer.CL_POINTER)
+        // Solid again, on trial. The body was dropped after two ejections blamed on it (1 and
+        // 2 Sep); the owner doubts that reading and wants it tested: back to a body, and out
+        // again the moment a push reproduces without another cause (owner, 4 Sep).
+        MeshCollider.setBox(item, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
         caisse(item, b.crateTier)
         const haut = r.size - 0.27
         PointerEvents.create(item, {

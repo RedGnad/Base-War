@@ -145,7 +145,8 @@ export function setupBox(): void {
     Frapper passe par un clic sur elle ou par le bouton contextuel: le pointeur suffit aux
     deux, la physique n'apportait qu'un obstacle qu'on n'a jamais voulu.
   */
-  MeshCollider.setBox(crateMesh, ColliderLayer.CL_POINTER)
+  // Solid again, on trial: see belt.ts, same reasoning, same exit if a push reproduces.
+  MeshCollider.setBox(crateMesh, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   PointerEvents.create(crateMesh, {
     pointerEvents: [
       { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Smash' } }
