@@ -20,29 +20,29 @@ World: `basewar.dcl.eth`.
 The first five steps are the in-game tutorial, in its order.
 
 1. **Place your base.** Put it on the green ground. A starter crate is already waiting.
-2. **Smash it.** Three hits, out comes your first item. 7 rarities, 14 mutations.
-3. **Put it on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
-4. **Hit the belt.** Crates roll past and fall off the end. Yours walks home on its own, and
+2. **Smash a crate.** Three hits, out comes your first item. 7 rarities, 14 mutations.
+3. **Put your item on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
+4. **Buy a crate.** Crates roll past and fall off the end. Yours walks home on its own, and
    anyone can outbid you on the way.
 5. **Rob a base.** Tap a neighbour's item, stay put while the bar fills, run it home. They get
    the alert the moment you touch it. The way out is a shootout.
 6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser, bomb.
 7. **Grow.** Twelve storeys, fusion, luck, skins, prestige, quests, daily rewards, a world
    leaderboard.
-8. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, a boss on
+8. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, boss battles on
    the plaza, raids on other bases.
 
 ## Mobile first
 
 - One thumb plays the whole game: one action button, and its glyph shows what it will do.
 - The pad is measured on the mobile explorer's own controls, jump and glider glyphs included.
-- A theft is one tap and a timer, not a held button: stay by the item and survive it.
+- A theft is one tap and a timer: stay by the item and survive it.
 - Desktop gets the same pad, scaled up. Both platforms play the same game.
 
 ## Social by design
 
 - Everything on show can be stolen. The owner is alerted by name. Leaving is a shootout.
-- Any crate on its way home can be outbid by anyone watching the belt.
+- Any crate on its way home can be outbid by anyone watching.
 - Gift a base, or rob it.
 - Sentry shots, door seals and rush calls are seen and heard by everyone on the plaza.
 - Company pays: each player present raises everyone's income, up to 60 %.
@@ -57,9 +57,9 @@ The first five steps are the in-game tutorial, in its order.
 
 ## A full world
 
-- **A newcomer always gets a base.** If the chosen square was just taken, the server places the
+- **Fair placement of bases.** If the chosen square was just taken, the server places the
   base on the nearest free square and says so. Never a refusal.
-- **Room is an object budget, not a head count.** The phone renders about 400 objects; the
+- **Room is an object budget.** The phone renders about 400 objects; the
   server keeps a ledger of 385, each base charged what it really costs. When the ledger is
   full, the base of the player absent for longest steps off the field: nothing lost, it stops
   earning, it stands again on their return. A player who is present is never removed.
