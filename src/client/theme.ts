@@ -87,8 +87,15 @@ export const HUE = {
  * blended towards white until it reaches it, which keeps the hue recognisable rather than
  * replacing it with a safe one. A colour that already passes is returned untouched.
  */
-const PANNEAU_L = 0.0041
-const CONTRASTE_MIN = 3
+/*
+  The ground the text sits on: the centre of panel.png, (27, 48, 84), relative luminance
+  0.0299. The old figure, 0.0041, was a near-black plate that no panel has worn for weeks,
+  so `lisible` passed dark hues that vanish on navy: the Cursed purple (#3b0a45) read as
+  "dark on dark" everywhere it named itself (owner, 4 Sep). 4.5:1 is WCAG AA for text at
+  the caption size a phone shows; the hue survives the blend, the reading no longer fails.
+*/
+const PANNEAU_L = 0.0299
+const CONTRASTE_MIN = 4.5
 
 function lineaire(c: number): number {
   const v = c / 255
@@ -119,6 +126,7 @@ export function lisible(hex: string): string {
 
 function calculerLisible(hex: string): string {
   const h = hex.startsWith('#') ? hex.slice(1) : hex
+  if (h.length < 6) return '#ffffff'
   let r = parseInt(h.slice(0, 2), 16)
   let g = parseInt(h.slice(2, 4), 16)
   let b = parseInt(h.slice(4, 6), 16)

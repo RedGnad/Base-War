@@ -1334,9 +1334,9 @@ const uiComponent = () => {
         onMouseDown={() => openRushCard(false)}
       >
         <UiEntity uiTransform={{ width: 28, height: 28, margin: { right: 10 } }}
-          uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff') }} />
+          uiBackground={{ texture: { src: 'assets/ui/ui-crate.png' }, textureMode: 'stretch', color: Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff') }} />
         <Label value={texte} fontSize={TYPE.caption}
-          color={Color4.fromHexString((rushChip()?.color ?? '#ffffff') + 'ff')}
+          color={Color4.fromHexString(lisible(rushChip()?.color ?? '#ffffff') + 'ff')}
           uiTransform={{ height: COIN_H[1] }} textAlign="middle-center" textWrap="nowrap" />
       </UiEntity>
       )
@@ -1563,7 +1563,7 @@ const uiComponent = () => {
           <Label
             value={bannerLine()?.text ?? ''}
             fontSize={TYPE.label}
-            color={Color4.fromHexString((bannerLine()?.color ?? '#ffffff') + 'ff')}
+            color={Color4.fromHexString(lisible(bannerLine()?.color ?? '#ffffff') + 'ff')}
             uiTransform={{ width: '100%', height: 64 }} textAlign="middle-center" textWrap="nowrap" />
         </UiEntity>
       </Centre>
@@ -1688,7 +1688,7 @@ const uiComponent = () => {
     {hud() && rushCardVisible() && rushInfo() !== null && (() => {
       const r = rushInfo()
       if (r === null) return null
-      const teinte = Color4.fromHexString(r.color + 'ff')
+      const teinte = Color4.fromHexString(lisible(r.color) + 'ff')
       return (
         <UiEntity
           uiTransform={{
@@ -1751,7 +1751,7 @@ const uiComponent = () => {
               uiBackground={SKIN.panel}
             >
               <Label uiTransform={{ width: w - 44, height: h - 12 }} value={a.t} fontSize={TYPE.body} textAlign="middle-center" textWrap="wrap"
-                color={(() => { const c = Color4.fromHexString(a.c + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
+                color={(() => { const c = Color4.fromHexString(lisible(a.c) + 'ff'); return Color4.create(c.r, c.g, c.b, sortie * entree) })()} />
             </UiEntity>
           )
         })}

@@ -6,7 +6,7 @@ import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome, crateSummary } from '../shared/loot-table'
-import { HUE } from './theme'
+import { HUE, lisible } from './theme'
 
 export const beltView = {
   annonce: '',
@@ -193,7 +193,7 @@ export function setupBelt(): void {
         const nom = engine.addEntity()
         Transform.create(nom, { parent: racine, position: Vector3.create(0, haut + 0.56, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
         Billboard.create(nom, { billboardMode: BillboardMode.BM_Y })
-        TextShape.create(nom, { text: r.name, fontSize: 3, textColor: c, outlineWidth: 0.22, outlineColor: NOIR })
+        TextShape.create(nom, { text: r.name, fontSize: 3, textColor: Color4.fromHexString(lisible(r.color) + 'ff'), outlineWidth: 0.22, outlineColor: NOIR })
 
         const rendement = engine.addEntity()
         Transform.create(rendement, { parent: racine, position: Vector3.create(0, haut + 0.28, 0), scale: Vector3.create(0.5, 0.5, 0.5) })

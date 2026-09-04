@@ -5,7 +5,7 @@ import { TYPE, C, TAP, SKIN, lisible } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn , SURF} from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT, incomeMultiplier } from '../shared/schemas'
-import { RARITIES, MUTATIONS, rarityOf, mutationDe, itemIncome, nomDuCode, formatIncome, expectedMutationMult } from '../shared/loot-table'
+import { RARITIES, MUTATIONS, rarityOf, mutationDe, traitsDe, itemIncome, nomDuCode, formatIncome, expectedMutationMult } from '../shared/loot-table'
 import { fusionCost } from '../shared/economy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
@@ -53,10 +53,22 @@ function choix(m: { hopper: number[]; etagere: number[] }, r: number): number[] 
   return [...dedans, ...sur].slice(0, FUSION_NEEDS)
 }
 
+/**
+ * A toy named for a row that already says its rarity: the mutation, or "plain", and its
+ * traits. "takes: Blood Uncommon, Gold Uncommon +1, Common" repeated the row's own word
+ * three times and ran under the button (owner, 4 Sep); "Blood · Gold +1 · plain" fits.
+ */
+function nomCourt(code: number): string {
+  const n = traitsDe(code)
+  const mu = mutationDe(code)
+  const nom = mu > 0 ? (MUTATIONS[mu]?.name ?? 'plain') : 'plain'
+  return n > 0 ? `${nom} +${n}` : nom
+}
+
 /** The chance each fed mutation passes on, from the same weights the server rolls with. */
 function chances(pris: number[]): string {
   const pousses = pris.map(mutationDe).filter((m) => m > 0)
-  if (pousses.length === 0) return 'no mutation fed'
+  if (pousses.length === 0) return 'no mutation'
   const poids = poidsDesMutations(0, eventView.theme, theftView.luckSec > 0 ? LUCK_MULT : 1, pousses)
   const total = poids.reduce((a, b) => a + b, 0)
   return [...new Set(pousses)]
@@ -81,18 +93,18 @@ export const FusionPanel = () => {
           <Glyphs value="FUSER" size={TYPE.title} role="bonus" />
         </UiEntity>
         <Label
-          value={`${FUSION_NEEDS} toys of one rarity become one better, the cheapest of them first`}
+          value={`${FUSION_NEEDS} toys of one rarity fuse into one of the next, cheapest first`}
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
         <Label
-          value="a mutated toy fed is a chance its mutation passes on  ·  traits are lost"
+          value="a fed mutation may pass on  ·  traits are lost"
           fontSize={TYPE.caption} color={C.dim}
           uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
         {/* What the machine already holds for this player, and the way back out of it. */}
         {m.hopper.length > 0 && (
           <UiEntity uiTransform={{ width: '100%', height: TAP.height + 8, flexDirection: 'row', alignItems: 'center' }}>
             <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
-              color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height }} textAlign="middle-left" textWrap="nowrap" />
+              color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height, overflow: 'hidden' }} textAlign="middle-left" textWrap="nowrap" />
             <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
               <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { void room.send('takeBackFusion', {}); closeFuser() }} />
             </UiEntity>
@@ -115,19 +127,19 @@ export const FusionPanel = () => {
           const prix = fusionCost(r.id, revenuEntrees, expectedMutationMult(poidsSortie), incomeMultiplier(theftView.prestige))
           const paye = theftView.coins >= prix
           const assez = total >= FUSION_NEEDS
-          const suivant = RARITIES[r.id + 1]
           return (
             <UiEntity key={r.id} uiTransform={{ width: '100%', height: RANG, flexDirection: 'row', alignItems: 'center' }}>
-              <UiEntity uiTransform={{ width: 440, height: RANG, flexDirection: 'column', justifyContent: 'center' }}>
+              {/* The text column clips: nothing it holds may ever run under the button beside it. */}
+              <UiEntity uiTransform={{ width: 500, height: RANG, flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
                 <Label value={`${total}  ${r.name}${total === 1 ? '' : 's'}`} fontSize={TYPE.body}
                   color={Color4.fromHexString(lisible(r.color) + 'ff')}
                   uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
-                <Label value={pris.length > 0 ? `takes: ${pris.map(nomDuCode).join(', ')}  ·  ${chances(pris)}` : 'none on your shelves'} fontSize={TYPE.caption}
+                <Label value={pris.length > 0 ? `${pris.map(nomCourt).join(' · ')}   ·   ${chances(pris)}` : 'none on your shelves'} fontSize={TYPE.caption}
                   color={C.dim} uiTransform={{ width: '100%', height: 30 }} textAlign="middle-left" textWrap="nowrap" />
               </UiEntity>
-              <UiEntity uiTransform={{ width: 440, height: TAP.menu, justifyContent: 'flex-end' }}>
-                <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE INTO A ${suivant.name.toUpperCase()}  ${formatIncome(prix)}`}
-                  width={420} height={TAP.menu} primary={assez && paye}
+              <UiEntity uiTransform={{ width: 380, height: TAP.menu, justifyContent: 'flex-end' }}>
+                <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE  ${formatIncome(prix)}`}
+                  width={360} height={TAP.menu} primary={assez && paye}
                   onClick={() => { if (assez && paye) { void room.send('fuseFromBase', { rarity: r.id }); closeFuser() } }} />
               </UiEntity>
             </UiEntity>
