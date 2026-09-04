@@ -291,11 +291,11 @@ export function setupRecords(): void {
 
   // Two faces through one layout: the back pivot is the front one turned round, so every
   // child's left stays on the reader's left.
+  // One face only: the root is a Y billboard, so the back was drawn for nobody and cost the
+  // mobile client 39 rendered objects, one full base's worth (measured 5 Sep).
   const devant = engine.addEntity()
   Transform.create(devant, { parent: racine })
-  const dos = engine.addEntity()
-  Transform.create(dos, { parent: racine, rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
-  faces.push(face(devant), face(dos))
+  faces.push(face(devant))
 
   let acc = 0
   engine.addSystem((dt) => {

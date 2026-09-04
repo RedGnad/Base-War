@@ -846,8 +846,8 @@ export const RECOVER_RANGE = 6
   bouge. Les couts viennent de la mesure du 2 Sep sur le client, pas d'une estimation.
 */
 export const OBJECT_BUDGET = 385
-/** Vegetation, place, tapis, panneau, convois: mesure a 133 objets, on en reserve 145. */
-export const DECOR_COST = 145
+/** Vegetation, place, tapis, panneau, convois: mesure a 134 objets le 5 Sep, 95 une fois la face arriere du panneau retiree; 11 de reserve pour caisses et convois. */
+export const DECOR_COST = 106
 /** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
 export const BASE_FIXED_COST = 4
 /** Reduced to a silhouette, a base renders neither door nor sign: plinth and lift only (measured 5 Sep: 143 for 15 far bases). */
