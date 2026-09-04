@@ -1,4 +1,4 @@
-import { plasticDe, remonter, rarityShape, spinLoop } from './toy'
+import { plasticDe, remonter, rarityShape, spinLoop, demolir } from './toy'
 import { engine, Transform, Entity, Billboard, BillboardMode, TextShape } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
@@ -75,7 +75,8 @@ export function setupLootUi(): void {
 
     for (const [id, v] of [...vues]) {
       if (vivants.has(id)) continue
-      engine.removeEntity(v.corps)
+      // The mounted model hangs under the body: `demolir` takes the children with it.
+      demolir(v.corps)
       engine.removeEntity(v.etiquette)
       vues.delete(id)
     }

@@ -594,7 +594,7 @@ export function spawnRays(parent: Entity, position: Vector3, diameter: number, h
 export function toyRays(key: Entity, base: Entity, position: Vector3, hex: string | null): void {
   const cur = rayons.get(key)
   if (hex === null) {
-    if (cur !== undefined) { engine.removeEntity(cur); rayons.delete(key) }
+    if (cur !== undefined) { engine.removeEntityWithChildren(cur); rayons.delete(key) }
     return
   }
   if (cur !== undefined) {

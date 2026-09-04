@@ -230,12 +230,20 @@ const LOD_TOUJOURS_PRES = 24
 const LOD_FIDELITE = 0.85
 
 /** Ce que cette base coutera en objets rendus, au detail complet ou reduite. */
-function baseCost(p: { floors: number; items: readonly number[] }, pres: boolean): number {
+function baseCost(
+  p: { floors: number; items: readonly number[]; sentryFloors: readonly number[]; skin: number; ownerName: string }, pres: boolean
+): number {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
   if (!pres) return BASE_FIXED_COST + etages * STOREY_COST_FAR
-  let pieces = 0
-  for (const it of p.items) if (it > 0) pieces++
-  return BASE_FIXED_COST + etages * STOREY_COST_NEAR + pieces * ITEM_COST
+  // Every displayed piece counts, a plain Common included (its code is 0, not empty), plus
+  // the crown of rays above Epic and up, one sentry cone per armed storey, the kerb and crown
+  // of a skinned base, and one glyph plane per character of the name plate (audit, 4 Sep).
+  let pieces = 0, rays = 0
+  for (const it of p.items) if (it !== VIDE) { pieces++; if (rarityOf(it) >= RAYS_MIN_RARITY) rays++ }
+  let cones = 0
+  for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
+  const crown = p.skin > 0 ? 2 : 0
+  return BASE_FIXED_COST + etages * STOREY_COST_NEAR + pieces * ITEM_COST + rays + cones + crown + p.ownerName.length
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -408,7 +416,7 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
     rendered objects, on the rare bases that earned a skin, visible on every profile. The
     walls themselves stay unlit, as asked; their surface comes from the model files.
   */
-  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntity(e)
+  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntityWithChildren(e)
   v.halo = null; v.couronne = null
   if (p.skin > 0) {
     const hex = mutation(p.skin).color
@@ -779,7 +787,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
 
 function destroyView(v: View): void {
   engine.removeEntity(v.plinth)
-  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntity(e)
+  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntityWithChildren(e)
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
   engine.removeEntityWithChildren(v.plaque)
@@ -802,7 +810,8 @@ function destroyView(v: View): void {
     demolir(e.sentry)
   }
   engine.removeEntity(v.racine)
-  for (const o of v.items) demolir(o)
+  // The crown of rays hangs from the base root, keyed by the toy: cleared before the toy goes.
+  for (const o of v.items) { clearRays(o); demolir(o) }
 }
 
 /**
