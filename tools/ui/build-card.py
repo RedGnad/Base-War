@@ -34,80 +34,98 @@ OR_HAUT, OR_BAS = (0xff, 0xef, 0xa8), (0xf5, 0xa5, 0x24)
 # and a single 140 px line lost its first and last letters there (owner, 4 Sep). Stacked,
 # each line stays inside the 760 px column that every crop keeps.
 TITRE = ('ROB A', 'BASE')
-# The plate is a 4:3 render laid at full canvas width; PLATE_TOP trims sky and foreground
-# equally. The avatar runs slightly left of centre with the base behind him to the right.
-PLATE_W = 1440
-PLATE_TOP = -40
-TITRE_TAILLE = 120
-TITRE_INTERLIGNE = 0.84
-TITRE_CENTRE_Y = 738
+# The plate: the masked thief leaping out of a small glass case, hugging the golden king,
+# the owner's first and final choice ("keep the character we had at the start", 4 Sep).
+# Scaled to PLATE_H, laid so the thief's centre (SUBJECT_X of the plate's width) sits on the
+# canvas's middle, its top at PLATE_TOP; gaps are filled by stretching the plate's own edges
+# (plain sky and grass there). The title block covers the case entirely: a small object half
+# hidden behind letters read as clutter, and casual cards let the hero burst out of the
+# logotype rather than share the frame with a footnote.
+SUBJECT_X = 0.5
+PLATE_H = 1080
+PLATE_TOP = 63
+SEAM = 24
+TITRE_TAILLE = 140
+TITRE_INTERLIGNE = 0.82
+TITRE_CENTRE_Y = 700
 
 
 def mix(a, b, t):
     return tuple(int(a[k] + (b[k] - a[k]) * t) for k in range(3))
 
 
-def logotype(texte, taille, arc=8):
-    """Le nom, traite en logotype: lettres cintrees, degradé, contour navy epais, ombre.
+def logotype(texte, taille, arc=0):
+    """The name as a logotype: gold gradient, thick navy outline, soft shadow.
 
-    Les douze cartes de tete du catalogue en portent un; aucune ne se contente de texte pose.
+    Drawn as ONE string so the face's own kerning holds; the first version placed the letters
+    one by one on a parabola, and the stacked title read as letters jostling at odd heights
+    (owner, 4 Sep). A straight baseline, the way the field's logotypes are set. `arc` is kept
+    in the signature for callers and ignored.
     """
     ft = ImageFont.truetype(POLICE, taille)
-    W2 = int(taille * len(texte) * 0.78) + 200
-    H2 = int(taille * 2.2)
+    contour = int(taille * 0.085)
+    tmp = ImageDraw.Draw(Image.new('RGBA', (8, 8)))
+    l, t, r, btm = tmp.textbbox((0, 0), texte, font=ft, stroke_width=contour)
+    marge = int(taille * 0.4)
+    W2, H2 = r - l + marge * 2, btm - t + marge * 2
     calque = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
     d = ImageDraw.Draw(calque)
-    x = 100
-    milieu = len(texte) / 2 - 0.5
-    for i, ch in enumerate(texte):
-        dy = int(((i - milieu) ** 2) * arc / max(1, milieu ** 2) - arc)
-        d.text((x, H2 // 2 + dy), ch, font=ft, fill=(255, 255, 255, 255),
-               stroke_width=int(taille * 0.085), stroke_fill=NAVY + (255,), anchor='lm')
-        x += int(d.textlength(ch, font=ft) + taille * 0.02)
+    d.text((marge - l, marge - t), texte, font=ft, fill=(255, 255, 255, 255), stroke_width=contour, stroke_fill=NAVY + (255,))
     masque = calque.split()[3]
     corps = calque.point(lambda v: 255 if v > 200 else 0).convert('L')
     grad = Image.new('RGBA', (W2, H2))
     gd = ImageDraw.Draw(grad)
     for y in range(H2):
-        t = min(1, max(0, (y - H2 * 0.30) / (H2 * 0.42)))
-        gd.line([(0, y), (W2, y)], fill=mix(OR_HAUT, OR_BAS, t) + (255,))
+        k = min(1, max(0, (y - H2 * 0.30) / (H2 * 0.45)))
+        gd.line([(0, y), (W2, y)], fill=mix(OR_HAUT, OR_BAS, k) + (255,))
     lettres = Image.composite(grad, calque, corps)
     lettres.putalpha(masque)
     ombre = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
     ombre.paste((0, 0, 0, 140), (0, 0), masque)
     out = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
-    out.alpha_composite(ombre.filter(ImageFilter.GaussianBlur(11)), (0, int(taille * 0.12)))
+    out.alpha_composite(ombre.filter(ImageFilter.GaussianBlur(9)), (0, int(taille * 0.10)))
     out.alpha_composite(lettres)
     return out.crop(out.getbbox())
 
 
-def ligne_promesse(texte, taille, couleur=(255, 255, 255)):
-    """Une des trois lignes de promesse. WonderMine, second de la plateforme, en a trois."""
-    ft = ImageFont.truetype(POLICE, taille)
-    tmp = ImageDraw.Draw(Image.new('RGBA', (8, 8)))
-    w = int(tmp.textlength(texte, font=ft)) + int(taille * 1.4)
-    im = Image.new('RGBA', (w, int(taille * 2)), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
-    d.text((taille * 0.7, taille), texte, font=ft, fill=couleur + (255,),
-           stroke_width=int(taille * 0.17), stroke_fill=NAVY + (255,), anchor='lm')
-    return im.crop(im.getbbox())
-
-
+def extend(im, box, size, at, blur):
+    """Stretch a thin edge strip of `im` over the gap, then blur it so the stretched texture
+    turns into a plain gradient instead of streaks."""
+    strip = im.crop(box).resize(size, Image.LANCZOS).filter(ImageFilter.GaussianBlur(blur))
+    im.paste(strip, at)
 
 
 def composer():
     plate = Image.open(PLATE).convert('RGB')
-    s = PLATE_W / plate.size[0]
-    plate = plate.resize((PLATE_W, int(plate.size[1] * s)), Image.LANCZOS)
+    k = PLATE_H / plate.size[1]
+    plate = plate.resize((int(plate.size[0] * k), PLATE_H), Image.LANCZOS)
+    pw = plate.size[0]
+    x0 = int(W / 2 - SUBJECT_X * pw)
     im = Image.new('RGB', (W, H), (0, 0, 0))
-    im.paste(plate, (0, PLATE_TOP))
-    lignes = [logotype(t, TITRE_TAILLE, arc=8) for t in TITRE]
+    im.paste(plate, (x0, PLATE_TOP))
+    bottom = PLATE_TOP + PLATE_H
+    if bottom < H:
+        extend(im, (x0, bottom - 4, x0 + pw, bottom), (pw, H - bottom), (x0, bottom), 6)
+    if PLATE_TOP > 0:
+        extend(im, (x0, PLATE_TOP, x0 + pw, PLATE_TOP + 4), (pw, PLATE_TOP), (x0, 0), 6)
+    if x0 > 0:
+        extend(im, (x0, 0, x0 + 4, H), (x0, H), (0, 0), 6)
+    right = x0 + pw
+    if right < W:
+        extend(im, (right - 4, 0, right, H), (W - right, H), (right, 0), 6)
+    # Soften every seam between the plate and its extensions; the subject never sits there.
+    for box in ((x0 - SEAM, 0, x0 + SEAM, H), (right - SEAM, 0, right + SEAM, H),
+                (0, PLATE_TOP - SEAM, W, PLATE_TOP + SEAM), (0, bottom - SEAM, W, bottom + SEAM)):
+        box = (max(0, box[0]), max(0, box[1]), min(W, box[2]), min(H, box[3]))
+        if box[2] > box[0] and box[3] > box[1]:
+            im.paste(im.crop(box).filter(ImageFilter.GaussianBlur(4)), box[:2])
+    lignes = [logotype(t, TITRE_TAILLE) for t in TITRE]
     pas = int(TITRE_TAILLE * TITRE_INTERLIGNE)
     bloc_h = pas * (len(lignes) - 1) + lignes[-1].size[1]
     y = TITRE_CENTRE_Y - bloc_h // 2
     im = im.convert('RGBA')
-    for k, logo in enumerate(lignes):
-        im.alpha_composite(logo, ((W - logo.size[0]) // 2, y + k * pas))
+    for n, logo in enumerate(lignes):
+        im.alpha_composite(logo, ((W - logo.size[0]) // 2, y + n * pas))
     return im.convert('RGB')
 
 
