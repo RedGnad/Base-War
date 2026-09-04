@@ -1,4 +1,4 @@
-import { engine, Transform, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers } from '@dcl/sdk/ecs'
+import { engine, Transform, TouchScreenControls, InputAction, AvatarLocomotionSettings, timers, inputSystem, PointerEventType } from '@dcl/sdk/ecs'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import { AIM_SPEED_SHARE, CARRY_STOLEN_SHARE, CARRY_OWN_SHARE, COIL_SHARE } from '../shared/schemas'
 
@@ -110,18 +110,24 @@ export function setAiming(active: boolean): void {
 }
 
 /**
- * En l'air et en train de descendre: le moment ou le parapente s'ouvre.
+ * The glide icon shows after the DOUBLE jump, until the ground, like the client's own button.
  *
- * Le client change tout seul l'icone de son bouton de saut en parapente, mais nous dessinons
- * nos propres commandes pour decider de leur ordre, et un bouton a nous n'herite d'aucun etat.
- * La scene ne recoit pas d'indicateur "au sol", alors on le deduit: on suit la hauteur du
- * joueur d'une frame a l'autre, et une descente franche qui dure signifie qu'il est en l'air.
- * C'est une approximation, elle se trompe une fraction de seconde au sommet d'un saut, ce qui
- * est exactement le moment ou l'icone n'a encore rien a dire.
+ * We draw our own jump disc, so it inherits none of the client's state, and the scene gets
+ * no "grounded" flag. The first version guessed from height alone: any fall longer than a
+ * tenth of a second turned the icon into a glider, so it flickered at the top of a single
+ * jump and lit on a step down (owner, 4 Sep: "it blinks at random"). The native rule is
+ * two clear states: jump icon on the ground and after ONE jump; glider after the SECOND
+ * press in the air, held until the feet touch down. So we count jump presses since the
+ * last landing, and a landing is a height that has stopped changing for a few frames.
  */
 export const volView = { descend: false }
 let viewHeight = -1
-let descenteDepuis = 0
+let stableDepuis = 0
+let sauts = 0
+let enLAir = false
+/** Height barely moving for this long is the ground (a jump apex lasts far less). */
+const SOL_S = 0.16
+const VITESSE_SOL = 0.35
 
 function followFall(): void {
   engine.addSystem((dt: number) => {
@@ -129,11 +135,17 @@ function followFall(): void {
     if (t === null) return
     const y = t.position.y
     if (viewHeight < 0) { viewHeight = y; return }
-    const vitesse = (y - viewHeight) / Math.max(dt, 0.001)
+    const vitesse = Math.abs(y - viewHeight) / Math.max(dt, 0.001)
     viewHeight = y
-    if (vitesse < -1.2) descenteDepuis += dt
-    else descenteDepuis = 0
-    volView.descend = descenteDepuis > 0.12
+    if (inputSystem.isTriggered(InputAction.IA_JUMP, PointerEventType.PET_DOWN)) {
+      sauts += 1
+      enLAir = true
+      stableDepuis = 0
+    }
+    if (vitesse < VITESSE_SOL) stableDepuis += dt
+    else { stableDepuis = 0; enLAir = true }
+    if (enLAir && stableDepuis > SOL_S) { enLAir = false; sauts = 0 }
+    volView.descend = enLAir && sauts >= 2
   })
 }
 
