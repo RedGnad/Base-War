@@ -2,7 +2,7 @@
 
 ![Rob a Base](images/base-war-thumbnail.png)
 
-**How rich can you get before someone robs you?**
+**How rich can you get before someone robs you? Smash crates, put your loot on show, and it earns while you're away. Lock your door, arm a sentry, or go rob theirs.**
 
 Smash crates, put your loot on show, and it earns while you are away. Lock your door, arm a
 sentry, or go rob theirs. A multiplayer tycoon-theft game for the Decentraland mobile app,
