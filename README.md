@@ -18,7 +18,7 @@ built for the Friendzone Mobile Buildathon 2026. World: `basewar.dcl.eth`.
 
 The first five steps are the in-game tutorial, in its order.
 
-1. **Place your base.** One tap on the green ground. A starter crate is already waiting.
+1. **Place your base.** Put it on the green ground. A starter crate is already waiting.
 2. **Smash it.** Three hits, out comes your first item. Seven rarities, fourteen mutations.
 3. **Put it on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
 4. **Hit the belt.** Crates roll past and fall off the end. Yours walks home on its own, and
