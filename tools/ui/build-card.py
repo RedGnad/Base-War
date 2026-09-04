@@ -41,9 +41,9 @@ TITRE = ('ROB A', 'BASE')
 # (plain sky and grass there). The title block covers the case entirely: a small object half
 # hidden behind letters read as clutter, and casual cards let the hero burst out of the
 # logotype rather than share the frame with a footnote.
-SUBJECT_X = 0.5
-PLATE_H = 1080
-PLATE_TOP = 63
+SUBJECT_X = 0.445
+PLATE_H = 900
+PLATE_TOP = 54
 SEAM = 24
 TITRE_TAILLE = 140
 TITRE_INTERLIGNE = 0.82
