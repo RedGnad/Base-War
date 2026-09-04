@@ -3,7 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { syncEntity } from '@dcl/sdk/network'
 import { Storage } from '@dcl/sdk/server'
 import {
-  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
+  Plot, MAX_BASES_AFFICHEES, freeSpotNear, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_FAR, PLOT_MAX_ITEMS, openFloors, openSlots, rebirthCost, REBIRTH_MAX, luckCost, prestigeTier, incomeMultiplier, snapToGrid, invalidReason, SCENE_SIDE, floorPrice, MAX_FLOORS, LOCK_COOLDOWN_MS, OFFLINE_RATE, OFFLINE_CAP_MS, OFFLINE_CAP_PRODUCTION_S, PENDING_CAP_S, DAILY_REWARDS, SENTRY_TIERS, SENTRY_MAX_CHARGES, SENTRY_MIN_PRICE, crowdBonus, slotPosition, SAME_STOREY, PLOT_SPOTS, firstFreeSpot, nearestSpot, prixParCharge, shieldFor, FLOOR_HEIGHT, PLACE_RANGE, SLOTS_PER_FLOOR, GEARS, VIDE, occupe, BASE_SIDE, orientToBase, floorPrestigeRequired
 } from '../shared/schemas'
 import { INCOME_PER_RARITY } from './loot'
 import {
@@ -312,7 +312,7 @@ function createBase(
 */
 function displayCost(b: Base): number {
   const etages = Math.max(1, Math.min(openFloors(b.floorsBought), MAX_FLOORS))
-  return BASE_FIXED_COST + etages * STOREY_COST_FAR
+  return BASE_FIXED_COST_FAR + etages * STOREY_COST_FAR
 }
 
 function budgetUsed(): number {
@@ -522,7 +522,7 @@ async function loadBases(): Promise<void> {
       */
       .filter((l) => {
         const etages = Math.max(1, Math.min(openFloors(l.vitrine?.floorsBought ?? 0), MAX_FLOORS))
-        const cout = BASE_FIXED_COST + etages * STOREY_COST_FAR
+        const cout = BASE_FIXED_COST_FAR + etages * STOREY_COST_FAR
         if (restoreBudget + cout > OBJECT_BUDGET) return false
         restoreBudget += cout
         return true
@@ -689,7 +689,7 @@ export async function welcome(address: string): Promise<void> {
   const name = nameOf(address)
   // Celui qui arrive est PRESENT: il passe devant tous les absents et retrouve sa base.
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)
+    makeRoom(address, BASE_FIXED_COST_FAR + STOREY_COST_FAR)
   }
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
     // Their previous spot when recorded, a free one only when there is none: nobody who had
@@ -1587,7 +1587,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   // Placed where it already stands: nothing to rebuild, nothing to resend.
   if (previous !== undefined && previous.x === x && previous.z === z) return { ok: true }
   // Moving your own base costs nothing extra: room is asked for only at the first placement.
-  if (previous === undefined && !makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
+  if (previous === undefined && !makeRoom(address, BASE_FIXED_COST_FAR + STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
   }
   if (previous) removeBase(address)

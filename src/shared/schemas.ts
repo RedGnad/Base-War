@@ -850,6 +850,8 @@ export const OBJECT_BUDGET = 385
 export const DECOR_COST = 145
 /** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
 export const BASE_FIXED_COST = 4
+/** Reduced to a silhouette, a base renders neither door nor sign: plinth and lift only (measured 5 Sep: 143 for 15 far bases). */
+export const BASE_FIXED_COST_FAR = 2
 /** Un etage complet: coque, accent, verre, montee. Reduit: coque, accent et verre. */
 export const STOREY_COST_NEAR = 4
 export const STOREY_COST_FAR = 3
@@ -869,7 +871,7 @@ export const ITEM_COST = 2
  * Il borne les bases RESTAUREES depuis le stockage, triees par derniere visite: ce sont les
  * absents qu'on cesse d'afficher en premier, jamais quelqu'un qui joue.
  */
-const REDUCED_BASE_COST = BASE_FIXED_COST + 3 * STOREY_COST_FAR
+const REDUCED_BASE_COST = BASE_FIXED_COST_FAR + 3 * STOREY_COST_FAR
 export const MAX_BASES_AFFICHEES = Math.floor((OBJECT_BUDGET - DECOR_COST) / REDUCED_BASE_COST)
 export const SLOTS_PER_FLOOR = 6
 /**
