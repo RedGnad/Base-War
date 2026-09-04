@@ -150,6 +150,9 @@ let flash = 0 as unknown as Entity
 let moi = ''
 let dernierTir = 0
 let flashScale = 0
+/** The muzzle flash: its peak diameter in metres, and how long it takes to vanish. */
+const FLASH_PEAK = 0.16
+const FLASH_LIFE_S = 0.05
 let zoneVisee: Entity | null = null
 let viewVisibleAfter = 0
 let dernierClipTir = 0
@@ -540,7 +543,7 @@ function gunSystem(dt: number): void {
   }
 
   if (flashScale > 0) {
-    flashScale = Math.max(0, flashScale - dt * 1.8)
+    flashScale = Math.max(0, flashScale - dt * FLASH_PEAK / FLASH_LIFE_S)
     placeFlash(flashScale)
   }
 
@@ -730,7 +733,13 @@ function tirer(now: number): boolean {
 
   // A gun flashes and cracks; a melee weapon swings. No bullets out of a paddle (tester, 28 Aug).
   const gun = armeEnMain() === 'shoot'
-  flashScale = gun ? 0.5 : 0
+  /*
+    A muzzle flash is a spark, not a ball. It was a half-metre sphere fading over a quarter
+    of a second, which in first person filled the view and trailed behind the tracer: "a big
+    slow ball" (owner, 4 Sep). Sixteen centimetres, gone in fifty milliseconds: two or three
+    frames, the way a real flash reads, and the tracer keeps the line.
+  */
+  flashScale = gun ? FLASH_PEAK : 0
   placeFlash(flashScale)
   recul = 1
   combatView.lastShotAt = now
