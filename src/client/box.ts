@@ -13,7 +13,6 @@ import { verb } from './verb'
 import { carryView } from './carry'
 import { sendOrHold } from './intent'
 import { TOAST } from './theme'
-import { puff } from './impact'
 
 let monAdresse = ''
 
@@ -289,8 +288,6 @@ export function frapper(): void {
     currentTime: 0
   })
   jouer(hitSound)
-  const ou = cratePosition()
-  if (ou !== null) puff(Vector3.create(ou.x, ou.y + 0.6, ou.z), '#ffd166')
 
   // The crate heats up as it is hit: the whole thing, lid, straps and body, glows harder.
   // Pas de disque au sol: la caisse qu'on ouvre flotte a hauteur de poitrine, son disque
