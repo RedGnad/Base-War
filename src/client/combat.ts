@@ -1,10 +1,5 @@
-import { plasticDe } from './toy'
-import {
-  engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer,
-  InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
-  EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, CameraModeArea, AvatarMask, timers, PointerLock, MaterialTransparencyMode
-} from '@dcl/sdk/ecs'
+import { plasticDe, spinLoop } from './toy'
+import { engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer, InputAction, inputSystem, PointerEventType, AudioSource, Tween, EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode, CameraType, CameraModeArea, AvatarMask, timers, MaterialTransparencyMode } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
@@ -956,8 +951,7 @@ function pileSystem(): void {
     Transform.create(body, { parent: chute, position: Vector3.create(0, COIN_THICKNESS / 2, 0), scale: Vector3.create(COIN_DIAMETER, COIN_THICKNESS, COIN_DIAMETER) })
     MeshRenderer.setCylinder(body, 0.5, 0.5)
     Material.setPbrMaterial(body, plasticDe(OR, 1.6))
-    Tween.setRotate(body, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1600, EasingFunction.EF_LINEAR)
-    TweenSequence.createOrReplace(body, { sequence: [], loop: TweenLoop.TL_RESTART })
+    spinLoop(body, 3200)
     // Hung from the same faller, so the number arrives with the coin instead of waiting for it.
     const label = engine.addEntity()
     Transform.create(label, { parent: chute, position: Vector3.create(0, COIN_THICKNESS + 0.75, 0), scale: Vector3.create(0.6, 0.6, 0.6) })

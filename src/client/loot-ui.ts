@@ -1,8 +1,5 @@
-import { plasticDe, remonter, rarityShape } from './toy'
-import {
-  engine, Transform, MeshRenderer, Material, Entity, Billboard, BillboardMode, TextShape,
-  Tween, TweenSequence, TweenLoop, EasingFunction
-} from '@dcl/sdk/ecs'
+import { plasticDe, remonter, rarityShape, spinLoop } from './toy'
+import { engine, Transform, Entity, Billboard, BillboardMode, TextShape } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { DroppedItem } from '../shared/schemas'
 import { itemColor, rarityOf, mutationDe, nomDuCode } from '../shared/loot-table'
@@ -59,8 +56,7 @@ export function setupLootUi(): void {
       Transform.create(corps, { position: t.position, scale: Vector3.create(0.5, 0.5, 0.5) })
       remonter(corps, `item-${r}.glb`)
       rarityShape(corps, r, plasticDe(teinte, 2.0))
-      Tween.setRotate(corps, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 1400, EasingFunction.EF_LINEAR)
-      TweenSequence.createOrReplace(corps, { sequence: [], loop: TweenLoop.TL_RESTART })
+      spinLoop(corps, 2800)
 
       const etiquette = engine.addEntity()
       Transform.create(etiquette, {

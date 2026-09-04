@@ -1,8 +1,6 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, estMonte, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import {
-  PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
-} from '@dcl/sdk/ecs'
+import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS
@@ -260,23 +258,20 @@ function place(x: number, y: number, z: number): Entity {
  * donc aucune raison que le client rende un cylindre et un modele a l'echelle zero sur chaque
  * etage de chaque base. On monte a la premiere charge, on demonte a la derniere.
  */
+/*
+  The sentry is the cone, on purpose. A turret model was tried for a day and taken down: a
+  turret says "this shoots", and the sentry does not shoot, it seals, freezes and shakes
+  coins loose; the abstract cone reads as an automatic field, which is what it is (owner,
+  4 Sep). One primitive, cyan, no file to load, nothing to mount.
+*/
 function armSentry(sentry: Entity, armee: boolean): void {
-  /*
-    "Mounted" is the model's registry, not the stand-in's mesh. The stand-in's cylinder is
-    REMOVED the moment the model arrives (toy.ts), so reading `MeshRenderer.has` as "armed"
-    said "not armed" after every load and mounted a second turret, then a third, at each
-    structural update of the base, with the cylinder flickering back between them. Harmless
-    while sentry.glb did not exist and the cylinder stayed; a leak the day it did (4 Sep).
-  */
-  const monte = MeshRenderer.has(sentry) || estMonte(sentry)
+  const monte = MeshRenderer.has(sentry)
   if (armee && !monte) {
     MeshRenderer.setCylinder(sentry, 0.25, 0.45)
     Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
-    montable(sentry, 'sentry.glb')
   } else if (!armee && monte) {
-    demonter(sentry)
-    if (MeshRenderer.has(sentry)) MeshRenderer.deleteFrom(sentry)
-    if (Material.has(sentry)) Material.deleteFrom(sentry)
+    MeshRenderer.deleteFrom(sentry)
+    Material.deleteFrom(sentry)
   }
 }
 
@@ -463,8 +458,7 @@ function expulser(base: Vector3, floors: number): void {
 const RAYS_MIN_RARITY = 4
 /**
  * The sentry's largest scale and its distance from the two walls of its corner. At 1.4 the
- * turret is 1.85 m tall and its barrel sweeps a 1.12 m circle; set 1.4 m from the wall line
- * it clears the inner face at every angle of its turn.
+ * cone is 1.4 m tall on a 0.63 m foot; set 1.4 m from the wall line it clears the walls.
  *
  * The corner is the BACK-LEFT one. It stood in the back-right, which is the elevator's own
  * square (ASC_X, ASC_Z): the turret and the cabin drew through each other, neither clearly
@@ -1093,13 +1087,13 @@ export function setupPlots(): void {
             const n = p.sentryFloors[e] ?? 0
             /*
               Bigger with its charges, up to a ceiling. Uncapped, a twenty-charge battery
-              was a four-metre cone through the walls (owner, 4 Sep). The stand-in hangs
-              1.2 m above the slab at scale one and the turret's foot is fitted 1.2 down,
-              so the stand-in rises with the scale and the foot stays on the slab.
+              was a four-metre cone through the walls (owner, 4 Sep). The cone is a unit
+              cylinder centred on its entity, so its centre rides at half its height and
+              its foot stays on the slab at every size.
             */
             const k = n === 0 ? 0 : Math.min(SENTRY_SCALE_MAX, 0.6 + n * 0.12)
             ts.scale = Vector3.create(k, k, k)
-            ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 1.2 * k, ts.position.z)
+            ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 0.5 * k, ts.position.z)
             armSentry(v.floors[e].sentry, n > 0 && !v.loin)
             // A guarded storey throws its cyan on the floor: the defence reads before the rule does.
             toyLight(v.floors[e].sentry, n > 0 && !v.loin ? TOY.sentry : null, 1.6)
@@ -1354,12 +1348,8 @@ export function setupPlots(): void {
 
         // 3. Tweens back on, last, for the pieces that turn.
         if (r.tours > 0 || m.mult > 1) {
-          Tween.create(ent, {
-            mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
-            duration: Math.round(360000 / Math.max(1, r.tours + (m.mult > 1 ? 30 : 0))),
-            easingFunction: EasingFunction.EF_LINEAR
-          })
-          TweenSequence.create(ent, { sequence: [], loop: TweenLoop.TL_RESTART })
+          // The same angular speed as before, now over a whole turn instead of a half.
+          spinLoop(ent, Math.round(720000 / Math.max(1, r.tours + (m.mult > 1 ? 30 : 0))))
         }
       }
     }

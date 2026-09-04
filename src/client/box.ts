@@ -1,8 +1,5 @@
-import { plasticDe, caisse, FIT, TOY_DIR } from './toy'
-import {
-  engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType,
-  InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, Entity, AudioSource, timers, GltfContainer
-} from '@dcl/sdk/ecs'
+import { plasticDe, caisse, FIT, TOY_DIR, spinLoop } from './toy'
+import { engine, Transform, MeshRenderer, MeshCollider, ColliderLayer, Material, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, EasingFunction, Entity, AudioSource, timers, GltfContainer } from '@dcl/sdk/ecs'
 import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
@@ -428,8 +425,7 @@ function sendToHand(from: Vector3, rarityId: number, mut = 0): void {
     const c = Color4.fromHexString(itemColor(rarityId, mut) + 'ff')
     Material.setPbrMaterial(visuel, plasticDe(c, 1.2))
   }
-  Tween.setRotate(visuel, Quaternion.Identity(), Quaternion.fromEulerDegrees(0, 180, 0), 560, EasingFunction.EF_LINEAR)
-  TweenSequence.createOrReplace(visuel, { sequence: [], loop: TweenLoop.TL_RESTART })
+  spinLoop(visuel, 1120)
 
   const haut = Vector3.create((from.x + target.x) / 2, Math.max(from.y, target.y) + 5, (from.z + target.z) / 2)
   Tween.createOrReplace(e, {
