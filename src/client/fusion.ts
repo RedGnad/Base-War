@@ -46,7 +46,9 @@ export function setupFuser(): void {
   const tambour = engine.addEntity()
   Transform.create(tambour, { parent: racine, position: Vector3.create(0, 1.1, 0), scale: Vector3.create(1.8, 1.6, 1.8) })
   MeshRenderer.setCylinder(tambour, 0.5, 0.5)
-  MeshCollider.setCylinder(tambour, 0.5, 0.5, ColliderLayer.CL_POINTER)
+  // Solid as well as clickable: the drum stands still on its plinth, so a body there costs
+  // nothing and stops a player walking through the machine (owner, 4 Sep).
+  MeshCollider.setCylinder(tambour, 0.5, 0.5, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(tambour, plastic(TOY.belt))
   PointerEvents.create(tambour, {
     pointerEvents: [
