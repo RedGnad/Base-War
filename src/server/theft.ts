@@ -15,7 +15,7 @@ import { remettreEnMain, carriesFor, forcerLacher, arracherDesMains } from './ca
 import { rarityOf, mutationDe, itemName } from '../shared/loot-table'
 import { log } from './log'
 import {
-  nearbyBases, lockOf, setLock, removeItem, addItem,
+  nearbyBases, lockOf, setLock, noteLockUse, removeItem, addItem,
   displayName, storeAlert, takeAlerts, coinsOf, tenterRebirth, prestigeOf,
   placeBase, basePoints, buyFloorFor, lockCooldown, collectPending
 } from './plots'
@@ -432,6 +432,7 @@ export function startTheft(): void {
     const duration = LOCK_FREE_MS + lockBonus(a)
     const until = Date.now() + duration
     if (!setLock(a, until)) { refus(a, 'lock', 'no base placed'); return }
+    noteLockUse(a, until)
     log(`${displayName(a)} locked their base for ${Math.round(duration / 1000)}s`)
   })
 

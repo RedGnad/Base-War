@@ -5,7 +5,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_COOLDOWN_MS, LOCK_FREE_MS
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { place3DText, Segment3D } from './texte3d'
@@ -45,7 +45,7 @@ function goUpOneFloor(v: View): void {
     Vector3.create(t.position.x + el.dx, y + 1.0, t.position.z + el.dz)
   )
 }
-import { steal, myClientAddress, alerter, lockBase } from './theft'
+import { steal, myClientAddress, alerter, lockBase, theftView } from './theft'
 import { moveTo } from './deplacer'
 import { pickUp } from './carry'
 import { HUE, TOAST } from './theme'
@@ -545,8 +545,10 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
     MeshCollider.setBox(lockTap, ColliderLayer.CL_POINTER)
   }
   const locked = lockedUntil > now
-  const readyAt = lockedUntil + LOCK_COOLDOWN_MS
-  const recharging = !locked && now < readyAt
+  // The recharge is the SERVER's word on the button (wallet tick), not the base's lock date:
+  // the grace on arrival and a sentry's lock seal the door without spending the button.
+  const readyAt = now + theftView.rechargeSec * 1000
+  const recharging = !locked && theftView.rechargeSec > 0
   const state = locked ? 'locked' : recharging ? 'recharging' : 'ready'
   if (state !== lockState) {
     lockState = state

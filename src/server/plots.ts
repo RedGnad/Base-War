@@ -61,7 +61,8 @@ type Profil = {
   itemsFound?: number
   rebirths?: number
   floorsBought?: number
-  lockEnds?: number
+  /** When the last lock the owner PRESSED for ends: the button's recharge counts from here and from nothing else. */
+  lockUsedUntil?: number
   vuA?: number
   pending?: number
   lastDay?: number
@@ -839,16 +840,28 @@ export function setLock(address: string, until: number): boolean {
   const c = Plot.getMutableOrNull(b.entity)
   if (c === null) return false
   c.lockedUntil = until
-  const p = profiles.get(address)
-  if (p) { p.lockEnds = until; dirtyProfiles.add(address) }
   dirtyBases.add(address)
   return true
 }
 
+/*
+  Only the lock the owner PRESSED recharges. Every lock (the thirty seconds on arrival, a
+  sentry's sixty, the shield an absence earns) used to write the same end date the button
+  read its recharge from, so the button was unavailable for a hundred and fifty seconds
+  after any of them: three minutes after every arrival, and every server replacement is an
+  arrival, so through a day of deploys the owner "waited the countdown out, it re-armed,
+  and never once got to press it" (owner, 4 Sep). The reference's recharge is the button's
+  own. The grace on arrival still seals the door; it just no longer spends the button.
+*/
+export function noteLockUse(address: string, until: number): void {
+  const p = profiles.get(address)
+  if (p) { p.lockUsedUntil = until; dirtyProfiles.add(address) }
+}
+
 export function lockCooldown(address: string): number {
   const p = profiles.get(address)
-  if (!p || p.lockEnds === undefined) return 0
-  const ready = p.lockEnds + LOCK_COOLDOWN_MS
+  if (!p || p.lockUsedUntil === undefined) return 0
+  const ready = p.lockUsedUntil + LOCK_COOLDOWN_MS
   return Math.max(0, ready - Date.now())
 }
 
