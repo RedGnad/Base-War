@@ -473,8 +473,8 @@ const Prechauffe = () => (
  * game's skin, bound to the same actions, with the pip the native menu button could never
  * carry. The central action stays native, it is already the biggest thing on the screen.
  */
-const PhoneControls = () => {
-  if (!phone() || !hud()) return null
+const PadControls = () => {
+  if (!hud()) return null
   const a = nextAction()
   /*
     L'arc du client, reproduit a partir de sa propre geometrie.
@@ -490,37 +490,46 @@ const PhoneControls = () => {
     Ce qu'on change sciemment: chez eux le gros bouton est le SAUT, chez nous c'est le verb
     contextuel, parce que c'est lui qu'on presse toutes les dix secondes. Le saut prend la
     premiere place de l'arc, celle du bas, la plus proche du pouce au repos.
+
+    The same pad on a desktop. It was a row of three pills with key letters, and the two
+    screens read as two games (owner, 4 Sep: "our mobile HUD is right, make the desktop
+    match it"). Same discs, same arc, same icons; drawn one and a half times larger because
+    the desktop canvas is 1080 high against the phone's 720, and each disc carries the key
+    that does the same thing, on a small plate, since a mouse hand reads keys.
   */
+  const k = phone() ? 1 : DESKTOP_PAD_SCALE
+  const pad = arcPour(k)
+  const touche = (t: string): string | undefined => (phone() ? undefined : t)
   return (
     <UiEntity
       uiTransform={{
-        width: ARC_BOITE, height: ARC_BOITE, positionType: 'absolute',
+        width: pad.boite, height: pad.boite, positionType: 'absolute',
         /*
           Where the client puts its own pad, not where the client says its pad is. The
           interactable area it reports reserves the whole native control strip, and adding
           our margin to that pushed the arc a full button left of where the thumb rests.
           The native controls are hidden here, so the strip is ours to stand in.
         */
-        position: { bottom: THUMB.bottom, right: THUMB.right }
+        position: phone() ? { bottom: THUMB.bottom, right: THUMB.right } : { bottom: DESKTOP_PAD_BOTTOM, right: DESKTOP_PAD_RIGHT }
       }}
     >
       {/* Sa propre ligne au-dessus de l'arc: sur la rangee elle chevauchait la bande d'avis. */}
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: ARC_BOITE + 12, right: 0 }, flexDirection: 'row' }}>
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: pad.boite + 12, right: 0 }, flexDirection: 'row' }}>
         <SellChip />
       </UiEntity>
 
-      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={POUCE}
-        bas={ARC[0].bas} droite={ARC[0].droite} actions={[InputAction.IA_JUMP]} />
-      <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={POUCE}
-        bas={ARC[1].bas} droite={ARC[1].droite}
-        primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} />
+      <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit}
+        bas={pad.arc[0].bas} droite={pad.arc[0].droite} actions={[InputAction.IA_JUMP]} touche={touche('SPACE')} />
+      <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={pad.petit}
+        bas={pad.arc[1].bas} droite={pad.arc[1].droite}
+        primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} touche={touche('F')} />
       {/*
         One pip, on the rim. The alert glyph carried a second, smaller dot inside the
         icon, and two red dots on one button read as a mistake (mobile tester, 3 Sep).
       */}
-      <Pouce icone="icon-menu" taille={POUCE}
-        bas={ARC[2].bas} droite={ARC[2].droite}
-        badge={questsToClaim() > 0} onClick={basculerMenu} />
+      <Pouce icone="icon-menu" taille={pad.petit}
+        bas={pad.arc[2].bas} droite={pad.arc[2].droite}
+        badge={questsToClaim() > 0} onClick={basculerMenu} touche={touche('1')} />
       {/*
         The central disc is always there. It used to be drawn only while a verb was
         available, so a player standing in the middle of the map saw a pad with a hole in
@@ -529,39 +538,15 @@ const PhoneControls = () => {
         what the thumb will press once the beacon is reached.
       */}
       {a !== null ? (
-        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={POUCE_GROS}
+        <Pouce icone={combatView.aiming ? ico('fire') : (a.icon ?? ico('collect'))} taille={pad.gros}
           bas={0} droite={0} primaire actions={[InputAction.IA_PRIMARY]}
           frames={!combatView.aiming && a.icon === ico('build') ? BUILD_FRAMES : undefined}
           pulse={!combatView.aiming && stepExpects(a.id)}
-          periodMs={BUILD_SWING_MS} />
+          periodMs={BUILD_SWING_MS} touche={touche('E')} />
       ) : (
-        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={POUCE_GROS}
+        <Pouce icone={combatView.aiming ? ico('fire') : ico(stepVerb())} taille={pad.gros}
           bas={0} droite={0} primaire disabled={!combatView.aiming}
-          actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined} />
-      )}
-    </UiEntity>
-  )
-}
-
-const DesktopControls = () => {
-  if (phone() || !hud()) return null
-  const a = nextAction()
-  const action = combatView.aiming ? 'FIRE' : a?.label ?? null
-  return (
-    <UiEntity
-      uiTransform={{
-        height: TAP.height, positionType: 'absolute',
-        position: { bottom: row(0), right: 40 },
-        flexDirection: 'row', alignItems: 'center'
-      }}
-    >
-      <SellChip right={TAP.gap * 2} />
-      <Btn label="1  MENU" width={190} right={TAP.gap} badge={questsToClaim() > 0}
-        primary={questsToClaim() > 0} onClick={basculerMenu} />
-      <Btn label={combatView.aiming ? 'F  HOLSTER' : 'F  DRAW'} width={210} right={TAP.gap}
-        primary={combatView.aiming} bind={[InputAction.IA_SECONDARY]} />
-      {action !== null && (
-        <Btn label={`E  ${action}`} width={300} primary bind={[InputAction.IA_PRIMARY]} />
+          actions={combatView.aiming ? [InputAction.IA_PRIMARY] : undefined} touche={touche('E')} />
       )}
     </UiEntity>
   )
@@ -576,33 +561,35 @@ const BUILD_FRAMES: [string, string] = [`${ico('build')}-raised`, `${ico('build'
 // 800 was noise on the board (owner, 3 Sep); a beat and a fifth is the first value that was not.
 const BUILD_SWING_MS = 1200
 
-const POUCE_GROS = THUMB.big
-const POUCE = THUMB.small
-const ORBITE = THUMB.orbit
+/** The desktop canvas is 1080 high against the phone's 720: the same pad, drawn at that ratio. */
+const DESKTOP_PAD_SCALE = 1.5
+const DESKTOP_PAD_BOTTOM = 40
+const DESKTOP_PAD_RIGHT = 40
 
-/** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule. */
-const ARC = ((): Array<{ droite: number; bas: number }> => {
-  const pr = POUCE_GROS / 2
-  const sr = POUCE / 2
+/** Les trois places de l'arc, du bord du bas au bord droit, comme `joypad_arc.gd` les calcule, a l'echelle `k`. */
+function arcPour(k: number): { gros: number; petit: number; arc: Array<{ droite: number; bas: number }>; boite: number } {
+  const gros = Math.round(THUMB.big * k)
+  const petit = Math.round(THUMB.small * k)
+  const orbite = THUMB.orbit * k
+  const pr = gros / 2
+  const sr = petit / 2
   const bord = pr - sr
-  const portee = Math.sqrt(Math.max(ORBITE * ORBITE - bord * bord, 0))
+  const portee = Math.sqrt(Math.max(orbite * orbite - bord * bord, 0))
   const debut = Math.atan2(bord, -portee)
   let fin = Math.atan2(-portee, bord)
   if (fin < debut) fin += Math.PI * 2
   const pas = (fin - debut) / 2
-  const out: Array<{ droite: number; bas: number }> = []
+  const arc: Array<{ droite: number; bas: number }> = []
   for (let i = 0; i < 3; i++) {
     const t = debut + pas * i
-    out.push({
-      droite: Math.round(pr - ORBITE * Math.cos(t) - sr),
-      bas: Math.round(pr - ORBITE * Math.sin(t) - sr)
+    arc.push({
+      droite: Math.round(pr - orbite * Math.cos(t) - sr),
+      bas: Math.round(pr - orbite * Math.sin(t) - sr)
     })
   }
-  return out
-})()
-
-/** Le carre qui contient le gros bouton et tout l'arc. */
-const ARC_BOITE = POUCE_GROS + Math.max(...ARC.map((p) => Math.max(p.droite, p.bas)))
+  const boite = gros + Math.max(...arc.map((p) => Math.max(p.droite, p.bas)))
+  return { gros, petit, arc, boite }
+}
 
 /** A handset, or the desktop preview asked to measure like one. */
 function phone(): boolean { return isMobile() || FORCE_MOBILE_LAYOUT }
@@ -1250,8 +1237,8 @@ const uiComponent = () => {
     ))}
 
     <Prechauffe />
-    <DesktopControls />
-    <PhoneControls />
+    
+    <PadControls />
     <WelcomePanel />
     <PrestigePanel />
     <FusionPanel />

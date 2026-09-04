@@ -1,7 +1,7 @@
 import { engine, Transform, AudioSource, Entity, InputAction } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { Color4 } from '@dcl/sdk/math'
-import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { UiEntity, Label } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN, RAD } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 
@@ -163,6 +163,8 @@ export const Pouce = (props: {
    * pad that changed shape (mobile tester's screenshot, 3 Sep).
    */
   disabled?: boolean
+  /** The key that does the same thing, shown on a small plate under the disc: a desktop reads it, a phone has none. */
+  touche?: string
 }) => {
   const d = props.taille
   const cle = `pouce|${props.icone}`
@@ -207,6 +209,19 @@ export const Pouce = (props: {
       <UiEntity
         uiTransform={{ width: Math.round(d * 0.56 * gonfle), height: Math.round(d * 0.56 * gonfle), positionType: 'absolute' }}
         uiBackground={{ texture: { src: `assets/ui/${icone}.png` }, textureMode: 'stretch' }} />
+      {props.touche !== undefined && (
+        <UiEntity
+          uiTransform={{
+            positionType: 'absolute', position: { bottom: -Math.round(d * 0.12) },
+            height: Math.round(d * 0.26), minWidth: Math.round(d * 0.36),
+            padding: { left: Math.round(d * 0.09), right: Math.round(d * 0.09) },
+            justifyContent: 'center', alignItems: 'center'
+          }}
+          uiBackground={{ color: C.plate }}
+        >
+          <Label value={props.touche} fontSize={Math.round(d * 0.2)} color={Color4.White()} textAlign="middle-center" textWrap="nowrap" />
+        </UiEntity>
+      )}
       {props.badge === true && (
         <UiEntity
           uiTransform={{
