@@ -3,12 +3,12 @@ import {
   engine, Transform, MeshRenderer, Material, TextShape, Billboard, BillboardMode, Entity, GltfContainer,
   InputAction, inputSystem, PointerEventType, AudioSource, Tween, TweenSequence, TweenLoop,
   EasingFunction, AvatarAttach, AvatarAnchorPointType, PlayerIdentityData, CameraMode,
-  CameraType, CameraModeArea, AvatarMask, timers, PointerLock
+  CameraType, CameraModeArea, AvatarMask, timers, PointerLock, MaterialTransparencyMode
 } from '@dcl/sdk/ecs'
 import { triggerSceneEmote, stopEmote } from '~system/RestrictedActions'
 import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
-import { Color4, Vector3, Quaternion } from '@dcl/sdk/math'
+import { Color4, Color3, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
 import { gearView, tirerLaCape } from './gear'
 import { raidView } from './raid'
@@ -67,7 +67,8 @@ const ARME_INT: Record<ArmeType, number> = { shoot: 0, slap: 1, taser: 2 }
 const INT_ARME: ArmeType[] = ['shoot', 'slap', 'taser']
 
 const OR = Color4.fromHexString('#ffd166ff')
-const FLASH = Color4.fromHexString('#ffe9a8ff')
+/** The muzzle flash sprite: a spiky star, white core, orange fringe (tools/ui/build-flash.py). */
+const FLASH_TEXTURE = 'assets/ui/flash.png'
 
 const MODELE = 'assets/Models/gun.glb'
 /**
@@ -150,9 +151,16 @@ let flash = 0 as unknown as Entity
 let moi = ''
 let dernierTir = 0
 let flashScale = 0
-/** The muzzle flash: its peak diameter in metres, and how long it takes to vanish. */
-const FLASH_PEAK = 0.16
-const FLASH_LIFE_S = 0.05
+/** This shot's peak: the star is never the same size twice. */
+let flashPeak = 0
+/**
+  The muzzle flash: the star's width in metres at its peak, and how long it takes to
+  shrink away. Big on the frame of the shot, half on the next, gone on the third: the
+  way a real flash reads, and enough to hide the seam where the streak leaves the barrel
+  while the gun is already kicking.
+*/
+const FLASH_PEAK = 0.30
+const FLASH_LIFE_S = 0.07
 let zoneVisee: Entity | null = null
 let viewVisibleAfter = 0
 let dernierClipTir = 0
@@ -286,10 +294,35 @@ export function setupCombat(): void {
   vue = construireArme(ancre, Vector3.Zero(), Quaternion.Identity())
   montrer(vue, false)
 
+  /*
+    The flash was a plain emissive sphere, then a smaller one; a ball is not what a gun
+    draws (owner, 4 Sep: "small and discreet is not juicy"). What every mobile shooter
+    draws instead, particles or not: a spiky star sprite at the barrel's mouth, one or
+    two frames, a different roll and size each shot. Two quads facing the shooter, the
+    second smaller and turned, so the star has body; the holder carries the roll.
+  */
   flash = engine.addEntity()
   Transform.create(flash, { parent: vue.poignee, position: BOUCHE, scale: Vector3.Zero() })
-  MeshRenderer.setSphere(flash)
-  Material.setPbrMaterial(flash, plasticDe(FLASH, 5))
+  const petales: Array<[number, number, number]> = [[0, 1, 3.6], [45, 0.62, 2.6]]
+  petales.forEach(([roll, size, glow], i) => {
+    const q = engine.addEntity()
+    Transform.create(q, {
+      parent: flash,
+      position: Vector3.create(0, 0, 0.015 * i),
+      rotation: Quaternion.fromEulerDegrees(0, 0, roll),
+      scale: Vector3.create(size, size, 1)
+    })
+    MeshRenderer.setPlane(q)
+    Material.setPbrMaterial(q, {
+      texture: Material.Texture.Common({ src: FLASH_TEXTURE }),
+      emissiveTexture: Material.Texture.Common({ src: FLASH_TEXTURE }),
+      albedoColor: Color4.White(),
+      emissiveColor: Color3.White(),
+      emissiveIntensity: glow,
+      metallic: 0, roughness: 1, specularIntensity: 0,
+      transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND, castShadows: false
+    })
+  })
 
   /*
     A report of its own. The gun fired the crate-smash clip at half volume: a shot sounded
@@ -429,6 +462,16 @@ function placeFlash(scale: number): void {
   const t = Transform.getMutableOrNull(flash)
   if (t !== null) t.scale = Vector3.create(scale, scale, scale)
 }
+/** A new star each shot: random roll, size between 85 and 115 percent of the peak. */
+function allumerFlash(): void {
+  flashPeak = FLASH_PEAK * (0.85 + Math.random() * 0.3)
+  flashScale = flashPeak
+  const t = Transform.getMutableOrNull(flash)
+  if (t !== null) {
+    t.rotation = Quaternion.fromEulerDegrees(0, 0, Math.random() * 360)
+    t.scale = Vector3.create(flashScale, flashScale, flashScale)
+  }
+}
 
 /**
  * Aim, fire, and what the reticle is allowed to claim.
@@ -543,7 +586,7 @@ function gunSystem(dt: number): void {
   }
 
   if (flashScale > 0) {
-    flashScale = Math.max(0, flashScale - dt * FLASH_PEAK / FLASH_LIFE_S)
+    flashScale = Math.max(0, flashScale - dt * flashPeak / FLASH_LIFE_S)
     placeFlash(flashScale)
   }
 
@@ -733,53 +776,34 @@ function tirer(now: number): boolean {
 
   // A gun flashes and cracks; a melee weapon swings. No bullets out of a paddle (tester, 28 Aug).
   const gun = armeEnMain() === 'shoot'
-  /*
-    A muzzle flash is a spark, not a ball. It was a half-metre sphere fading over a quarter
-    of a second, which in first person filled the view and trailed behind the tracer: "a big
-    slow ball" (owner, 4 Sep). Sixteen centimetres, gone in fifty milliseconds: two or three
-    frames, the way a real flash reads, and the tracer keeps the line.
-  */
-  flashScale = gun ? FLASH_PEAK : 0
-  placeFlash(flashScale)
+  if (gun) allumerFlash(); else { flashScale = 0; placeFlash(0) }
   recul = 1
   combatView.lastShotAt = now
   /*
-    The tracer: the streak every mobile shooter draws between muzzle and aim. A thin emissive
-    box laid along the camera ray for seventy milliseconds, from a pool of three, so holding
-    the trigger reads as a line of fire and a miss still SHOWS where the round went.
+    The tracer: a streak that FLIES, from the muzzle to where the reticle points. It was a
+    line laid once along the aim ray for seventy milliseconds: it left the eye instead of
+    the barrel, then stayed behind a player on the move, then ran straight while the gun
+    kicked twenty degrees up on the same frame, so the gun fired "sideways" from its own
+    trail (owner, 4 Sep, three reports). A bolt that leaves the muzzle at seventy metres a
+    second is out of the barrel before the kick shows, ends on the target the reticle
+    claims with a burst there, and dies at range on a miss so the miss still SHOWS.
   */
   if (gun && cam !== null) {
-    /*
-      From the MUZZLE, not from the eye, and RIDING the camera. The streak used to leave the
-      camera's centre, a hand below it, so it read as fired from the player's face; then it
-      was placed once in world space, so a player on the move saw it leave where the muzzle
-      WAS at the tap, not where it is (owner, 4 Sep). In first person the streak is now a
-      child of the camera, laid in camera space from the muzzle (the view model's live
-      position plus the muzzle offset) to the far end of the aim ray, so for its seventy
-      milliseconds it moves with the gun. In third person it stays a world-space streak.
-    */
     const long = SHOT_RANGE * 0.9
-    const t = traceurs[traceurSuivant]
-    traceurSuivant = (traceurSuivant + 1) % traceurs.length
-    const tt = Transform.getMutableOrNull(t.e)
-    if (tt !== null) {
-      const anchor = combatView.firstPerson && vue !== null ? Transform.getOrNull(vue.racine) : null
-      if (anchor !== null) {
-        const debut = Vector3.add(anchor.position, BOUCHE)
-        const trait = Vector3.create(-debut.x, -debut.y, long - debut.z)
-        tt.parent = engine.CameraEntity
-        tt.position = Vector3.create(debut.x + trait.x / 2, debut.y + trait.y / 2, debut.z + trait.z / 2)
-        tt.rotation = Quaternion.lookRotation(Vector3.normalize(trait), Vector3.Up())
-        tt.scale = Vector3.create(0.025, 0.025, Vector3.length(trait))
-      } else {
-        const debut = Vector3.create(cam.position.x + f.x * 0.7, cam.position.y - 0.12 + f.y * 0.7, cam.position.z + f.z * 0.7)
-        tt.parent = engine.RootEntity
-        tt.position = Vector3.create(debut.x + f.x * long / 2, debut.y + f.y * long / 2, debut.z + f.z * long / 2)
-        tt.rotation = cam.rotation
-        tt.scale = Vector3.create(0.025, 0.025, long)
-      }
+    const fin = Vector3.create(cam.position.x + f.x * long, cam.position.y + f.y * long, cam.position.z + f.z * long)
+    const anchor = combatView.firstPerson && vue !== null ? Transform.getOrNull(vue.racine) : null
+    const debut = anchor !== null
+      ? Vector3.add(cam.position, Vector3.rotate(Vector3.add(anchor.position, BOUCHE), cam.rotation))
+      : Vector3.create(cam.position.x + f.x * 0.7, cam.position.y - 0.12 + f.y * 0.7, cam.position.z + f.z * 0.7)
+    const trait = Vector3.subtract(fin, debut)
+    const portee = Vector3.length(trait)
+    if (portee > 0.01) {
+      const cible = combatView.aiming && combatView.targetDist > 0
+      // The reticle's distance is player-to-target on the ground; the muzzle sits ahead of
+      // the player and the burst belongs on the near face of the body, hence the trim.
+      const bout = cible ? Math.min(portee, Math.max(0.5, combatView.targetDist - 0.6)) : portee
+      lancerTraceur(debut, Vector3.scale(trait, 1 / portee), bout, cible)
     }
-    t.until = now + 70
   }
   if (vue !== null) {
     const s = AudioSource.getMutableOrNull(vue.racine)
@@ -788,25 +812,59 @@ function tirer(now: number): boolean {
   return true
 }
 
-/** The tracer pool: three streaks, reused round-robin, hidden by scale when their time is up. */
-const traceurs: Array<{ e: Entity; until: number }> = []
+/** The bolt: metres per second, its length, and how far out of the muzzle it is drawn on the frame of the shot. */
+const TRACER_SPEED = 70
+const TRACER_LENGTH = 1.6
+const TRACER_HEAD_START = 0.9
+/** The burst where a bolt lands, in the flash's own colour. */
+const IMPACT_HEX = '#ffe9a8'
+const IMPACT_SIZE = 0.55
+type Tracer = { e: Entity; origin: Vector3; dir: Vector3; at: number; end: number; impact: boolean }
+/** The tracer pool: four bolts in flight at most (four rounds a second, a third of a second each), reused round-robin. */
+const traceurs: Tracer[] = []
 let traceurSuivant = 0
 function creerTraceurs(): void {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const e = engine.addEntity()
     Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
     MeshRenderer.setBox(e)
     Material.setPbrMaterial(e, plasticDe(Color4.create(1, 0.85, 0.45, 1), 3))
-    traceurs.push({ e, until: 0 })
+    traceurs.push({ e, origin: Vector3.Zero(), dir: Vector3.Forward(), at: 0, end: 0, impact: false })
   }
+}
+/** Lay the bolt with its head `head` metres along its path; the tail never goes back into the muzzle. */
+function poserTraceur(t: Tracer, tt: { position: Vector3; scale: Vector3 }, head: number): void {
+  const tail = Math.max(0, head - TRACER_LENGTH)
+  const mid = (head + tail) / 2
+  tt.position = Vector3.create(t.origin.x + t.dir.x * mid, t.origin.y + t.dir.y * mid, t.origin.z + t.dir.z * mid)
+  tt.scale = Vector3.create(0.025, 0.025, head - tail)
+}
+function lancerTraceur(origin: Vector3, dir: Vector3, end: number, impact: boolean): void {
+  const t = traceurs[traceurSuivant]
+  traceurSuivant = (traceurSuivant + 1) % traceurs.length
+  t.origin = origin
+  t.dir = dir
+  t.at = Date.now()
+  t.end = end
+  t.impact = impact
+  const tt = Transform.getMutableOrNull(t.e)
+  if (tt === null) { t.at = 0; return }
+  const up = Math.abs(dir.y) > 0.99 ? Vector3.Forward() : Vector3.Up()
+  tt.rotation = Quaternion.lookRotation(dir, up)
+  poserTraceur(t, tt, Math.min(TRACER_HEAD_START, end))
 }
 function traceurSystem(): void {
   const now = Date.now()
   for (const t of traceurs) {
-    if (t.until !== 0 && now > t.until) {
-      t.until = 0
-      const tt = Transform.getMutableOrNull(t.e)
-      if (tt !== null) tt.scale = Vector3.Zero()
+    if (t.at === 0) continue
+    const tt = Transform.getMutableOrNull(t.e)
+    if (tt === null) { t.at = 0; continue }
+    const head = TRACER_HEAD_START + (now - t.at) / 1000 * TRACER_SPEED
+    if (head < t.end) { poserTraceur(t, tt, head); continue }
+    t.at = 0
+    tt.scale = Vector3.Zero()
+    if (t.impact) {
+      puff(Vector3.create(t.origin.x + t.dir.x * t.end, t.origin.y + t.dir.y * t.end, t.origin.z + t.dir.z * t.end), IMPACT_HEX, IMPACT_SIZE)
     }
   }
 }

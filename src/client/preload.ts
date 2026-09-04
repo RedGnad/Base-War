@@ -20,7 +20,9 @@ const FIRST_MINUTE: string[] = [
   'assets/Models/storey-ground.glb', 'assets/Models/storey-upper.glb', 'assets/Models/glass.glb',
   'assets/Models/accent-0.glb', 'assets/Models/climb-0.glb',
   ...CRATES.map((_, i) => `assets/toy/crate-${i}.glb`),
-  ...[0, 1, 2, 3, 4, 5].map((r) => `assets/toy/item-${r}.glb`)
+  ...[0, 1, 2, 3, 4, 5].map((r) => `assets/toy/item-${r}.glb`),
+  // The muzzle flash sprite: the first shot must not draw a blank quad while it loads.
+  'assets/ui/flash.png'
 ]
 
 export function setupPreload(): void {
