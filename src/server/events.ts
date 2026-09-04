@@ -30,7 +30,9 @@ export function tempoDuTapis(): number { return grandEnCours ? GRAND_TEMPO : 1 }
 function prochainGrand(apres: number): number {
   const d = new Date(apres)
   const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), GRAND_RUSH_UTC_HOUR, 0, 0, 0)
-  return t > apres ? t : t + 86_400_000
+  // Today's slot while its window is still open, so a server booting at 20:01 for a 20:00 rush
+  // opens it late rather than skipping to tomorrow.
+  return apres < t + GRAND_MS ? t : t + 86_400_000
 }
 
 type Clock = ReturnType<typeof engine.addEntity>
