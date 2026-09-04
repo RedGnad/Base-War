@@ -328,7 +328,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
-    const sentry = place(x - c / 2 + SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET)
+    const sentry = place(x + ASC_X, y + 1.2, z + ASC_Z)
     return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
   }
 
@@ -375,7 +375,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const sentry = engine.addEntity()
   Transform.create(sentry, {
     parent: parentCourant ?? undefined,
-    position: Vector3.create(x - c / 2 + SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET),
+    position: Vector3.create(x + ASC_X, y + 1.2, z + ASC_Z),
     scale: Vector3.create(0, 0, 0)
   })
   // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armSentry`.
@@ -461,16 +461,16 @@ function expulser(base: Vector3, floors: number): void {
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
 /**
- * The sentry's largest scale and its distance from the two walls of its corner. At 1.4 the
- * cone is 1.4 m tall on a 0.63 m foot; set 1.4 m from the wall line it clears the walls.
+ * The sentry's largest scale. At 1.4 the cone is 1.4 m tall on a 0.63 m foot, which clears
+ * the walls from the elevator's square (1.1 m from each).
  *
- * The corner is the BACK-LEFT one. It stood in the back-right, which is the elevator's own
- * square (ASC_X, ASC_Z): the turret and the cabin drew through each other, neither clearly
- * its own thing nor clearly one (owner, 4 Sep). The stairwell and elevator own the +x band,
- * the shelves the middle, the lock post the front-left; the back-left was the free square.
+ * The cone stands ON the elevator column (ASC_X, ASC_Z), a collar around its foot on each
+ * defended storey. It went to the free back-left corner for a day, and alone in a corner an
+ * abstract cone was read as one more toy from the shelves in the middle (owner, 4 Sep).
+ * Wrapped around the column it is part of the building's machinery, which is what a
+ * defence is, and the column tells which storey is guarded at a glance.
  */
 const SENTRY_SCALE_MAX = 1.4
-const SENTRY_INSET = 1.4
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
 const FLOAT_AMPLITUDE = 0.22
