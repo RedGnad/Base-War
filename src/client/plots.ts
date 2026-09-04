@@ -227,7 +227,7 @@ function collisionneur(x: number, y: number, z: number, sx: number, sy: number, 
 /** Sa propre base et celles a portee de main restent completes, budget ou non. */
 // The base you can rob from where you stand, and yours: full whatever the budget. It was 24 m,
 // which on the free grid could force five or six full bases at once, more than the budget holds.
-const LOD_TOUJOURS_PRES = STEAL_RANGE
+const LOD_TOUJOURS_PRES = STEAL_RANGE + 4
 /** A base already drawn in full keeps it while the budget is short by less than this: no flapping. */
 const LOD_SLACK = 12
 /** Une base deja complete compte comme un peu plus proche: sans ca elle clignoterait au seuil. */
@@ -306,7 +306,8 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const rampeX = STAIRWELL_WIDTH - 0.3
 
   const coque = modele(floor === 0 ? 'storey-ground.glb' : 'storey-upper.glb', y)
-  const verre = modele(mods.verre, y, !loin)
+  // A far base keeps its glass: without it a silhouette read as a building that had not loaded (owner, 5 Sep).
+  const verre = modele(mods.verre, y)
   const accent = modele(mods.accent, y)
   /*
     La rampe qu'on VOIT est le collisionneur qu'on GRAVIT. Le meme objet, pas deux.

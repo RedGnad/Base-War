@@ -52,10 +52,12 @@ function poser(
     const floors = 1 + alea(4)
     const items: number[] = []
     for (let k = 0; k < floors * 6; k++) items.push(Math.random() < 0.85 ? encoder(alea(5), alea(3) === 0 ? 1 + alea(5) : 0) : -1)
+    // Armed storeys draw a cone each: half the storeys of a fake carry charges.
+    const sentryFloors = Array.from({ length: floors }, () => (alea(2) === 0 ? 1 + alea(20) : 0))
     Plot.create(e, {
       floors, rebirths: alea(4), index: 1000 + n, ownerId: `stress-${n}`, ownerName: `Bot ${n}`,
       items, ownerPresent: false, given: 0, received: 0, skin: alea(3) === 0 ? 1 + alea(5) : 0,
-      sentries: 0, sentryFloors: [], lockedUntil: 0
+      sentries: sentryFloors.reduce((a, b) => a + b, 0), sentryFloors, lockedUntil: 0
     })
     n += 1
   }

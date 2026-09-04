@@ -850,9 +850,9 @@ export const OBJECT_BUDGET = 385
 export const DECOR_COST = 145
 /** Socle, porte, plaque, enseigne, ascenseur: ce qu'une base porte quelle que soit sa hauteur. */
 export const BASE_FIXED_COST = 4
-/** Un etage complet: coque, accent, verre, montee. Reduit: coque et accent seuls. */
+/** Un etage complet: coque, accent, verre, montee. Reduit: coque, accent et verre. */
 export const STOREY_COST_NEAR = 4
-export const STOREY_COST_FAR = 2
+export const STOREY_COST_FAR = 3
 /** Une piece exposee: son modele et sa forme de rarete. */
 export const ITEM_COST = 2
 
