@@ -23,8 +23,8 @@ The first five steps are the in-game tutorial, in its order.
 3. **Put it on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
 4. **Hit the belt.** Crates roll past and fall off the end. Yours walks home on its own, and
    anyone can outbid you on the way.
-5. **Rob a base.** Hold on a neighbour's item, run it home. They get the alert the moment you
-   touch it. The way out is a shootout.
+5. **Rob a base.** Tap a neighbour's item, stay put while the bar fills, run it home. They get
+   the alert the moment you touch it. The way out is a shootout.
 6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser, bomb.
 7. **Grow.** Twelve storeys, fusion, luck, skins, prestige, quests, daily rewards, a world
    leaderboard.
@@ -35,7 +35,7 @@ The first five steps are the in-game tutorial, in its order.
 
 - One thumb plays the whole game: one action button, and its glyph shows what it will do.
 - The pad is measured on the mobile explorer's own controls, jump and glider glyphs included.
-- Risky moves (steal, fuse) are holds, not taps. A stray touch costs nothing.
+- A theft is one tap and a timer, not a held button: stay by the item and survive it.
 - Desktop gets the same pad, scaled up. Both platforms play the same game.
 
 ## Social by design
