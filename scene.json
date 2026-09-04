@@ -2,8 +2,8 @@
   "ecs7": true,
   "runtimeVersion": "7",
   "display": {
-    "title": "Base War",
-    "description": "How rich can you get before someone robs you? Smash crates, put your loot on show, and watch it earn while you're away. Arm a sentry, or go take theirs!",
+    "title": "Rob a Base",
+    "description": "How rich can you get before someone robs you? Smash crates, put your loot on show, and it earns while you're away. Lock your door, arm a sentry, or go rob theirs.",
     "navmapThumbnail": "images/base-war-thumbnail.png",
     "favicon": "favicon_asset"
   },
