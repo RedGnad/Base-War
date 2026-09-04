@@ -1158,18 +1158,7 @@ export function setupPlots(): void {
           4 Sep: "I do not want this to be a hidden bug"). What the client draws and what the
           sign says now come from the same array, so they cannot disagree quietly.
         */
-        /*
-          A question mark after a count means "charges here, but no cone drawn on this
-          storey": the sign reads the cone's own mesh, so a storey whose defence exists in
-          the data and not on the floor says so on the wall instead of hiding (owner, 4 Sep:
-          "the first storey's defence does not appear, and I want no hidden bug").
-        */
-        const parEtage = Array.from({ length: p.floors }, (_, e) => {
-          const n = p.sentryFloors[e] ?? 0
-          const s = v.floors[e]?.sentry
-          const dessine = s !== undefined && MeshRenderer.has(s) && (Transform.getOrNull(s)?.scale.x ?? 0) > 0
-          return n > 0 && !dessine && !v.loin ? `${n}?` : `${n}`
-        })
+        const parEtage = Array.from({ length: p.floors }, (_, e) => p.sentryFloors[e] ?? 0)
         const guard = p.sentries > 0 ? `\nSENTRY ${parEtage.join(' \u00b7 ')}` : ''
         if (structurel) {
           // One marker per storey, sized by what that storey holds. An empty floor shows
