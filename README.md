@@ -57,7 +57,7 @@ The first five steps are the in-game tutorial, in its order.
 
 ## A full world
 
-- **Fair placement of bases.** If the chosen square was just taken, the server places the
+- **Bases fair placement.** If the chosen square was just taken, the server places the
   base on the nearest free square and says so. Never a refusal.
 - **Room is an object budget.** The phone renders about 400 objects; the
   server keeps a ledger of 385, each base charged what it really costs. When the ledger is
