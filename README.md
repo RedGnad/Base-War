@@ -2,152 +2,107 @@
 
 ![Rob a Base](images/base-war-thumbnail.png)
 
-**How rich can you get before someone robs you?** Smash crates, put your loot on show, and
-it earns while you are away. Lock your door, arm a sentry, or go rob theirs.
+**How rich can you get before someone robs you?**
 
-A multiplayer tycoon-theft game for the Decentraland mobile app, built for the Friendzone
-Mobile Buildathon 2026. World: `basewar.dcl.eth`.
+Smash crates, put your loot on show, and it earns while you are away. Lock your door, arm a
+sentry, or go rob theirs. A multiplayer tycoon-theft game for the Decentraland mobile app,
+built for the Friendzone Mobile Buildathon 2026. World: `basewar.dcl.eth`.
 
-| Play it | Link |
+| Play | Link |
 |---|---|
 | Phone (Decentraland mobile app) | https://mobile.dclexplorer.com/open?realm=basewar.dcl.eth |
-| Desktop (Decentraland launcher) | https://decentraland.org/jump?realm=basewar.dcl.eth |
-| Public listing | https://decentraland.org/places/world/?name=basewar.dcl.eth |
+| Desktop | https://decentraland.org/jump?realm=basewar.dcl.eth |
+| Listing | https://decentraland.org/places/world/?name=basewar.dcl.eth |
 
 ## The loop
 
 The first five steps are the in-game tutorial, in its order.
 
-1. **Place your base.** One tap on the green ground in front of the belt, and a starter crate
-   is already waiting for you.
-2. **Smash it.** Three hits and out comes your first item. Seven rarities, fourteen mutations,
-   a whole collection to complete.
-3. **Put it on show.** Everything on display earns, whether you are playing or asleep. Come
-   back to a pool of coins and tap COLLECT.
-4. **Hit the belt.** Crates roll past and fall off the end if nobody grabs them. Yours walks
-   home on its own, and anyone can outbid you for it on the way. Rushes bring themed crates.
-5. **Rob a base.** Walk into a neighbour's, hold on an item, run it home. They get the alert
-   the moment you touch it, and the way out is a shootout.
-6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser,
-   bomb. A visit becomes a fight.
-7. **Grow.** Twelve storeys, fusion into rarer items, luck, skins, prestige that resets the
-   base for a permanent edge, quests, daily rewards, a world leaderboard.
+1. **Place your base.** One tap on the green ground. A starter crate is already waiting.
+2. **Smash it.** Three hits, out comes your first item. Seven rarities, fourteen mutations.
+3. **Put it on show.** It earns while you play and while you sleep. Come back, tap COLLECT.
+4. **Hit the belt.** Crates roll past and fall off the end. Yours walks home on its own, and
+   anyone can outbid you on the way.
+5. **Rob a base.** Hold on a neighbour's item, run it home. They get the alert the moment you
+   touch it. The way out is a shootout.
+6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser, bomb.
+7. **Grow.** Twelve storeys, fusion, luck, skins, prestige, quests, daily rewards, a world
+   leaderboard.
 8. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, a boss on
-   the plaza, raids on other players' bases.
+   the plaza, raids on other bases.
 
-Everything above is live in the world and served by one authoritative server: all state, loot
-rolls, prices, distances and anti-cheat checks run headless, clients only send intent.
+## Mobile first
 
-## For judges
+- One thumb plays the whole game: one action button, and its glyph shows what it will do.
+- The pad is measured on the mobile explorer's own controls, jump and glider glyphs included.
+- Risky moves (steal, fuse) are holds, not taps. A stray touch costs nothing.
+- Desktop gets the same pad, scaled up. Both platforms play the same game.
 
-The three explanations the Buildathon asks for, as answers, then the question every tycoon
-world has to answer: what happens when it is full.
+## Social by design
 
-**Designed for mobile.** One thumb plays the whole game. A single action button does whatever
-is in front of you (buy, smash, rob, lock, place, fuse) and its glyph tells you which before
-you press. The pad is laid out from measurements of the mobile explorer's own controls, with
-its own jump and glider pictures, so nothing has to be learned twice. The risky moves, a
-theft or a fusion, are holds rather than taps, so a stray touch costs nothing. Every crate,
-door, sign and rush is readable at phone size, and the desktop HUD is the same pad scaled
-up, so both platforms play the same game.
+- Everything on show can be stolen. The owner is alerted by name. Leaving is a shootout.
+- Any crate on its way home can be outbid by anyone watching the belt.
+- Gift a base, or rob it.
+- Sentry shots, door seals and rush calls are seen and heard by everyone on the plaza.
+- Company pays: each player present raises everyone's income, up to 60 %.
+- Owner names on every base sign, one leaderboard for the world.
 
-**Encourages social interaction.** Nothing on show is safe: any item can be carried away by
-another player, the owner is alerted with the thief's name, and the way out is a shootout.
-A crate walking to someone's base can be outbid by anyone watching the belt. You can leave a
-gift on a base as well as rob it. Sentry shots, door seals and rush calls are seen and heard
-by everyone on the plaza, base signs carry each owner's name and prestige, and the
-leaderboard ranks the whole world. Company pays: every other player present raises your
-income, up to 60 %.
+## Why players come back
 
-**Why players come back.** Leaving is a decision, not an exit: your base keeps earning for
-hours after you leave and the welcome-back screen pays it out, while your loot
-stays a target for everyone else. A daily reward on a seven-day cycle, quests, a grand rush
-at the same UTC hour every day, prestige tiers that reset the base for a permanent
-multiplier, twelve storeys to unlock and a collection index of every rarity and mutation
-each give a reason to open the app again.
+- The base earns for hours after you leave, and the welcome-back screen pays it out.
+- Your loot stays a target while you are gone. Check on it.
+- Daily reward on a seven-day cycle, quests, the grand rush at the same hour every day.
+- Prestige resets the base for a permanent edge. Twelve storeys and a full collection to earn.
 
-### A full world
+## A full world
 
-**A newcomer always gets a base.** The ground shows where a base can stand, and if the chosen
-square was taken in the half second before the tap, the server places the base on the
-nearest legal square and says so, instead of refusing. New bases start on sixteen spots
-along two streets facing the belt, then on any free square of the grid. A welcome crate
-arrives after ten minutes of play, with a bar that shows it coming.
+- **A newcomer always gets a base.** If the chosen square was just taken, the server places the
+  base on the nearest free square and says so. Never a refusal.
+- **Room is an object budget, not a head count.** The phone renders about 400 objects; the
+  server keeps a ledger of 385, each base charged what it really costs. When the ledger is
+  full, the base of the player absent for longest steps off the field: nothing lost, it stops
+  earning, it stands again on their return. A player who is present is never removed.
+- **Detail follows the same budget.** Nearest bases in full, far ones as silhouettes, yours
+  always full. A storey is 4 merged meshes instead of 23 objects; item models are shared.
+  Measured on the mobile client, not estimated.
 
-**Room is a budget, not a head count.** The phone renders about four hundred objects before
-it degrades, so the server keeps a ledger of 385: 145 for the plaza and its decor, the rest
-for bases, each charged what it really costs (a one-storey base 6, a twelve-storey tower 28).
-When a newcomer needs room and the ledger is full, the base of the player absent for longest
-steps off the field. Nothing is lost: it stays stored with its items, storeys and prestige,
-stops earning while it is off the field, and stands again on the owner's return. A player
-who is present is never removed; if everyone present fills the ledger, placing a base or
-buying a storey is refused and the coins are not taken. Bases unseen for a week stay stored
-but no longer occupy the ground.
+## Verify in sixty seconds
 
-**Drawing a street of towers on a phone.** The same ledger picks the level of detail: the
-nearest bases are drawn in full, items included, the rest as a silhouette with its height and
-colour, and your own base and any within reach are always full. A storey is four merged
-meshes instead of twenty-three objects, collisions stay on invisible boxes, sixty bases
-share one copy of each item model, and every effect is geometry or a textured quad. The
-numbers come from measurements on the mobile client (2 Sep): decor alone 160 objects,
-sixteen full bases 530, a full base about 49, a distant one about 8.
+- Open the phone link. No setup beyond the app itself.
+- `1 MENU` shows a four-character build stamp: the deployed commit, compare with `git log`.
+- `images/base-war-thumbnail.png` is byte-identical to what the Worlds content server serves.
+- Live server logs: `npm run server-logs -- --world basewar.dcl.eth`.
 
-### Verify in sixty seconds
+## Under the hood
 
-- Open the phone link above; the world loads without any account setup beyond the app's own.
-- The four-character build stamp in `1 MENU` is the deployed commit; compare it with `git log`.
-- `images/base-war-thumbnail.png` in this repository is byte-identical to the thumbnail the
-  Worlds content server serves for `basewar.dcl.eth`.
-- Server logs of the live world: `npm run server-logs -- --world basewar.dcl.eth` (wallet
-  listed in `scene.json` `logsPermissions`).
-
-## Architecture
-
-Decentraland SDK7 with the **multiplayer server** branch (`@dcl/sdk@auth-server`): one
-codebase, `isServer()` branching, the server runs headless on Decentraland's infrastructure
-and persists to Decentraland `Storage`. No private backend, no external service.
-
-- 94 message types between client and server, 31 server-side handlers, 13 validators on
-  synced components so a client can never write server-owned state.
-- Clients never send a price, a roll or a position that matters: the server measures
-  distances itself from `PlayerIdentityData`.
-- Coins and prices are `Int64`; working state lives in memory and is persisted at
-  checkpoints, because storage writes are capped and the isolate has a 256 MB ceiling.
-- About 19,700 lines of TypeScript; CI builds every push (`.github/workflows/ci.yml`).
+- Decentraland SDK7, multiplayer server branch (`@dcl/sdk@auth-server`). One codebase, the
+  server runs headless on Decentraland's infrastructure, state in Decentraland `Storage`.
+  No private backend.
+- The server is authoritative: every roll, price, distance and theft is decided server-side.
+  Clients only send intent.
+- 94 message types, 31 server handlers, 13 validators on synced components, about 19,700
+  lines of TypeScript, CI on every push.
+- Every model, sound, texture, icon and avatar clip in `assets/` is generated by a script in
+  `tools/`, except the pistol (open Decentraland catalog) and two joypad glyphs (`NOTICE.md`).
 
 ```
 src/
-  index.ts        entry point, server/client branching
-  shared/         synced components, messages, economy, loot table, quests (both sides)
-  server/         belt, convoys, loot, theft, combat, gear, fusion, raids, events, records
-  client/         rendering, input pad, HUD, plots, combat feel, toys, preload
-tools/            generators for every model, sound, texture, icon and emote in assets/
+  index.ts    entry point, server/client branching
+  shared/     synced components, messages, economy, loot table, quests
+  server/     belt, convoys, loot, theft, combat, gear, fusion, raids, events, records
+  client/     rendering, input pad, HUD, plots, combat feel, toys, preload
+tools/        generators for every asset, deploy and duo scripts, economy simulator
 ```
 
-`src/shared/economy.ts` holds every economic constant in one place, with the reasoning next
-to each number. `tools/economy/sim.js` replays the whole progression.
-
-Every model, sound, texture, icon and avatar clip in `assets/` is built by a script in
-`tools/`, apart from the pistol (open Decentraland model catalog) and two joypad glyphs
-(`NOTICE.md`): no third-party art, and every asset can be rebuilt from source.
-
-## Run it locally
+## Run it
 
 ```bash
 npm install
-npm run start
+npm run start        # local preview
+npm run duo          # two players, two identities, one server
+bash tools/deploy.sh # production build, build stamp, deploy to the world
 ```
-
-Two players locally, two identities, one server:
-
-```bash
-npm run duo
-```
-
-It kills any stale preview, starts one on port 8000 and opens two explorer windows against
-it. `npm run duo:reset` does the same after clearing scene storage. `bash tools/deploy.sh`
-builds for production, writes the build stamp and deploys to the world.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party attributions are listed in [NOTICE.md](NOTICE.md).
+MIT, see [LICENSE](LICENSE). Attributions in [NOTICE.md](NOTICE.md).
