@@ -18,23 +18,22 @@ Mobile Buildathon 2026. World: `basewar.dcl.eth`.
 
 The first five steps are the in-game tutorial, in its order.
 
-1. **Place your base.** Tap BUILD BASE and pick a spot on the green ground in front of the
-   belt: one tap, and a starter crate is already waiting on it.
-2. **Smash the crate**, three hits, to reveal an item: 7 rarities, 14 mutations.
-3. **Put it on show and collect.** Everything on display earns into a pool, tap COLLECT to bank
-   it. It keeps earning while you are away (35 % of your rate for up to four hours), paid out
-   on your next visit.
-4. **Buy crates on the belt** before they fall off its end. A bought crate walks to your base,
-   and anyone can outbid you for it at 150 % on the way. Rushes bring themed crates.
-5. **Rob a base.** Walk into someone else's, hold the action button on an item, carry it home.
-   The owner is alerted the moment you touch it and can shoot you down on the way out.
-6. **Defend yours.** A lock seals the door for a while (150 s recharge, only after use), a
-   sentry per storey blocks thieves and fires a tracer everyone sees and hears, and gear
-   (traps, cloak, taser, bomb) turns a visit into a fight.
-7. **Grow.** Up to 12 storeys of 6 slots, fusion of items into rarer ones, luck upgrades,
-   base skins, prestige (rebirth), quests, a seven-day daily reward, and a global leaderboard.
-8. **Show up for the rush.** A random rush on a timer, a grand rush at a fixed UTC hour every
-   day, a boss on the plaza, and raids on other players' bases.
+1. **Place your base.** One tap on the green ground in front of the belt, and a starter crate
+   is already waiting for you.
+2. **Smash it.** Three hits and out comes your first item. Seven rarities, fourteen mutations,
+   a whole collection to complete.
+3. **Put it on show.** Everything on display earns, whether you are playing or asleep. Come
+   back to a pool of coins and tap COLLECT.
+4. **Hit the belt.** Crates roll past and fall off the end if nobody grabs them. Yours walks
+   home on its own, and anyone can outbid you for it on the way. Rushes bring themed crates.
+5. **Rob a base.** Walk into a neighbour's, hold on an item, run it home. They get the alert
+   the moment you touch it, and the way out is a shootout.
+6. **Defend yours.** Lock the door, arm a sentry on every storey, lay traps, cloak, taser,
+   bomb. A visit becomes a fight.
+7. **Grow.** Twelve storeys, fusion into rarer items, luck, skins, prestige that resets the
+   base for a permanent edge, quests, daily rewards, a world leaderboard.
+8. **Show up for the rush.** Random rushes, a grand rush every day at the same hour, a boss on
+   the plaza, raids on other players' bases.
 
 Everything above is live in the world and served by one authoritative server: all state, loot
 rolls, prices, distances and anti-cheat checks run headless, clients only send intent.
@@ -58,10 +57,10 @@ A crate walking to someone's base can be outbid by anyone watching the belt. You
 gift on a base as well as rob it. Sentry shots, door seals and rush calls are seen and heard
 by everyone on the plaza, base signs carry each owner's name and prestige, and the
 leaderboard ranks the whole world. Company pays: every other player present raises your
-income by 15 %, up to 60 %.
+income, up to 60 %.
 
 **Why players come back.** Leaving is a decision, not an exit: your base keeps earning for
-four hours (at 35 % of your rate) and the welcome-back screen pays it out, while your loot
+hours after you leave and the welcome-back screen pays it out, while your loot
 stays a target for everyone else. A daily reward on a seven-day cycle, quests, a grand rush
 at the same UTC hour every day, prestige tiers that reset the base for a permanent
 multiplier, twelve storeys to unlock and a collection index of every rarity and mutation
