@@ -84,11 +84,15 @@ export function rushCardVisible(): boolean {
   return true
 }
 
-/** What the card says: the rush's name and colour, what its crates carry, and the time left. */
-export function rushInfo(): { name: string; color: string; toy: string; mult: number; leftS: number; grand: boolean } | null {
+/** The crate the running rush handed this player, named on the card; cleared with the rush. */
+const rushGift = { caisse: '', theme: -1 }
+
+/** What the card says: the rush's name and colour, what its crates carry, the time left, and the gift if one came. */
+export function rushInfo(): { name: string; color: string; toy: string; mult: number; leftS: number; grand: boolean; gift: string } | null {
   if (eventView.theme < 0) return null
   const m = mutation(eventView.theme)
-  return { name: eventView.name, color: eventView.color, toy: m.name.toUpperCase(), mult: m.mult, leftS: eventView.leftS, grand: eventView.grand }
+  const gift = rushGift.theme === eventView.theme && rushGift.caisse !== '' ? `a ${rushGift.caisse} for being here` : ''
+  return { name: eventView.name, color: eventView.color, toy: m.name.toUpperCase(), mult: m.mult, leftS: eventView.leftS, grand: eventView.grand, gift }
 }
 
 /** Seconds since the running rush began, or -1. The beacon and the flight read it. */
@@ -180,10 +184,18 @@ const JOUR_DE_BASE = 37_800
 const MAILLE_HERBE = 4
 
 export function setupEvents(): void {
+  /*
+    The rush's gift is told on the CARD, not in a toast. The toast repeated the rush's name
+    beside the chip and the card that already announce it: two announcements of one event
+    (owner, 4 Sep, "the old lava toast still shows"). The crate itself is in the pocket and
+    the crate count on the button says so; the card's last line names the gift while the
+    rush runs. A trait gained is a fact about ONE toy, rare, and keeps a short toast of its
+    own, without the rush's name in it.
+  */
   room.onMessage('rushGift', (d) => {
-    const caisse = CRATES[d.crateTier]?.name ?? 'crate'
-    const trait = d.code >= 0 ? `  ·  your ${nomDuCode(d.code)} gained a trait` : ''
-    alerterEnFile(`${d.grand ? 'GRAND ' : ''}${d.name}  ·  a ${caisse} for being here${trait}`, '#ffd166', TOAST.event)
+    rushGift.caisse = CRATES[d.crateTier]?.name ?? 'crate'
+    rushGift.theme = eventView.theme
+    if (d.code >= 0) alerterEnFile(`YOUR ${nomDuCode(d.code).toUpperCase()} GAINED A TRAIT`, '#ffd166', TOAST.result)
   })
 
   // A sound with the announcement: the HUD guidelines want timers to have an audio cue, and a

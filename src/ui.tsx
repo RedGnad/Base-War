@@ -1699,7 +1699,7 @@ const uiComponent = () => {
               uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
             <Label value={`belt crates drop ${r.toy} toys  ·  x${r.mult} income`} fontSize={TYPE.label} color={C.name}
               uiTransform={{ width: '100%', height: 34 }} textAlign="middle-left" textWrap="nowrap" />
-            <Label value={`${Math.floor(r.leftS / 60)}:${String(r.leftS % 60).padStart(2, '0')} left  ·  at the belt${r.grand ? '  ·  belt at double speed' : ''}`}
+            <Label value={`${Math.floor(r.leftS / 60)}:${String(r.leftS % 60).padStart(2, '0')} left  ·  at the belt${r.grand ? '  ·  belt at double speed' : ''}${r.gift !== '' ? `  ·  ${r.gift}` : ''}`}
               fontSize={TYPE.caption} color={C.dim}
               uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
           </UiEntity>
