@@ -563,6 +563,12 @@ async function loadBases(): Promise<void> {
       createBase(l.address, l.name, l.items, l.lastSeen, l.x, l.z, l.vitrine ?? VITRINE_VIDE)
     }
     log(`${loaded.length} of ${res.pagination.total} bases restored`)
+    // Each defended base's charges per storey, as restored: the one line that says whether a
+    // storey's defence survived a restart or was already gone in the record (owner, 4 Sep).
+    for (const l of loaded) {
+      const f = l.vitrine?.sentryFloors ?? []
+      if (f.some((n) => n > 0)) log(`restored ${l.name || l.address.slice(0, 8)}: floorsBought=${l.vitrine?.floorsBought ?? 0} sentryFloors=[${f.join(',')}]`)
+    }
 
     /*
       Bases saved before the shopfront existed are filled in from their owner's profile, once.
