@@ -1287,7 +1287,8 @@ export function setupPlots(): void {
         const padHex = r.glow >= LIGHT_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
         toyPedestal(ent, size, padHex)
         // Epic and up wear a crown of rays; a mutation lends it its colour.
-        toyRays(ent, size, rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : hex) : null)
+        toyRays(ent, v.racine, Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size + 0.35, d.dz),
+          rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : hex) : null)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         // Rarity drives the light; a trait is earned so it adds; a mutation does not (it is colour).
         const eclat = r.glow + 0.8 * traits

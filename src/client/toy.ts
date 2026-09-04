@@ -517,7 +517,7 @@ export function toyPedestal(parent: Entity, size: number, mutationHex: string | 
   })
   // The lit pad is an emissive material, not a light: it survives a Low preset, where scene
   // lights and bloom are both off, so a valuable toy always sits on a visible ring of colour.
-  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8))
+  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8 * glowLift(mutationHex)))
 }
 
 /*
@@ -558,18 +558,27 @@ export function spawnRays(parent: Entity, position: Vector3, diameter: number, h
   return holder
 }
 
-export function toyRays(parent: Entity, size: number, hex: string | null): void {
-  const cur = rayons.get(parent)
+/*
+  Keyed by the toy, parented to the BASE. The crown was a child of the toy's entity, and the
+  client outlines a hovered entity with its children: aim at the piece and a green square,
+  the crown's quad, appeared over it (owner, 4 Sep). Hung from the base's root at the pad's
+  position instead, it is not part of what the pointer hits, so nothing outlines it.
+*/
+export function toyRays(key: Entity, base: Entity, position: Vector3, hex: string | null): void {
+  const cur = rayons.get(key)
   if (hex === null) {
-    if (cur !== undefined) { engine.removeEntity(cur); rayons.delete(parent) }
+    if (cur !== undefined) { engine.removeEntity(cur); rayons.delete(key) }
     return
   }
-  if (cur !== undefined) return
-  // Child of a parent scaled by `size`: divide, so the crown keeps its world size.
-  rayons.set(parent, spawnRays(parent, Vector3.create(0, 0.5 + 0.3 / size, 0), RAYS_DIAMETER / size, hex, 1.6, 30))
+  if (cur !== undefined) {
+    const t = Transform.getMutableOrNull(cur)
+    if (t !== null) t.position = position
+    return
+  }
+  rayons.set(key, spawnRays(base, position, RAYS_DIAMETER, hex, 1.6 * glowLift(hex), 30))
 }
 
-export function clearRays(parent: Entity): void { toyRays(parent, 1, null) }
+export function clearRays(key: Entity): void { toyRays(key, key, Vector3.Zero(), null) }
 
 /*
   A piece that floats: the Secret hangs a hand above its pad and breathes up and down.
@@ -641,6 +650,21 @@ export const LIGHT_MIN_GLOW = 0.8     // Rare and above; a mutation adds 1 and l
 const AMPOULE = 16000                    // candela; the documentation's "average lightbulb"
 const lumieres = new Map<Entity, Entity>()
 
+/*
+  How much a hue's glow must be pushed to be SEEN as bright as a gold one.
+
+  `vif` gives every hue its channels at full stretch, but the eye weighs green far above
+  blue: a vivid purple at (0.85, 0.15, 1) has a third of the luminance of a gold at the
+  same intensity. So a Cursed Secret's floodlight, brighter in candela than an Epic's, read
+  dimmer (owner, 4 Sep). The lift is the inverse of the hue's relative luminance (Rec. 709
+  weights), capped so a near-black hue does not turn into a searchlight.
+*/
+export function glowLift(hex: string): number {
+  const c = vif(hex)
+  const y = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+  return Math.max(1, Math.min(2.6, 0.62 / Math.max(y, 0.05)))
+}
+
 /** A hue at full brightness: the colour with its largest channel pushed to 1. */
 export function vif(hex: string): Color4 {
   const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
@@ -705,7 +729,7 @@ function allumer(parent: Entity, hex: string, glow: number): void {
   LightSource.createOrReplace(e, {
     type: LightSource.Type.Point({}),
     color: Color3.create(c.r, c.g, c.b),
-    intensity: AMPOULE * Math.pow(glow, 1.5) * 0.5,
+    intensity: AMPOULE * Math.pow(glow, 1.5) * 0.5 * glowLift(hex),
     range: 0.8 + glow * 0.7,
     shadow: false
   })
