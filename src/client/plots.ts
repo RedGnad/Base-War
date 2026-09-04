@@ -465,6 +465,8 @@ const RAYS_MIN_RARITY = 4
 /** The skinned base's frame: the band hugs the plinth's edge and runs 1.4 m outward; the hole is the base. */
 const FRAME_SIDE = (BASE_SIDE + 1.6) / 0.78
 const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
+/** How close to the post the contextual button takes the lock over from the tap. */
+const LOCK_POST_REACH = 2.2
 let lockPost: Entity | null = null
 let lockEmblem: Entity | null = null
 let lockLine: Entity | null = null
@@ -472,6 +474,15 @@ let lockTap: Entity | null = null
 let lockParent: Entity | null = null
 let lockState = ''
 let lockLineText = ''
+let lockPostWorld: Vector3 | null = null
+
+/** Standing at the lock post, with the lock ready: the contextual button offers LOCK BASE. */
+export function lockPostInReach(): boolean {
+  if (lockPostWorld === null || lockState !== 'ready') return false
+  const moi = Transform.getOrNull(engine.PlayerEntity)
+  if (moi === null) return false
+  return Math.hypot(moi.position.x - lockPostWorld.x, moi.position.z - lockPostWorld.z) <= LOCK_POST_REACH
+}
 
 function mmss(s: number): string { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
@@ -479,12 +490,20 @@ function tenirLePave(racine: Entity, lockedUntil: number): void {
   const now = Date.now()
   if (lockPost === null || lockParent !== racine) {
     for (const e of [lockPost, lockEmblem, lockLine, lockTap]) if (e !== null) engine.removeEntity(e)
+    lockPostWorld = null
     lockParent = racine
     lockState = ''
     lockLineText = ''
+    /*
+      In the front corner away from the stairwell: the stairwell and the elevator take the
+      +x side, the pedestals the middle, the doorway the centre of +z. This corner is the
+      one square nothing else uses, and it is the first thing met after the door (owner,
+      4 Sep: "a corner not used by the elevator").
+    */
     const rt = Transform.getOrNull(racine)
-    const o = orientToBase(rt?.position.z ?? 0, 0, BASE_SIDE / 2 - 2.2)
+    const o = orientToBase(rt?.position.z ?? 0, -BASE_SIDE / 2 + 1.3, BASE_SIDE / 2 - 1.3)
     const y = SLAB_THICKNESS
+    lockPostWorld = rt === null ? null : Vector3.create(rt.position.x + o.dx, rt.position.y + y, rt.position.z + o.dz)
     lockPost = engine.addEntity()
     Transform.create(lockPost, { parent: racine, position: Vector3.create(o.dx, y + 0.5, o.dz), scale: Vector3.create(0.3, 1.0, 0.3) })
     MeshRenderer.setBox(lockPost)

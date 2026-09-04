@@ -71,7 +71,7 @@ const ETATS: Record<string, () => string> = {
 import { slotView, togglePlacing, placeHere } from './client/slots'
 import { ico, ICONES_VERBES } from './client/icones'
 import { carryView, placeDown, dropCarried, vendre } from './client/carry'
-import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci } from './client/plots'
+import { baseIci, padEnFace, agirSurPad, elevatorInReach, monterIci, lockPostInReach } from './client/plots'
 import { combatView } from './client/combat'
 
 export function setupUi() {
@@ -691,6 +691,8 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     // An elevator in reach beats putting the thing down: a loaded player could never ride it,
     // and stepping one pace away to put something down costs nothing (mobile tester, 3 Sep).
     if (elevatorInReach()) return { id: 'monter', label: 'GO UP', icon: ico('up'), action: monterIci }
+  // At the lock post, lock ready: the thumb takes it, so a phone never has to aim a tap at the post.
+  if (lockPostInReach()) return { id: 'verrouiller', label: 'LOCK BASE', icon: 'ui-shield', action: lockBase }
     const ou = baseIci()
     if (ou === null) return { id: 'lacher', label: 'DROP', icon: ico('drop'), action: dropCarried }
     return ou.mienne
