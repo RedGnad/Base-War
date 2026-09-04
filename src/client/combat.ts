@@ -813,7 +813,7 @@ function tirer(now: number): boolean {
       // The reticle's distance is player-to-target on the ground; the muzzle sits ahead of
       // the player and the burst belongs on the near face of the body, hence the trim.
       const bout = cible ? Math.min(portee, Math.max(0.5, combatView.targetDist - 0.6)) : portee
-      lancerTraceur(debut, Vector3.scale(trait, 1 / portee), bout, cible)
+      lancerTraceur(debut, Vector3.scale(trait, 1 / portee), bout, cible, anchor !== null)
     }
   }
   if (vue !== null) {
@@ -830,7 +830,29 @@ const TRACER_HEAD_START = 0.9
 /** The burst where a bolt lands, in the flash's own colour. */
 const IMPACT_HEX = '#ffe9a8'
 const IMPACT_SIZE = 0.55
-type Tracer = { e: Entity; origin: Vector3; dir: Vector3; at: number; end: number; impact: boolean }
+/**
+  The scene's picture of the camera LAGS the picture on screen by the round trip through the
+  renderer, so anything placed in the world from `Transform(CameraEntity)` is placed where
+  the camera WAS. A bolt spawned that way left the muzzle's previous position: strafing
+  right, it appeared to start left of the barrel (owner, 4 Sep, after the alignment fix).
+  A child of the camera has no such lag: the renderer draws it against the camera it has.
+  So in first person the bolt is a camera child, and every frame its local transform is
+  recomputed from its frozen WORLD path against the scene's current camera: at the muzzle
+  the two frames coincide and the bolt is exact; further out, the lag error is bounded by
+  the camera's speed times the round trip, far too small to see at that distance.
+*/
+type Tracer = {
+  e: Entity
+  /** The world path, frozen at the shot: origin, direction, and the box's rotation along it. */
+  origin: Vector3
+  dir: Vector3
+  rot: Quaternion
+  /** Drawn as a child of the camera (first person) or in the world (third person). */
+  onCamera: boolean
+  at: number
+  end: number
+  impact: boolean
+}
 /** The tracer pool: four bolts in flight at most (four rounds a second, a third of a second each), reused round-robin. */
 const traceurs: Tracer[] = []
 let traceurSuivant = 0
@@ -840,28 +862,46 @@ function creerTraceurs(): void {
     Transform.create(e, { position: Vector3.create(0, -60, 0), scale: Vector3.Zero() })
     MeshRenderer.setBox(e)
     Material.setPbrMaterial(e, plasticDe(Color4.create(1, 0.85, 0.45, 1), 3))
-    traceurs.push({ e, origin: Vector3.Zero(), dir: Vector3.Forward(), at: 0, end: 0, impact: false })
+    traceurs.push({
+      e, origin: Vector3.Zero(), dir: Vector3.Forward(), rot: Quaternion.Identity(),
+      onCamera: false, at: 0, end: 0, impact: false
+    })
   }
 }
+/** A unit quaternion's inverse is its conjugate. */
+function inverse(q: Quaternion): Quaternion {
+  return Quaternion.create(-q.x, -q.y, -q.z, q.w)
+}
 /** Lay the bolt with its head `head` metres along its path; the tail never goes back into the muzzle. */
-function poserTraceur(t: Tracer, tt: { position: Vector3; scale: Vector3 }, head: number): void {
+function poserTraceur(t: Tracer, tt: { position: Vector3; rotation: Quaternion; scale: Vector3 }, head: number): void {
   const tail = Math.max(0, head - TRACER_LENGTH)
   const mid = (head + tail) / 2
-  tt.position = Vector3.create(t.origin.x + t.dir.x * mid, t.origin.y + t.dir.y * mid, t.origin.z + t.dir.z * mid)
+  const monde = Vector3.create(t.origin.x + t.dir.x * mid, t.origin.y + t.dir.y * mid, t.origin.z + t.dir.z * mid)
+  const cam = t.onCamera ? Transform.getOrNull(engine.CameraEntity) : null
+  if (cam !== null) {
+    const inv = inverse(cam.rotation)
+    tt.position = Vector3.rotate(Vector3.subtract(monde, cam.position), inv)
+    tt.rotation = Quaternion.multiply(inv, t.rot)
+  } else {
+    tt.position = monde
+    tt.rotation = t.rot
+  }
   tt.scale = Vector3.create(0.025, 0.025, head - tail)
 }
-function lancerTraceur(origin: Vector3, dir: Vector3, end: number, impact: boolean): void {
+function lancerTraceur(origin: Vector3, dir: Vector3, end: number, impact: boolean, onCamera: boolean): void {
   const t = traceurs[traceurSuivant]
   traceurSuivant = (traceurSuivant + 1) % traceurs.length
   t.origin = origin
   t.dir = dir
+  const up = Math.abs(dir.y) > 0.99 ? Vector3.Forward() : Vector3.Up()
+  t.rot = Quaternion.lookRotation(dir, up)
+  t.onCamera = onCamera
   t.at = Date.now()
   t.end = end
   t.impact = impact
   const tt = Transform.getMutableOrNull(t.e)
   if (tt === null) { t.at = 0; return }
-  const up = Math.abs(dir.y) > 0.99 ? Vector3.Forward() : Vector3.Up()
-  tt.rotation = Quaternion.lookRotation(dir, up)
+  tt.parent = onCamera ? engine.CameraEntity : engine.RootEntity
   poserTraceur(t, tt, Math.min(TRACER_HEAD_START, end))
 }
 function traceurSystem(): void {
