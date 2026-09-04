@@ -48,7 +48,9 @@ export function setupConvoy(): void {
           lecon pour ses articles mobiles (CL_POINTER seul), le convoi ne l'avait pas.
           Surencherir est un clic, donc le pointeur suffit et la physique n'apportait rien.
         */
-        MeshCollider.setBox(body, ColliderLayer.CL_POINTER)
+        // Solid again, on trial, like the belt crates: the 1 Sep push was blamed on this very
+        // body; the owner wants the claim tested, and the body leaves at the first repeat.
+        MeshCollider.setBox(body, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
         caisse(body, c.crateTier)
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
