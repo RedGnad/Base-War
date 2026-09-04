@@ -2,6 +2,7 @@ import {
   engine, Transform, MeshRenderer, Material, AvatarAttach, AvatarAnchorPointType,
   Entity, Billboard, BillboardMode, TextShape, inputSystem, InputAction, PointerEventType ,
   Tween, TweenSequence, TweenLoop, EasingFunction} from '@dcl/sdk/ecs'
+import { sendOrHold } from './intent'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Carried } from '../shared/schemas'
 import { itemColor, rarity, rarityOf, mutationDe, traitsDe, nomDuCode } from '../shared/loot-table'
@@ -235,10 +236,10 @@ export function placeDown(ownerId: string): void {
     alerter('FLOOR FULL  ·  GO UP OR MAKE ROOM', '#ffd166', TOAST.result)
     return
   }
-  void room.send('placeDown', { ownerId, slot: targetIndex })
+  sendOrHold(() => { void room.send('placeDown', { ownerId, slot: targetIndex }) })
 }
 export function dropCarried(): void { void room.send('dropCarried', {}) }
-export function sellCarried(): void { void room.send('sellCarried', {}) }
+export function sellCarried(): void { sendOrHold(() => { void room.send('sellCarried', {}) }) }
 
 /**
  * One press sells. The question that used to sit between the press and the sale was cut by

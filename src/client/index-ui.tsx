@@ -1,4 +1,5 @@
 import { Color4 } from '@dcl/sdk/math'
+import { sendOrHold } from './intent'
 import { strip } from './layout'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, TAP, RAD, lisible } from './theme'
@@ -117,7 +118,7 @@ export const IndexContent = () => {
                 onClick={() => {
                   const cible = indexView.skin === m.id ? 0 : m.id
                   indexView.skin = cible
-                  void room.send('setSkin', { mutation: cible })
+                  sendOrHold(() => { void room.send('setSkin', { mutation: cible }) })
                 }} />
             )),
             ...fermes.map((m) => (

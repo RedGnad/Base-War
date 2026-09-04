@@ -3,7 +3,7 @@ import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { place3DText, Segment3D } from './texte3d'
@@ -471,6 +471,7 @@ const RAYS_MIN_RARITY = 4
  * defence is, and the column tells which storey is guarded at a glance.
  */
 const SENTRY_SCALE_MAX = 1.4
+const SENTRY_SCALE_MIN = 0.6
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
 const FLOAT_AMPLITUDE = 0.22
@@ -1173,7 +1174,14 @@ export function setupPlots(): void {
               cylinder centred on its entity, so its centre rides at half its height and
               its foot stays on the slab at every size.
             */
-            const k = n === 0 ? 0 : Math.min(SENTRY_SCALE_MAX, 0.6 + n * 0.12)
+            /*
+              Size follows the charges over their WHOLE range, so a battery of twenty stands
+              taller than a turret of eight. The first cap (0.6 + 0.12 per charge, ceiling
+              1.4) was reached at seven charges, and every heavier defence looked the same
+              (owner, 4 Sep: "the ground floor and the first storey are the same size, and
+              one is heavier"). Linear from 0.6 at nothing to the ceiling at the maximum.
+            */
+            const k = n === 0 ? 0 : SENTRY_SCALE_MIN + (SENTRY_SCALE_MAX - SENTRY_SCALE_MIN) * Math.min(1, n / SENTRY_MAX_CHARGES)
             ts.scale = Vector3.create(k, k, k)
             ts.position = Vector3.create(ts.position.x, e * FLOOR_HEIGHT + SLAB_THICKNESS + 0.5 * k, ts.position.z)
             armSentry(v.floors[e].sentry, n > 0 && !v.loin)

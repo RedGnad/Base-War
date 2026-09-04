@@ -353,8 +353,8 @@ export function steal(ownerId = '', slot = -1): void {
   void room.send('stealItem', { ownerId, slot })
 }
 export function lockBase(): void { sendOrHold(() => { void room.send('activateLock', {}) }) }
-export function recover(): void { void room.send('reclaim', {}) }
-export function doPrestige(): void { void room.send('rebirth', {}) }
+export function recover(): void { sendOrHold(() => { void room.send('reclaim', {}) }) }
+export function doPrestige(): void { sendOrHold(() => { void room.send('rebirth', {}) }) }
 export function buyFloorFor(): void { sendOrHold(() => { void room.send('buyFloor', {}) }) }
 export function armSentry(tier = 0): void { sendOrHold(() => { void room.send('buySentry', { tier }) }) }
 export function collectPending(): void { sendOrHold(() => { void room.send('collect', {}) }) }

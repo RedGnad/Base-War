@@ -1,7 +1,8 @@
 import { Color4 } from '@dcl/sdk/math'
+import { sendOrHold } from './intent'
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { engine } from '@dcl/sdk/ecs'
-import { TYPE, C, TAP, SKIN, lisible } from './theme'
+import { TYPE, C, TAP, SKIN, lisible, TOAST } from './theme'
 import { Glyphs } from './glyphs'
 import { Btn , SURF} from './ui-kit'
 import { Plot, FUSION_NEEDS, VIDE, poidsDesMutations, LUCK_MULT, incomeMultiplier } from '../shared/schemas'
@@ -9,7 +10,7 @@ import { RARITIES, MUTATIONS, rarityOf, mutationDe, traitsDe, itemIncome, nomDuC
 import { fusionCost } from '../shared/economy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { room } from '../shared/messages'
-import { myClientAddress, theftView } from './theft'
+import { myClientAddress, theftView, alerter } from './theft'
 import { eventView } from './events'
 import { fuserView } from './fusion'
 
@@ -106,7 +107,7 @@ export const FusionPanel = () => {
             <Label value={`in the fuser for you: ${m.hopper.map(nomDuCode).join(', ')}`} fontSize={TYPE.caption}
               color={Color4.fromHexString('#ffd166ff')} uiTransform={{ width: 600, height: TAP.height, overflow: 'hidden' }} textAlign="middle-left" textWrap="nowrap" />
             <UiEntity uiTransform={{ width: 280, height: TAP.menu, justifyContent: 'flex-end' }}>
-              <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { void room.send('takeBackFusion', {}); closeFuser() }} />
+              <Btn label="TAKE BACK" width={260} height={TAP.menu} onClick={() => { sendOrHold(() => { void room.send('takeBackFusion', {}) }); closeFuser() }} />
             </UiEntity>
           </UiEntity>
         )}
@@ -140,7 +141,13 @@ export const FusionPanel = () => {
               <UiEntity uiTransform={{ width: 380, height: TAP.menu, justifyContent: 'flex-end' }}>
                 <Btn label={!assez ? `${FUSION_NEEDS} NEEDED` : `FUSE  ${formatIncome(prix)}`}
                   width={360} height={TAP.menu} primary={assez && paye}
-                  onClick={() => { if (assez && paye) { void room.send('fuseFromBase', { rarity: r.id }); closeFuser() } }} />
+                  onClick={() => {
+                    // A press that cannot act says why: a silent button is pressed again (owner, 4 Sep).
+                    if (!assez) { alerter(`${FUSION_NEEDS} ${r.name.toUpperCase()}S NEEDED, YOU HAVE ${total}`, '#ffd166', TOAST.warning); return }
+                    if (!paye) { alerter(`NOT ENOUGH COINS  ·  ${formatIncome(Math.ceil(prix - theftView.coins))} MORE`, '#ffd166', TOAST.warning); return }
+                    sendOrHold(() => { void room.send('fuseFromBase', { rarity: r.id }) })
+                    closeFuser()
+                  }} />
               </UiEntity>
             </UiEntity>
           )

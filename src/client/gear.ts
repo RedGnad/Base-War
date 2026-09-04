@@ -1,4 +1,5 @@
 import { TOY, plasticDe } from './toy'
+import { sendOrHold } from './intent'
 import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
@@ -56,10 +57,10 @@ export function placeTrap(): void {
 }
 
 export function acheterGear(gear: number): void {
-  void room.send('buyGear', { gear })
+  sendOrHold(() => { void room.send('buyGear', { gear }) })
 }
 export function buyLuckCharm(): void {
-  void room.send('buyLuck', {})
+  sendOrHold(() => { void room.send('buyLuck', {}) })
 }
 
 /** F, when nothing is drawn and a cloak is in the pocket. The server decides if it takes. */

@@ -1,4 +1,5 @@
 import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
+import { sendOrHold } from './intent'
 import { TYPE, TAP, C, RAD, lisible } from './theme'
 import { Btn, Barre, SURF, pctAnime, flashDe, tic } from './ui-kit'
 import { Color4 } from '@dcl/sdk/math'
@@ -46,8 +47,8 @@ export function setupQuests(): void {
   })
 }
 
-function claim(slot: number): void { void room.send('claimQuest', { slot }) }
-function claimDaily(): void { void room.send('claimDaily', {}) }
+function claim(slot: number): void { sendOrHold(() => { void room.send('claimQuest', { slot }) }) }
+function claimDaily(): void { sendOrHold(() => { void room.send('claimDaily', {}) }) }
 
 export function questsToClaim(): number {
   let n = 0
