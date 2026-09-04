@@ -520,6 +520,57 @@ export function toyPedestal(parent: Entity, size: number, mutationHex: string | 
   Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8))
 }
 
+/*
+  Rays, for what is worth crossing the room for.
+
+  The mobile client draws no particles and no bloom; the one glow it draws for everyone is
+  geometry. A flat quad of rays (the reveal's own burst texture, alpha-tested, in the
+  piece's colour) hangs above the toy and turns slowly: from the plaza edge an Epic reads
+  as a crown of light, which is what "the pieces are boring" was asking for (tester, 4 Sep).
+  Two entities, one rendered: a holder that spins about the world's up, and the tilted quad
+  inside it. Only from Epic up, so the world never fills with crowns.
+*/
+const RAYS_TEXTURE = 'assets/ui/burst.png'
+const RAYS_DIAMETER = 1.9
+const rayons = new Map<Entity, Entity>()
+
+function raysMaterial(hex: string, glow: number): PBMaterial_PbrMaterial {
+  return {
+    texture: Material.Texture.Common({ src: RAYS_TEXTURE }),
+    emissiveTexture: Material.Texture.Common({ src: RAYS_TEXTURE }),
+    albedoColor: Color4.fromHexString(hex + 'ff'),
+    emissiveColor: Color3.fromHexString(hex),
+    emissiveIntensity: glow,
+    metallic: 0, roughness: 1, specularIntensity: 0,
+    transparencyMode: 1, alphaTest: 0.5, castShadows: false
+  }
+}
+
+/** A spinning crown of rays of `diameter` metres, parented at `position`; returns the holder. */
+export function spawnRays(parent: Entity, position: Vector3, diameter: number, hex: string, glow: number, degPerSec: number): Entity {
+  const holder = engine.addEntity()
+  Transform.create(holder, { parent, position })
+  const quad = engine.addEntity()
+  Transform.create(quad, { parent: holder, rotation: Quaternion.fromEulerDegrees(-90, 0, 0), scale: Vector3.create(diameter, diameter, 1) })
+  MeshRenderer.setPlane(quad)
+  Material.setPbrMaterial(quad, raysMaterial(hex, glow))
+  Tween.setRotateContinuous(holder, Quaternion.fromEulerDegrees(0, 90, 0), degPerSec)
+  return holder
+}
+
+export function toyRays(parent: Entity, size: number, hex: string | null): void {
+  const cur = rayons.get(parent)
+  if (hex === null) {
+    if (cur !== undefined) { engine.removeEntity(cur); rayons.delete(parent) }
+    return
+  }
+  if (cur !== undefined) return
+  // Child of a parent scaled by `size`: divide, so the crown keeps its world size.
+  rayons.set(parent, spawnRays(parent, Vector3.create(0, 0.5 + 0.3 / size, 0), RAYS_DIAMETER / size, hex, 1.6, 30))
+}
+
+export function clearRays(parent: Entity): void { toyRays(parent, 1, null) }
+
 export function clearPedestal(parent: Entity): void {
   const cur = socles.get(parent)
   if (cur === undefined) return

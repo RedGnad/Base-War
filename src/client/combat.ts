@@ -18,6 +18,7 @@ import { alerter } from './theft'
 import { flashDamage, floatAmount, playHurt, playCash } from './juice'
 import { setAiming, setArmeIcone } from './locomotion'
 import { TOAST } from './theme'
+import { puff } from './impact'
 
 /**
  * The pistol, client side.
@@ -349,7 +350,12 @@ export function setupCombat(): void {
   })
   // Same channel as collecting: the number says how much, the coin says it landed. The toast
   // it replaces was the one the mobile tester named first as "taking the whole screen".
-  room.onMessage('pickedUp', (d) => { floatAmount(d.amount, false); playCash() })
+  room.onMessage('pickedUp', (d) => {
+    floatAmount(d.amount, false); playCash()
+    // And a burst at the feet: the pile is gone from the floor, something has to mark the spot.
+    const moi = Transform.getOrNull(engine.PlayerEntity)
+    if (moi !== null) puff(Vector3.create(moi.position.x, moi.position.y + 0.5, moi.position.z), '#8fe08f', 1.0)
+  })
   room.onMessage('aiming', (d) => {
     const a = d.addr.toLowerCase()
     if (d.on) enJoue.add(a); else enJoue.delete(a)

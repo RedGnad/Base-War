@@ -1,6 +1,4 @@
-import {
-  TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial
-} from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
@@ -71,6 +69,8 @@ type View = {
   racine: Entity
   /** The skin last painted, and how many storeys it was painted on. */
   skin: number; peints: number
+  /** What a skin adds beyond the walls: the disc on the ground and the crown over the roof. */
+  halo: Entity | null; couronne: Entity | null
 }
 
 /** World-label colours, built here rather than read from the shared token object: that one
@@ -393,6 +393,23 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   if (v.skin === p.skin && v.peints === v.floors.length) return
   v.skin = p.skin
   v.peints = v.floors.length
+  /*
+    A skin is more than a colour on the walls. It was: a Cursed base turned purple and that
+    was all (owner, 4 Sep). Now a skinned base stands on a disc of its colour, the idiom the
+    rare crates already use on the belt, and wears a slow crown of rays over its roof: two
+    rendered objects, on the rare bases that earned a skin, visible on every profile. The
+    walls themselves stay unlit, as asked; their surface comes from the model files.
+  */
+  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntity(e)
+  v.halo = null; v.couronne = null
+  if (p.skin > 0) {
+    const hex = mutation(p.skin).color
+    v.halo = engine.addEntity()
+    Transform.create(v.halo, { parent: v.racine, position: Vector3.create(0, 0.05, 0), scale: Vector3.create(BASE_SIDE + 2.4, 0.04, BASE_SIDE + 2.4) })
+    MeshRenderer.setCylinder(v.halo, 0.5, 0.5)
+    Material.setPbrMaterial(v.halo, plastic(hex, 1.6))
+    v.couronne = spawnRays(v.racine, Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0), 7, hex, 1.4, 10)
+  }
   // The colour lives in the file, so repainting is swapping which file each storey shows.
   const mods = modelesDe(p)
   for (const et of v.floors) {
@@ -433,6 +450,8 @@ function expulser(base: Vector3, floors: number): void {
   turn to face whoever looks. Colour carries the state before the word is read: the emblem
   glows when ready, burns brighter while sealed, greys out while recharging.
 */
+/** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
+const RAYS_MIN_RARITY = 4
 const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
 let lockPost: Entity | null = null
 let lockEmblem: Entity | null = null
@@ -680,11 +699,12 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, racine }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine }
 }
 
 function destroyView(v: View): void {
   engine.removeEntity(v.plinth)
+  for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntity(e)
   engine.removeEntity(v.label)
   engine.removeEntity(v.gain)
   engine.removeEntityWithChildren(v.plaque)
@@ -1206,6 +1226,7 @@ export function setupPlots(): void {
           clearShape(ent)
           clearPedestal(ent)
           clearLight(ent)
+          clearRays(ent)
           continue
         }
 
@@ -1240,6 +1261,8 @@ export function setupPlots(): void {
         // there is one. Below the rarity threshold, no pad glow whatever the mutation.
         const padHex = r.glow >= LIGHT_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
         toyPedestal(ent, size, padHex)
+        // Epic and up wear a crown of rays; a mutation lends it its colour.
+        toyRays(ent, size, rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : hex) : null)
         // Rare and above, or anything mutated, lights the slab it stands on in its own colour.
         // Rarity drives the light; a trait is earned so it adds; a mutation does not (it is colour).
         const eclat = r.glow + 0.8 * traits

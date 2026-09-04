@@ -246,7 +246,7 @@ function ecrire(nomFichier, groupes) {
       pbrMetallicRoughness: {
         baseColorFactor: [c[0], c[1], c[2], c[3] ?? 1],
         baseColorTexture: { index: 0 },
-        metallicFactor: 0,
+        metallicFactor: g.metallique ?? 0,
         roughnessFactor: g.rugosite ?? 0.55
       }
     }
@@ -378,7 +378,25 @@ function accent() {
 }
 
 let n = 0, octetsTotal = 0
-const teintes = [...ACCENTS.map((hexa, i) => ({ suffixe: String(i), hexa })), ...MUTATIONS.map((m) => ({ suffixe: `skin-${m.id}`, hexa: m.color }))]
+/*
+  A skin is a SURFACE, not only a colour. Every skin was matte plastic, so a Gold base was
+  a yellow base (owner, 4 Sep). Metal for the metals, glass for the gem, satin for the dark
+  ones; the walls still emit nothing, the light on them is the light of the venue.
+*/
+const SURFACE = {
+  1: { metallique: 0.9, rugosite: 0.28 },   // Gold
+  2: { metallique: 0.3, rugosite: 0.05 },   // Diamond
+  3: { metallique: 0.1, rugosite: 0.5 },    // Blood
+  4: { metallique: 0, rugosite: 0.4 },      // Candy
+  5: { metallique: 0.1, rugosite: 0.6 },    // Lava
+  6: { metallique: 0.4, rugosite: 0.3 },    // Galaxy
+  7: { metallique: 0.2, rugosite: 0.35 },   // Yin Yang
+  8: { metallique: 0, rugosite: 0.3 },      // Radioactive
+  9: { metallique: 0.15, rugosite: 0.7 },   // Cursed
+  10: { metallique: 0.6, rugosite: 0.2 },   // Divine
+  11: { metallique: 0.3, rugosite: 0.25 }   // Rainbow
+}
+const teintes = [...ACCENTS.map((hexa, i) => ({ suffixe: String(i), hexa })), ...MUTATIONS.map((m) => ({ suffixe: `skin-${m.id}`, hexa: m.color, surface: SURFACE[m.id] }))]
 
 for (const [nom, zero] of [['storey-ground', true], ['storey-upper', false]]) {
   // No pedestals here: what the scene calls a `socle` is the TOY's own entity, which carries
@@ -389,8 +407,8 @@ for (const [nom, zero] of [['storey-ground', true], ['storey-upper', false]]) {
   n += 1
 }
 for (const t of teintes) {
-  octetsTotal += ecrire(path.join(OUT, `accent-${t.suffixe}.glb`), [{ nom: 'accent', couleur: hex(t.hexa), boites: accent() }])
-  octetsTotal += ecrire(path.join(OUT, `climb-${t.suffixe}.glb`), [{ nom: 'climb', couleur: hex(t.hexa), boites: montee() }])
+  octetsTotal += ecrire(path.join(OUT, `accent-${t.suffixe}.glb`), [{ nom: 'accent', couleur: hex(t.hexa), boites: accent(), ...(t.surface ?? {}) }])
+  octetsTotal += ecrire(path.join(OUT, `climb-${t.suffixe}.glb`), [{ nom: 'climb', couleur: hex(t.hexa), boites: montee(), ...(t.surface ?? {}) }])
   n += 2
 }
 octetsTotal += ecrire(path.join(OUT, 'glass.glb'), [{ nom: 'glass', couleur: [GLASS.r, GLASS.g, GLASS.b, GLASS.a], boites: vitres(), rugosite: 0.15 }])
