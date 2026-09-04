@@ -1073,7 +1073,15 @@ export function setupPlots(): void {
           ta.scale = utile ? Vector3.create(0.5, h, 0.5) : Vector3.Zero()
           ta.position = Vector3.create(BASE_SIDE / 2 - 1.1, h / 2, -BASE_SIDE / 2 + 1.1)
         }
-        const guard = p.sentries > 0 ? `\nSENTRY x${p.sentries}` : ''
+        /*
+          Charges PER STOREY on the sign, ground floor first, not one total. The counterplay
+          the server designed is "find the storey nobody guarded"; a total hid it, and it hid
+          from the owner too whether a floor's turret was missing or merely unseen (owner,
+          4 Sep: "I do not want this to be a hidden bug"). What the client draws and what the
+          sign says now come from the same array, so they cannot disagree quietly.
+        */
+        const parEtage = Array.from({ length: p.floors }, (_, e) => p.sentryFloors[e] ?? 0)
+        const guard = p.sentries > 0 ? `\nSENTRY ${parEtage.join(' \u00b7 ')}` : ''
         if (structurel) {
           // One marker per storey, sized by what that storey holds. An empty floor shows
           // nothing at all, which is exactly the information a thief is looking for.
