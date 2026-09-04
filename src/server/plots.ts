@@ -486,20 +486,9 @@ async function loadBases(): Promise<void> {
     const res = await Storage.getValues({ prefix: 'base:' })
     let restoreBudget = DECOR_COST
     const loaded = res.data
-      .map(({ key, value }) => {
-        const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
-        return {
-          address: key.slice('base:'.length), name: v.name ?? '', items: v.items ?? [],
-          lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z,
-          // Left undefined on purpose when the blob predates these fields: undefined means
-          // "never written", which is what tells the migration below to go and find them.
-          vitrine: v.floorsBought === undefined ? null : {
-            floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
-            sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0, vols: v.vols ?? 0,
-            rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0, skin: v.skin ?? 0, mines: Array.isArray(v.mines) ? v.mines : []
-          }
-        }
-      })
+      .map(({ key, value }) => baseDepuisBlob(key, value))
+      // One unreadable record skips itself, it does not take the whole street down with it.
+      .filter((l): l is BaseBlob => l !== null)
       .filter((l) => typeof l.x === 'number' && typeof l.z === 'number')
       // Les comptes que la remise a zero est en train d'effacer ne remontent pas.
       .filter((l) => !efface.has(l.address))
@@ -604,6 +593,42 @@ async function loadBases(): Promise<void> {
 }
 
 /** Everything about a base that has to survive it, written in one place so nothing is dropped. */
+type BaseBlob = { address: string; name: string; items: number[]; lastSeen: number; x: number; z: number; vitrine: Vitrine | null }
+
+/** A stored `base:` record read back, or null when it cannot be parsed. */
+function baseDepuisBlob(key: string, value: unknown): BaseBlob | null {
+  try {
+    const v = typeof value === 'string' ? JSON.parse(value) : (value as any)
+    if (v === null || typeof v !== 'object') return null
+    return {
+      address: key.slice('base:'.length), name: v.name ?? '', items: Array.isArray(v.items) ? v.items : [],
+      lastSeen: v.lastSeen ?? 0, x: v.x, z: v.z,
+      // Left null on purpose when the blob predates these fields: null means "never written",
+      // which is what tells the migration in the restore to go and find them.
+      vitrine: v.floorsBought === undefined ? null : {
+        floorsBought: v.floorsBought, sentries: v.sentries ?? 0,
+        sentryFloors: defensesDe(v), sentryTier: v.sentryTier ?? 0, vols: v.vols ?? 0,
+        rebirths: v.rebirths ?? 0, given: v.given ?? 0, received: v.received ?? 0, skin: v.skin ?? 0, mines: Array.isArray(v.mines) ? v.mines : []
+      }
+    }
+  } catch (e) {
+    log(`ERROR unreadable base record ${key}: ${e}`)
+    return null
+  }
+}
+
+async function lireBase(address: string): Promise<BaseBlob | null> {
+  const raw = await Storage.get<string>(BASE_KEY(address))
+  return raw ? baseDepuisBlob(BASE_KEY(address), raw) : null
+}
+
+function vitrineDe(b: Base): Vitrine {
+  return {
+    floorsBought: b.floorsBought, sentries: b.sentries, sentryFloors: b.sentryFloors, sentryTier: b.sentryTier,
+    rebirths: b.rebirths, given: b.given, received: b.received, vols: b.vols, skin: b.skin ?? 0, mines: b.mines
+  }
+}
+
 function blobDeBase(b: Base): string {
   return JSON.stringify({
     name: b.name, items: b.items, lastSeen: b.lastSeen, x: b.x, z: b.z,
@@ -667,12 +692,16 @@ export async function welcome(address: string): Promise<void> {
     makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)
   }
   if (!bases.has(address) && profile.x !== undefined && profile.z !== undefined) {
-    // Sa position d'avant si elle est enregistree, un emplacement libre seulement s'il n'y en
-    // a pas: on ne redeplace jamais quelqu'un qui avait deja choisi.
-    const b = createBase(address, name, items, Date.now(), profile.x, profile.z)
+    // Their previous spot when recorded, a free one only when there is none: nobody who had
+    // chosen is ever moved. The stored BASE record is the truth for what stands there: its
+    // items are the shelves as thefts and gifts left them during the absence, and it carries
+    // the defence (sentry charges, mines, thief count). Rebuilding from the profile brought
+    // stolen items back and wiped every paid charge (audit, 4 Sep).
+    const blob = await lireBase(address)
+    const b = createBase(address, name, blob?.items ?? items, Date.now(), profile.x, profile.z, blob?.vitrine ?? VITRINE_VIDE)
     if (b !== null) {
       dirtyBases.add(address)
-      log(`base de ${name} reposee en ${profile.x},${profile.z}`)
+      log(`base de ${name} reposee en ${profile.x},${profile.z}${blob ? '' : ' (no stored record, from the profile)'}`)
     }
   }
   const existing = bases.get(address)
@@ -1558,7 +1587,8 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   if (previous) removeBase(address)
 
   const items = [...p.items]
-  const b = createBase(address, nameOf(address), items, Date.now(), x, z)
+  // Moving a base moves its defence with it: the charges were paid for the building, not the spot.
+  const b = createBase(address, nameOf(address), items, Date.now(), x, z, previous ? vitrineDe(previous) : VITRINE_VIDE)
   if (b === null) return { ok: false, reason: 'cannot build there' }
   p.x = x
   p.z = z
@@ -1838,7 +1868,7 @@ export function startPlots(): void {
         pending: pendingOf(address),
         rechargeSec: Math.ceil(lockCooldown(address) / 1000),
         canRecover: hasSomethingToRecover(address),
-        coins: p.coins,
+        coins: Math.floor(Number.isFinite(p.coins) ? p.coins : 0),
         luckSec: Math.max(0, Math.ceil(((p.luckUntil ?? 0) - Date.now()) / 1000)),
         /*
           The offline sum rides the wallet tick for three minutes rather than one message at
