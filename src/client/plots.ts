@@ -482,8 +482,18 @@ const SENTRY_SCALE_MIN = 0.6
 /** From which rarity a piece floats above its pad, and by how much (metres). */
 const FLOAT_MIN_RARITY = 6
 const FLOAT_AMPLITUDE = 0.22
-/** The padlock, not the shop's shield: that one names the sentries, and the post read as one. */
-const LOCK_EMBLEM = 'assets/ui/ui-lock.png'
+/*
+  The padlock on the post is a VOLUME (tools/model/build-lock.py), with the button glyph's
+  proportions so the two still answer each other. The glyph on a floating plane matched the
+  button and clashed with the venue, where everything but text is a body (owner, 4 Sep).
+  Its state is a gesture: shackle raised while the lock is ready, seated while the base is
+  sealed; smaller and still while it recharges. Two files, one object, swapped by `src`.
+*/
+const LOCK_OPEN = 'assets/toy/lock-open.glb'
+const LOCK_SHUT = 'assets/toy/lock-shut.glb'
+/** The padlock's foot above the slab: just over the post's top (0.24 + 1.0). */
+const LOCK_PADLOCK_Y = 1.32
+const LOCK_SPIN_MS = 9000
 /** How close to the post the contextual button takes the lock over from the tap. */
 const LOCK_POST_REACH = 2.2
 let lockPost: Entity | null = null
@@ -539,9 +549,8 @@ function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: num
     MeshRenderer.setBox(lockPost)
     lockHex = ''
     lockEmblem = engine.addEntity()
-    Transform.create(lockEmblem, { parent: racine, position: Vector3.create(dx, y + 1.45, dz), scale: Vector3.create(0.8, 0.8, 1) })
-    MeshRenderer.setPlane(lockEmblem)
-    Billboard.create(lockEmblem, { billboardMode: BillboardMode.BM_Y })
+    Transform.create(lockEmblem, { parent: racine, position: Vector3.create(dx, y + LOCK_PADLOCK_Y, dz), scale: Vector3.One() })
+    GltfContainer.create(lockEmblem, { src: LOCK_OPEN, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
     lockLine = engine.addEntity()
     Transform.create(lockLine, { parent: racine, position: Vector3.create(dx, y + 2.05, dz), scale: Vector3.create(0.5, 0.5, 0.5) })
     Billboard.create(lockLine, { billboardMode: BillboardMode.BM_Y })
@@ -565,16 +574,13 @@ function tenirLePave(racine: Entity, lockedUntil: number, hex: string, skin: num
   const state = locked ? 'locked' : recharging ? 'recharging' : 'ready'
   if (state !== lockState) {
     lockState = state
-    const tint = locked ? Color4.create(1, 1, 1, 1) : recharging ? Color4.create(0.42, 0.45, 0.52, 1) : Color4.create(1, 1, 1, 1)
-    Material.setPbrMaterial(lockEmblem as Entity, {
-      texture: Material.Texture.Common({ src: LOCK_EMBLEM }),
-      emissiveTexture: Material.Texture.Common({ src: LOCK_EMBLEM }),
-      albedoColor: tint,
-      emissiveColor: Color3.White(),
-      emissiveIntensity: locked ? 2.4 : recharging ? 0 : 1.1,
-      metallic: 0, roughness: 1, specularIntensity: 0,
-      transparencyMode: 1, alphaTest: 0.5
-    })
+    const g = GltfContainer.getMutableOrNull(lockEmblem as Entity)
+    if (g !== null) g.src = state === 'ready' ? LOCK_OPEN : LOCK_SHUT
+    const te = Transform.getMutableOrNull(lockEmblem as Entity)
+    if (te !== null) { const k = recharging ? 0.75 : 1; te.scale = Vector3.create(k, k, k) }
+    if (recharging) {
+      if (Tween.has(lockEmblem as Entity)) { Tween.deleteFrom(lockEmblem as Entity); TweenSequence.deleteFrom(lockEmblem as Entity) }
+    } else spinLoop(lockEmblem as Entity, LOCK_SPIN_MS)
     PointerEvents.createOrReplace(lockTap as Entity, {
       pointerEvents: [{
         eventType: PointerEventType.PET_DOWN,

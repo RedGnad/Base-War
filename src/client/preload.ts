@@ -22,7 +22,9 @@ const FIRST_MINUTE: string[] = [
   ...CRATES.map((_, i) => `assets/toy/crate-${i}.glb`),
   ...[0, 1, 2, 3, 4, 5].map((r) => `assets/toy/item-${r}.glb`),
   // The muzzle flash sprite: the first shot must not draw a blank quad while it loads.
-  'assets/ui/flash.png'
+  'assets/ui/flash.png',
+  // The padlock on the owner's lock post, both states: it stands in the first base a player sees, their own.
+  'assets/toy/lock-open.glb', 'assets/toy/lock-shut.glb'
 ]
 
 export function setupPreload(): void {
