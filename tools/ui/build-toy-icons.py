@@ -416,6 +416,15 @@ def act_icone(nom, hexcol):
         ell((72, 150, 232, 212))
         ell((72, 112, 232, 174), light)
         poly([(46, 240), (46, 130), (14, 130), (62, 44), (110, 130), (78, 130), (78, 240)])
+    elif nom == 'buy':
+        # Acheter: la caisse ET la piece qu'on donne pour l'avoir. Le bouton portait le
+        # meme glyphe que SMASH et OPEN, et a portee d'une caisse a vendre le pouce ne
+        # voyait rien changer (owner, 4 Sep). Une caisse en retrait, une piece devant.
+        poly([(28, 96), (172, 96), (172, 212), (28, 212)])
+        poly([(20, 56), (180, 56), (180, 100), (20, 100)], light)
+        trait((100, 100), (100, 212))
+        ell((118, 128, 238, 248), light)
+        ell((146, 156, 210, 220))
     return im
 
 
@@ -423,7 +432,7 @@ ACT_ICONES = [
     ('build', '#d2913f'), ('place', '#5fbf3a'), ('give', '#37c9a6'), ('drop', '#8d9bb4'),
     ('recover', '#4aa3ef'), ('collect', '#e8a81f'), ('fire', '#f0503c'),
     ('pickup', '#5fbf3a'), ('steal', '#e05a3c'), ('up', '#2fb6e8'),
-    ('fuse', '#9b6ce8'), ('feed', '#9b6ce8'), ('outbid', '#e8a81f'),
+    ('fuse', '#9b6ce8'), ('feed', '#9b6ce8'), ('outbid', '#e8a81f'), ('buy', '#e8a81f'),
 ]
 
 UI_ICONES = [

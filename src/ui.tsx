@@ -714,7 +714,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
   */
   const caisse = crateInReach()
   if (caisse !== null) {
-    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: ico('crate'), action: () => buyCrate(caisse.articleId) }
+    return { id: 'acheter-caisse', label: `BUY ${crate(caisse.crateTier).name.toUpperCase()}  ${formatIncome(caisse.price)}`, icon: ico('buy'), action: () => buyCrate(caisse.articleId) }
   }
   const convoi = convoyInReach()
   if (convoi !== null && !convoi.mine) return { id: 'surencherir', label: `OUTBID  ${formatIncome(convoi.price)}`, icon: ico('outbid'), action: () => surencherir(convoi.convoyId) }

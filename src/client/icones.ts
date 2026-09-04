@@ -27,7 +27,7 @@ const PREFIXE = { blanc: 'icon', encre: 'encre', plaque: 'act' } as const
 */
 const VERBES = [
   'build', 'crate', 'place', 'give', 'drop', 'recover', 'collect', 'fire',
-  'pickup', 'steal', 'up', 'fuse', 'outbid'
+  'pickup', 'steal', 'up', 'fuse', 'outbid', 'buy'
 ] as const
 
 export function ico(nom: (typeof VERBES)[number]): string {
