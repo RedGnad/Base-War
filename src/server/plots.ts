@@ -757,6 +757,7 @@ export async function welcome(address: string): Promise<void> {
 }
 
 export function auRevoir(address: string): void {
+  if (profiles.has(address)) dirtyProfiles.add(address)
   const b = bases.get(address)
   if (!b) return
   b.lastSeen = Date.now()
@@ -1154,17 +1155,20 @@ export function displayName(address: string): string {
   return bases.get(address)?.name ?? nameOf(address)
 }
 
+/** Alerts kept for an absent player: enough to tell the story, not enough to grow a profile without end. */
+const ALERTS_MAX = 50
+
 export function storeAlert(victim: string, alert: object): void {
   const prof = profiles.get(victim)
   if (prof) {
-    prof.alerts = [...(prof.alerts ?? []), alert]
+    prof.alerts = [...(prof.alerts ?? []), alert].slice(-ALERTS_MAX)
     dirtyProfiles.add(victim)
     return
   }
   void (async () => {
     const raw = await Storage.player.get<string>(victim, PLAYER_KEY)
     const p = raw ? JSON.parse(raw) : { coins: 0, items: [] }
-    p.alerts = [...(p.alerts ?? []), alert]
+    p.alerts = [...(p.alerts ?? []), alert].slice(-ALERTS_MAX)
     const ok = await Storage.player.set(victim, PLAYER_KEY, JSON.stringify(p))
     if (!ok) log(`ERROR deferred alert lost for ${victim.slice(0, 8)}`)
   })()
@@ -1580,6 +1584,8 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   }
 
   const previous = bases.get(address)
+  // Placed where it already stands: nothing to rebuild, nothing to resend.
+  if (previous !== undefined && previous.x === x && previous.z === z) return { ok: true }
   // Moving your own base costs nothing extra: room is asked for only at the first placement.
   if (previous === undefined && !makeRoom(address, BASE_FIXED_COST + STOREY_COST_FAR)) {
     return { ok: false, reason: 'the field is full right now, try again in a moment' }
@@ -1607,7 +1613,7 @@ export function placeBase(address: string, xb: number, zb: number): { ok: boolea
   switch it off. Five hundred entries is roughly two and a half kilobytes, and it is far
   past anything a player who opens their crates will ever hold.
 */
-const MAX_CRATES = 500
+export const MAX_CRATES = 500
 
 export function addCrate(address: string, crateTier: number): void {
   const p = profiles.get(address)
@@ -1640,6 +1646,7 @@ export function cratesOf(address: string): number[] {
 export function spend(address: string, montant: number): boolean {
   const p = profiles.get(address)
   if (!p) return false
+  if (!Number.isFinite(montant) || montant < 0) return false
   if (montant > 0 && p.coins < montant) return false
   p.coins -= montant
   dirtyProfiles.add(address)
@@ -1844,7 +1851,8 @@ export function startPlots(): void {
       const cap = perSecond * PENDING_CAP_S
       profile.pending = Math.min((profile.pending ?? 0) + perSecond * seconds, cap)
       profile.vuA = Date.now()
-      dirtyProfiles.add(address)
+      // Not dirtied here: this ran every second for every present player, so every profile was
+      // written every five seconds for nothing. Collect, departure and the checkpoint below persist it.
     }
   })
 
@@ -1905,6 +1913,9 @@ export function startPlots(): void {
   }, 1500)
 
   timers.setInterval(() => { void save() }, SAUVE_MS)
+  // Checkpoint for the pending pool and last-seen stamp of everyone present: a minute of
+  // income is the most a server death can cost, against a write per player every five seconds.
+  timers.setInterval(() => { for (const a of presents()) if (profiles.has(a)) dirtyProfiles.add(a) }, 60_000)
   timers.setInterval(() => {
     const ici = presents()
     for (const b of bases.values()) publish(b, ici)

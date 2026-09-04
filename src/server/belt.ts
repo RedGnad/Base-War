@@ -9,7 +9,7 @@ import { room } from '../shared/messages'
 import { log } from './log'
 import { rollCrateTier, rollCrate, rollMutation, meriteAnnonce, eventTheme } from './loot'
 import { tempoDuTapis } from './events'
-import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf } from './plots'
+import { displayName, spend, coinsOf, addCrate, removeCrate, cratesOf, advanceQuest, pushQuests, baseDe, luckUntilOf, MAX_CRATES } from './plots'
 import { remettreEnMain, carriesFor } from './carry'
 import { tutoFait } from './onboarding'
 import { startConvoy } from './convoy'
@@ -140,6 +140,10 @@ export function startBelt(): void {
       return
     }
 
+    if (cratesOf(a).length >= MAX_CRATES) {
+      void room.send('actionRejected', { action: 'purchase', reason: `your crate stock is full (${MAX_CRATES}), open some first`, antiCheat: false }, { to: [a] })
+      return
+    }
     if (!spend(a, art.price)) {
       void room.send('actionRejected', { action: 'purchase', reason: `you need ${art.price - coinsOf(a)} more coins`, antiCheat: false }, { to: [a] })
       return
