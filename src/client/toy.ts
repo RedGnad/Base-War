@@ -1,5 +1,5 @@
 import { isMobile } from '@dcl/sdk/platform'
-import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction, timers } from '@dcl/sdk/ecs'
 import { crate, mutation } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -251,7 +251,7 @@ const enAttente = new Set<Entity>()
   the unit height, an offset that puts the base on the stand-in's floor at -0.5. A file
   not listed mounts at identity, which is the contract's default.
 */
-export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string }> = {
+export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip?: string; spin?: number }> = {
   'item-0.glb': { scale: 5.545, dy: -0.49, rotX: 0 },  // pion: 0.09 x 0.17 x 0.09 m (noeud applique)
   // Order follows CHESS POINTS, because players know them: pawn 1, knight 3, bishop 3+,
   // rook 5, queen 9, king beyond price. A rook sold as Uncommon under a Rare knight read
@@ -262,6 +262,13 @@ export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip
   'item-3.glb': { scale: 5.814, dy: -0.49, rotX: 0 },  // tour: 0.09 x 0.17 x 0.09 m (noeud applique)
   'item-4.glb': { scale: 4.127, dy: -0.49, rotX: 0 },  // dame: 0.10 x 0.23 x 0.10 m (noeud applique)
   'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
+  /*
+    The sentry turret (tools/model/build-sentry.py), foot at its origin, 1.32 m tall at one.
+    Its stand-in hangs 1.2 m above the slab at scale one, so the foot goes 1.2 down; the
+    plot code raises the stand-in with the scale so the foot stays on the slab. `spin` is
+    degrees a second: a turret that turns is read as a turret from the door.
+  */
+  'sentry.glb': { scale: 1, dy: -1.2, rotX: 0, spin: 24 }
 }
 
 function applyFit(modele: Entity, fichier: string): void {
@@ -973,6 +980,21 @@ export function setupToy(): void {
             duration: 190,
             easingFunction: EasingFunction.EF_EASEOUTBACK
           })
+          // A model that spins takes its turn after the pop: one Tween per entity, so the
+          // rotation waits for the scale to land, then loops in half turns like the toys.
+          const spin = FIT[m.fichier]?.spin
+          if (spin !== undefined) {
+            const modele = m.modele
+            timers.setTimeout(() => {
+              if (Transform.getOrNull(modele) === null) return
+              Tween.createOrReplace(modele, {
+                mode: Tween.Mode.Rotate({ start: Quaternion.Identity(), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
+                duration: Math.round(180000 / spin),
+                easingFunction: EasingFunction.EF_LINEAR
+              })
+              TweenSequence.createOrReplace(modele, { sequence: [], loop: TweenLoop.TL_RESTART })
+            }, 240)
+          }
         }
       }
     }
