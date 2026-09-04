@@ -404,10 +404,20 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   v.halo = null; v.couronne = null
   if (p.skin > 0) {
     const hex = mutation(p.skin).color
+    // A frame AROUND the walls, not a disc under the pieces (owner, 4 Sep): a hollow square
+    // on a flat plane, alpha-tested, the band running from the plinth's edge outward.
     v.halo = engine.addEntity()
-    Transform.create(v.halo, { parent: v.racine, position: Vector3.create(0, 0.05, 0), scale: Vector3.create(BASE_SIDE + 2.4, 0.04, BASE_SIDE + 2.4) })
-    MeshRenderer.setCylinder(v.halo, 0.5, 0.5)
-    Material.setPbrMaterial(v.halo, plastic(hex, 1.6))
+    Transform.create(v.halo, {
+      parent: v.racine, position: Vector3.create(0, 0.05, 0),
+      rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(FRAME_SIDE, FRAME_SIDE, 1)
+    })
+    MeshRenderer.setPlane(v.halo)
+    Material.setPbrMaterial(v.halo, {
+      texture: Material.Texture.Common({ src: 'assets/textures/frame.png' }),
+      emissiveTexture: Material.Texture.Common({ src: 'assets/textures/frame.png' }),
+      albedoColor: Color4.fromHexString(hex + 'ff'), emissiveColor: Color3.fromHexString(hex), emissiveIntensity: 1.6,
+      metallic: 0, roughness: 1, specularIntensity: 0, transparencyMode: 1, alphaTest: 0.5, castShadows: false
+    })
     v.couronne = spawnRays(v.racine, Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0), 7, hex, 1.4, 10)
   }
   // The colour lives in the file, so repainting is swapping which file each storey shows.
@@ -452,6 +462,8 @@ function expulser(base: Vector3, floors: number): void {
 */
 /** From which rarity a piece wears a crown of rays: Epic (4), Legendary, Mythic. */
 const RAYS_MIN_RARITY = 4
+/** The skinned base's frame: the band hugs the plinth's edge and runs 1.4 m outward; the hole is the base. */
+const FRAME_SIDE = (BASE_SIDE + 1.6) / 0.78
 const LOCK_EMBLEM = 'assets/ui/ui-shield.png'
 let lockPost: Entity | null = null
 let lockEmblem: Entity | null = null
