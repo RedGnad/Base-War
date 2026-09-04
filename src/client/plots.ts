@@ -1250,6 +1250,14 @@ export function setupPlots(): void {
           // The storey's six pedestals arrive with it.
           while (v.items.length < v.floors.length * SLOTS_PER_FLOOR) v.items.push(createPedestal(v.racine, v.items.length))
         }
+        /*
+          The roof crown climbs with the building. It is placed at skin time, at the roof of
+          the floors standing THEN, and a floor bought afterwards left it where it was: on the
+          floor of the new top storey, a seven-metre fan of rays lying among the pedestals
+          (owner, 4 Sep, "why is there a crown on the floor of the second storey").
+        */
+        const ct = v.couronne !== null ? Transform.getMutableOrNull(v.couronne) : null
+        if (ct !== null) ct.position = Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0)
 
         for (let e = 0; e < v.floors.length; e++) {
           const open = e < p.floors
