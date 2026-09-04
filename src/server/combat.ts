@@ -33,10 +33,19 @@ export function startCombat(): void {
   if (vieux > 0) log(`swept ${vieux} pile(s) left by a previous server`)
 
   // Drawing a weapon is public: relayed so every client shows the same armed players.
+  // Relayed on a change of state only, and never twice in 150 ms: a client repeating `aim`
+  // at full speed used to make every other client rebuild the weapon entities per message.
+  const dernierAim = new Map<string, { etat: string; t: number }>()
   room.onMessage('aim', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
-    void room.send('aiming', { addr: a, on: d.on, arme: Number.isInteger(d?.arme) ? d.arme : 0 })
+    const arme = Number.isInteger(d?.arme) ? d.arme : 0
+    const etat = `${d.on ? 1 : 0}:${arme}`
+    const avant = dernierAim.get(a)
+    const t = Date.now()
+    if (avant !== undefined && (avant.etat === etat || t - avant.t < 150)) return
+    dernierAim.set(a, { etat, t })
+    void room.send('aiming', { addr: a, on: d.on, arme })
   })
 
   /*

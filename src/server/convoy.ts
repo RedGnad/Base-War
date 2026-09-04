@@ -142,15 +142,23 @@ export function runConvoys(): void {
     log(`convoy ${e.id}: ${displayName(a)} outbid ${displayName(previous)} for ${price}`)
   })
 
-  engine.addSystem(() => {
+  // Ten writes a second, like the belt: the client animates from `progres` and only corrects
+  // its clock with what it receives, so thirty full component resends a second bought nothing.
+  let sync = 0
+  engine.addSystem((dt: number) => {
     const maintenant = Date.now()
+    sync += dt
+    const publier = sync >= 0.1
+    if (publier) sync = 0
     for (const [id, e] of [...convoys]) {
       const t = (maintenant - e.debutMs) / e.durationMs
-      const c = Convoy.getMutableOrNull(e.entity)
-      if (c !== null) c.progres = Math.max(0, Math.min(1, t))
-      const pos = position(e, t)
-      const tr = Transform.getMutableOrNull(e.entity)
-      if (tr !== null) tr.position = Vector3.create(pos.x, 1.0, pos.z)
+      if (publier || t >= 1) {
+        const c = Convoy.getMutableOrNull(e.entity)
+        if (c !== null) c.progres = Math.max(0, Math.min(1, t))
+        const pos = position(e, t)
+        const tr = Transform.getMutableOrNull(e.entity)
+        if (tr !== null) tr.position = Vector3.create(pos.x, 1.0, pos.z)
+      }
       if (t < 1) continue
 
       addCrate(e.owner, e.crateTier)

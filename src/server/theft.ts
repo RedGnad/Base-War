@@ -28,6 +28,8 @@ import {
 */
 type Larcin = { thief: string; victim: string; code: number; quand: number; landed: boolean }
 const larcins: Larcin[] = []
+/** Until when a thief frozen by a sentry may not start a theft: the freeze used to be client-side only. */
+const geles = new Map<string, number>()
 
 /** Stolen loot reached the thief's own shelf: the most recent open entry for that code. */
 export function noteLanded(thief: string, code: number): void {
@@ -209,6 +211,7 @@ export function startTheft(): void {
           if (montant > 0 && spend(thief, montant)) { dropAt(thief, montant, p); pris = montant }
         }
 
+        geles.set(thief, maintenant + SENTRY_FREEZE_MS)
         void room.send('sentryBlocked', {
           ownerName: b.name, gelMs: SENTRY_FREEZE_MS, left,
           lockSec: Math.round(SENTRY_LOCK_MS / 1000), lost: pris, floor: targetFloor + 1
@@ -284,6 +287,7 @@ export function startTheft(): void {
   room.onMessage('stealItem', (d, ctx) => {
     const thief = ctx?.from?.toLowerCase()
     if (!thief) return
+    if ((geles.get(thief) ?? 0) > Date.now()) { refus(thief, 'steal', 'you are frozen'); return }
     const vise = (d.ownerId ?? '').toLowerCase()
     if (vise === thief) { refus(thief, 'steal', 'that is your own base'); return }
 
@@ -342,9 +346,15 @@ export function startTheft(): void {
     if (a && enCours.delete(a)) void room.send('stealFailed', { reason: 'cancelled' }, { to: [a] })
   })
 
+  const dernierePose = new Map<string, number>()
   room.onMessage('claimSlot', (d, ctx) => {
     const a = ctx?.from?.toLowerCase()
     if (!a) return
+    if (!Number.isFinite(d.x) || !Number.isFinite(d.z)) return
+    // One placement a second: each accepted one rebuilds the synced building on every client.
+    const t = Date.now()
+    if (t - (dernierePose.get(a) ?? 0) < 1000) return
+    dernierePose.set(a, t)
     const p = positionOf(a)
     if (p === null) { refus(a, 'build', 'position unknown'); return }
     const dist = Vector3.distance(p, Vector3.create(d.x, p.y, d.z))

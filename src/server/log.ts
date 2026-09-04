@@ -23,6 +23,8 @@ export function flushLog(): void {
   for (const line of lot) void room.send('serverLog', { line })
 }
 
+const REJEU_MAX = 20
 export function replayLog(address: string): void {
-  for (const line of historique) void room.send('serverLog', { line }, { to: [address] })
+  // Twenty lines tell a joiner what is going on; sixty per join, times a burst of joins, sat on the per-tick send budget.
+  for (const line of historique.slice(-REJEU_MAX)) void room.send('serverLog', { line }, { to: [address] })
 }
