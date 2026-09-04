@@ -305,6 +305,11 @@ export function montable(primitive: Entity, fichier: string): void {
  * is what a pedestal needs when the item on it changes rarity. A no-op when nothing changed,
  * so calling it from a render loop costs one string compare.
  */
+/** Whether a model is mounted on this stand-in, loaded or still on its way. */
+export function estMonte(primitive: Entity): boolean {
+  return montages.has(primitive)
+}
+
 export function remonter(primitive: Entity, fichier: string): void {
   const m = montages.get(primitive)
   if (m === undefined) { montable(primitive, fichier); return }

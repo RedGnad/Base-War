@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, estMonte, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import {
   PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, TweenLoop, EasingFunction, ColliderLayer
@@ -261,15 +261,22 @@ function place(x: number, y: number, z: number): Entity {
  * etage de chaque base. On monte a la premiere charge, on demonte a la derniere.
  */
 function armSentry(sentry: Entity, armee: boolean): void {
-  const monte = MeshRenderer.has(sentry)
+  /*
+    "Mounted" is the model's registry, not the stand-in's mesh. The stand-in's cylinder is
+    REMOVED the moment the model arrives (toy.ts), so reading `MeshRenderer.has` as "armed"
+    said "not armed" after every load and mounted a second turret, then a third, at each
+    structural update of the base, with the cylinder flickering back between them. Harmless
+    while sentry.glb did not exist and the cylinder stayed; a leak the day it did (4 Sep).
+  */
+  const monte = MeshRenderer.has(sentry) || estMonte(sentry)
   if (armee && !monte) {
     MeshRenderer.setCylinder(sentry, 0.25, 0.45)
     Material.setPbrMaterial(sentry, plastic(TOY.sentry, 1.6))
     montable(sentry, 'sentry.glb')
   } else if (!armee && monte) {
     demonter(sentry)
-    MeshRenderer.deleteFrom(sentry)
-    Material.deleteFrom(sentry)
+    if (MeshRenderer.has(sentry)) MeshRenderer.deleteFrom(sentry)
+    if (Material.has(sentry)) Material.deleteFrom(sentry)
   }
 }
 
@@ -322,7 +329,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   if (loin) {
     // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
     // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
-    const sentry = place(x + c / 2 - SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET)
+    const sentry = place(x - c / 2 + SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET)
     return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
   }
 
@@ -369,7 +376,7 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   const sentry = engine.addEntity()
   Transform.create(sentry, {
     parent: parentCourant ?? undefined,
-    position: Vector3.create(x + c / 2 - SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET),
+    position: Vector3.create(x - c / 2 + SENTRY_INSET, y + 1.2, z - c / 2 + SENTRY_INSET),
     scale: Vector3.create(0, 0, 0)
   })
   // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armSentry`.
@@ -458,6 +465,11 @@ const RAYS_MIN_RARITY = 4
  * The sentry's largest scale and its distance from the two walls of its corner. At 1.4 the
  * turret is 1.85 m tall and its barrel sweeps a 1.12 m circle; set 1.4 m from the wall line
  * it clears the inner face at every angle of its turn.
+ *
+ * The corner is the BACK-LEFT one. It stood in the back-right, which is the elevator's own
+ * square (ASC_X, ASC_Z): the turret and the cabin drew through each other, neither clearly
+ * its own thing nor clearly one (owner, 4 Sep). The stairwell and elevator own the +x band,
+ * the shelves the middle, the lock post the front-left; the back-left was the free square.
  */
 const SENTRY_SCALE_MAX = 1.4
 const SENTRY_INSET = 1.4
