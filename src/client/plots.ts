@@ -3,7 +3,7 @@ import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
-  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
+  Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
 } from '../shared/schemas'
 import { rarity, rarityOf, mutationDe, itemColor, mutation, formatIncome, itemIncome, nomDuCode, traitsDe } from '../shared/loot-table'
 import { place3DText, Segment3D } from './texte3d'
@@ -225,7 +225,11 @@ function collisionneur(x: number, y: number, z: number, sx: number, sy: number, 
   achetent la certitude de rester sous le seuil doux, pour a peu pres un demi-etage de detail.
 */
 /** Sa propre base et celles a portee de main restent completes, budget ou non. */
-const LOD_TOUJOURS_PRES = 24
+// The base you can rob from where you stand, and yours: full whatever the budget. It was 24 m,
+// which on the free grid could force five or six full bases at once, more than the budget holds.
+const LOD_TOUJOURS_PRES = STEAL_RANGE
+/** A base already drawn in full keeps it while the budget is short by less than this: no flapping. */
+const LOD_SLACK = 12
 /** Une base deja complete compte comme un peu plus proche: sans ca elle clignoterait au seuil. */
 const LOD_FIDELITE = 0.85
 
@@ -1044,9 +1048,12 @@ export function setupPlots(): void {
       mais de sa PLACE parmi les autres. La base du lecteur passe devant tout le monde.
     */
     const moiT = Transform.getOrNull(engine.PlayerEntity)
+    // No player position yet (first frames, server swap): every distance would read 0 and every base
+    // would be forced full at once. Wait for the next frame instead.
+    if (moiT === null) return
     const moiAdr = myClientAddress()
     const distances = new Map<number, number>()
-    const rangs: Array<{ id: number; rang: number; pres: number; loin: number }> = []
+    const rangs: Array<{ id: number; rang: number; pres: number; loin: number; garde: boolean }> = []
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       const t = Transform.get(ent)
@@ -1056,9 +1063,11 @@ export function setupPlots(): void {
       const dejaPres = views.get(id)?.loin === false
       rangs.push({
         id,
-        rang: sienne ? -1 : dejaPres ? d * LOD_FIDELITE : d,
+        // Forced full (yours, or within reach) ranks first, so it is billed before anything else.
+        rang: sienne || d <= LOD_TOUJOURS_PRES ? -1 : dejaPres ? d * LOD_FIDELITE : d,
         pres: baseCost(p, true),
-        loin: baseCost(p, false)
+        loin: baseCost(p, false),
+        garde: dejaPres
       })
     }
     rangs.sort((a, b) => a.rang - b.rang)
@@ -1073,7 +1082,7 @@ export function setupPlots(): void {
     const complets = new Set<number>()
     for (const r of rangs) {
       const surcout = r.pres - r.loin
-      if (r.rang < 0 || facture + surcout <= OBJECT_BUDGET) {
+      if (r.rang < 0 || facture + surcout <= OBJECT_BUDGET + (r.garde ? LOD_SLACK : 0)) {
         facture += surcout
         complets.add(r.id)
       }
