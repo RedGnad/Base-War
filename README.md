@@ -124,16 +124,9 @@ tools/            generators for every model, sound, texture, icon and emote in 
 `src/shared/economy.ts` holds every economic constant in one place, with the reasoning next
 to each number. `tools/economy/sim.js` replays the whole progression.
 
-## Assets are generated
-
-Apart from the pistol (`assets/Models/gun.glb`, from the open Decentraland model catalog) and
-the two joypad glyphs credited in `NOTICE.md`, every model, sound, texture, icon and avatar clip in
-`assets/` is built by a script in `tools/`: crates, storeys, the padlock, the vegetation, the
-plaza ring, the gun sounds, the coin ticks, the muzzle flash, the nine-sliced HUD plates, the
-key art card. Decentraland ships three fonts and no more, so rounded corners, borders and
-gradients come from signed-distance-field images rather than a typeface. A scene cannot pose
-the avatar skeleton except through emotes, so the aim and shot clips are solved by inverse
-kinematics against the reference rig.
+Every model, sound, texture, icon and avatar clip in `assets/` is built by a script in
+`tools/`, apart from the pistol (open Decentraland model catalog) and two joypad glyphs
+(`NOTICE.md`): no third-party art, and every asset can be rebuilt from source.
 
 ## Run it locally
 
