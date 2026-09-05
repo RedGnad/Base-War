@@ -20,8 +20,10 @@ RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7',
 # src/shared/loot-table.ts MUTATIONS (id 0 = plain: the rarity's own colour).
 MUTATIONS = ['', '#ffd700', '#b9f2ff', '#8b0000', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
 METAL = {1, 2}  # Gold, Diamond
-# glTF emissive is read hotter than the SDK's emissiveIntensity: 0.3 keeps a Legendary orange, not white.
-EMISSIVE_SCALE = 0.4
+# The client reads a glTF emissive far hotter than the SDK's emissiveIntensity: at 0.4 every bright piece
+# washed to white, at 0 an Epic read as a deep purple (A/B on the owner's base, 5 Sep 02:40). The style
+# is the DARK albedo; the glow is a hint on top.
+EMISSIVE_SCALE = 0.08
 
 def rgb(hex_colour):
     h = hex_colour.lstrip('#')
@@ -41,9 +43,9 @@ def recipe(rarity, mutation):
     eclat = 0 if glow <= 0 else (glow ** 1.5) * 0.9
     lueur = min(1.0, eclat * EMISSIVE_SCALE)
     if mutation == 1:  # gold: the deep tone itself, full metal, a warm emissive floor under the rarity glow
-        return rgb('#f5c518'), 0.9, 0.32, [c * max(0.18 * EMISSIVE_SCALE, lueur) for c in (0.72, 0.52, 0.10)], 1
+        return rgb('#f5c518'), 0.9, 0.32, [c * max(0.04, lueur) for c in (0.72, 0.52, 0.10)], 1
     if mutation == 2:  # diamond: very smooth, a little metallic, a base sparkle plus rarity glow
-        return colour, 0.25, 0.05, [c * max(0.4 * EMISSIVE_SCALE, lueur) for c in colour], 1
+        return [c * 0.85 for c in colour], 0.25, 0.05, [c * max(0.03, lueur) for c in colour], 1
     if glow <= 0:  # plain plastic
         return colour, 0.0, 0.55, None, 0
     sombre = 1 / (1 + glow * 1.2)  # dark albedo, bright emissive: the platform's own glow recipe
