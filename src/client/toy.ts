@@ -1036,8 +1036,12 @@ export function setupToy(): void {
         if (voulu !== undefined) teindreModele(m.modele, voulu)
         // The arrival is the animation: from nothing to its fitted size with a little
         // overshoot, the pop every idle game gives a thing that just became yours.
+        // Not on a model that floats: an entity holds one Tween, so the pop would replace
+        // the float's Move tween while the float's yoyo sequence stays, and the Secret then
+        // scaled between nothing and its size forever (owner, 5 Sep: "bounce entre la
+        // presence et rien"). The float is its arrival.
         const tm = Transform.getOrNull(m.modele)
-        if (tm !== null) {
+        if (tm !== null && !floatFloor.has(m.modele)) {
           Tween.createOrReplace(m.modele, {
             mode: Tween.Mode.Scale({ start: Vector3.Zero(), end: Vector3.create(tm.scale.x, tm.scale.y, tm.scale.z) }),
             duration: 190,

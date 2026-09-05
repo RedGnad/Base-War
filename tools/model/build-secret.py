@@ -61,6 +61,38 @@ def ring(m, r_in, r_out, h, segs=48):
             if out: m.tri(top[i], bot[i], bot[i + 1]); m.tri(top[i], bot[i + 1], top[i + 1])
             else: m.tri(top[i], bot[i + 1], bot[i]); m.tri(top[i], top[i + 1], bot[i + 1])
 
+def orient(path):
+    """Turn every triangle to agree with its vertex normals. The writer's own convention left
+    1,128 of the 1,224 triangles wound inward with normals pointing outward, so the client
+    culled the near hemisphere and the planet read as a hollow shell (owner, 5 Sep: "le
+    modele 3D du secret est transparent et pas plein").""" 
+    import json, struct
+    b = open(path, 'rb').read()
+    L = struct.unpack_from('<I', b, 12)[0]; js = json.loads(b[20:20 + L]); off = 20 + L
+    L2 = struct.unpack_from('<I', b, off)[0]; chunk = bytearray(b[off + 8:off + 8 + L2])
+    def acc(i, fmt, n):
+        a = js['accessors'][i]; bv = js['bufferViews'][a['bufferView']]; base = bv.get('byteOffset', 0) + a.get('byteOffset', 0)
+        size = struct.calcsize('<' + fmt * n); stride = bv.get('byteStride', size)
+        return base, stride, [struct.unpack_from('<' + fmt * n, chunk, base + k * stride) for k in range(a['count'])]
+    flipped = 0
+    for mesh in js['meshes']:
+        for prim in mesh['primitives']:
+            _, _, P = acc(prim['attributes']['POSITION'], 'f', 3); _, _, N = acc(prim['attributes']['NORMAL'], 'f', 3)
+            ia = js['accessors'][prim['indices']]; fmt = {5123: 'H', 5125: 'I', 5121: 'B'}[ia['componentType']]
+            base, stride, I = acc(prim['indices'], fmt, 1); I = [t[0] for t in I]
+            for t in range(0, len(I), 3):
+                a, b2, c = P[I[t]], P[I[t + 1]], P[I[t + 2]]
+                u = [b2[i] - a[i] for i in range(3)]; v = [c[i] - a[i] for i in range(3)]
+                n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+                nn = [sum(N[I[t + k]][i] for k in range(3)) for i in range(3)]
+                if sum(n[i] * nn[i] for i in range(3)) < 0:
+                    struct.pack_into('<' + fmt, chunk, base + (t + 1) * stride, I[t + 2])
+                    struct.pack_into('<' + fmt, chunk, base + (t + 2) * stride, I[t + 1])
+                    flipped += 1
+    out = b[:off + 8] + bytes(chunk) + b[off + 8 + L2:]
+    open(path, 'wb').write(out)
+    print(f'  {flipped} triangles turned to face outward')
+
 def main():
     m = Mesh()
     sphere(m, 0.30)
@@ -68,6 +100,7 @@ def main():
     prim = {'pos': m.pos, 'nor': m.nor, 'uv_atlas': m.uv, 'idx': m.idx}
     atlas = Image.new('RGBA', (4, 4), (255, 255, 255, 255))
     taille = aplatir.ecrire_glb(os.path.join(OUT, 'item-6.glb'), [(False, [prim])], atlas)
+    orient(os.path.join(OUT, 'item-6.glb'))
     print(f"item-6.glb  {taille/1024:.1f} Ko  {len(m.idx)//3} triangles")
 
 if __name__ == '__main__':

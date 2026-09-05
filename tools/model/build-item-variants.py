@@ -426,8 +426,11 @@ def bake_fancy(js, rarity, mutation, bin_chunk, pm):
     return out, chunk
 
 def main():
+    # An optional rarity on the command line bakes that rarity's fourteen files alone.
+    seules = {int(a) for a in sys.argv[1:]}
     made = 0
     for r in range(len(RARITIES)):
+        if seules and r not in seules: continue
         src = os.path.join(TOY, f'item-{r}.glb')
         js, bin_chunk = repack_uvs(*read_glb(src))
         pm = PositionMap(js, bin_chunk)
