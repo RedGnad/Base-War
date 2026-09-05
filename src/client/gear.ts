@@ -2,7 +2,7 @@ import { TOY, plasticDe } from './toy'
 import { sendOrHold } from './intent'
 import { engine, Transform, MeshRenderer, Material, Entity, AvatarModifierArea, AvatarModifierType, PlayerIdentityData } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Trap, GEARS, Cloaked, Bomb } from '../shared/schemas'
+import { Trap, GEARS, Cloaked, Bomb, CENTER } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
 import { myClientAddress, alerter, pushToFeed } from './theft'
@@ -73,19 +73,41 @@ export function tirerLaCape(): boolean {
 }
 
 /*
-  Invisibility, built from the one primitive the platform offers for it.
+  Invisibility, built from the one primitive the platform offers for it, and built STILL.
 
   `AvatarModifierArea` hides every avatar inside its volume except the ids it is told to
-  exclude. So a small volume that follows the cloaked player, excluding EVERYONE ELSE present,
-  hides exactly one person: them. Verified in the component's own definition, "user IDs that
-  can enter and remain unaffected". One area per cloak, rebuilt each frame from who is here,
-  because the exclusion list is what makes the trick work and the room changes.
+  exclude ("user IDs that can enter and remain unaffected", its own definition), and the
+  component's docs add that the Transform SCALE is ignored: only `area` sizes it.
+
+  The first version put a small volume on each cloaked player and moved it every frame. Two
+  faults. The volume was written where the wearer stood a frame ago, so at running speed they
+  left their own box and flashed back into view; and `AMT_HIDE_AVATARS` alone leaves the NAME
+  TAG floating, so a hidden player was a name walking about (owner, 5 Sep, twice).
+
+  So there is ONE volume, it covers the whole venue, it never moves, and only its exclusion
+  list changes: everybody present is excluded except the cloaked players other than me. Nothing
+  is created or destroyed while the game runs either, which is the rule the LightSource crash
+  taught us (invariant 500). And I always see MYSELF: a player who cannot see their own avatar
+  cannot judge where they are, so the wearer keeps their body and the corner chip counts their
+  seconds, while everyone else sees nothing at all.
 */
-const capes = new Map<number, Entity>()
 /** Cloaks this client has already announced seeing through, so the line is said once per cloak. */
 const vusParRayons = new Set<number>()
 
+let zoneCape: Entity
+
 export function setupGear(): void {
+  /*
+    The venue-wide hiding volume, made once and never touched again: only its exclusion list
+    moves. 200 by 80 by 200 covers the whole place and every floor of every base.
+  */
+  zoneCape = engine.addEntity()
+  Transform.create(zoneCape, { position: Vector3.create(CENTER.x, 30, CENTER.z) })
+  AvatarModifierArea.create(zoneCape, {
+    area: Vector3.create(200, 80, 200),
+    modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_HIDE_NAMETAGS],
+    excludeIds: []
+  })
   marqueur = engine.addEntity()
   Transform.create(marqueur, { position: Vector3.create(0, -50, 0), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(marqueur, 0.5, 0.5)
@@ -173,7 +195,7 @@ export function setupGear(): void {
       const a = id.address?.toLowerCase()
       if (a) presentHere.push(a)
     }
-    const capesVivantes = new Set<number>()
+    const cachees: string[] = []
     gearView.cloaked = false
     gearView.cloakLeftS = 0
     const maintenant = Date.now()
@@ -194,41 +216,18 @@ export function setupGear(): void {
         }
         continue
       }
-      capesVivantes.add(id)
-      let zone = capes.get(id)
-      if (zone === undefined) {
-        zone = engine.addEntity()
-        /*
-          Four metres across, not two. The volume is written where the wearer WAS a frame ago,
-          so at running speed they walked out of a two metre box and flashed back into view
-          every few steps (owner, 5 Sep: "le joueur clignotte"). Four metres covers the lag,
-          and everyone else in it is excluded by name anyway.
-        */
-        Transform.create(zone, { position: Vector3.create(0, -50, 0), scale: Vector3.create(4, 4, 4) })
-        AvatarModifierArea.create(zone, { area: Vector3.create(4, 4, 4), modifiers: [AvatarModifierType.AMT_HIDE_AVATARS], excludeIds: [] })
-        capes.set(id, zone)
-      }
-      // Follow the wearer. Their entity is found by address among the identities present.
-      for (const [ent, pid] of engine.getEntitiesWith(PlayerIdentityData)) {
-        if (pid.address?.toLowerCase() !== qui) continue
-        const pt = Transform.getOrNull(ent)
-        const zt = Transform.getMutableOrNull(zone)
-        if (pt !== null && zt !== null) zt.position = Vector3.create(pt.position.x, pt.position.y + 1, pt.position.z)
-        break
-      }
-      // Rewritten only when the room changed: a mutable write is a serialise-and-compare
-      // every frame otherwise, for a list that is identical almost every frame.
-      const voulu = presentHere.filter((a) => a !== qui)
-      const actuel = AvatarModifierArea.getOrNull(zone)?.excludeIds ?? []
-      if (actuel.length !== voulu.length || actuel.some((a, i) => a !== voulu[i])) {
-        const am = AvatarModifierArea.getMutableOrNull(zone)
-        if (am !== null) am.excludeIds = voulu
-      }
+      if (qui !== moi) cachees.push(qui)
     }
-    for (const [id, z] of [...capes]) {
-      if (capesVivantes.has(id)) continue
-      engine.removeEntity(z)
-      capes.delete(id)
+    /*
+      One list, rewritten only when it changes: everybody present except the cloaked players
+      who are not me. A mutable write on an unchanged list is a serialise-and-compare every
+      frame, and this list is identical almost every frame.
+    */
+    const voulu = presentHere.filter((a) => !cachees.includes(a))
+    const actuel = AvatarModifierArea.getOrNull(zoneCape)?.excludeIds ?? []
+    if (actuel.length !== voulu.length || actuel.some((a, i) => a !== voulu[i])) {
+      const am = AvatarModifierArea.getMutableOrNull(zoneCape)
+      if (am !== null) am.excludeIds = voulu
     }
 
     // The marker sits at the player's feet while they are choosing, and nowhere otherwise.
