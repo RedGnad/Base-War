@@ -645,8 +645,6 @@ function degainer(on: boolean): void {
   void room.send('aim', { on, arme: ARME_INT[armeEnMain()] })
   if (on) {
     degainages += 1
-    combatView.aideVisee = degainages <= 2
-    if (combatView.aideVisee) timers.setTimeout(() => { combatView.aideVisee = false }, 6000)
     const c = CameraMode.getOrNull(engine.CameraEntity)
     prefersFirstPerson = c !== null && c.mode === CameraType.CT_FIRST_PERSON
     /*

@@ -840,12 +840,11 @@ function barre(): string {
   if (combatView.aiming) {
     /*
       The reticle names the target at the crosshair and the weapon button wears the sight, so
-      a line down here saying "FIRE on X" said it a third time (tester, 28 Aug: noise). What
-      remains is a first-timer's nudge, shown for the first seconds of the first two draws of
-      a session and never again: the guide's "players are there to play, not to read".
+      a line down here saying "FIRE on X" said it a third time (tester, 28 Aug: noise). The
+      first-timer's nudge ("aim at someone") went the same way: the drawn gun and the sight
+      already say it (owner, 5 Sep).
     */
-    if (combatView.targetName !== '') return ''
-    return combatView.aideVisee ? 'aim at someone' : ''
+    return ''
   }
   if (intentEnAttente()) return 'queued, the game is still starting up'
   /*
