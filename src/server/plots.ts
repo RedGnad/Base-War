@@ -61,6 +61,8 @@ type Profil = {
   itemsFound?: number
   rebirths?: number
   floorsBought?: number
+  /** The one piece prestige may not eat nor cull, by its code. */
+  pinned?: number
   /** When the last lock the owner PRESSED for ends: the button's recharge counts from here and from nothing else. */
   lockUsedUntil?: number
   vuA?: number
@@ -1464,18 +1466,52 @@ export function compterVol(address: string): void {
   Legendary would do. The same function feeds the wallet, so the screen names the exact toy
   before the button is pressed.
 */
-function candidatsAuPrestige(pleins: number[], minRarity: number): number[] {
+/*
+  ONE piece can be pinned, and prestige never touches it.
+
+  Prestige eats the least valuable piece meeting the rung's rarity AND then keeps only the
+  `guard` best by income, so a piece a player loves for what it IS rather than for what it
+  earns (the first Rainbow, a Phantom Common) left twice over: eaten, or culled. There was no
+  way to say "not that one" (owner, 5 Sep). One pin, no inventory screen, no list: the
+  prestige panel already names the toy it will eat, so the pin lives on that same line, one
+  tap, and the panel is the only place it is ever needed.
+*/
+function candidatsAuPrestige(pleins: number[], minRarity: number, epingle = -1): number[] {
   return pleins
-    .filter((c) => rarityOf(c) >= minRarity)
+    .filter((c) => rarityOf(c) >= minRarity && c !== epingle)
     .sort((x, y) => rarityOf(x) - rarityOf(y) || itemIncome(x, INCOME_PER_RARITY) - itemIncome(y, INCOME_PER_RARITY))
 }
+/** The pinned piece, or -1. The panel reads it to say which toy is being kept. */
+export function epingleDe(address: string): number {
+  return profiles.get(address)?.pinned ?? -1
+}
+
+/*
+  Pin the piece the panel is naming, or lift the pin: one tap, one state, no inventory screen.
+  A pin on a piece the player no longer owns is dropped on sight, so a stolen or sold favourite
+  never keeps protecting a ghost.
+*/
+export function epingler(address: string, code: number): number {
+  const p = profiles.get(address)
+  if (!p) return -1
+  const possede = code >= 0 && p.items.includes(code)
+  p.pinned = !possede || p.pinned === code ? -1 : code
+  dirtyProfiles.add(address)
+  return p.pinned
+}
+
 export function objetConsommePar(address: string): number {
   const p = profiles.get(address)
   if (!p) return -1
   const prestige = p.rebirths ?? 0
   if (prestige >= REBIRTH_MAX) return -1
-  const c = candidatsAuPrestige(p.items.filter((x) => x !== VIDE), prestigeTier(prestige).minRarity)
-  return c.length === 0 ? -1 : c[0]
+  const pleins = p.items.filter((x) => x !== VIDE)
+  const epingle = p.pinned ?? -1
+  // The pin is honoured only while something else can be eaten: a rung that cannot be paid
+  // is worse than a pin that yields, and the panel says which toy goes either way.
+  const c = candidatsAuPrestige(pleins, prestigeTier(prestige).minRarity, epingle)
+  const brut = c.length > 0 ? c : candidatsAuPrestige(pleins, prestigeTier(prestige).minRarity)
+  return brut.length === 0 ? -1 : brut[0]
 }
 
 export function tenterRebirth(address: string): { ok: boolean; reason?: string; prestige?: number; multiplier?: number } {
@@ -1493,7 +1529,9 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
     valuable item that meets it. Until 27 Aug the item was only checked, so prestige cost a
     player nothing they could see leave, and the rarity gate was a formality.
   */
-  const candidats = candidatsAuPrestige(pleins, exige.minRarity)
+  const epingle = p.pinned ?? -1
+  const prefere = candidatsAuPrestige(pleins, exige.minRarity, epingle)
+  const candidats = prefere.length > 0 ? prefere : candidatsAuPrestige(pleins, exige.minRarity)
   if (candidats.length === 0) {
     return { ok: false, reason: `you need a ${rarity(exige.minRarity).name} or better on your shelves: prestige consumes it` }
   }
@@ -1504,7 +1542,13 @@ export function tenterRebirth(address: string): { ok: boolean; reason?: string; 
   const reste = [...pleins]
   reste.splice(reste.indexOf(consomme), 1)
   const tries = reste.sort((a, b) => itemIncome(b, INCOME_PER_RARITY) - itemIncome(a, INCOME_PER_RARITY))
-  p.items = tries.slice(0, exige.guard)
+  // The pinned piece survives the cull as well, and takes the first of the kept places.
+  const gardes = tries.slice(0, exige.guard)
+  if (epingle >= 0 && reste.includes(epingle) && !gardes.includes(epingle)) {
+    gardes.pop()
+    gardes.unshift(epingle)
+  }
+  p.items = gardes
   p.rebirths = prestige + 1
   dirtyProfiles.add(address)
   const b = bases.get(address)
@@ -1891,6 +1935,7 @@ export function startPlots(): void {
         luckPrice: luckCost(prestige, luckBuysOf(address)),
         nextPrestige: next ? next.cost : 0,
         prestigeEats: objetConsommePar(address),
+        pinned: epingleDe(address),
         floorNeedsPrestige: floorPrestigeRequired(1 + (p.floorsBought ?? 0) + 1),
         prestige,
         minRarity: next ? next.minRarity : 0,

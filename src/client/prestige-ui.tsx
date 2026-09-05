@@ -3,7 +3,7 @@ import ReactEcs, { Label, UiEntity } from '@dcl/sdk/react-ecs'
 import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
-import { theftView, doPrestige } from './theft'
+import { theftView, doPrestige, pinItem } from './theft'
 import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
@@ -141,9 +141,23 @@ export const PrestigePanel = () => {
             <UiEntity uiTransform={{ width: 340, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
               <Label value={mange} fontSize={TYPE.label} color={aLObjet ? C.money : C.danger}
                 uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
-              <Label value="EATEN FROM YOUR SHELVES" fontSize={TYPE.caption} color={C.dim}
+              <Label value={theftView.pinned >= 0 ? `KEEPING ${nomDuCode(theftView.pinned).toUpperCase()}` : 'EATEN FROM YOUR SHELVES'}
+                fontSize={TYPE.caption} color={theftView.pinned >= 0 ? C.bonus : C.dim}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
             </UiEntity>
+            {/*
+              One tap, on the line that already names the toy: KEEP takes the piece prestige
+              was about to eat out of its reach, and prestige goes for the next one instead.
+              The same tap on a kept piece lets it go. No inventory screen, no list, no second
+              panel: the only place this decision is ever made is the one that announces it
+              (owner, 5 Sep: "l'action doit etre minimale et intuitive dans notre flux").
+            */}
+            {theftView.prestigeEats >= 0 && (
+              <Btn label={theftView.pinned === theftView.prestigeEats ? 'LET GO' : 'KEEP'}
+                width={150} height={TAP.height}
+                skin={theftView.pinned === theftView.prestigeEats ? 'secondary' : 'primary'}
+                onClick={() => pinItem(theftView.prestigeEats)} />
+            )}
           </UiEntity>
         </UiEntity>
 
