@@ -74,18 +74,29 @@ def upright(tris):
     turn = lambda p: ((p[0] - cx) * c - (p[1] - cy) * s, (p[0] - cx) * s + (p[1] - cy) * c)
     out = [[turn(p) for p in tri] for tri in tris]
     pts = [p for tri in out for p in tri]
-    # The grip is the mass hanging below the barrel: it belongs at the back, on the left.
-    bas = [p for p in pts if p[1] < 0]
-    if bas and sum(p[0] for p in bas) / len(bas) > 0:
+    # The muzzle points RIGHT, as the icon it replaces did: the barrel end is the THIN one,
+    # the grip end carries the height, so compare the two ends and mirror if they are swapped.
+    xs = [p[0] for p in pts]
+    lo, hi = min(xs), max(xs); tiers = (hi - lo) / 3
+    def hauteur(a, b):
+        ys = [p[1] for p in pts if a <= p[0] <= b]
+        return (max(ys) - min(ys)) if ys else 0.0
+    if hauteur(lo, lo + tiers) < hauteur(hi - tiers, hi):
         out = [[(-p[0], p[1]) for p in tri] for tri in out]
     return out
 
-def gun():
+def gun(barre=False, name='icon-gun.png'):
+    """The pistol; with `barre`, the same pistol struck through, which is what the button wears
+    once the weapon is out. Both come from the model, so the two states are the same object."""
     tris = upright(gun_triangles())
     to = fit([p for tri in tris for p in tri])
     mask = canvas(); d = ImageDraw.Draw(mask)
     for tri in tris: d.polygon([to(p) for p in tri], fill=255)
-    return finish(mask, 'icon-gun.png')
+    if barre:
+        w = SIZE * SS; t = int(w * 0.085); gap = int(w * 0.030)
+        for demi, fill in ((t / 2 + gap, 0), (t / 2, 255)):
+            d.line([(w * 0.14, w * 0.86), (w * 0.86, w * 0.14)], fill=fill, width=int(demi * 2))
+    return finish(mask, name)
 
 def boxes_icon(boxes, name, circles=()):
     """Boxes as (cx, cy, w, h) in the weapon's own units, seen from the side."""
@@ -112,6 +123,7 @@ def main():
              (-0.03, 0.20, 0.015, 0.10),    # prong left
              (0.03, 0.20, 0.015, 0.10)]     # prong right
     n = [('icon-gun.png', gun()),
+         ('icon-holster.png', gun(barre=True, name='icon-holster.png')),
          ('icon-slap.png', boxes_icon(slap, 'icon-slap.png')),
          ('icon-taser.png', boxes_icon(taser, 'icon-taser.png', circles=[(0, 0.27, 0.028)]))]
     for name, size in n: print(f'{name:16s} {size / 1024:5.1f} KB')
