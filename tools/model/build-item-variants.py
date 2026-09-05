@@ -104,28 +104,29 @@ def cells(seed, n):
         return (ds[1] ** 0.5 - ds[0] ** 0.5)
     return edge
 def lava_albedo():
-    edge = cells(5, 26)
+    edge = cells(5, 70); rnd = random.Random(55); grain = [[rnd.random() for _ in range(TEX)] for _ in range(TEX)]
     def f(x, y):
-        e = edge(x, y)
-        k = max(0.0, min(1.0, (2.2 - e) / 2.2))  # 1 on a crack, 0 on the crust
-        return (int(38 + 217 * k), int(24 + 70 * k), int(20 + 10 * k))
+        k = max(0.0, min(1.0, (1.5 - edge(x, y)) / 1.5))  # 1 on a crack, 0 on the crust
+        g = 0.85 + 0.3 * grain[y][x]
+        return (int((34 + 221 * k) * (1 if k > 0.3 else g)), int((22 + 70 * k) * (1 if k > 0.3 else g)), int(18 + 10 * k))
     return png(f)
 def lava_glow():
-    edge = cells(5, 26)
+    edge = cells(5, 70)
     def f(x, y):
-        k = max(0.0, min(1.0, (2.2 - edge(x, y)) / 2.2))
+        k = max(0.0, min(1.0, (1.5 - edge(x, y)) / 1.5))
         return (int(255 * k), int(120 * k), int(20 * k))
     return png(f)
 def cursed_albedo():
-    edge = cells(9, 34)
+    edge = cells(9, 90); rnd = random.Random(99); grain = [[rnd.random() for _ in range(TEX)] for _ in range(TEX)]
     def f(x, y):
-        k = max(0.0, min(1.0, (1.4 - edge(x, y)) / 1.4))
-        return (int(30 + 60 * k), int(6 + 10 * k), int(38 + 70 * k))
+        k = max(0.0, min(1.0, (1.1 - edge(x, y)) / 1.1))
+        g = 0.8 + 0.4 * grain[y][x]
+        return (int((28 + 60 * k) * g), int((5 + 10 * k) * g), int((36 + 70 * k) * g))
     return png(f)
 def cursed_veins():
-    edge = cells(9, 34)
+    edge = cells(9, 90)
     def f(x, y):
-        k = max(0.0, min(1.0, (1.4 - edge(x, y)) / 1.4))
+        k = max(0.0, min(1.0, (1.1 - edge(x, y)) / 1.1))
         return (int(150 * k), int(40 * k), int(220 * k))
     return png(f)
 
