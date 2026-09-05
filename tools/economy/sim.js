@@ -3,7 +3,7 @@
 // buys a floor the moment it is affordable and allowed, and prestiges the moment they can.
 // No theft, no gifts, no rushes: a LOWER BOUND on real times. Written 27 Aug 2026 after a
 // tester chained floors 2 to 4 and three prestiges in an evening.
-const PROD = [1, 7, 44, 287, 1897, 12523, 82654]; const MAVG = 1.492
+const PROD = [1, 7, 44, 287, 1897, 12523, 82654]; const MAVG = 1.630  // expected mutation multiplier after the 5 Sep tail lift (was 1.492)
 const W = [[55,22,6,1.2,0.2,0.03,0.004],[22,55,22,6,1.2,0.2,0.03],[6,22,55,22,6,1.2,0.2],[1,6,22,55,22,6,1.2],[0.2,1.2,6,22,55,22,6],[0.03,0.2,1.2,6,22,55,22]]
 const yieldOf = (w) => { const t = w.reduce((a, b) => a + b, 0); return w.reduce((a, x, i) => a + x / t * PROD[i], 0) * MAVG }
 const rarOf = (w) => { const t = w.reduce((a, b) => a + b, 0); let r = 0; for (let i = 0; i < 7; i++) r += w[i] / t * i; return r }

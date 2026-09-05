@@ -50,6 +50,12 @@ export function rarity(id: number) {
   went from 12.2 to 20.8. Phantom takes a spectral mint nothing else uses, Divine a warm
   gold-cream, Yin Yang a neutral placed between Common and Secret rather than on top of them.
 */
+/*
+  The tail was one in a thousand and had no crate and no rush: seven mutations a player never
+  met in a session (owner, 5 Sep, on the palette base: "je n'ai JAMAIS vu rainbow, ying yang,
+  cyber, divine, phantom, galaxy"). Lifted to one in a few hundred, each with its rush day; the
+  crate prices follow the expected multiplier (1.49 -> 1.63), so the ladder keeps its shape.
+*/
 export const MUTATIONS = [
   { id: 0,  name: '',            mult: 1,    color: '',        poids: 1000 },
   { id: 1,  name: 'Gold',        mult: 1.25, color: '#ffd700', poids: 220 },
@@ -57,14 +63,14 @@ export const MUTATIONS = [
   { id: 3,  name: 'Blood',       mult: 2,    color: '#6a0d2b', poids: 70 },
   { id: 4,  name: 'Candy',       mult: 4,    color: '#ff9ecd', poids: 34 },
   { id: 5,  name: 'Lava',        mult: 6,    color: '#ff5722', poids: 20 },
-  { id: 6,  name: 'Galaxy',      mult: 7,    color: '#5b2c8d', poids: 14 },
-  { id: 7,  name: 'Yin Yang',    mult: 7.5,  color: '#b6b6be', poids: 11 },
-  { id: 8,  name: 'Radioactive', mult: 8.5,  color: '#7fff00', poids: 8 },
-  { id: 9,  name: 'Cursed',      mult: 9,    color: '#3b0a45', poids: 6 },
-  { id: 10, name: 'Divine',      mult: 10,   color: '#ffe9a8', poids: 4 },
-  { id: 11, name: 'Rainbow',     mult: 10,   color: '#ff00ff', poids: 3 },
-  { id: 12, name: 'Cyber',       mult: 11,   color: '#00e5ff', poids: 2 },
-  { id: 13, name: 'Phantom',     mult: 12,   color: '#86ffd0', poids: 1 }
+  { id: 6,  name: 'Galaxy',      mult: 7,    color: '#5b2c8d', poids: 22 },
+  { id: 7,  name: 'Yin Yang',    mult: 7.5,  color: '#b6b6be', poids: 17 },
+  { id: 8,  name: 'Radioactive', mult: 8.5,  color: '#7fff00', poids: 13 },
+  { id: 9,  name: 'Cursed',      mult: 9,    color: '#3b0a45', poids: 10 },
+  { id: 10, name: 'Divine',      mult: 10,   color: '#ffe9a8', poids: 7 },
+  { id: 11, name: 'Rainbow',     mult: 10,   color: '#ff00ff', poids: 5 },
+  { id: 12, name: 'Cyber',       mult: 11,   color: '#00e5ff', poids: 3.5 },
+  { id: 13, name: 'Phantom',     mult: 12,   color: '#86ffd0', poids: 2 }
 ] as const
 
 export function mutation(id: number) {
