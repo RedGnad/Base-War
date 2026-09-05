@@ -53,7 +53,9 @@ export const combatView = {
   firstPerson: false,
   /** Le depart et l'impact du dernier coup, pour le kick et le hit-marker du reticule. */
   lastShotAt: 0,
-  lastHitAt: 0
+  lastHitAt: 0,
+  /** What is in the hand: the HUD button wears this weapon's own picture. */
+  arme: 'shoot' as 'shoot' | 'slap' | 'taser'
 }
 
 type ArmeType = 'shoot' | 'slap' | 'taser'
@@ -505,6 +507,8 @@ function gunSystem(dt: number): void {
   const arme = armeEnMain()
   if (arme !== armeAffichee) {
     armeAffichee = arme
+    combatView.arme = arme
+    setArmeIcone(combatView.aiming, arme)
     equiperArme(vue, arme)
     equiperArme(armes.get(moi) ?? null, arme)
     void room.send('aim', { on: combatView.aiming, arme: ARME_INT[arme] })
@@ -639,7 +643,7 @@ function degainer(on: boolean): void {
   if (combatView.aiming === on) return
   combatView.aiming = on
   setAiming(on)
-  setArmeIcone(on)
+  setArmeIcone(on, armeEnMain())
   if (on) enJoue.add(moi)
   else enJoue.delete(moi)
   void room.send('aim', { on, arme: ARME_INT[armeEnMain()] })

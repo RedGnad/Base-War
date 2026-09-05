@@ -292,16 +292,24 @@ let armeSortie: boolean | null = null
  *
  * The scene used to print "F to draw" on a bar across the bottom of the screen, which is
  * furniture spent on a caption for a button that was already there. A control can carry its
- * own meaning: a pistol when the weapon is holstered, the same pistol struck through once it
- * is out. Nothing on screen, and the answer is under the thumb that needs it.
+ * own meaning: the weapon itself when it is holstered, the holster once it is out. And the
+ * picture is the weapon the player actually holds, drawn from that very model or from the
+ * boxes the scene assembles it out of (tools/ui/build-weapon-icons.py): a paddle for the
+ * slap, a prod for the taser, the pistol otherwise (owner, 5 Sep). Nothing on screen, and
+ * the answer is under the thumb that needs it.
  *
  * Guarded on the value because this is called from the aiming toggle: rewriting the
  * component with an identical value every time would put a network update on every change
  * of mind.
  */
-export function setArmeIcone(sortie: boolean): void {
-  if (armeSortie === sortie) return
-  if (setIcon(InputAction.IA_SECONDARY, sortie ? 'icon-holster' : 'icon-gun')) armeSortie = sortie
+export function iconeArme(arme: 'shoot' | 'slap' | 'taser'): string {
+  return arme === 'slap' ? 'icon-slap' : arme === 'taser' ? 'icon-taser' : 'icon-gun'
+}
+let armeIcone: string | null = null
+export function setArmeIcone(sortie: boolean, arme: 'shoot' | 'slap' | 'taser' = 'shoot'): void {
+  const nom = sortie ? 'icon-holster' : iconeArme(arme)
+  if (armeSortie === sortie && armeIcone === nom) return
+  if (setIcon(InputAction.IA_SECONDARY, nom)) { armeSortie = sortie; armeIcone = nom }
 }
 
 export function reportPlatform(): void {

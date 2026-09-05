@@ -82,6 +82,7 @@ let crateMesh: Entity
 let hitSound: Entity
 let sonBurst: Entity
 let sonReveal: Entity
+let sonRevealRare: Entity
 let sonRevealBig: Entity
 let sonRevealHuge: Entity
 const eclats: Entity[] = []
@@ -158,6 +159,7 @@ export function setupBox(): void {
   hitSound = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
+  sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.85)
   sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.85)
   sonRevealHuge = emetteur('assets/sounds/reveal-huge.wav', 0.9)
   sonTic = emetteur('assets/sounds/tick.wav', 0.5)
@@ -332,11 +334,13 @@ let lastPosition: Vector3 | null = null
 
   Every rarity shared a single sting, which flattened the most emotional moment in the game:
   a Secret sounded exactly like a Common. The genre's answer is that the higher the pull, the
-  longer the arpeggio climbs and the longer it rings. Three clips cover seven rarities, which
-  keeps the download small while making the top of the table feel like an arrival.
+  the sound CHANGES with the step, not only its length: a wooden blip for the small pulls, a
+  bell for a Rare, a riser and a lasting ring for Epic and Legendary, and for the top a riser,
+  a low impact and a held chord (tools/sounds/build-reveal-tiers.py has the reasoning). Four
+  clips for seven rarities, and the ear names the tier before the eye reads it.
 */
 function jouerReveal(rarete: number): void {
-  jouer(rarete >= 5 ? sonRevealHuge : rarete >= 3 ? sonRevealBig : sonReveal)
+  jouer(rarete >= 5 ? sonRevealHuge : rarete >= 3 ? sonRevealBig : rarete >= 2 ? sonRevealRare : sonReveal)
 }
 
 function jouer(e: Entity): void {

@@ -16,7 +16,7 @@ import { Btn, CloseBtn, Pouce, Barre, SURF, pctAnime } from './client/ui-kit'
 import { damageFlashAlpha, liveAmounts } from './client/juice'
 import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
-import { setIconePrimaire, setReticuleClient, setMenuIcone } from './client/locomotion'
+import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
 import { gearView, placeTrap } from './client/gear'
 import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
@@ -437,7 +437,7 @@ const PRECHAUFFE = [
   'toy-0', 'toy-1', 'toy-2', 'toy-3', 'toy-4', 'toy-5', 'toy-6',
   // Les trois boutons satellites, puis les quatorze verbes du bouton contextuel dans la
   // famille active, quelle qu'elle soit: voir `client/icones.ts`.
-  'icon-gun', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu',
+  'icon-gun', 'icon-slap', 'icon-taser', 'icon-holster', 'icon-jump', 'icon-glide', 'icon-menu',
   ...ICONES_VERBES, `${ico('build')}-raised`, `${ico('build')}-mid`,
   // The interface icon family and the reveal's ray fan. A texture named for the first time
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
@@ -523,7 +523,7 @@ const PadControls = () => {
 
       <Pouce icone={volView.descend ? 'icon-glide' : 'icon-jump'} taille={pad.petit}
         bas={pad.arc[0].bas} droite={pad.arc[0].droite} actions={[InputAction.IA_JUMP]} touche={touche('SPACE')} />
-      <Pouce icone={combatView.aiming ? 'icon-holster' : 'icon-gun'} taille={pad.petit}
+      <Pouce icone={combatView.aiming ? 'icon-holster' : iconeArme(combatView.arme)} taille={pad.petit}
         bas={pad.arc[1].bas} droite={pad.arc[1].droite}
         primaire={combatView.aiming} actions={[InputAction.IA_SECONDARY]} touche={touche('F')} />
       {/*
