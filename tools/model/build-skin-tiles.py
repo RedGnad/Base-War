@@ -56,31 +56,38 @@ def noise2(x, y, n, seed):
 
 def mottle2(x, y, seed): return 0.75 + 0.5 * (0.6 * noise2(x, y, 3, seed) + 0.4 * noise2(x, y, 12, seed + 1))
 
-def tile(fn):
-    im = Image.new('RGB', (TEX, TEX))
-    im.putdata([fn((x + 0.5) / TEX, (y + 0.5) / TEX) for y in range(TEX) for x in range(TEX)])
-    return im.resize((TEX_OUT, TEX_OUT), Image.BOX)
+def tile(fn, out=TEX_OUT, ss=SUPER):
+    n = out * ss
+    im = Image.new('RGB', (n, n))
+    im.putdata([fn((x + 0.5) / n, (y + 0.5) / n) for y in range(n) for x in range(n)])
+    return im if ss == 1 else im.resize((out, out), Image.BOX)
 
 def lava():
-    # Crust, not crackle: thick molten channels between plates of sixty centimetres (three per
-    # 1.8 m tile), a hot core fading to orange at the channel's edge, a cooled dark rim on each
-    # plate, embers glowing past the rim. The pieces keep their thin cracks; the base is read
-    # from the plaza edge (owner, 5 Sep: "vraiment un effet croute de lave").
-    edge = voronoi2(5, 3); W = 0.14
+    """The pieces' crust, on a tile that does not read as a tile. Same recipe as the pieces (thin
+    cracks, ember halo, mottled crust), but plates of unequal size from two crack networks, a
+    domain warped by a low noise so no crack runs straight, widths that breathe along a crack,
+    and a 3.6 m tile at 512 px so the loop comes four times less often on a kerb (owner, 5 Sep:
+    "les veines trop epaisses, on voit que c'est pas pareil que les pieces; ca boucle trop")."""
+    edge_a = voronoi2(5, 6); edge_b = voronoi2(51, 11)
+    cache = {}
+    def crack(x, y):
+        key = (x, y)
+        if key in cache: return cache[key]
+        wx = (x + 0.035 * (noise2(x, y, 3, 31) - 0.5)) % 1.0
+        wy = (y + 0.035 * (noise2(x, y, 3, 32) - 0.5)) % 1.0
+        w = 0.06 * (0.6 + 0.8 * noise2(x, y, 7, 33))
+        e = edge_a(wx, wy)
+        k = clamp((w - e) / w)
+        if noise2(x, y, 4, 34) > 0.55:  # a finer, sparser network in some plates only
+            k = max(k, 0.8 * clamp((0.7 * w - edge_b(wx, wy)) / (0.7 * w)))
+        cache[key] = (k, e)
+        return cache[key]
     def albedo(x, y):
-        e = edge(x, y); m = mottle2(x, y, 55)
-        if e < W:
-            t = e / W  # 0 at the channel's centre, 1 at its edge
-            return tuple(int(c + (r - c) * t) for c, r in zip((255, 214, 96), (225, 64, 14)))
-        rim = clamp((0.24 - e) / 0.10)  # the plate's edge, cooled darker
-        return tuple(int(c * (1 - 0.45 * rim)) for c in (36 * m, 22 * m, 18 * m))
+        k, e = crack(x, y); m = mottle2(x, y, 55)
+        return tuple(int(c + (t - c) * k) for c, t in zip((34 * m, 22 * m, 18 * m), (255, 92, 28)))
     def glow(x, y):
-        e = edge(x, y)
-        if e < W:
-            t = e / W
-            return (int(255 - 25 * t), int(190 - 120 * t), int(60 - 45 * t))
-        g = 0.35 * clamp((0.34 - e) / 0.20) ** 2
-        return (int(255 * g), int(110 * g), int(20 * g))
+        k, e = crack(x, y); g = max(k, 0.4 * clamp((0.16 - e) / 0.16) ** 2)
+        return (int(255 * g), int(120 * g), int(20 * g))
     return albedo, glow
 
 def cursed():
@@ -141,7 +148,8 @@ def main():
         'skin-11-albedo': rainbow_albedo
     }
     for name, fn in tiles.items():
-        tile(fn).save(os.path.join(OUT, name + '.png'), optimize=True)
+        big = name.startswith('skin-5-')  # the lava tile spans 3.6 m: 512 px, no supersampling needed
+        tile(fn, 512 if big else TEX_OUT, 1 if big else SUPER).save(os.path.join(OUT, name + '.png'), optimize=True)
     print(f'{len(tiles)} tiles written to {os.path.relpath(OUT)}')
 
 if __name__ == '__main__':
