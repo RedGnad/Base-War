@@ -93,7 +93,7 @@ def orient(path):
     open(path, 'wb').write(out)
     print(f'  {flipped} triangles turned to face outward')
 
-def animate(path, period=9.0, tilt_deg=25.0):
+def animate(path, period=5.0, tilt_deg=50.0):
     """The planet gets its own node and a baked clip: a slow spin the other way about an axis
     tilted like a planet's, while the piece's own spin (the client's tween on the parent) turns
     the ring about the vertical. Two motions on one toy read as an orbit; one motion read as a
