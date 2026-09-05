@@ -18,7 +18,7 @@ TOY = os.path.join(HERE, '..', '..', 'assets', 'toy')
 # src/shared/loot-table.ts RARITIES (id, colour, glow), Secret (6) stays a primitive silhouette.
 RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7', 1.30), ('#f5a524', 2.00), ('#ff4d6d', 2.80)]
 # src/shared/loot-table.ts MUTATIONS (id 0 = plain: the rarity's own colour).
-MUTATIONS = ['', '#ffd700', '#b9f2ff', '#8b0000', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
+MUTATIONS = ['', '#ffd700', '#b9f2ff', '#6a0d2b', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
 METAL = {1, 2}  # Gold, Diamond
 # The client reads a glTF emissive far hotter than the SDK's emissiveIntensity: at 0.4 every bright piece
 # washed to white, at 0 an Epic read as a deep purple (A/B on the owner's base, 5 Sep 02:40). The style

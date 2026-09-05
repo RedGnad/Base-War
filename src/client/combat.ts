@@ -378,7 +378,9 @@ export function setupCombat(): void {
       alerter(`${qui} ALMOST LOST IT, KEEP FIRING`, '#ffd166', TOAST.result)
     } else if (d.reason === 'hit') {
       combatView.lastHitAt = Date.now()
-      alerter(`HIT ${qui}  ·  ${formatIncome(d.dropped)} ON THE GROUND, GO TAKE IT`, '#ffd166', TOAST.warning)
+      // No sum in a toast (memo 420): the pile on the ground says how much. The same line on
+      // every hit refreshes the one on screen instead of churning the stack at four rounds a second.
+      alerter(`HIT ${qui}  ·  COINS ON THE GROUND, GO TAKE THEM`, '#ffd166', TOAST.result)
     } else if (d.reason === 'nothing to drop') {
       alerter(`${qui} HAS NOTHING TO DROP`, '#9aa3ad', TOAST.result)
     }

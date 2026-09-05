@@ -576,7 +576,7 @@ export function toyPedestal(parent: Entity, size: number, mutationHex: string | 
   })
   // The lit pad is an emissive material, not a light: it survives a Low preset, where scene
   // lights and bloom are both off, so a valuable toy always sits on a visible ring of colour.
-  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8 * glowLift(mutationHex)))
+  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8 * (sombreParNature(mutationHex) ? 1 : glowLift(mutationHex))))
 }
 
 /*
@@ -718,6 +718,12 @@ const lumieres = new Map<Entity, Entity>()
   dimmer (owner, 4 Sep). The lift is the inverse of the hue's relative luminance (Rec. 709
   weights), capped so a near-black hue does not turn into a searchlight.
 */
+/** Blood and Cursed are dark on purpose: their glow stays low so the pad reads as deep, not loud (owner, 5 Sep). */
+export function sombreParNature(hex: string): boolean {
+  const c = Color4.fromHexString(hex.length === 7 ? hex + 'ff' : hex)
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.15
+}
+
 export function glowLift(hex: string): number {
   const c = vif(hex)
   const y = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
