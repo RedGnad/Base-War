@@ -250,8 +250,8 @@ const LOD_FIDELITE = 0.85
   draw call each on the second. Full detail is what costs materials, bought nearest-first.
 */
 type Cost = { mats: number; draws: number }
-/** Unique materials: forty under the phone's warning, for avatars, wearables and the belt's crates. */
-const MATERIAL_BUDGET = 360
+/** Unique materials: twenty under the phone's warning; belt and convoys sit in the decor reserve. Measured 5 Sep: 323 with sixteen full bases before the far rays and labels. */
+const MATERIAL_BUDGET = 380
 /** Decor primitives measured at 85 (5 Sep, board with one face) plus the shared materials of its models, plus convoys. */
 const DECOR_MATERIALS = 120
 /** Rendered instances: under the app-wide draw-call warning with room for avatars and UI. */
@@ -266,14 +266,14 @@ function baseCost(
   let pieces = 0, rays = 0
   for (const it of p.items) if (it !== VIDE) { pieces++; if (rarityOf(it) >= RAYS_MIN_RARITY) rays++ }
   // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
-  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces }
+  const loin: Cost = { mats: 2 + rays, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces + rays }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
   const crown = p.skin > 0 ? 2 : 0
   // Full: door and sign, one pad per piece, a crown of rays above Epic and up, one cone per
   // armed storey, the kerb and crown of a skin, one glyph plane per letter.
-  const extras = 2 + pieces + rays + cones + crown + p.ownerName.length
+  const extras = 2 + pieces + cones + crown + p.ownerName.length
   return { mats: loin.mats + extras, draws: loin.draws + extras }
 }
 
@@ -748,6 +748,9 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(x, FLOOR_HEIGHT + 1.15, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
+  // Whose base, and its state, readable from the street in both detail levels: a text costs the
+  // phone no material, so the owner's name is the cheapest legibility there is (owner, 5 Sep).
+  TextShape.create(label, { text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
 
   /*
     The reference writes the owner on the building itself: a sign over the entrance, facing
@@ -813,7 +816,6 @@ function garnirBase(v: View): void {
     albedoColor: TOY.shield, emissiveColor: Color3.fromHexString(TOY.sentry), emissiveIntensity: 0.55, metallic: 0, roughness: 0.1
   })
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
-  TextShape.createOrReplace(v.label, { text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
   MeshRenderer.setPlane(v.enseigne)
   // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).
   Material.setPbrMaterial(v.enseigne, {
@@ -832,7 +834,7 @@ function depouillerBase(v: View): void {
     if (Material.has(e)) Material.deleteFrom(e)
   }
   if (PointerEvents.has(v.ascenseur)) PointerEvents.deleteFrom(v.ascenseur)
-  for (const e of [v.gain, v.label]) if (TextShape.has(e)) TextShape.deleteFrom(e)
+  if (TextShape.has(v.gain)) TextShape.deleteFrom(v.gain)
   if (v.plaqueGlyphes !== null) { engine.removeEntityWithChildren(v.plaqueGlyphes); v.plaqueGlyphes = null }
 }
 
@@ -1528,7 +1530,10 @@ export function setupPlots(): void {
           clearShape(ent)
           clearPedestal(ent)
           clearLight(ent)
-          clearRays(ent)
+          // The crown of rays stays at a distance: it is the signal that there is loot worth
+          // the walk, which is what a far base has to say (owner, 5 Sep: the margin goes to legibility).
+          toyRays(ent, v.racine, Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size + 0.35, d.dz),
+            rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : itemColor(rarityOf(code), mutationDe(code))) : null)
           remonter(ent, itemFile(code))
           toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
           // No spin at a distance: every tweened piece writes its Transform back into the scene

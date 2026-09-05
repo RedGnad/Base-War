@@ -93,6 +93,39 @@ def cyber_lines():
         node = (x % 16 in (15, 0, 1)) and (y % 16 in (15, 0, 1))
         return (0, 229, 255) if node else ((0, 150, 175) if line else (0, 0, 0))
     return png(f)
+def cells(seed, n):
+    """Distance to the nearest and second nearest of n seeds: edge = where the two are close."""
+    rnd = random.Random(seed); pts = [(rnd.random() * TEX, rnd.random() * TEX) for _ in range(n)]
+    def edge(x, y):
+        ds = sorted(min((x - px) ** 2 + (y - py) ** 2, (x - px + TEX) ** 2 + (y - py) ** 2, (x - px - TEX) ** 2 + (y - py) ** 2, (x - px) ** 2 + (y - py + TEX) ** 2, (x - px) ** 2 + (y - py - TEX) ** 2) for px, py in pts)[:2]
+        return (ds[1] ** 0.5 - ds[0] ** 0.5)
+    return edge
+def lava_albedo():
+    edge = cells(5, 26)
+    def f(x, y):
+        e = edge(x, y)
+        k = max(0.0, min(1.0, (2.2 - e) / 2.2))  # 1 on a crack, 0 on the crust
+        return (int(38 + 217 * k), int(24 + 70 * k), int(20 + 10 * k))
+    return png(f)
+def lava_glow():
+    edge = cells(5, 26)
+    def f(x, y):
+        k = max(0.0, min(1.0, (2.2 - edge(x, y)) / 2.2))
+        return (int(255 * k), int(120 * k), int(20 * k))
+    return png(f)
+def cursed_albedo():
+    edge = cells(9, 34)
+    def f(x, y):
+        k = max(0.0, min(1.0, (1.4 - edge(x, y)) / 1.4))
+        return (int(30 + 60 * k), int(6 + 10 * k), int(38 + 70 * k))
+    return png(f)
+def cursed_veins():
+    edge = cells(9, 34)
+    def f(x, y):
+        k = max(0.0, min(1.0, (1.4 - edge(x, y)) / 1.4))
+        return (int(150 * k), int(40 * k), int(220 * k))
+    return png(f)
+
 def yinyang_albedo():
     def f(x, y):
         k = max(0.0, min(1.0, (x - TEX * 0.44) / (TEX * 0.12)))
@@ -100,6 +133,8 @@ def yinyang_albedo():
     return png(f)
 
 FANCY = {
+    5: {'albedo_tex': lava_albedo, 'emissive_tex': lava_glow, 'emissive': (0.8, 0.8, 0.8), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.75},  # crust with glowing cracks
+    9: {'albedo_tex': cursed_albedo, 'emissive_tex': cursed_veins, 'emissive': (0.35, 0.35, 0.35), 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.5},  # deep violet with faint veins
     6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
     7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
     8: {'base': (0.04, 0.11, 0.03), 'emissive': (0.25, 1.0, 0.15), 'emissive_scale': 0.3, 'metallic': 0.0, 'roughness': 0.45},  # uranium: near-black under acid green
