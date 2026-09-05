@@ -19,7 +19,7 @@ TOY = os.path.join(HERE, '..', '..', 'assets', 'toy')
 # src/shared/loot-table.ts RARITIES (id, colour, glow), Secret (6) stays a primitive silhouette.
 RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7', 1.30), ('#f5a524', 2.00), ('#ff4d6d', 2.80)]
 # src/shared/loot-table.ts MUTATIONS (id 0 = plain: the rarity's own colour).
-MUTATIONS = ['', '#ffd700', '#b9f2ff', '#6a0d2b', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
+MUTATIONS = ['', '#ffd700', '#b9f2ff', '#6e0b14', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
 METAL = {1, 2}  # Gold, Diamond
 # The client reads a glTF emissive far hotter than the SDK's emissiveIntensity: at 0.4 every bright piece
 # washed to white, at 0 an Epic read as a deep purple (A/B on the owner's base, 5 Sep 02:40). The style
@@ -56,7 +56,7 @@ def recipe(rarity, mutation):
 # ---- The fancy mutations: a look, not only a colour. Each texture is a small PNG embedded in the
 # GLB, so it ships once per file and the phone counts it once (owner, 5 Sep: "rainbow qui n'a
 # qu'une couleur, phantom opaque, cyber juste vert, galaxy unie").
-TEX = 64
+TEX = 128
 
 def png(fn):
     im = Image.new('RGB', (TEX, TEX)); px = im.load()
@@ -78,12 +78,20 @@ def galaxy_albedo():
         return (int(20 + 50 * n), int(6 + 18 * n), int(45 + 70 * n))
     return png(f)
 def galaxy_stars():
-    rnd = random.Random(66); stars = {(rnd.randrange(TEX), rnd.randrange(TEX)): rnd.choice([(255, 255, 255), (255, 200, 240), (200, 220, 255)]) for _ in range(70)}
+    rnd = random.Random(66)
+    stars = {}
+    for _ in range(520):  # a sky of small stars, a few brighter twins
+        x, y = rnd.randrange(TEX), rnd.randrange(TEX)
+        col = rnd.choice([(255, 255, 255), (255, 210, 240), (200, 225, 255), (180, 180, 220)])
+        stars[(x, y)] = col
+        if rnd.random() < 0.12: stars[((x + 1) % TEX, y)] = col
     return png(lambda x, y: stars.get((x, y), (0, 0, 0)))
 def cyber_lines():
+    # A fine regular mesh with a node at every other crossing: reads as circuitry from any unwrap.
     def f(x, y):
-        on = (x % 8 == 0) or (y % 8 == 0) or ((x // 8 + y // 8) % 5 == 0 and x % 8 == 4 and y % 8 == 4)
-        return (0, 229, 255) if on else (0, 0, 0)
+        line = (x % 8 == 0) or (y % 8 == 0)
+        node = (x % 16 in (15, 0, 1)) and (y % 16 in (15, 0, 1))
+        return (0, 229, 255) if node else ((0, 150, 175) if line else (0, 0, 0))
     return png(f)
 def yinyang_albedo():
     def f(x, y):
@@ -94,11 +102,11 @@ def yinyang_albedo():
 FANCY = {
     6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
     7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
-    8: {'base': (0.17, 0.35, 0.0), 'emissive': (0.5, 1.0, 0.0), 'emissive_scale': 0.35, 'metallic': 0.0, 'roughness': 0.5},
+    8: {'base': (0.04, 0.11, 0.03), 'emissive': (0.25, 1.0, 0.15), 'emissive_scale': 0.3, 'metallic': 0.0, 'roughness': 0.45},  # uranium: near-black under acid green
     10: {'base': (1.0, 0.91, 0.66), 'emissive': (1.0, 0.91, 0.66), 'emissive_scale': 0.22, 'metallic': 0.35, 'roughness': 0.15},
     11: {'albedo_tex': rainbow_albedo, 'emissive_tex': rainbow_albedo, 'emissive': (0.12, 0.12, 0.12), 'base': (0.9, 0.9, 0.9), 'metallic': 0.0, 'roughness': 0.4},
     12: {'base': (0.03, 0.10, 0.13), 'emissive_tex': cyber_lines, 'emissive': (0.7, 0.7, 0.7), 'metallic': 0.3, 'roughness': 0.3},
-    13: {'base': (0.53, 1.0, 0.82), 'alpha': 0.42, 'emissive': (0.53, 1.0, 0.82), 'emissive_scale': 0.12, 'metallic': 0.0, 'roughness': 0.2}
+    13: {'base': (0.42, 1.0, 0.72), 'alpha': 0.4, 'emissive': (0.25, 0.9, 0.55), 'emissive_scale': 0.16, 'metallic': 0.0, 'roughness': 0.2}  # ectoplasm, not frost
 }
 _tex_cache = {}
 def texture_bytes(fn):

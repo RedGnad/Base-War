@@ -60,7 +60,7 @@ export const MUTATIONS = [
   { id: 0,  name: '',            mult: 1,    color: '',        poids: 1000 },
   { id: 1,  name: 'Gold',        mult: 1.25, color: '#ffd700', poids: 220 },
   { id: 2,  name: 'Diamond',     mult: 1.5,  color: '#b9f2ff', poids: 120 },
-  { id: 3,  name: 'Blood',       mult: 2,    color: '#6a0d2b', poids: 70 },
+  { id: 3,  name: 'Blood',       mult: 2,    color: '#6e0b14', poids: 70 },
   { id: 4,  name: 'Candy',       mult: 4,    color: '#ff9ecd', poids: 34 },
   { id: 5,  name: 'Lava',        mult: 6,    color: '#ff5722', poids: 20 },
   { id: 6,  name: 'Galaxy',      mult: 7,    color: '#5b2c8d', poids: 22 },
