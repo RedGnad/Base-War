@@ -93,13 +93,20 @@ export const PrestigePanel = () => {
           "prestige one" on the screen for prestige two.
         */}
         <UiEntity uiTransform={{ width: '100%', height: 64, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: { bottom: 8 } }}>
-          <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 14 }, justifyContent: 'center', alignItems: 'center' }}
-            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }}>
-            {/* Centred on the star's own centre: the label fills the icon's box and sits two
-                pixels low, where the five points balance (owner, 4 Sep: off-centre, overflowing). */}
-            <Label value={`${theftView.prestige + 1}`} fontSize={TYPE.caption} color={Color4.fromHexString('#1a2f55ff')}
-              uiTransform={{ width: 60, height: 60, positionType: 'absolute', position: { top: 3, left: 0 } }} textAlign="middle-center" textWrap="nowrap" />
-          </UiEntity>
+          {/*
+            The star carries no number any more.
+
+            It wore one, small and dark, and it was never legible: measured on the file, the
+            star's ink sits between y 22 and 217 of a 256 box, so its visual centre is ABOVE
+            the box centre while the label was nudged three pixels BELOW it, and a caption on
+            a sixty pixel badge is too small to read at any position (owner, 4 and 5 Sep,
+            twice). The number is also said, in full, two centimetres to the right: PRESTIGE 5
+            in title glyphs. A badge and a heading saying the same number is the duplication
+            this interface removes everywhere else, so the badge keeps the meaning and the
+            heading keeps the number.
+          */}
+          <UiEntity uiTransform={{ width: 60, height: 60, margin: { right: 14 } }}
+            uiBackground={{ texture: { src: 'assets/ui/ui-prestige.png' }, textureMode: 'stretch' }} />
           <UiEntity uiTransform={{ width: glyphWidth(`PRESTIGE ${theftView.prestige + 1}`, TYPE.title), height: TYPE.title + 8 }}>
             <Glyphs value={`PRESTIGE ${theftView.prestige + 1}`} size={TYPE.title} role="bonus" />
           </UiEntity>
