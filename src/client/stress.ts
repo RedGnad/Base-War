@@ -15,7 +15,7 @@ import { encoder } from '../shared/loot-table'
  *
  * Ship with 0. It is a measuring instrument, not a feature.
  */
-export const STRESS_BASES = 15
+export const STRESS_BASES = 0
 /** The skins the first fakes wear, patterned ones first, so every skin stands on the field. */
 const SKIN_PALETTE = [5, 9, 6, 12, 11, 1, 2, 3, 10, 13]
 
