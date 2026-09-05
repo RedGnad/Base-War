@@ -10,7 +10,8 @@ The recipes mirror `src/client/toy.ts` (`plastic`, `metalMaterial`) and the tabl
 
 Usage: python3 tools/model/build-item-variants.py   (reads assets/toy/item-<r>.glb, r in 0..5)
 """
-import json, struct, os, sys
+import json, struct, os, sys, io, random
+from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOY = os.path.join(HERE, '..', '..', 'assets', 'toy')
@@ -51,6 +52,71 @@ def recipe(rarity, mutation):
     sombre = 1 / (1 + glow * 1.2)  # dark albedo, bright emissive: the platform's own glow recipe
     return [c * sombre for c in colour], 0.0, 0.45, [c * lueur for c in colour], 1
 
+
+# ---- The fancy mutations: a look, not only a colour. Each texture is a small PNG embedded in the
+# GLB, so it ships once per file and the phone counts it once (owner, 5 Sep: "rainbow qui n'a
+# qu'une couleur, phantom opaque, cyber juste vert, galaxy unie").
+TEX = 64
+
+def png(fn):
+    im = Image.new('RGB', (TEX, TEX)); px = im.load()
+    for y in range(TEX):
+        for x in range(TEX): px[x, y] = fn(x, y)
+    out = io.BytesIO(); im.save(out, format='PNG', optimize=True); return out.getvalue()
+
+def hsv(h, s, v):
+    i = int(h * 6) % 6; f = h * 6 - int(h * 6); p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    r, g, b = [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)][i]
+    return (int(r * 255), int(g * 255), int(b * 255))
+
+def rainbow_albedo(): return png(lambda x, y: hsv(x / TEX, 0.95, 0.9))
+def galaxy_albedo():
+    rnd = random.Random(6)
+    cloud = [[rnd.random() for _ in range(TEX)] for _ in range(TEX)]
+    def f(x, y):
+        n = (cloud[y][x] + cloud[y][(x + 1) % TEX] + cloud[(y + 1) % TEX][x] + cloud[(y + 3) % TEX][(x + 5) % TEX]) / 4
+        return (int(20 + 50 * n), int(6 + 18 * n), int(45 + 70 * n))
+    return png(f)
+def galaxy_stars():
+    rnd = random.Random(66); stars = {(rnd.randrange(TEX), rnd.randrange(TEX)): rnd.choice([(255, 255, 255), (255, 200, 240), (200, 220, 255)]) for _ in range(70)}
+    return png(lambda x, y: stars.get((x, y), (0, 0, 0)))
+def cyber_lines():
+    def f(x, y):
+        on = (x % 8 == 0) or (y % 8 == 0) or ((x // 8 + y // 8) % 5 == 0 and x % 8 == 4 and y % 8 == 4)
+        return (0, 229, 255) if on else (0, 0, 0)
+    return png(f)
+def yinyang_albedo():
+    def f(x, y):
+        k = max(0.0, min(1.0, (x - TEX * 0.44) / (TEX * 0.12)))
+        return (int(15 + 218 * k), int(15 + 218 * k), int(22 + 213 * k))
+    return png(f)
+
+FANCY = {
+    6: {'albedo_tex': galaxy_albedo, 'emissive_tex': galaxy_stars, 'emissive': (0.9, 0.8, 1.0), 'base': (1, 1, 1), 'metallic': 0.0, 'roughness': 0.5},
+    7: {'albedo_tex': yinyang_albedo, 'base': (1, 1, 1), 'metallic': 0.1, 'roughness': 0.35},
+    8: {'base': (0.17, 0.35, 0.0), 'emissive': (0.5, 1.0, 0.0), 'emissive_scale': 0.35, 'metallic': 0.0, 'roughness': 0.5},
+    10: {'base': (1.0, 0.91, 0.66), 'emissive': (1.0, 0.91, 0.66), 'emissive_scale': 0.22, 'metallic': 0.35, 'roughness': 0.15},
+    11: {'albedo_tex': rainbow_albedo, 'emissive_tex': rainbow_albedo, 'emissive': (0.12, 0.12, 0.12), 'base': (0.9, 0.9, 0.9), 'metallic': 0.0, 'roughness': 0.4},
+    12: {'base': (0.03, 0.10, 0.13), 'emissive_tex': cyber_lines, 'emissive': (0.7, 0.7, 0.7), 'metallic': 0.3, 'roughness': 0.3},
+    13: {'base': (0.53, 1.0, 0.82), 'alpha': 0.42, 'emissive': (0.53, 1.0, 0.82), 'emissive_scale': 0.12, 'metallic': 0.0, 'roughness': 0.2}
+}
+_tex_cache = {}
+def texture_bytes(fn):
+    if fn not in _tex_cache: _tex_cache[fn] = fn()
+    return _tex_cache[fn]
+
+def embed_texture(js, bin_chunk, data):
+    """Append a PNG to the binary chunk and register it; returns (texture index, new chunk)."""
+    pad = b'\x00' * ((4 - len(bin_chunk) % 4) % 4)
+    chunk = bin_chunk + pad
+    js.setdefault('bufferViews', []).append({'buffer': 0, 'byteOffset': len(chunk), 'byteLength': len(data)})
+    chunk += data
+    js['buffers'][0]['byteLength'] = len(chunk)
+    js.setdefault('images', []).append({'bufferView': len(js['bufferViews']) - 1, 'mimeType': 'image/png'})
+    if not js.get('samplers'): js['samplers'] = [{'magFilter': 9729, 'minFilter': 9987, 'wrapS': 10497, 'wrapT': 10497}]
+    js.setdefault('textures', []).append({'sampler': 0, 'source': len(js['images']) - 1})
+    return len(js['textures']) - 1, chunk
+
 def read_glb(path):
     b = open(path, 'rb').read()
     magic, version, length = struct.unpack('<III', b[:12])
@@ -71,7 +137,9 @@ def write_glb(path, js, bin_chunk):
         f.write(struct.pack('<II', len(j), 0x4E4F534A)); f.write(j)
         f.write(struct.pack('<II', len(bpad), 0x004E4942)); f.write(bpad)
 
-def bake(js, rarity, mutation):
+def bake(js, rarity, mutation, bin_chunk):
+    if mutation in FANCY:
+        return bake_fancy(js, rarity, mutation, bin_chunk)
     base, metallic, roughness, emissive, strength = recipe(rarity, mutation)
     out = json.loads(json.dumps(js))
     # The baked texture was dark and hid the colour; the colour IS the material now.
@@ -85,7 +153,30 @@ def bake(js, rarity, mutation):
             nm['emissiveFactor'] = [min(1.0, max(0.0, c)) for c in emissive]
         mats.append(nm)
     out['materials'] = mats
-    return out
+    return out, bin_chunk
+
+def bake_fancy(js, rarity, mutation, bin_chunk):
+    f = FANCY[mutation]
+    glow = RARITIES[rarity][1]
+    eclat = 0 if glow <= 0 else (glow ** 1.5) * 0.9
+    lueur = min(1.0, eclat * EMISSIVE_SCALE)
+    out = json.loads(json.dumps(js)); chunk = bin_chunk
+    for k in ('textures', 'images', 'samplers', 'extensionsUsed'):
+        out.pop(k, None)
+    pbr = {'baseColorFactor': [*f['base'], f.get('alpha', 1.0)], 'metallicFactor': f['metallic'], 'roughnessFactor': f['roughness']}
+    if 'albedo_tex' in f:
+        idx, chunk = embed_texture(out, chunk, texture_bytes(f['albedo_tex'])); pbr['baseColorTexture'] = {'index': idx}
+    nm = {'name': f'piece-{rarity}-{mutation}', 'doubleSided': True, 'pbrMetallicRoughness': pbr}
+    if 'alpha' in f: nm['alphaMode'] = 'BLEND'
+    em = f.get('emissive')
+    if em is not None:
+        scale = f.get('emissive_scale', 1.0)
+        # The mutation's own glow, plus the rarity's hint on top, never above one.
+        nm['emissiveFactor'] = [min(1.0, c * scale + c * lueur) for c in em]
+        if 'emissive_tex' in f:
+            idx, chunk = embed_texture(out, chunk, texture_bytes(f['emissive_tex'])); nm['emissiveTexture'] = {'index': idx}
+    out['materials'] = [nm for _ in js.get('materials', [{}])]
+    return out, chunk
 
 def main():
     made = 0
@@ -93,7 +184,8 @@ def main():
         src = os.path.join(TOY, f'item-{r}.glb')
         js, bin_chunk = read_glb(src)
         for m in range(len(MUTATIONS)):
-            write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), bake(js, r, m), bin_chunk)
+            out, chunk = bake(js, r, m, bin_chunk)
+            write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), out, chunk)
             made += 1
     print(f'{made} variants written to {os.path.relpath(TOY)}')
 
