@@ -11,7 +11,9 @@ as the pieces, so a Lava base is ringed and pillared in the crust its Lava piece
 import io, math, os
 from PIL import Image
 
-TEX = 256
+TEX_OUT = 256
+SUPER = 2  # baked at 512, box-filtered to 256: soft crack edges
+TEX = TEX_OUT * SUPER
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'source', 'skin-tiles')
 
 def hash2(x, y, seed):
@@ -52,31 +54,48 @@ def noise2(x, y, n, seed):
     top = c(0, 0) + (c(1, 0) - c(0, 0)) * tx; bot = c(0, 1) + (c(1, 1) - c(0, 1)) * tx
     return top + (bot - top) * ty
 
-def grain2(x, y, n, seed): return hash2(math.floor(x * n) % n, math.floor(y * n) % n, seed)
+def mottle2(x, y, seed): return 0.75 + 0.5 * (0.6 * noise2(x, y, 3, seed) + 0.4 * noise2(x, y, 12, seed + 1))
 
 def tile(fn):
     im = Image.new('RGB', (TEX, TEX))
     im.putdata([fn((x + 0.5) / TEX, (y + 0.5) / TEX) for y in range(TEX) for x in range(TEX)])
-    return im
+    return im.resize((TEX_OUT, TEX_OUT), Image.BOX)
 
 def lava():
-    edge = voronoi2(5, 4)
+    # Three plates per tile: with the tile at 1.8 m, plates of sixty centimetres, read from the
+    # plaza edge (owner, 5 Sep: "trop serre sur les bases").
+    edge = voronoi2(5, 3)
     def albedo(x, y):
-        k = clamp((0.06 - edge(x, y)) / 0.06)
-        g = 1.0 if k > 0.3 else 0.85 + 0.3 * grain2(x, y, 200, 55)
-        return (int((34 + 221 * k) * g), int((22 + 70 * k) * g), int(18 + 10 * k))
+        k = clamp((0.05 - edge(x, y)) / 0.05); m = mottle2(x, y, 55)
+        return tuple(int(c + (t - c) * k) for c, t in zip((34 * m, 22 * m, 18 * m), (255, 92, 28)))
     def glow(x, y):
-        k = clamp((0.06 - edge(x, y)) / 0.06)
-        return (int(255 * k), int(120 * k), int(20 * k))
+        e = edge(x, y); g = max(clamp((0.05 - e) / 0.05), 0.4 * clamp((0.16 - e) / 0.16) ** 2)
+        return (int(255 * g), int(120 * g), int(20 * g))
     return albedo, glow
 
 def cursed():
-    edge = voronoi2(9, 5)
+    # Veins of constant width: the distance to the middle level of a three-octave noise (its
+    # offset divided by the local slope), not a band in value, which swells where the noise is
+    # flat and reads as blobs (5 Sep).
+    # Two families: the main veins, and finer, fainter ones threading between them.
+    def n1(x, y): return 0.55 * noise2(x, y, 2, 91) + 0.3 * noise2(x, y, 5, 92) + 0.15 * noise2(x, y, 13, 93)
+    def n2(x, y): return 0.5 * noise2(x, y, 3, 94) + 0.3 * noise2(x, y, 7, 95) + 0.2 * noise2(x, y, 17, 96)
+    h = 1.0 / TEX; W = 0.006  # half-width of a main vein, in tile units: about a centimetre at 1.8 m
+    def dist_to(n, x, y):
+        v = n(x, y); g = math.hypot((n(x + h, y) - v) / h, (n(x, y + h) - v) / h)
+        return abs(v - 0.5) / max(1e-6, g)
+    k = [0.0] * (TEX * TEX)
+    for j in range(TEX):
+        y = (j + 0.5) / TEX
+        for i in range(TEX):
+            x = (i + 0.5) / TEX
+            k[j * TEX + i] = max(clamp((W - dist_to(n1, x, y)) / W), 0.45 * clamp((0.6 * W - dist_to(n2, x, y)) / (0.6 * W)))
+    def k_at(x, y): return k[int(y * TEX) * TEX + int(x * TEX)]
     def albedo(x, y):
-        k = clamp((0.05 - edge(x, y)) / 0.05); g = 0.8 + 0.4 * grain2(x, y, 200, 99)
-        return (int((28 + 60 * k) * g), int((5 + 10 * k) * g), int((36 + 70 * k) * g))
+        k = k_at(x, y); m = mottle2(x, y, 99)
+        return tuple(int(c + (t - c) * k) for c, t in zip((30 * m, 6 * m, 40 * m), (120, 40, 170)))
     def glow(x, y):
-        k = clamp((0.05 - edge(x, y)) / 0.05)
+        k = k_at(x, y)
         return (int(150 * k), int(40 * k), int(220 * k))
     return albedo, glow
 

@@ -60,7 +60,12 @@ def recipe(rarity, mutation):
 # ---- The fancy mutations: a look, not only a colour. Each texture is a small PNG embedded in the
 # GLB, so it ships once per file and the phone counts it once (owner, 5 Sep: "rainbow qui n'a
 # qu'une couleur, phantom opaque, cyber juste vert, galaxy unie").
-TEX = 256
+TEX_OUT = 256
+# Samples per texel and axis: the bake runs at 512 and is box-filtered down to what ships, so a
+# crack edge is a soft ramp and not a staircase when a piece fills the screen (owner, 5 Sep:
+# "pixelisee sur les pieces").
+SUPER = 2
+TEX = TEX_OUT * SUPER
 
 
 # --- Object-space baking -------------------------------------------------------------------
@@ -87,6 +92,55 @@ def hash3(x, y, z, seed):
     h = ((h ^ (h >> 13)) * 1274126177) & 0xffffffff
     return ((h ^ (h >> 16)) & 0xffffffff) / 4294967296.0
 
+def repack_uvs(js, bin_chunk):
+    """The chess set's unwrap leaves its islands sparse: the bishop paints a tenth of its atlas,
+    so a piece had the resolution of an eighty-pixel texture whatever the file size (owner,
+    5 Sep: "pixelisee sur les pieces"). The variants are derived files, so they can carry their
+    own UVs: each island is scaled and shelf-packed to fill the atlas, uniformly (the artist's
+    relative densities stay), with a margin for filtering. Returns the modified file."""
+    out = json.loads(json.dumps(js)); chunk = bin_chunk
+    for mesh in out['meshes']:
+        for prim in mesh['primitives']:
+            at = prim['attributes']
+            U = accessor(js, bin_chunk, at['TEXCOORD_0']); I = [t[0] for t in accessor(js, bin_chunk, prim['indices'])]
+            parent = list(range(len(U)))
+            def find(x):
+                while parent[x] != x: parent[x] = parent[parent[x]]; x = parent[x]
+                return x
+            for t in range(0, len(I), 3):
+                parent[find(I[t])] = find(I[t + 1]); parent[find(I[t + 1])] = find(I[t + 2])
+            groups = {}
+            for v in set(I): groups.setdefault(find(v), []).append(v)
+            islands = []
+            for verts in groups.values():
+                us = [U[v][0] for v in verts]; vs = [U[v][1] for v in verts]
+                islands.append({'verts': verts, 'u0': min(us), 'v0': min(vs), 'w': max(us) - min(us), 'h': max(vs) - min(vs)})
+            islands.sort(key=lambda k: -k['h'])
+            def pack(s, m):
+                x = y = rowh = 0.0; places = []
+                for isl in islands:
+                    w, h = isl['w'] * s + 2 * m, isl['h'] * s + 2 * m
+                    if x + w > 1.0: y += rowh; x = rowh = 0.0
+                    if y + h > 1.0 or w > 1.0: return None
+                    places.append((isl, x + m, y + m)); x += w; rowh = max(rowh, h)
+                return places
+            m = 6.0 / TEX_OUT; lo, hi = 0.05, 40.0; best = None
+            for _ in range(48):
+                mid = (lo + hi) / 2; pl = pack(mid, m)
+                if pl: best = (mid, pl); lo = mid
+                else: hi = mid
+            s, places = best
+            newU = list(U)
+            for isl, x, y in places:
+                for v in isl['verts']: newU[v] = ((U[v][0] - isl['u0']) * s + x, (U[v][1] - isl['v0']) * s + y)
+            data = struct.pack('<' + 'ff' * len(newU), *[c for uv in newU for c in uv])
+            chunk += b'\x00' * ((4 - len(chunk) % 4) % 4)
+            out['bufferViews'].append({'buffer': 0, 'byteOffset': len(chunk), 'byteLength': len(data), 'target': 34962}); chunk += data
+            out['accessors'].append({'bufferView': len(out['bufferViews']) - 1, 'componentType': 5126, 'count': len(newU), 'type': 'VEC2'})
+            prim['attributes']['TEXCOORD_0'] = len(out['accessors']) - 1
+            out['buffers'][0]['byteLength'] = len(chunk)
+    return out, chunk
+
 class PositionMap:
     """Which object-space point each texel paints, read from the model's own unwrap."""
     def __init__(self, js, bin_chunk):
@@ -105,6 +159,7 @@ class PositionMap:
         self.lo = (min(xs), min(ys), min(zs)); self.hi = (max(xs), max(ys), max(zs))
         self.size = max(h - l for h, l in zip(self.hi, self.lo))
         self.centre = tuple((h + l) / 2 for h, l in zip(self.hi, self.lo))
+        self.painted = sum(p is not None for p in self.pos)
         self.dilate()
 
     def raster(self, P, U, a, b, c):
@@ -149,6 +204,7 @@ def png(pm, fn):
     """A texture from a function of (texel index, object-space point)."""
     im = Image.new('RGB', (TEX, TEX))
     im.putdata([fn(i, pm.pos[i]) for i in range(TEX * TEX)])
+    im = im.resize((TEX_OUT, TEX_OUT), Image.BOX)
     out = io.BytesIO(); im.save(out, format='PNG', optimize=True); return out.getvalue()
 
 def voronoi_edge(pm, seed, cell):
@@ -178,8 +234,10 @@ def voronoi_edge(pm, seed, cell):
     pm.cache[key] = out
     return out
 
-def grain(p, cell, seed):
-    return hash3(math.floor(p[0] / cell), math.floor(p[1] / cell), math.floor(p[2] / cell), seed)
+def mottle(p, size, seed):
+    """A smooth unevenness of the surface, 0.75 to 1.25: blotches of a tenth of the piece and a
+    finer flecking, never a hash per texel (that reads as a mosaic once magnified)."""
+    return 0.75 + 0.5 * (0.6 * noise3(p, size / 10, seed) + 0.4 * noise3(p, size / 40, seed + 1))
 
 def noise3(p, cell, seed):
     """Smooth value noise on a 3D lattice, in [0, 1]."""
@@ -221,29 +279,53 @@ def cyber_lines(pm):
         return (0, 229, 255) if near >= 2 else ((0, 150, 175) if near == 1 else (0, 0, 0))
     return png(pm, f)
 def lava_albedo(pm):
-    edge = voronoi_edge(pm, 5, pm.size / 3.5); fine = pm.size / 220
+    edge = voronoi_edge(pm, 5, pm.size / 3.5)
     def f(i, p):
-        k = clamp((0.06 - edge[i]) / 0.06)  # 1 on a crack, 0 on the crust
-        g = 1.0 if k > 0.3 else 0.85 + 0.3 * grain(p, fine, 55)
-        return (int((34 + 221 * k) * g), int((22 + 70 * k) * g), int(18 + 10 * k))
+        k = clamp((0.05 - edge[i]) / 0.05)  # 1 in the crack, 0 on the crust
+        m = mottle(p, pm.size, 55)
+        crust = (34 * m, 22 * m, 18 * m)
+        return tuple(int(c + (t - c) * k) for c, t in zip(crust, (255, 92, 28)))
     return png(pm, f)
 def lava_glow(pm):
     edge = voronoi_edge(pm, 5, pm.size / 3.5)
     def f(i, p):
-        k = clamp((0.06 - edge[i]) / 0.06)
-        return (int(255 * k), int(120 * k), int(20 * k))
+        # The crack burns; the plate edge around it only glows, like embers under a crust.
+        g = max(clamp((0.05 - edge[i]) / 0.05), 0.4 * clamp((0.16 - edge[i]) / 0.16) ** 2)
+        return (int(255 * g), int(120 * g), int(20 * g))
     return png(pm, f)
+def cursed_veins_field(pm):
+    """Per texel, 1 in a vein and 0 outside. A vein is the middle level of a three-octave noise,
+    drawn at constant width: the offset from that level divided by the local slope, so the
+    line never swells where the noise is flat. Marble, not the Lava's cell network (owner,
+    5 Sep: "la texture de cursed est la meme que lava")."""
+    key = ('cursed',)
+    if key in pm.cache: return pm.cache[key]
+    size = pm.size; h = size / 400; W = size * 0.006
+    # Two families: the main veins, and finer, fainter ones threading between them.
+    def n1(p): return 0.55 * noise3(p, size / 2.5, 91) + 0.3 * noise3(p, size / 6, 92) + 0.15 * noise3(p, size / 16, 93)
+    def n2(p): return 0.5 * noise3(p, size / 1.8, 94) + 0.3 * noise3(p, size / 4.5, 95) + 0.2 * noise3(p, size / 12, 96)
+    def dist_to(n, p):
+        v = n(p)
+        gx = (n((p[0] + h, p[1], p[2])) - v) / h; gy = (n((p[0], p[1] + h, p[2])) - v) / h; gz = (n((p[0], p[1], p[2] + h)) - v) / h
+        return abs(v - 0.5) / max(1e-6, math.sqrt(gx * gx + gy * gy + gz * gz))
+    out = [0.0] * (TEX * TEX)
+    for i, p in enumerate(pm.pos):
+        if p is None: continue
+        out[i] = max(clamp((W - dist_to(n1, p)) / W), 0.45 * clamp((0.6 * W - dist_to(n2, p)) / (0.6 * W)))
+    pm.cache[key] = out
+    return out
 def cursed_albedo(pm):
-    edge = voronoi_edge(pm, 9, pm.size / 4.5); fine = pm.size / 220
+    veins = cursed_veins_field(pm)
     def f(i, p):
-        k = clamp((0.05 - edge[i]) / 0.05)
-        g = 0.8 + 0.4 * grain(p, fine, 99)
-        return (int((28 + 60 * k) * g), int((5 + 10 * k) * g), int((36 + 70 * k) * g))
+        k = veins[i]
+        m = mottle(p, pm.size, 99)
+        base = (30 * m, 6 * m, 40 * m)
+        return tuple(int(c + (t - c) * k) for c, t in zip(base, (120, 40, 170)))
     return png(pm, f)
 def cursed_veins(pm):
-    edge = voronoi_edge(pm, 9, pm.size / 4.5)
+    veins = cursed_veins_field(pm)
     def f(i, p):
-        k = clamp((0.05 - edge[i]) / 0.05)
+        k = veins[i]
         return (int(150 * k), int(40 * k), int(220 * k))
     return png(pm, f)
 def yinyang_albedo(pm):
@@ -347,8 +429,9 @@ def main():
     made = 0
     for r in range(len(RARITIES)):
         src = os.path.join(TOY, f'item-{r}.glb')
-        js, bin_chunk = read_glb(src)
+        js, bin_chunk = repack_uvs(*read_glb(src))
         pm = PositionMap(js, bin_chunk)
+        print(f'item-{r}: {pm.painted / len(pm.pos):.0%} of the atlas painted', flush=True)
         for m in range(len(MUTATIONS)):
             out, chunk = bake(js, r, m, bin_chunk, pm)
             write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), out, chunk)

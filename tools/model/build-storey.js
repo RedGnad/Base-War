@@ -451,8 +451,8 @@ const TUILES = path.join(__dirname, 'source', 'skin-tiles')
 const tuilesLues = {}
 const tuile = (nom) => (tuilesLues[nom] ??= fs.readFileSync(path.join(TUILES, `${nom}.png`)))
 const MOTIFS = {
-  5: { tuile: 0.9, albedo: 'skin-5-albedo', lueur: 'skin-5-glow', emissif: [0.8, 0.8, 0.8] },       // Lava
-  9: { tuile: 0.9, albedo: 'skin-9-albedo', lueur: 'skin-9-glow', emissif: [0.35, 0.35, 0.35] },    // Cursed
+  5: { tuile: 1.8, albedo: 'skin-5-albedo', lueur: 'skin-5-glow', emissif: [0.8, 0.8, 0.8] },       // Lava
+  9: { tuile: 1.8, albedo: 'skin-9-albedo', lueur: 'skin-9-glow', emissif: [0.35, 0.35, 0.35] },    // Cursed
   6: { tuile: 1.2, albedo: 'skin-6-albedo', lueur: 'skin-6-glow', emissif: [0.9, 0.8, 1.0] },       // Galaxy
   11: { tuile: 4.0, albedo: 'skin-11-albedo', lueur: 'skin-11-albedo', emissif: [0.12, 0.12, 0.12] }, // Rainbow, hue on height
   12: { tuile: 0.6, lueur: 'skin-12-glow', emissif: [0.7, 0.7, 0.7], couleur: [0.03, 0.10, 0.13] }   // Cyber
