@@ -113,7 +113,7 @@ function hex(h) {
   et on ne retourne qu'au moment d'ecrire les octets. Une symetrie inverse aussi le sens des
   triangles, d'ou l'echange d'indices plus bas: sans lui toutes les faces seraient a l'envers.
 */
-function boite(cx, cy, cz, sx, sy, sz, angleX) {
+function boite(cx, cy, cz, sx, sy, sz, angleX, tuile) {
   const hx = sx / 2, hy = sy / 2, hz = sz / 2
   const faces = [
     { n: [0, 0, 1], v: [[-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]] },
@@ -130,15 +130,22 @@ function boite(cx, cy, cz, sx, sy, sz, angleX) {
   for (const f of faces) {
     const base = pos.length / 3
     const n = tourne(f.n)
-    for (const v of f.v) {
-      const p = tourne(v)
+    const coins = f.v.map((v) => { const p = tourne(v); return [p[0] + cx, p[1] + cy, p[2] + cz] })
+    for (const p of coins) {
       // X NEGATIF: voir `MIROIR` en tete de fichier.
-      pos.push(-(p[0] + cx), p[1] + cy, p[2] + cz)
+      pos.push(-p[0], p[1], p[2])
       nor.push(-n[0], n[1], n[2])
     }
-    // Flat unit UVs per face. The materials carry no texture, but the importer expects the
-    // attribute to exist: without TEXCOORD_0 the client accepted the file and drew nothing.
-    uv.push(0, 1, 1, 1, 1, 0, 0, 0)
+    if (tuile) {
+      // Box mapping in metres: a face takes the two world axes it lies in, divided by the tile
+      // size, so a pattern repeats at a fixed physical size and lines up from box to box.
+      const [a, b] = Math.abs(n[0]) >= Math.abs(n[1]) && Math.abs(n[0]) >= Math.abs(n[2]) ? [2, 1] : (Math.abs(n[1]) >= Math.abs(n[2]) ? [0, 2] : [0, 1])
+      for (const p of coins) uv.push(p[a] / tuile, p[b] / tuile)
+    } else {
+      // Flat unit UVs per face. The materials carry no texture, but the importer expects the
+      // attribute to exist: without TEXCOORD_0 the client accepted the file and drew nothing.
+      uv.push(0, 1, 1, 1, 1, 0, 0, 0)
+    }
     // Enroulement inverse avec X: une symetrie retourne les faces, il faut les remettre.
     idx.push(base, base + 2, base + 1, base, base + 3, base + 2)
   }
@@ -205,13 +212,17 @@ const PIXEL = pixelBlanc()
 function ecrire(nomFichier, groupes) {
   const bin = []          // float and short payload, assembled at the end
   const bufferViews = [], accessors = [], materials = [], primitives = []
+  // Every image in the file, each once: the tiles of the textured groups, and the white pixel
+  // only when a plain group needs it. The phone counts every image, so none is embedded idle.
+  const pngs = []
+  const image = (png) => { const i = pngs.indexOf(png); return i >= 0 ? i : pngs.push(png) - 1 }
   let octets = 0
   const aligner = () => { while (octets % 4 !== 0) { bin.push({ pad: 1 }); octets += 1 } }
 
   for (const g of groupes) {
     const pos = [], nor = [], uv = [], idx = []
     for (const b of g.boites) {
-      const d = boite(...b)
+      const d = boite(b[0], b[1], b[2], b[3], b[4], b[5], b[6], g.tuile)
       const base = pos.length / 3
       pos.push(...d.pos); nor.push(...d.nor); uv.push(...d.uv)
       for (const i of d.idx) idx.push(i + base)
@@ -241,26 +252,37 @@ function ecrire(nomFichier, groupes) {
     const aIdx = accessors.push({ bufferView: bufferViews.length - 1, componentType: 5123, count: idx.length, type: 'SCALAR' }) - 1
 
     const c = g.couleur
+    const iAlbedo = image(g.albedo ?? PIXEL)
     const mat = {
       name: g.nom,
       pbrMetallicRoughness: {
         baseColorFactor: [c[0], c[1], c[2], c[3] ?? 1],
-        baseColorTexture: { index: 0 },
+        baseColorTexture: { index: iAlbedo },
         metallicFactor: g.metallique ?? 0,
         roughnessFactor: g.rugosite ?? 0.55
       }
+    }
+    if (g.lueur) {
+      mat.emissiveTexture = { index: image(g.lueur) }
+      mat.emissiveFactor = g.emissif ?? [1, 1, 1]
     }
     if ((c[3] ?? 1) < 1) { mat.alphaMode = 'BLEND'; mat.doubleSided = true }
     materials.push(mat)
     primitives.push({ attributes: { POSITION: aPos, NORMAL: aNor, TEXCOORD_0: aUv }, indices: aIdx, material: materials.length - 1 })
   }
 
-  // Le pixel, en queue de tampon, partage par tous les materiaux du fichier.
-  aligner()
-  const vuePixel = bufferViews.length
-  bufferViews.push({ buffer: 0, byteOffset: octets, byteLength: PIXEL.length })
-  bin.push({ brut: PIXEL })
-  octets += PIXEL.length
+  // The images, at the tail of the buffer: the pixel shared by the plain materials, then the
+  // tiles. A tile is filtered with mipmaps (it repeats every metre and is seen from the plaza
+  // edge); the pixel needs none.
+  const images = [], textures = []
+  for (const png of pngs) {
+    aligner()
+    bufferViews.push({ buffer: 0, byteOffset: octets, byteLength: png.length })
+    bin.push({ brut: png })
+    octets += png.length
+    images.push({ bufferView: bufferViews.length - 1, mimeType: 'image/png' })
+    textures.push({ sampler: png === PIXEL ? 0 : 1, source: images.length - 1 })
+  }
 
   const total = octets
   const buf = Buffer.alloc(total)
@@ -276,9 +298,9 @@ function ecrire(nomFichier, groupes) {
     scene: 0, scenes: [{ name: 'Scene', nodes: [0] }],
     nodes: [{ mesh: 0, name: path.basename(nomFichier, '.glb') }],
     meshes: [{ primitives }],
-    images: [{ bufferView: vuePixel, mimeType: 'image/png' }],
-    samplers: [{ magFilter: 9729, minFilter: 9729, wrapS: 10497, wrapT: 10497 }],
-    textures: [{ sampler: 0, source: 0 }],
+    images,
+    samplers: [{ magFilter: 9729, minFilter: 9729, wrapS: 10497, wrapT: 10497 }, { magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }],
+    textures,
     materials, accessors, bufferViews, buffers: [{ byteLength: total }]
   }), 'utf8')
   const jsonPad = Buffer.concat([json, Buffer.alloc((4 - (json.length % 4)) % 4, 0x20)])
@@ -418,7 +440,35 @@ const SURFACE = {
   10: { metallique: 0.6, rugosite: 0.2 },   // Divine
   11: { metallique: 0.3, rugosite: 0.25 }   // Rainbow
 }
-const teintes = [...ACCENTS.map((hexa, i) => ({ suffixe: String(i), hexa })), ...MUTATIONS.map((m) => ({ suffixe: `skin-${m.id}`, hexa: m.color, surface: SURFACE[m.id] }))]
+/*
+  A skin with a PATTERN, not only a surface: the crust, veins, sky or mesh its own pieces wear,
+  from the tiles build-skin-tiles.py writes, box-mapped in metres on the accent, the climb and
+  the kerb. The glass keeps its wash. Where an albedo tile carries the colour, the base factor
+  is white; the Cyber base stays its dark teal under the lit mesh. Cost on the phone: no
+  material and no rendered object beyond what a skin already costs, two images per skin file.
+*/
+const TUILES = path.join(__dirname, 'source', 'skin-tiles')
+const tuilesLues = {}
+const tuile = (nom) => (tuilesLues[nom] ??= fs.readFileSync(path.join(TUILES, `${nom}.png`)))
+const MOTIFS = {
+  5: { tuile: 0.9, albedo: 'skin-5-albedo', lueur: 'skin-5-glow', emissif: [0.8, 0.8, 0.8] },       // Lava
+  9: { tuile: 0.9, albedo: 'skin-9-albedo', lueur: 'skin-9-glow', emissif: [0.35, 0.35, 0.35] },    // Cursed
+  6: { tuile: 1.2, albedo: 'skin-6-albedo', lueur: 'skin-6-glow', emissif: [0.9, 0.8, 1.0] },       // Galaxy
+  11: { tuile: 4.0, albedo: 'skin-11-albedo', lueur: 'skin-11-albedo', emissif: [0.12, 0.12, 0.12] }, // Rainbow, hue on height
+  12: { tuile: 0.6, lueur: 'skin-12-glow', emissif: [0.7, 0.7, 0.7], couleur: [0.03, 0.10, 0.13] }   // Cyber
+}
+/** One group for a skin's part: its surface, and its pattern when it has one. */
+function habit(nom, hexa, boites, id) {
+  const g = { nom, couleur: hex(hexa), boites, ...(SURFACE[id] ?? {}) }
+  const m = MOTIFS[id]
+  if (!m) return g
+  if (m.couleur) g.couleur = m.couleur
+  if (m.albedo) { g.couleur = [1, 1, 1]; g.albedo = tuile(m.albedo) }
+  if (m.lueur) { g.lueur = tuile(m.lueur); g.emissif = m.emissif }
+  g.tuile = m.tuile
+  return g
+}
+const teintes = [...ACCENTS.map((hexa, i) => ({ suffixe: String(i), hexa })), ...MUTATIONS.map((m) => ({ suffixe: `skin-${m.id}`, hexa: m.color, id: m.id }))]
 
 for (const [nom, zero] of [['storey-ground', true], ['storey-upper', false]]) {
   // No pedestals here: what the scene calls a `socle` is the TOY's own entity, which carries
@@ -429,8 +479,8 @@ for (const [nom, zero] of [['storey-ground', true], ['storey-upper', false]]) {
   n += 1
 }
 for (const t of teintes) {
-  octetsTotal += ecrire(path.join(OUT, `accent-${t.suffixe}.glb`), [{ nom: 'accent', couleur: hex(t.hexa), boites: accent(), ...(t.surface ?? {}) }])
-  octetsTotal += ecrire(path.join(OUT, `climb-${t.suffixe}.glb`), [{ nom: 'climb', couleur: hex(t.hexa), boites: montee(), ...(t.surface ?? {}) }])
+  octetsTotal += ecrire(path.join(OUT, `accent-${t.suffixe}.glb`), [habit('accent', t.hexa, accent(), t.id)])
+  octetsTotal += ecrire(path.join(OUT, `climb-${t.suffixe}.glb`), [habit('climb', t.hexa, montee(), t.id)])
   n += 2
 }
 octetsTotal += ecrire(path.join(OUT, 'glass.glb'), [{ nom: 'glass', couleur: [GLASS.r, GLASS.g, GLASS.b, GLASS.a], boites: vitres(), rugosite: 0.15 }])
@@ -438,7 +488,7 @@ n += 1
 for (const m of MUTATIONS) {
   const [r, g, b] = hex(m.color)
   octetsTotal += ecrire(path.join(OUT, `glass-skin-${m.id}.glb`), [{ nom: 'glass', couleur: [r, g, b, 0.3], boites: vitres(), rugosite: 0.15 }])
-  octetsTotal += ecrire(path.join(OUT, `frame-skin-${m.id}.glb`), [{ nom: 'frame', couleur: hex(m.color), boites: cadre(), ...(SURFACE[m.id] ?? {}) }])
+  octetsTotal += ecrire(path.join(OUT, `frame-skin-${m.id}.glb`), [habit('frame', m.color, cadre(), m.id)])
   n += 2
 }
 console.log(`${n} modeles ecrits, ${(octetsTotal / 1024).toFixed(1)} Ko au total`)

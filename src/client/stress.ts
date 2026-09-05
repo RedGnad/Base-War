@@ -15,7 +15,9 @@ import { encoder } from '../shared/loot-table'
  *
  * Ship with 0. It is a measuring instrument, not a feature.
  */
-export const STRESS_BASES = 0
+export const STRESS_BASES = 15
+/** The skins the first fakes wear, patterned ones first, so every skin stands on the field. */
+const SKIN_PALETTE = [5, 9, 6, 12, 11, 1, 2, 3, 10, 13]
 
 /*
   Deterministe, expres. Un instrument qui tire au sort donne deux champs differents a deux
@@ -67,7 +69,7 @@ function poser(
     const sentryFloors = Array.from({ length: floors }, () => (alea(2) === 0 ? 1 + alea(20) : 0))
     Plot.create(e, {
       floors, rebirths: alea(4), index: 1000 + n, ownerId: `stress-${n}`, ownerName: `Bot ${n}`,
-      items, ownerPresent: false, given: 0, received: 0, skin: alea(3) === 0 ? 1 + alea(5) : 0,
+      items, ownerPresent: false, given: 0, received: 0, skin: SKIN_PALETTE[n] ?? (alea(3) === 0 ? 1 + alea(5) : 0),
       sentries: sentryFloors.reduce((a, b) => a + b, 0), sentryFloors, lockedUntil: 0
     })
     n += 1

@@ -197,9 +197,9 @@ def hsv(h, s, v):
     return (int(r * 255), int(g * 255), int(b * 255))
 
 def rainbow_albedo(pm):
-    # The hue climbs the piece: red at the foot, violet at the crown, the same on every side.
-    h0, h1 = pm.lo[1], pm.hi[1]
-    return png(pm, lambda i, p: hsv(clamp((p[1] - h0) / (h1 - h0)) * 0.92, 0.95, 0.9))
+    # Deliberately in UV space: the hue sweeps each island its own way, a patchwork of rainbows,
+    # which the owner preferred to a hue climbing the piece (5 Sep). Its cuts are part of the look.
+    return png(pm, lambda i, p: hsv((i % TEX) / TEX, 0.95, 0.9))
 def galaxy_albedo(pm):
     def f(i, p):
         n = 0.6 * noise3(p, pm.size / 4, 6) + 0.4 * noise3(p, pm.size / 10, 7)
@@ -221,29 +221,29 @@ def cyber_lines(pm):
         return (0, 229, 255) if near >= 2 else ((0, 150, 175) if near == 1 else (0, 0, 0))
     return png(pm, f)
 def lava_albedo(pm):
-    edge = voronoi_edge(pm, 5, pm.size / 7); fine = pm.size / 220
+    edge = voronoi_edge(pm, 5, pm.size / 3.5); fine = pm.size / 220
     def f(i, p):
-        k = clamp((0.14 - edge[i]) / 0.14)  # 1 on a crack, 0 on the crust
+        k = clamp((0.06 - edge[i]) / 0.06)  # 1 on a crack, 0 on the crust
         g = 1.0 if k > 0.3 else 0.85 + 0.3 * grain(p, fine, 55)
         return (int((34 + 221 * k) * g), int((22 + 70 * k) * g), int(18 + 10 * k))
     return png(pm, f)
 def lava_glow(pm):
-    edge = voronoi_edge(pm, 5, pm.size / 7)
+    edge = voronoi_edge(pm, 5, pm.size / 3.5)
     def f(i, p):
-        k = clamp((0.14 - edge[i]) / 0.14)
+        k = clamp((0.06 - edge[i]) / 0.06)
         return (int(255 * k), int(120 * k), int(20 * k))
     return png(pm, f)
 def cursed_albedo(pm):
-    edge = voronoi_edge(pm, 9, pm.size / 9); fine = pm.size / 220
+    edge = voronoi_edge(pm, 9, pm.size / 4.5); fine = pm.size / 220
     def f(i, p):
-        k = clamp((0.10 - edge[i]) / 0.10)
+        k = clamp((0.05 - edge[i]) / 0.05)
         g = 0.8 + 0.4 * grain(p, fine, 99)
         return (int((28 + 60 * k) * g), int((5 + 10 * k) * g), int((36 + 70 * k) * g))
     return png(pm, f)
 def cursed_veins(pm):
-    edge = voronoi_edge(pm, 9, pm.size / 9)
+    edge = voronoi_edge(pm, 9, pm.size / 4.5)
     def f(i, p):
-        k = clamp((0.10 - edge[i]) / 0.10)
+        k = clamp((0.05 - edge[i]) / 0.05)
         return (int(150 * k), int(40 * k), int(220 * k))
     return png(pm, f)
 def yinyang_albedo(pm):
