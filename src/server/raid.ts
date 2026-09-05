@@ -198,7 +198,17 @@ function finir(vaincu: boolean): void {
     for (const [addr] of degats) {
       const pluie = Math.floor(incomePerSecond(addr) * 45 + 500)
       const a2 = (k / Math.max(1, degats.size)) * Math.PI * 2 + rnd()
-      dropAt(addr, pluie, { x: m.x + Math.cos(a2) * 3, y: 0.6, z: m.z + Math.sin(a2) * 3 })
+      /*
+        Dropped by NOBODY, so the six second lock does not apply to a reward.
+
+        `dropAt` refuses the pile to the player it fell from for six seconds, which is right
+        for a hit (a victim would scoop their own loss straight back) and wrong here: the rain
+        is the party's prize, and the players who earned it were the ones locked out of it
+        while anybody else could scoop it at once (owner, 5 Sep: "elles ne sont pas tout de
+        suite ramassables"). An empty owner matches nobody, so every pile is open the instant
+        it lands, to everyone.
+      */
+      dropAt('', pluie, { x: m.x + Math.cos(a2) * 3, y: 0.6, z: m.z + Math.sin(a2) * 3 })
       k += 1
     }
     const top = meneur()
