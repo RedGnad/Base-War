@@ -123,6 +123,11 @@ if __name__ == '__main__':
                step_s=0.095, decay_s=0.34, tail=1.15,
                chord=[1046.5, 1568.0, 2093.0], partials=(1.0, 0.5, 0.28, 0.14, 0.07),
                gain=0.36, riser=(0.34, 420.0, 1600.0), impact=(72.0, 0.42), shimmer=0.16)
+    # A rare crate reaching the belt: two rising notes, short and quiet, because a player at
+    # their base cannot see the band change colour (the rush bell exists for the same reason).
+    # Announced crates are one item in twelve, so the ear is not asked to hear it often.
+    nb = sting(os.path.join(out, 'belt.wav'), [1174.7, 1567.98], step_s=0.075, decay_s=0.13,
+               tail=0.22, partials=(1.0, 0.28, 0.10), gain=0.26)
     # A mutated pull, whatever its tier: a high shimmer laid OVER the sting, never a sting of
     # its own. Fourteen timbres would ask the ear to learn a vocabulary nothing teaches, and
     # the rarity ladder is what the ear is already reading; one extra layer says "and this one
@@ -133,5 +138,5 @@ if __name__ == '__main__':
     # The strip stopping: a click and a low thud, under whichever sting follows.
     n0 = sting(os.path.join(out, 'land.wav'), [220.0], step_s=0.02, decay_s=0.10, tail=0.12,
                partials=(1.0, 0.5, 0.2), gain=0.30, impact=(96.0, 0.13))
-    for nom, taille in (('mutation', nm), ('land', n0), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
+    for nom, taille in (('belt', nb), ('mutation', nm), ('land', n0), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
         print(f'{nom + ".wav":18s} {taille / 1024:6.1f} KB')

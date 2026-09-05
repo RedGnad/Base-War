@@ -1,6 +1,6 @@
 import { TOY, plastic, caisse, demolir , dimCrate} from './toy'
 import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer
+  engine, Transform, MeshRenderer, MeshCollider, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TextureWrapMode, TextureMovementType, ColliderLayer, AudioSource
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector2, Vector3, Quaternion } from '@dcl/sdk/math'
 import { Belt, BELT_LENGTH, CENTER, BELT_HEIGHT, beltPosition, BELT_DURATION_S , FALL_END} from '../shared/schemas'
@@ -261,6 +261,14 @@ export function setupBelt(): void {
     if (beltView.annonce !== '' && Date.now() > beltView.annonceJusqua) beltView.annonce = ''
   })
 
+  /*
+    The announcement's own emitter, parented to the player so it plays at a steady volume
+    wherever they stand: the belt can be a hundred metres away and the news still matters.
+  */
+  const sonAnnonce = engine.addEntity()
+  Transform.create(sonAnnonce, { parent: engine.PlayerEntity, position: Vector3.create(0, 1, 0) })
+  AudioSource.create(sonAnnonce, { audioClipUrl: 'assets/sounds/belt.wav', playing: false, loop: false, volume: 0.7 })
+
   room.onMessage('beltAlert', (d) => {
     const r = crate(d.crateTier)
     beltView.annonce = `${r.name} on the belt!  ${crateSummary(d.crateTier)}`
@@ -270,6 +278,10 @@ export function setupBelt(): void {
     // band: five to fifteen seconds read as a stuck banner next to toasts that leave in four
     // (owner, 5 Sep). The crate itself glows on the belt for as long as it rolls.
     beltView.annonceJusqua = Date.now() + 3500 + d.crateTier * 500
+    // And it is HEARD. The band is at the top of the screen; a player at their own base is
+    // looking the other way, which is the very reason the rush has a bell (owner, 5 Sep).
+    const a = AudioSource.getMutableOrNull(sonAnnonce)
+    if (a !== null) { a.playing = false; a.playing = true }
     console.log(`[CLIENT] announced: ${r.name}`)
   })
 
