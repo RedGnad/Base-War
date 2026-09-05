@@ -25,7 +25,7 @@ export function rollCrate(crateId: number): number {
  * Order matches CRATES: Basic, Good, Rare, Epic, Gold, Lava, Cursed.
  */
 // The two top crates: one Legendary every ~200 spawns (a quarter hour), one Mythic every ~800 (an hour).
-const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1, 0.5, 0.12]
+const POIDS_APPARITION = [50, 24, 10, 3, 8, 4, 1, 0.5, 0.12, 0.8, 0.6, 0.45, 0.3, 0.2, 0.12, 0.06]  // ... Galaxy to Phantom, rarer as the multiplier climbs
 
 /**
  * Which crates are worth interrupting the screen for, read off the table above.

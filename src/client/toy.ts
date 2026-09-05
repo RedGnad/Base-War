@@ -1,6 +1,6 @@
 import { isMobile } from '@dcl/sdk/platform'
 import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
-import { crate, mutation, rarityOf, mutationDe } from '../shared/loot-table'
+import { crate, mutation, rarityOf, mutationDe, crateImage } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
@@ -991,6 +991,7 @@ export function caisse(racine: Entity, crateId: number, chauffe = 0, avecHalo = 
 /** Chauffe la caisse montee: blanc croissant sur l'atlas, rendu au modele et pas au support. */
 function heatCrate(racine: Entity, chauffe: number): void {
   const m = montages.get(racine)
+  const crateId = caisses.get(racine)?.crateId ?? 0
   if (m === undefined) return
   if (chauffe <= 0) { GltfNodeModifiers.deleteFrom(m.modele); return }
   GltfNodeModifiers.createOrReplace(m.modele, {
@@ -1000,7 +1001,7 @@ function heatCrate(racine: Entity, chauffe: number): void {
         material: {
           $case: 'pbr',
           pbr: {
-            texture: Material.Texture.Common({ src: `${TOY_DIR}crate-atlas.png` }),
+            texture: Material.Texture.Common({ src: `${TOY_DIR}${crateImage(crateId)}` }),
             albedoColor: Color4.White(),
             /*
               La chauffe est ORANGE, jamais blanche.

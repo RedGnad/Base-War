@@ -627,13 +627,13 @@ export const EVENT_THEMES = [
   { theme: 9, name: 'CURSED RUSH', crate: 6 },
   // The mutations without a crate of their own get a rush day instead: the grand rush walks this
   // list a day at a time, so each of them has its evening, and the gift is an Epic crate.
-  { theme: 6, name: 'GALAXY RUSH', crate: 3 },
-  { theme: 7, name: 'YIN YANG RUSH', crate: 3 },
-  { theme: 8, name: 'RADIOACTIVE RUSH', crate: 3 },
-  { theme: 10, name: 'DIVINE RUSH', crate: 3 },
-  { theme: 11, name: 'RAINBOW RUSH', crate: 3 },
-  { theme: 12, name: 'CYBER RUSH', crate: 3 },
-  { theme: 13, name: 'PHANTOM RUSH', crate: 3 }
+  { theme: 6, name: 'GALAXY RUSH', crate: 9 },
+  { theme: 7, name: 'YIN YANG RUSH', crate: 10 },
+  { theme: 8, name: 'RADIOACTIVE RUSH', crate: 11 },
+  { theme: 10, name: 'DIVINE RUSH', crate: 12 },
+  { theme: 11, name: 'RAINBOW RUSH', crate: 13 },
+  { theme: 12, name: 'CYBER RUSH', crate: 14 },
+  { theme: 13, name: 'PHANTOM RUSH', crate: 15 }
 ] as const
 
 /** A trap on the floor, synced so everyone can see the plate and nobody can see who armed it. */

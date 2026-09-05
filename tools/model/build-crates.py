@@ -33,7 +33,10 @@ RACINE = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__))
 SORTIE = os.path.join(RACINE, 'assets', 'toy')
 CREME = '#f2e9d8'
 
-MUTATIONS = {1: '#ffd700', 5: '#ff5722', 9: '#3b0a45'}
+_spec2 = _u.spec_from_file_location('variants', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build-item-variants.py'))
+variants = _u.module_from_spec(_spec2); _spec2.loader.exec_module(variants)
+MUTATIONS = {i: c for i, c in enumerate(variants.MUTATIONS) if c}
+TUILES_SKIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'source', 'skin-tiles')
 CRATES = [
     dict(id=0, tier=0, theme=-1, color='#9aa3ad'),
     dict(id=1, tier=1, theme=-1, color='#4ec04e'),
@@ -43,8 +46,73 @@ CRATES = [
     dict(id=5, tier=2, theme=5,  color='#ff5722'),
     dict(id=6, tier=3, theme=9,  color='#3b0a45'),
     dict(id=7, tier=4, theme=-1, color='#f5a524'),
-    dict(id=8, tier=5, theme=-1, color='#ff4d6d')
+    dict(id=8, tier=5, theme=-1, color='#ff4d6d'),
+    # One themed crate per new mutation (shared/loot-table.ts ids 9 to 15), Epic tier.
+    dict(id=9,  tier=3, theme=6,  color='#5b2c8d'),
+    dict(id=10, tier=3, theme=7,  color='#b6b6be'),
+    dict(id=11, tier=3, theme=8,  color='#7fff00'),
+    dict(id=12, tier=3, theme=10, color='#ffe9a8'),
+    dict(id=13, tier=3, theme=11, color='#ff00ff'),
+    dict(id=14, tier=3, theme=12, color='#00e5ff'),
+    dict(id=15, tier=3, theme=13, color='#86ffd0')
 ]
+
+"""
+  La MATIERE du theme sur le corps de la caisse, pas seulement sa couleur.
+
+  Les coffres du genre (Clash Royale, Brawl Stars, les caisses de Counter-Strike) gardent une
+  seule famille de silhouettes, disent la rarete par la couleur puis la taille, et une caisse
+  d'evenement porte la matiere de l'evenement sur la boite elle-meme. Ici le couvercle, les
+  sangles et le loquet restent des aplats (la rarete reste lisible), et le corps prend la
+  tuile de sa mutation, la meme croute, les memes veines, le meme ciel que les pieces et les
+  skins (owner, 5 Sep: "on veut surtout de la lisibilite"). Gold reste un aplat: le metal se
+  lit par sa couleur. Une caisse a tuile embarque sa propre image, crate-<id>.png, que le coup
+  de masse rechauffe comme l'atlas commun.
+"""
+TUILE_PX = 256
+FENETRE = {5: 1 / 3, 9: 1 / 2}   # the share of the tile one face shows; the rest show it whole
+
+def tuile_de(theme):
+    """The 256 x 256 surface of a theme, or None for a flat crate."""
+    from PIL import ImageDraw, ImageChops
+    def skin(nom): return Image.open(os.path.join(TUILES_SKIN, nom)).convert('RGB').resize((TUILE_PX, TUILE_PX), Image.LANCZOS)
+    if theme in (5, 9, 6, 11): return skin(f'skin-{theme}-albedo.png')
+    if theme == 12:
+        base = Image.new('RGB', (TUILE_PX, TUILE_PX), (8, 26, 33))
+        return ImageChops.add(base, skin('skin-12-glow.png'))
+    im = Image.new('RGB', (TUILE_PX, TUILE_PX)); d = ImageDraw.Draw(im); px = im.load()
+    if theme == 7:   # yin yang: two halves, a soft seam
+        for x in range(TUILE_PX):
+            k = max(0.0, min(1.0, (x - TUILE_PX * 0.47) / (TUILE_PX * 0.06)))
+            col = (int(15 + 218 * k), int(15 + 218 * k), int(22 + 213 * k))
+            d.line([(x, 0), (x, TUILE_PX)], fill=col)
+    elif theme == 8:  # radioactive: acid green under dark hazard bands
+        im.paste((110, 220, 0), (0, 0, TUILE_PX, TUILE_PX))
+        for k in range(-2, 5):
+            d.polygon([(k * 96, 0), (k * 96 + 40, 0), (k * 96 + 40 - 96, TUILE_PX), (k * 96 - 96, TUILE_PX)], fill=(28, 40, 10))
+    elif theme == 10:  # divine: cream, two gold bands
+        im.paste((255, 233, 168), (0, 0, TUILE_PX, TUILE_PX))
+        for y in (70, 186): d.rectangle([0, y - 6, TUILE_PX, y + 6], fill=(214, 168, 60))
+    elif theme == 13:  # phantom: pale mint with soft drifts
+        for y in range(TUILE_PX):
+            for x in range(TUILE_PX):
+                n = 0.5 + 0.5 * math.sin(x / 23.0) * math.cos(y / 31.0 + x / 57.0)
+                px[x, y] = (int(120 + 30 * n), int(235 + 20 * n), int(190 + 25 * n))
+    else:
+        return None
+    return im
+
+def image_de(c, couleurs):
+    """A themed crate's own image: its tile on the left half, its five swatches on the right."""
+    im = Image.new('RGBA', (2 * TUILE_PX, TUILE_PX), (0, 0, 0, 255))
+    im.paste(tuile_de(c['theme']).convert('RGBA'), (0, 0))
+    for i, col in enumerate(couleurs):
+        x = TUILE_PX + i * 51
+        im.paste(col + (255,), (x, 0, x + 51, 64))
+    return im
+
+def uv_swatch(i): return ((TUILE_PX + i * 51 + 25) / (2 * TUILE_PX), 32 / TUILE_PX)
+
 
 def rgb(h):
     h = h.lstrip('#')
@@ -128,18 +196,30 @@ def couleurs_de(c):
         melange(sangle, 0.78)    # COIN, listel et ferrures
     ]
 
+def a_tuile(c): return c['theme'] >= 0 and tuile_de(c['theme']) is not None
+
 def construire(c):
-    """La caisse `c`, dont les UV visent son bloc de cinq tuiles dans l'atlas commun."""
+    """La caisse `c`: les UV visent ses cinq tuiles de l'atlas commun, ou, pour une caisse a
+    tuile, les nuanciers de sa propre image et, sur le corps, une fenetre de sa tuile par face."""
     depart = c['id'] * 5
+    propre = a_tuile(c)
+    fen = FENETRE.get(c['theme'], 1.0)
     pos, nor, uv, idx = [], [], [], []
     for centre, taille, tuile in BOITES:
-        u = uv_de(depart + tuile)
-        for n, coins in FACES:
+        u = uv_swatch(tuile) if propre else uv_de(depart + tuile)
+        for f, (n, coins) in enumerate(FACES):
             base_i = len(pos)
+            # a different window of the tile on each face, so no two faces repeat each other
+            ox, oy = (f % 3) * (1 - fen) / 2, ((f // 3) % 2) * (1 - fen)
             for s in coins:
                 pos.append(tuple(centre[k] + s[k] * taille[k] / 2 for k in range(3)))
                 nor.append(n)
-                uv.append(u)
+                if propre and tuile == CORPS:
+                    a = 0 if s[0] < 0 or (n[0] != 0 and s[2] < 0) else 1
+                    b = 0 if s[1] > 0 or (n[1] != 0 and s[2] > 0) else 1
+                    uv.append((0.5 * (ox + fen * a), oy + fen * b))
+                else:
+                    uv.append(u)
             idx.extend([base_i, base_i + 1, base_i + 2, base_i, base_i + 2, base_i + 3])
     return {'pos': pos, 'nor': nor, 'uv_atlas': uv, 'idx': idx}
 
@@ -147,6 +227,7 @@ def main():
     os.makedirs(SORTIE, exist_ok=True)
     atlas = Image.new('RGBA', (TUILE * COLONNES, TUILE * RANGEES), (0, 0, 0, 255))
     for c in CRATES:
+        if a_tuile(c): continue
         for i, col in enumerate(couleurs_de(c)):
             t = c['id'] * 5 + i
             x, y = (t % COLONNES) * TUILE, (t // COLONNES) * TUILE
@@ -158,7 +239,12 @@ def main():
     for c in CRATES:
         prim = construire(c)
         glb = os.path.join(SORTIE, f"crate-{c['id']}.glb")
-        taille = aplatir.ecrire_glb(glb, [(False, [prim])], atlas, image_uri=ATLAS)
+        if a_tuile(c):
+            image = image_de(c, couleurs_de(c)); nom = f"crate-{c['id']}.png"
+            image.save(os.path.join(SORTIE, nom), format='PNG', optimize=True)
+            taille = aplatir.ecrire_glb(glb, [(False, [prim])], image, image_uri=nom)
+        else:
+            taille = aplatir.ecrire_glb(glb, [(False, [prim])], atlas, image_uri=ATLAS)
         total += taille
         xs = [p[0] for p in prim['pos']]; ys = [p[1] for p in prim['pos']]; zs = [p[2] for p in prim['pos']]
         print(f"crate-{c['id']}.glb  {taille/1024:5.1f} Ko  {len(prim['idx'])//3:3d} triangles  "
