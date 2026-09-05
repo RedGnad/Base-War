@@ -64,7 +64,7 @@ type View = {
   loin: boolean
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
   vuLabel: string; vuBouclier: string
-  floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; sigItems: readonly number[] | null; sigSentries: readonly number[] | null; ownerId: string
+  floors: Floor[]; items: Entity[]; ascenseur: Entity; enseigne: Entity; signature: string; sigItems: readonly number[] | null; sigSentries: readonly number[] | null; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
   /** The base's lock date the last time it was read: a jump forward is the door sealing, which is heard. */
@@ -363,19 +363,41 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   // Le modele revient: il est centre sur l'origine et l'entite porte position et pente, donc
   // il ne peut pas etre ailleurs que la marche. La boite nue qui l'avait remplace le temps du
   // diagnostic n'avait ni rambarde ni epaisseur (proprietaire, 3 Sep, "juste une rampe moche").
-  if (!loin) {
+  const sentry = engine.addEntity()
+  Transform.create(sentry, {
+    parent: parentCourant ?? undefined,
+    position: Vector3.create(x + ASC_X, y + 1.2, z + ASC_Z),
+    scale: Vector3.create(0, 0, 0)
+  })
+  const f: Floor = { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
+  if (!loin) garnirEtage(f, x, z, floor, mods)
+  return f
+}
+
+/*
+  The reduced and the full storey share every model. What the full one adds is what a
+  player touches or climbs: the climb model, the slab and wall colliders, the ramp and its
+  rails. Adding and removing them IN PLACE is what lets a base pass from silhouette to full
+  detail without blinking out (owner, 5 Sep: "le clipping est toujours tres violent").
+*/
+function garnirEtage(f: Floor, x: number, z: number, floor: number, mods: { accent: string; climb: string; verre: string }): void {
+  const y = floor * FLOOR_HEIGHT
+  const c = BASE_SIDE
+  const h = WALL_HEIGHT
+  const ep = WALL_THICKNESS
+  const r = rampPosition(floor)
+  const course = RAMP_LENGTH * Math.cos((RAMP_ANGLE * Math.PI) / 180)
+  const bande = c / 2 - STAIRWELL_WIDTH / 2
+  const finPalier = course / 2 + 2.4
+  const finArriere = -1.2
+  const rampeX = STAIRWELL_WIDTH - 0.3
+  const montee = f.montee
+  if (!GltfContainer.has(montee)) {
     GltfContainer.create(montee, {
       src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
     })
   }
-  if (loin) {
-    // Rien a toucher de si loin: ni colliders, ni rails, ni rampe. Des places, pour que le
-    // reste du code trouve ses entites et n'ait pas a savoir a quel niveau il parle.
-    const sentry = place(x + ASC_X, y + 1.2, z + ASC_Z)
-    return { coque, verre, accent, montee, sols: [], murs: [], ramp: place(0, 0, 0), rails: [], sentry }
-  }
-
-  // The floor a player walks on, in the same three pieces the models are drawn in.
+  engine.removeEntity(f.ramp)
   const sols: Entity[] = [
     collisionneur(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c)
   ]
@@ -406,25 +428,19 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
     rails.push(collisionneur(cote * (rampeX / 2 - 0.03), (RAIL_H + 0.18) / 2, 0, 0.06, RAIL_H, RAMP_LENGTH))
   }
   parentCourant = parentAvant
+  f.sols = sols
+  f.murs = murs
+  f.ramp = ramp
+  f.rails = rails
+}
 
-  /*
-    One turret per storey, born with the storey it defends.
-
-    A defence that is a number tells a visitor nothing. A defence that stands on the third
-    floor and not on the first tells them where to go, before anybody explains a rule, and
-    that reading IS the counterplay: find the storey nobody guarded. It is created here rather
-    than up front so an unbought floor still costs nothing.
-  */
-  const sentry = engine.addEntity()
-  Transform.create(sentry, {
-    parent: parentCourant ?? undefined,
-    position: Vector3.create(x + ASC_X, y + 1.2, z + ASC_Z),
-    scale: Vector3.create(0, 0, 0)
-  })
-  // Le cylindre et le modele n'arrivent qu'avec la premiere charge: voir `armSentry`.
-  // A l'echelle zero ils comptaient deja deux objets rendus par etage, arme ou non.
-
-  return { coque, verre, accent, montee, sols, murs, ramp, rails, sentry }
+function depouillerEtage(f: Floor): void {
+  if (GltfContainer.has(f.montee)) GltfContainer.deleteFrom(f.montee)
+  for (const e of [...f.sols, ...f.murs, ...f.rails, f.ramp]) { taille.delete(e); engine.removeEntity(e) }
+  f.sols = []
+  f.murs = []
+  f.rails = []
+  f.ramp = place(0, 0, 0)
 }
 const views = new Map<number, View>()   // clef = entite synchronisee du Plot
 
@@ -703,19 +719,6 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(ASC_X, FLOOR_HEIGHT / 2, ASC_Z),
     scale: Vector3.create(0.5, FLOOR_HEIGHT, 0.5)
   })
-  if (!loin) {
-    MeshRenderer.setBox(ascenseur)
-    MeshCollider.setBox(ascenseur)
-    Material.setPbrMaterial(ascenseur, {
-      ...plastic(TOY.elevator, 0.5),
-      metallic: 0.85, roughness: 0.25
-    })
-    PointerEvents.create(ascenseur, {
-      pointerEvents: [
-        { eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }
-      ]
-    })
-  }
 
   const door = engine.addEntity()
   Transform.create(door, {
@@ -723,17 +726,8 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, (MAX_FLOORS * FLOOR_HEIGHT) / 2, 0),
     scale: Vector3.create(0, 0, 0)
   })
-  if (!loin) MeshRenderer.setBox(door)
   // A shield you can walk through is a lie. It had a renderer and no collider, so it
   // looked like a wall and stopped nothing.
-  if (!loin) MeshCollider.setBox(door)
-  if (!loin) Material.setPbrMaterial(door, {
-    albedoColor: TOY.shield,
-    emissiveColor: Color3.fromHexString(TOY.sentry),
-    emissiveIntensity: 0.55,
-    metallic: 0,
-    roughness: 0.1
-  })
   /*
     The plinth answers to nothing, so it offers nothing.
 
@@ -751,16 +745,10 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const gain = engine.addEntity()
   Transform.create(gain, { position: Vector3.create(x, FLOOR_HEIGHT + 1.82, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(gain, { billboardMode: BillboardMode.BM_Y })
-  if (!loin) TextShape.create(gain, {
-    text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR
-  })
 
   const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(x, FLOOR_HEIGHT + 1.15, z), scale: Vector3.create(0.75, 0.75, 0.75) })
   Billboard.create(label, { billboardMode: BillboardMode.BM_Y })
-  if (!loin) TextShape.create(label, {
-    text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR
-  })
 
   /*
     The reference writes the owner on the building itself: a sign over the entrance, facing
@@ -790,7 +778,6 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     position: Vector3.create(0, 0.02, 0.05),
     scale: Vector3.create(5.1, 1.28, 1)
   })
-  if (!loin) MeshRenderer.setPlane(enseigne)
   /*
     Alpha TEST, not blend. The glazing is alpha blended, and two blended surfaces resolve
     their order per frame by distance: from some angles the wall drew over the sign and
@@ -798,13 +785,6 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
     writes depth and wins every angle. The texture is the sign's own 4:1 drawing; the
     stretched square panel read as a pill.
   */
-  if (!loin) Material.setPbrMaterial(enseigne, {
-    texture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
-    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
-    emissiveColor: Color3.White(), emissiveIntensity: 0.3,
-    metallic: 0, roughness: 1, specularIntensity: 0,
-    transparencyMode: 1, alphaTest: 0.5
-  })
 
   /*
     Pedestals for the ground storey only; the rest are added with the storeys they stand on.
@@ -815,7 +795,63 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
+  const v: View = { plinth, label, gain, door, plaque, enseigne, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
+  if (!loin) garnirBase(v)
+  return v
+}
+
+/** The parts of a base only its full view carries: lift, door, floating texts, the sign's plate. */
+function garnirBase(v: View): void {
+  MeshRenderer.setBox(v.ascenseur)
+  MeshCollider.setBox(v.ascenseur)
+  Material.setPbrMaterial(v.ascenseur, { ...plastic(TOY.elevator, 0.5), metallic: 0.85, roughness: 0.25 })
+  PointerEvents.createOrReplace(v.ascenseur, {
+    pointerEvents: [{ eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }]
+  })
+  MeshRenderer.setBox(v.door)
+  MeshCollider.setBox(v.door)
+  Material.setPbrMaterial(v.door, {
+    albedoColor: TOY.shield, emissiveColor: Color3.fromHexString(TOY.sentry), emissiveIntensity: 0.55, metallic: 0, roughness: 0.1
+  })
+  TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
+  TextShape.createOrReplace(v.label, { text: '', fontSize: 3, textColor: Color4.White(), outlineWidth: 0.22, outlineColor: NOIR })
+  MeshRenderer.setPlane(v.enseigne)
+  // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).
+  Material.setPbrMaterial(v.enseigne, {
+    texture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
+    emissiveTexture: Material.Texture.Common({ src: 'assets/ui/sign.png' }),
+    emissiveColor: Color3.White(), emissiveIntensity: 0.3,
+    metallic: 0, roughness: 1, specularIntensity: 0,
+    transparencyMode: 1, alphaTest: 0.5
+  })
+}
+
+function depouillerBase(v: View): void {
+  for (const e of [v.ascenseur, v.door, v.enseigne]) {
+    if (MeshRenderer.has(e)) MeshRenderer.deleteFrom(e)
+    if (MeshCollider.has(e)) MeshCollider.deleteFrom(e)
+    if (Material.has(e)) Material.deleteFrom(e)
+  }
+  if (PointerEvents.has(v.ascenseur)) PointerEvents.deleteFrom(v.ascenseur)
+  for (const e of [v.gain, v.label]) if (TextShape.has(e)) TextShape.deleteFrom(e)
+  if (v.plaqueGlyphes !== null) { engine.removeEntityWithChildren(v.plaqueGlyphes); v.plaqueGlyphes = null }
+}
+
+/**
+ * Switch a view between silhouette and full detail without rebuilding it. Shared models stay;
+ * only the extras come and go, per storey and for the base, and a forced structural pass
+ * adds or removes the pads, rays, cones and name glyphs that depend on the level.
+ */
+function retailler(v: View, loin: boolean, mods: { accent: string; climb: string; verre: string }): void {
+  const parentAvant = parentCourant
+  parentCourant = v.racine
+  v.floors.forEach((f, e) => { if (loin) depouillerEtage(f); else garnirEtage(f, 0, 0, e, mods) })
+  parentCourant = parentAvant
+  if (loin) depouillerBase(v); else garnirBase(v)
+  v.loin = loin
+  v.signature = ''
+  v.vuLabel = ''
+  v.vuBouclier = ''
 }
 
 function destroyView(v: View): void {
@@ -1140,11 +1176,7 @@ export function setupPlots(): void {
         avant et un pas en arriere reconstruirait un batiment entier deux fois.
       */
       const veutLoin = !monBaseLod && dist > LOD_TOUJOURS_PRES && !complets.has(id)
-      if (v !== undefined && v.loin !== veutLoin) {
-        destroyView(v)
-        views.delete(id)
-        v = undefined
-      }
+      if (v !== undefined && v.loin !== veutLoin) retailler(v, veutLoin, modelesDe(p))
       if (!v) {
         v = createView(t.position.x, t.position.z, modelesDe(p), accentPour(p), veutLoin)
         views.set(id, v)

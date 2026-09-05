@@ -20,24 +20,34 @@ RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7',
 # src/shared/loot-table.ts MUTATIONS (id 0 = plain: the rarity's own colour).
 MUTATIONS = ['', '#ffd700', '#b9f2ff', '#8b0000', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
 METAL = {1, 2}  # Gold, Diamond
+# glTF emissive is read hotter than the SDK's emissiveIntensity: 0.3 keeps a Legendary orange, not white.
+EMISSIVE_SCALE = 0.4
 
 def rgb(hex_colour):
     h = hex_colour.lstrip('#')
     return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
 
 def recipe(rarity, mutation):
-    """(baseColor rgb, metallic, roughness, emissive rgb, emissive strength), as toy.ts computes them."""
+    """(baseColor rgb, metallic, roughness, emissive rgb or None, 1).
+
+    The albedo follows toy.ts to the letter: DARK albedo under a coloured glow is what makes a
+    Blood read as burgundy and a Cursed as deep violet (owner, 5 Sep, 02:20: a full albedo
+    turned the red flat and cost every mutation its style). Only the glow is bounded, because
+    the client reads a glTF emissive far hotter than the SDK's emissiveIntensity and the first
+    bake blew every bright colour to white.
+    """
     colour = rgb(MUTATIONS[mutation] if mutation > 0 else RARITIES[rarity][0])
     glow = RARITIES[rarity][1]
     eclat = 0 if glow <= 0 else (glow ** 1.5) * 0.9
-    if mutation == 1:  # gold: metalMaterial
-        return rgb('#f5c518'), 0.9, 0.32, [0.72, 0.52, 0.10], max(0.18, eclat)
-    if mutation == 2:  # diamond
-        return colour, 0.25, 0.05, colour, max(0.4, eclat)
+    lueur = min(1.0, eclat * EMISSIVE_SCALE)
+    if mutation == 1:  # gold: the deep tone itself, full metal, a warm emissive floor under the rarity glow
+        return rgb('#f5c518'), 0.9, 0.32, [c * max(0.18 * EMISSIVE_SCALE, lueur) for c in (0.72, 0.52, 0.10)], 1
+    if mutation == 2:  # diamond: very smooth, a little metallic, a base sparkle plus rarity glow
+        return colour, 0.25, 0.05, [c * max(0.4 * EMISSIVE_SCALE, lueur) for c in colour], 1
     if glow <= 0:  # plain plastic
         return colour, 0.0, 0.55, None, 0
     sombre = 1 / (1 + glow * 1.2)  # dark albedo, bright emissive: the platform's own glow recipe
-    return [c * sombre for c in colour], 0.0, 0.45, colour, eclat
+    return [c * sombre for c in colour], 0.0, 0.45, [c * lueur for c in colour], 1
 
 def read_glb(path):
     b = open(path, 'rb').read()
@@ -63,17 +73,14 @@ def bake(js, rarity, mutation):
     base, metallic, roughness, emissive, strength = recipe(rarity, mutation)
     out = json.loads(json.dumps(js))
     # The baked texture was dark and hid the colour; the colour IS the material now.
-    for k in ('textures', 'images', 'samplers'):
+    for k in ('textures', 'images', 'samplers', 'extensionsUsed'):
         out.pop(k, None)
     mats = []
     for m in out.get('materials', [{}]):
         nm = {'name': f'piece-{rarity}-{mutation}', 'doubleSided': bool(m.get('doubleSided', True)),
               'pbrMetallicRoughness': {'baseColorFactor': [*base, 1.0], 'metallicFactor': metallic, 'roughnessFactor': roughness}}
         if emissive is not None and strength > 0:
-            nm['emissiveFactor'] = [min(1.0, c) for c in emissive]
-            if abs(strength - 1.0) > 1e-6:
-                nm['extensions'] = {'KHR_materials_emissive_strength': {'emissiveStrength': round(strength, 4)}}
-                used = set(out.get('extensionsUsed', [])); used.add('KHR_materials_emissive_strength'); out['extensionsUsed'] = sorted(used)
+            nm['emissiveFactor'] = [min(1.0, max(0.0, c)) for c in emissive]
         mats.append(nm)
     out['materials'] = mats
     return out
