@@ -71,7 +71,7 @@ export const TOY = {
   trapPlate: '#adb5bd',
   bomb: '#ff4d6d',
   mine: HUE.money,
-  shield: Color4.create(0.30, 0.85, 1.0, 0.16),
+  shield: Color4.create(0.30, 0.85, 1.0, 0.30),   // a wall you can see, not a haze (owner, 5 Sep: "tres subtil")
   /*
     Vert quand on peut poser, rouge quand on ne peut pas. Rien d'autre a apprendre.
 

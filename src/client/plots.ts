@@ -1,6 +1,6 @@
 import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat, itemFile, poolTier } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
-import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
+import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction, TweenLoop } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
 import {
   Plot, SLOTS_PER_FLOOR, MAX_FLOORS, OBJECT_BUDGET, STEAL_RANGE, DECOR_COST, BASE_FIXED_COST, BASE_FIXED_COST_FAR, STOREY_COST_NEAR, STOREY_COST_FAR, ITEM_COST, FLOOR_HEIGHT, SLAB_THICKNESS, PLACE_RANGE, slotPosition, VIDE, occupe, rampPosition, BASE_SIDE, PLINTH_SIDE, WALL_THICKNESS, WALL_HEIGHT, DOOR_WIDTH, RAMP_ANGLE, RAMP_LENGTH, STAIRWELL_WIDTH, baseFacing, orientToBase, LOCK_FREE_MS, SENTRY_MAX_CHARGES
@@ -818,7 +818,7 @@ function garnirBase(v: View): void {
   MeshRenderer.setBox(v.door)
   MeshCollider.setBox(v.door)
   Material.setPbrMaterial(v.door, {
-    albedoColor: TOY.shield, emissiveColor: Color3.fromHexString(TOY.sentry), emissiveIntensity: 0.55, metallic: 0, roughness: 0.1
+    albedoColor: TOY.shield, emissiveColor: Color3.fromHexString(TOY.sentry), emissiveIntensity: 1.2, metallic: 0, roughness: 0.1
   })
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
   MeshRenderer.setPlane(v.enseigne)
@@ -1434,9 +1434,14 @@ export function setupPlots(): void {
           the position is the parent's.
         */
         ptr.position = Vector3.create(0, h / 2, 0)
-        ptr.scale = locked
-          ? Vector3.create(BASE_SIDE + 2 * SHIELD_MARGIN, h, BASE_SIDE + 2 * SHIELD_MARGIN)
-          : Vector3.create(0, 0, 0)
+        const plein = Vector3.create(BASE_SIDE + 2 * SHIELD_MARGIN, h, BASE_SIDE + 2 * SHIELD_MARGIN)
+        ptr.scale = locked ? plein : Vector3.create(0, 0, 0)
+        // A sealed wall BREATHES: a slow swell of three percent, back and forth, so the eye
+        // catches it from the plaza; a still translucent box read as a haze (owner, 5 Sep).
+        if (locked) {
+          Tween.setScale(v.door, plein, Vector3.create(plein.x * 1.03, plein.y * 1.02, plein.z * 1.03), 1400, EasingFunction.EF_EASESINE)
+          TweenSequence.createOrReplace(v.door, { sequence: [], loop: TweenLoop.TL_YOYO })
+        } else if (Tween.has(v.door)) { Tween.deleteFrom(v.door); TweenSequence.deleteFrom(v.door) }
 
         /*
           The shield keeps thieves out. It must not keep the owner out.
