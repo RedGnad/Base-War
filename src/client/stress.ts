@@ -55,7 +55,7 @@ function poser(
       piece that exists (owner, 5 Sep: "je vois aucun item cursed").
     */
     const palette = n === 0 ? Array.from({ length: 14 }, (_, m) => encoder(3, m))
-      : n === 1 ? [0, 1, 2, 3, 4, 5].flatMap((r) => [encoder(r, 0), encoder(r, 1), encoder(r, 2)])
+      : n === 1 ? [0, 1, 2, 3, 4, 5, 6].flatMap((r) => [encoder(r, 0), encoder(r, 1), encoder(r, 9)])
       : null
     const floors = palette !== null ? Math.ceil(palette.length / 6) : 1 + alea(4)
     const items: number[] = []

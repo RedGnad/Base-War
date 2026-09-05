@@ -17,8 +17,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOY = os.path.join(HERE, '..', '..', 'assets', 'toy')
 
 # src/shared/loot-table.ts RARITIES (id, colour, glow), Secret (6) stays a primitive silhouette.
-RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7', 1.30), ('#f5a524', 2.00), ('#ff4d6d', 2.80)]
+RARITIES = [('#78818e', 0.00), ('#4ec04e', 0.35), ('#3d8ef0', 0.80), ('#a855f7', 1.30), ('#f5a524', 2.00), ('#ff4d6d', 2.80), ('#ffffff', 4.00)]
 # src/shared/loot-table.ts MUTATIONS (id 0 = plain: the rarity's own colour).
+# Mirrors src/shared/loot-table.ts MUTATIONS: keep both in step.
 MUTATIONS = ['', '#ffd700', '#b9f2ff', '#6e0b14', '#ff9ecd', '#ff5722', '#5b2c8d', '#b6b6be', '#7fff00', '#3b0a45', '#ffe9a8', '#ff00ff', '#00e5ff', '#86ffd0']
 METAL = {1, 2}  # Gold, Diamond
 # The client reads a glTF emissive far hotter than the SDK's emissiveIntensity: at 0.4 every bright piece
@@ -43,6 +44,8 @@ def recipe(rarity, mutation):
     glow = RARITIES[rarity][1]
     eclat = 0 if glow <= 0 else (glow ** 1.5) * 0.9
     lueur = min(1.0, eclat * EMISSIVE_SCALE)
+    if rarity == 6 and mutation == 0:  # a plain Secret is blazing white, never a darkened albedo
+        return (1.0, 1.0, 1.0), 0.1, 0.3, (0.6, 0.6, 0.6), 1
     if mutation == 1:  # gold: the deep tone itself, full metal, a warm emissive floor under the rarity glow
         return rgb('#f5c518'), 0.9, 0.32, [c * max(0.04, lueur) for c in (0.72, 0.52, 0.10)], 1
     if mutation == 2:  # diamond: very smooth, a little metallic, a base sparkle plus rarity glow

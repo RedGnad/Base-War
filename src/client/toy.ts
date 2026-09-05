@@ -276,7 +276,7 @@ const CUIT = /^item-\d+-\d+\.glb$/
 const cuits = new Set<Entity>()
 export function itemFile(code: number): string {
   const r = rarityOf(code)
-  return r <= 5 ? `item-${r}-${mutationDe(code)}.glb` : `item-${r}.glb`
+  return `item-${Math.min(6, r)}-${mutationDe(code)}.glb`
 }
 /** The fit is the rarity model's, whatever tint the file carries. */
 function fitKey(fichier: string): string {
@@ -531,7 +531,8 @@ export function rarityShape(parent: Entity, rarete: number, materiau: PBMaterial
     place and the piece pops in. Six keeps its star, which is not a stand-in but the
     Secret's actual body.
   */
-  if (rarete <= 5) { formes.delete(parent); if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent); return }
+  // Six included since 5 Sep: the Secret is a model now (tools/model/build-secret.py), baked like the rest.
+  if (rarete <= 6) { formes.delete(parent); if (MeshRenderer.has(parent)) MeshRenderer.deleteFrom(parent); return }
   const parts = silhouette(parent, rarete)
   for (const e of parts) Material.setPbrMaterial(e, materiau)
   formes.set(parent, { parts, rarete })
