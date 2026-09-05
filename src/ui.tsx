@@ -444,7 +444,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close', 'vignette',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]
@@ -1505,6 +1505,26 @@ const uiComponent = () => {
       progress towards something wanted. This one fails the first two and passes the third.
     */}
     {/* The next grand rush, as a chip: a standing fact, not an announcement. */}
+    {/*
+      Invisible: the screen wears it.
+
+      The chip in the corner is read once and forgotten, and being invisible changes how the
+      whole venue treats you: it has to be felt while you play (owner, 5 Sep). So a cyan
+      vignette frames the screen, transparent where you are looking, breathing slowly while
+      the cloak holds and beating twice as fast over its last three seconds, which is the
+      genre's own way of saying a state is about to drop. The chip stays for the number.
+    */}
+    {hud() && gearView.cloakLeftS > 0 && (
+      <UiEntity
+        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+        uiBackground={{
+          texture: { src: 'assets/ui/vignette.png' }, textureMode: 'stretch',
+          color: Color4.create(0.30, 0.82, 1.0,
+            (gearView.cloakLeftS <= 3 ? 0.34 : 0.24) +
+            (gearView.cloakLeftS <= 3 ? 0.20 : 0.08) * (0.5 + 0.5 * Math.sin(Date.now() / (gearView.cloakLeftS <= 3 ? 180 : 520))))
+        }} />
+    )}
+
     {/* Invisible, and for how much longer: a state with a clock says both, in the column
         where every other clock in this game is read (owner, 5 Sep: "on ne sait pas
         visuellement combien de temps ca dure"). */}
