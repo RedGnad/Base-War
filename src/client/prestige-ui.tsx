@@ -4,7 +4,8 @@ import { TYPE, C, TAP, SKIN } from './theme'
 import { Glyphs, glyphWidth } from './glyphs'
 import { Btn, SURF } from './ui-kit'
 import { theftView, doPrestige, pinItem } from './theft'
-import { formatIncome, RARITIES, nomDuCode } from '../shared/loot-table'
+import { mesPieces } from './plots'
+import { formatIncome, RARITIES, nomDuCode, rarityOf, mutationDe, itemColor } from '../shared/loot-table'
 import { prestigeTier, incomeMultiplier, REBIRTH_MAX } from '../shared/schemas'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 
@@ -148,24 +149,51 @@ export const PrestigePanel = () => {
             <UiEntity uiTransform={{ width: 340, height: 84, flexDirection: 'column', justifyContent: 'center' }}>
               <Label value={mange} fontSize={TYPE.label} color={aLObjet ? C.money : C.danger}
                 uiTransform={{ width: '100%', height: 40 }} textAlign="middle-left" textWrap="nowrap" />
-              <Label value={theftView.pinned >= 0 ? `KEEPING ${nomDuCode(theftView.pinned).toUpperCase()}` : 'EATEN FROM YOUR SHELVES'}
-                fontSize={TYPE.caption} color={theftView.pinned >= 0 ? C.bonus : C.dim}
+              <Label value="IS EATEN" fontSize={TYPE.caption} color={C.dim}
                 uiTransform={{ width: '100%', height: 28 }} textAlign="middle-left" textWrap="nowrap" />
             </UiEntity>
-            {/*
-              One tap, on the line that already names the toy: KEEP takes the piece prestige
-              was about to eat out of its reach, and prestige goes for the next one instead.
-              The same tap on a kept piece lets it go. No inventory screen, no list, no second
-              panel: the only place this decision is ever made is the one that announces it
-              (owner, 5 Sep: "l'action doit etre minimale et intuitive dans notre flux").
-            */}
-            {theftView.prestigeEats >= 0 && (
-              <Btn label={theftView.pinned === theftView.prestigeEats ? 'LET GO' : 'KEEP'}
-                width={150} height={TAP.height}
-                skin={theftView.pinned === theftView.prestigeEats ? 'secondary' : 'primary'}
-                onClick={() => pinItem(theftView.prestigeEats)} />
-            )}
           </UiEntity>
+        </UiEntity>
+
+        {/*
+          Your shelves, and one tap to save one of them.
+
+          The first try put a KEEP button on the line that names the eaten toy, and it failed
+          on its own terms: the word did not say what would change, and a player with a full
+          base could not see WHICH pieces were at stake, let alone pick a favourite (owner,
+          5 Sep). A row of the pieces themselves answers both at a glance: the one prestige is
+          about to eat wears a red ring, the one you saved wears a gold one, and a tap moves
+          the gold ring. Nothing is written that the rings do not already say.
+        */}
+        <UiEntity uiTransform={{ width: 660, height: 30, margin: { bottom: 4 } }}>
+          <Label value={theftView.pinned >= 0 ? 'TAP A PIECE TO SAVE IT  ·  GOLD IS SAFE' : 'TAP A PIECE TO SAVE IT FROM PRESTIGE'}
+            fontSize={TYPE.caption} color={C.dim}
+            uiTransform={{ width: '100%', height: 30 }} textAlign="middle-center" textWrap="nowrap" />
+        </UiEntity>
+        <UiEntity uiTransform={{
+          width: 660, height: 116, flexDirection: 'row', flexWrap: 'wrap',
+          justifyContent: 'center', alignItems: 'center', margin: { bottom: 10 }
+        }}>
+          {mesPieces().slice(0, 24).map((code: number, i: number) => {
+            const garde = theftView.pinned === code
+            const mangee = theftView.prestigeEats === code && !garde
+            const teinte = Color4.fromHexString(itemColor(rarityOf(code), mutationDe(code)) + 'ff')
+            return (
+              <UiEntity key={i}
+                uiTransform={{
+                  width: 52, height: 52, margin: { right: 4, bottom: 4 },
+                  justifyContent: 'center', alignItems: 'center', pointerFilter: 'block',
+                  borderWidth: garde || mangee ? 3 : 0, borderRadius: 12,
+                  borderColor: garde ? C.money : C.danger
+                }}
+                uiBackground={{ ...SKIN.inset, color: teinte }}
+                onMouseDown={() => pinItem(code)}
+              >
+                <UiEntity uiTransform={{ width: 40, height: 40 }}
+                  uiBackground={{ texture: { src: `assets/ui/toy-${rarityOf(code)}.png` }, textureMode: 'stretch' }} />
+              </UiEntity>
+            )
+          })}
         </UiEntity>
 
         {/* What stays and what goes, one line each, no sentence. */}
