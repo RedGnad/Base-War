@@ -274,7 +274,7 @@ function baseCost(
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
-  const crown = p.skin > 0 ? 2 : 0
+  const crown = p.skin > 0 ? 1 : 0  // the kerb
   // Full: door and sign, a crown of rays above Epic and up, one cone per armed storey, the kerb
   // and crown of a skin, one glyph plane per letter; in draws also one pad per piece and one
   // painted pool per lit piece. Pads are files shared per colour, billed once on the field.
@@ -472,14 +472,14 @@ function repeindre(v: View, p: { ownerId: string; skin: number }): void {
   for (const e of [v.halo, v.couronne]) if (e !== null) engine.removeEntityWithChildren(e)
   v.halo = null; v.couronne = null
   if (p.skin > 0) {
-    const hex = mutation(p.skin).color
     // A solid kerb around the plinth, cut from the skin's own material by the storey
     // generator (`frame-skin-<id>.glb`): the same gold as the pillars, not a painted band
     // (owner, 4 Sep). One rendered object, no collider: it is a rim, not a wall.
     v.halo = engine.addEntity()
     Transform.create(v.halo, { parent: v.racine })
     GltfContainer.create(v.halo, { src: `assets/Models/frame-skin-${p.skin}.glb`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
-    v.couronne = spawnRays(v.racine, Vector3.create(0, v.floors.length * FLOOR_HEIGHT + 0.6, 0), 7, hex, 1.4, 10)
+    // No crown of rays over the roof any more: it sat right under the floating gain text and
+    // took its legibility (owner, 5 Sep). The kerb and the patterned walls carry the skin.
   }
   // The colour lives in the file, so repainting is swapping which file each storey shows.
   const mods = modelesDe(p)
