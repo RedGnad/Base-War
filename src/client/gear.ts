@@ -26,6 +26,8 @@ export const gearView = {
   placing: -1,
   /** True while my own cloak is on, so the HUD can say so. */
   cloaked: false,
+  /** Seconds left on my own cloak, for the chip that counts it down. */
+  cloakLeftS: 0,
   /** The weapon the player chose to wield: 'shoot' (gun), 'slap' or 'taser'. Gun is always owned. */
   armeChoisie: 'shoot' as 'shoot' | 'slap' | 'taser'
 }
@@ -173,13 +175,18 @@ export function setupGear(): void {
     }
     const capesVivantes = new Set<number>()
     gearView.cloaked = false
+    gearView.cloakLeftS = 0
+    const maintenant = Date.now()
     // X-ray glasses: somebody else's cloak hides nothing from THIS client. The volume that
     // would hide them is simply never built here, and one already built comes down.
     const rayonsX = gearView.held[6] > 0
     for (const [e, c] of engine.getEntitiesWith(Cloaked)) {
       const id = e as unknown as number
       const qui = c.who.toLowerCase()
-      if (qui === moi) gearView.cloaked = true
+      // An expired cloak hides nobody, whatever the room still holds: the client stops drawing
+      // it the second its own clock says so, without waiting for the server to sweep.
+      if (c.untilMs <= maintenant) continue
+      if (qui === moi) { gearView.cloaked = true; gearView.cloakLeftS = Math.ceil((c.untilMs - maintenant) / 1000) }
       if (rayonsX && qui !== moi) {
         if (!vusParRayons.has(id)) {
           vusParRayons.add(id)
@@ -191,8 +198,14 @@ export function setupGear(): void {
       let zone = capes.get(id)
       if (zone === undefined) {
         zone = engine.addEntity()
-        Transform.create(zone, { position: Vector3.create(0, -50, 0), scale: Vector3.create(2, 3, 2) })
-        AvatarModifierArea.create(zone, { area: Vector3.create(2, 3, 2), modifiers: [AvatarModifierType.AMT_HIDE_AVATARS], excludeIds: [] })
+        /*
+          Four metres across, not two. The volume is written where the wearer WAS a frame ago,
+          so at running speed they walked out of a two metre box and flashed back into view
+          every few steps (owner, 5 Sep: "le joueur clignotte"). Four metres covers the lag,
+          and everyone else in it is excluded by name anyway.
+        */
+        Transform.create(zone, { position: Vector3.create(0, -50, 0), scale: Vector3.create(4, 4, 4) })
+        AvatarModifierArea.create(zone, { area: Vector3.create(4, 4, 4), modifiers: [AvatarModifierType.AMT_HIDE_AVATARS], excludeIds: [] })
         capes.set(id, zone)
       }
       // Follow the wearer. Their entity is found by address among the identities present.

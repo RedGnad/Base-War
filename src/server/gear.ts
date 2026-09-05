@@ -218,10 +218,17 @@ export function startGear(): void {
       }
     }
 
-    // Cloaks end on their timer, or when their wearer leaves.
-    for (const [a, e] of [...capes]) {
-      const c = Cloaked.getOrNull(e)
-      if (c === null || c.untilMs < now || !ici.has(a)) { capes.delete(a); engine.removeEntity(e) }
+    /*
+      Cloaks end on their timer, or when their wearer leaves, and the sweep reads the COMPONENT
+      rather than the map it was put in. A server replacement empties that map while the synced
+      entity survives in the room, so a cloak from before a deploy was worn for ever: the owner
+      stayed invisible with nothing left to end it (owner, 5 Sep).
+    */
+    for (const [e, c] of engine.getEntitiesWith(Cloaked)) {
+      const qui = c.who.toLowerCase()
+      if (c.untilMs >= now && ici.has(qui)) continue
+      capes.delete(qui)
+      engine.removeEntity(e)
     }
 
     /*

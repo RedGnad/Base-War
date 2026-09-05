@@ -182,7 +182,7 @@ const SCROLLBAR_COVER_W = 26
  * pixels apart, which reads as one panel that has split rather than two panels. One place
  * decides, and it leaves a real gap.
  */
-const COIN_H = [64, 40, 52, 40, 62]
+const COIN_H = [64, 40, 52, 40, 40, 62]
 /** The rush chip: how long it holds in the middle, then how long its flight to the corner takes. */
 const RUSH_HOLD_MS = 1500
 const RUSH_FLIGHT_MS = 550
@@ -200,7 +200,8 @@ function coinDroit(rang: number): number {
     tutoView.etape < tutoView.total,
     rushChip() !== null,
     giftView.leftS > 0,
-    nextBigText() !== null
+    nextBigText() !== null,
+    gearView.cloakLeftS > 0
   ]
   let y = BAND.top
   for (let i = 0; i < rang; i++) if (present[i] === true) y += (i === 0 ? stepChipH() : COIN_H[i]) + COIN_GAP
@@ -1504,6 +1505,23 @@ const uiComponent = () => {
       progress towards something wanted. This one fails the first two and passes the third.
     */}
     {/* The next grand rush, as a chip: a standing fact, not an announcement. */}
+    {/* Invisible, and for how much longer: a state with a clock says both, in the column
+        where every other clock in this game is read (owner, 5 Sep: "on ne sait pas
+        visuellement combien de temps ca dure"). */}
+    {hud() && gearView.cloakLeftS > 0 && (
+      <UiEntity
+        uiTransform={{
+          width: 240, height: 40, positionType: 'absolute',
+          position: { top: coinDroit(4), right: rightCornerMargin() },
+          justifyContent: 'center', alignItems: 'center'
+        }}
+        uiBackground={SKIN.panel}
+      >
+        <Label value={`INVISIBLE  ${gearView.cloakLeftS}s`} fontSize={TYPE.caption} textWrap="nowrap"
+          color={Color4.fromHexString('#4dd2ffff')} uiTransform={{ height: 40 }} textAlign="middle-center" />
+      </UiEntity>
+    )}
+
     {hud() && nextBigText() !== null && (
       <UiEntity
         uiTransform={{
@@ -1559,7 +1577,7 @@ const uiComponent = () => {
             three, and centring lines of different lengths turned a list into a shape.
           */
           width: 400, height: 16 + filVisible().length * FIL_LIGNE, positionType: 'absolute',
-          position: { top: coinDroit(4), right: rightCornerMargin() },
+          position: { top: coinDroit(5), right: rightCornerMargin() },
           padding: 8, flexDirection: 'column', alignItems: 'flex-start'
         }}
         uiBackground={{ color: SURF.voile }}
