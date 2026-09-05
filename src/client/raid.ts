@@ -142,6 +142,19 @@ export function setupRaid(): void {
   let barText = ''
   let dernierePart = -1
   let flashOn = false
+  /*
+    Two clocks, never subtracted from each other.
+
+    The flash and the swipe read `now - r.hitAtMs`, with `now` the CLIENT's clock and the
+    stamp the SERVER's. The two are never in step: a client a fifth of a second ahead sees
+    every window already expired and nothing ever flashes, one behind sees a window that
+    never closes and the boss stays white (owner, 5 Sep: "le boss ne clignote plus"). So the
+    client watches the stamp CHANGE and starts its own window from its own clock.
+  */
+  let vuHit = 0
+  let hitLocal = -1e9
+  let vuSwipe = 0
+  let swipeLocal = -1e9
   engine.addSystem((dt) => {
     let r: ReturnType<typeof Raid.get> | null = null
     for (const [, v] of engine.getEntitiesWith(Raid)) { r = v; break }
@@ -188,7 +201,8 @@ export function setupRaid(): void {
       genre's hit signal for the thing being hit, red being reserved for the player's own
       damage; the material swap happens on the edges only, never per frame.
     */
-    const touche = now - r.hitAtMs < FLASH_MS
+    if (r.hitAtMs !== vuHit) { vuHit = r.hitAtMs; if (r.hitAtMs > 0) hitLocal = now }
+    const touche = now - hitLocal < FLASH_MS
     const frappe = touche ? 1.12 : 1
     t.scale = Vector3.create(frappe, frappe, frappe)
     if (touche !== flashOn) {
@@ -209,7 +223,8 @@ export function setupRaid(): void {
     }
 
     // The swipe: the halo swells for a moment, which is the warning and the hit in one shape.
-    const balai = now - r.swipeAtMs
+    if (r.swipeAtMs !== vuSwipe) { vuSwipe = r.swipeAtMs; if (r.swipeAtMs > 0) swipeLocal = now }
+    const balai = now - swipeLocal
     const ht = Transform.getMutableOrNull(halo)
     if (ht !== null) {
       const s = balai >= 0 && balai < BALAI_MS ? 3.4 + (1 - balai / BALAI_MS) * 4.6 : 3.4

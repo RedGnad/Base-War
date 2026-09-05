@@ -106,6 +106,8 @@ export function setupFuser(): void {
   */
   let lastPulse = 0
   const DOME = Vector3.create(1.3, 1.3, 1.3)
+  let vuFusion = 0
+  let fusionLocal = -1e9
   engine.addSystem(() => {
     // A toy in hand feeds the machine; empty hands open the panel that fuses from the shelves.
     if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, tambour)) {
@@ -116,7 +118,11 @@ export function setupFuser(): void {
     let f: { byName: string; rarity: number; count: number; lastName: string; lastCode: number; atMs: number } | null = null
     for (const [, v] of engine.getEntitiesWith(Fusion)) { f = v; break }
     const now = Date.now()
-    const brille = f !== null && f.lastCode >= 0 && now - f.atMs < DOME_BRILLE_MS
+    // Same rule as the boss flash: the stamp is the SERVER's clock, so the client watches it
+    // CHANGE and runs the window on its own clock. Subtracting two clocks either never opens
+    // the window or never closes it, depending which way the skew runs (owner, 5 Sep).
+    if (f !== null && f.atMs !== vuFusion) { vuFusion = f.atMs; if (f.atMs > 0) fusionLocal = now }
+    const brille = f !== null && f.lastCode >= 0 && now - fusionLocal < DOME_BRILLE_MS
     const mienne = fuserView.codes.length
     const rareteMienne = mienne > 0 ? rarityOf(fuserView.codes[0]) : -1
     // One string for everything drawn, rewritten only when it changes: a material or a light
