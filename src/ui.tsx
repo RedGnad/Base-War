@@ -997,15 +997,33 @@ function easeOutBack(t: number): number {
  * whole thing melts away on the same clock as the panel. It blocks nothing: no handler,
  * so taps fall through to the game.
  */
+/*
+  The reveal, built on what the juice literature actually measures: Jonasson and Purho's
+  "Juice it or lose it" (GDC 2012) and Nijman's "The Art of Screenshake" (2013) both put
+  ANTICIPATION before the payoff (a beat where the winning card burns alone, then the hero
+  pops), ESCALATION with the stakes (a Mythic hits harder than a Common: bigger glyph, wider
+  burst, a full-screen flash from Epic up), and LAYERED ARRIVALS (glyph, then name, then the
+  income line, each with its own overshoot) over one flat card of information. This client
+  draws no particles and no bloom, so the juice is timing, scale, colour and the sounds that
+  already climb with rarity (owner, 5 Sep: "notre etape la plus juicy, et je la trouve fade").
+*/
+const REVEAL_HOLD_MS = 240
 function Revelation(): ReactEcs.JSX.Element {
-  const depuis = Date.now() - boxView.gagneA
+  const depuis = Date.now() - boxView.gagneA - REVEAL_HOLD_MS
+  if (depuis < 0) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
+  const rarete = Math.max(0, boxView.resultat)
+  const echelle = Math.min(1.6, 1 + 0.12 * rarete)
   const entree = Math.min(1, depuis / 160)
   const heroPop = easeOutBack(Math.min(1, depuis / 340))
+  const nomPop = easeOutBack(Math.max(0, Math.min(1, (depuis - 120) / 260)))
+  const lignePop = easeOutBack(Math.max(0, Math.min(1, (depuis - 260) / 260)))
   const sortie = Math.max(0, Math.min(1, (boxView.resultatJusqua - Date.now()) / 260))
   const gagneHex = itemColor(boxView.resultat, boxView.resultatMutation)
+  const gagne = Color4.fromHexString(gagneHex + 'ff')
   const mut = mutation(boxView.resultatMutation)
-  const rayon = (560 + 120 * heroPop) * entree
-  const icone = 290 * heroPop
+  const rayon = (560 + 120 * heroPop) * entree * echelle
+  const icone = 290 * heroPop * echelle
+  const eclair = rarete >= 3 ? Math.max(0, 0.45 - depuis / 400) : 0
   /*
     Au centre de l'ecran, et centre sur la COMPOSITION, pas sur l'image seule.
 
@@ -1038,7 +1056,12 @@ function Revelation(): ReactEcs.JSX.Element {
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
       <UiEntity
         uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-        uiBackground={{ color: Color4.create(0, 0, 0, SURF.voile.a * 0.63 * entree) }} />
+        uiBackground={{ color: Color4.create(0, 0, 0, Math.min(0.85, SURF.voile.a * 0.63 * (1 + 0.15 * rarete)) * entree) }} />
+      {eclair > 0 && (
+        <UiEntity
+          uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+          uiBackground={{ color: Color4.create(gagne.r, gagne.g, gagne.b, eclair) }} />
+      )}
       <UiEntity
         uiTransform={{
           width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 },
@@ -1060,14 +1083,18 @@ function Revelation(): ReactEcs.JSX.Element {
             uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
             uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
         </UiEntity>
-        <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
-          fontSize={TYPE.title} textWrap="nowrap" textAlign="middle-center"
-          color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
-          uiTransform={{ height: 52, margin: { top: 6 } }} />
-        <Label value={mut.mult > 1 ? `${mut.name.toUpperCase()}  x${mut.mult}  ·  +${formatIncome((INCOME_UI[boxView.resultat] ?? 1) * mut.mult)}/s` : `+${formatIncome(INCOME_UI[boxView.resultat] ?? 1)}/s`}
+        <UiEntity uiTransform={{ height: 52, margin: { top: 6 }, opacity: Math.min(1, nomPop) }}>
+          <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
+            fontSize={Math.round(TYPE.title * (0.8 + 0.2 * nomPop))} textWrap="nowrap" textAlign="middle-center"
+            color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
+            uiTransform={{ height: 52 }} />
+        </UiEntity>
+        <UiEntity uiTransform={{ height: 40, opacity: Math.min(1, lignePop) }}>
+          <Label value={mut.mult > 1 ? `${mut.name.toUpperCase()}  x${mut.mult}  ·  +${formatIncome((INCOME_UI[boxView.resultat] ?? 1) * mut.mult)}/s` : `+${formatIncome(INCOME_UI[boxView.resultat] ?? 1)}/s`}
           fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
           color={C.money}
           uiTransform={{ height: 40 }} />
+        </UiEntity>
       </UiEntity>
     </UiEntity>
   )
@@ -1130,14 +1157,16 @@ function Roulette(): ReactEcs.JSX.Element {
                 }}
                 uiBackground={{ ...SKIN.card, color: teinte }}
               >
-                <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
-                  color={gagnant ? C.name : texte}
+                {/* The winner turns into a lit plate under the hero above it: its own name,
+                    glyph and income were the same three things said twice (owner, 5 Sep). */}
+                <Label value={gagnant ? '' : rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
+                  color={texte}
                   uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
                 <UiEntity
-                  uiTransform={{ width: 118 * s, height: 118 * s }}
+                  uiTransform={{ width: 118 * s, height: 118 * s, opacity: gagnant ? 0 : 1 }}
                   uiBackground={{ texture: { src: `assets/ui/toy-${r}.png` }, textureMode: 'stretch' }} />
                 <Label
-                  value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[r] ?? 1)}/s`}
+                  value={gagnant ? '' : mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[r] ?? 1)}/s`}
                   fontSize={TYPE.caption} textWrap="nowrap"
                   color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
                   uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
