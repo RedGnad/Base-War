@@ -4,7 +4,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
+import { Convoy, CONVOY_OUTBID, CONVOY_SPEED, CONVOY_MIN_S, convoyPosition } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, myClientAddress } from './theft'
@@ -12,6 +12,8 @@ import { TOAST } from './theme'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
+/** The last `progres` received per convoy and when, for the glide between server writes. */
+const horloges = new Map<number, { progres: number; recu: number }>()
 
 export function setupConvoy(): void {
   room.onMessage('outbidWon', (d) => {
@@ -48,9 +50,10 @@ export function setupConvoy(): void {
           lecon pour ses articles mobiles (CL_POINTER seul), le convoi ne l'avait pas.
           Surencherir est un clic, donc le pointeur suffit et la physique n'apportait rien.
         */
-        // Solid again, on trial, like the belt crates: the 1 Sep push was blamed on this very
-        // body; the owner wants the claim tested, and the body leaves at the first repeat.
-        MeshCollider.setBox(body, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+        // Trial over (owner, 5 Sep: "beaucoup de bruit dans les deplacements"): a body that
+        // is rewritten every frame shoves whoever walks the corridor. Pointer only: outbidding
+        // is a tap. The belt's parked crates keep their solid, they do not move.
+        MeshCollider.setBox(body, ColliderLayer.CL_POINTER)
         caisse(body, c.crateTier)
         const label = engine.addEntity()
         Transform.create(label, { position: Vector3.create(0, -5, 0), scale: Vector3.create(0.5, 0.5, 0.5) })
@@ -60,9 +63,21 @@ export function setupConvoy(): void {
         views.set(c.convoyId, v)
       }
 
-      // Position comes from the server's `progres`. Two players must see the convoy in
-      // the same place, or a tap that looks well-timed gets rejected.
-      const k = Math.max(0, Math.min(1, c.progres))
+      /*
+        Position comes from the server's `progres`, which two players must agree on, or a tap
+        that looks well-timed gets rejected. The server writes it ten times a second, and a
+        crate that jumps ten times a second reads as jerky (owner, 5 Sep). Between two writes
+        the client runs the same clock the server runs (distance over CONVOY_SPEED, never
+        under CONVOY_MIN_S) from the last value it received: the crate glides at frame rate
+        and lands on the server's next value, since both advance at the same rate. Capped at
+        a tick and a half past the last write, so a stalled convoy stops instead of drifting.
+      */
+      const d = Math.hypot(c.cibleX - c.departX, c.cibleZ - c.departZ)
+      const dureeS = Math.max(CONVOY_MIN_S, d / CONVOY_SPEED)
+      let h = horloges.get(c.convoyId)
+      if (h === undefined || h.progres !== c.progres) { h = { progres: c.progres, recu: Date.now() }; horloges.set(c.convoyId, h) }
+      const avance = Math.min(0.15, (Date.now() - h.recu) / 1000) / dureeS
+      const k = Math.max(0, Math.min(1, c.progres + avance))
       const pt = convoyPosition({ x: c.departX, z: c.departZ }, { x: c.cibleX, z: c.cibleZ }, k)
       const x = pt.x
       const z = pt.z
@@ -104,6 +119,7 @@ export function setupConvoy(): void {
       demolir(v.body)
       engine.removeEntity(v.label)
       views.delete(id)
+      horloges.delete(id)
     }
   })
 }
