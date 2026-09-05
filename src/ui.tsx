@@ -18,7 +18,7 @@ import { BUILD } from './client/build-stamp'
 import { view } from './client/setup'
 import { setIconePrimaire, setReticuleClient, setMenuIcone, iconeArme } from './client/locomotion'
 import { theftView, lockBase, recover, doPrestige, collectPending, cancelSteal, filVisible, alertesVisibles } from './client/theft'
-import { gearView, placeTrap } from './client/gear'
+import { gearView, placeTrap, tirerLaCape } from './client/gear'
 import { bannerLine, nextBigText, rushChip, eventView, openRushCard, closeRushCard, rushCardVisible, rushInfo } from './client/events'
 import { beltView, crateInReach, buyCrate } from './client/belt'
 import { convoyInReach, surencherir } from './client/convoy'
@@ -703,6 +703,15 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     a moment ago, which is exactly what this button is for.
   */
   if (gearView.placing >= 0) return { id: 'poser-piege', label: `SET ${GEARS[gearView.placing].name} HERE`, icon: ico('build'), action: placeTrap }
+  /*
+    The cloak, on the button that names things. It hid behind the draw key: pressing F with
+    nothing drawn pulled it on, which nobody can guess and nobody did (owner, 5 Sep, having
+    just bought one). Gear that does something to YOU belongs on the contextual button, where
+    every other verb of this game is named before it is pressed. F still works.
+  */
+  if (gearView.held[3] > 0 && !gearView.cloaked && carryView.code < 0 && !combatView.aiming) {
+    return { id: 'cape', label: 'GO INVISIBLE', icon: ico('cloak'), action: () => { tirerLaCape() } }
+  }
   if (!theftView.basePosee) return { id: 'construire-base', label: 'BUILD BASE', icon: ico('build'), action: togglePlacing }
   /*
     What the place offers, so the phone needs no interaction button at all.

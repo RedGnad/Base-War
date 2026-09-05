@@ -175,10 +175,20 @@ export const Pouce = (props: {
     period is the owner's call and comes in as a prop.
   */
   let icone = props.icone
-  const periode = props.periodMs ?? 800
+  let balance = 1
+  const periode = props.periodMs ?? 1800
   if (props.frames !== undefined) {
+    /*
+      A SWING, not a blink. Eighty milliseconds raised and sixty halfway, twice a second,
+      is two texture swaps too fast to read as a movement: the eye sees the button flicker
+      (owner, 5 Sep). Animation's own answer is anticipation, strike, settle, over the
+      two to four tenths of a second interface motion is given, then a long rest: the hammer
+      lifts (and swells a little), comes down (and shrinks), settles, then holds still.
+    */
     const t = Date.now() % periode
-    icone = t < 80 ? props.frames[0] : t < 140 ? props.frames[1] : props.icone
+    if (t < 220) { icone = props.frames[0]; balance = 1 + 0.06 * Math.sin(Math.PI * t / 220) }
+    else if (t < 320) { icone = props.frames[1]; balance = 0.94 }
+    else if (t < 520) { icone = props.icone; balance = 1 + 0.04 * (1 - (t - 320) / 200) }
   }
   // A 300 ms swell to 1.12 at the start of each period, on the icon alone; the plate holds.
   let gonfle = 1
@@ -186,6 +196,7 @@ export const Pouce = (props: {
     const t = Date.now() % periode
     if (t < 300) gonfle = 1 + 0.12 * Math.sin(Math.PI * t / 300)
   }
+  gonfle *= balance
   const enfonce = Date.now() - (presse.get(cle) ?? 0) < PRESSE_MS
   /*
     The disc, not the plate. The nine-sliced plate passed for round at 86 px and showed
