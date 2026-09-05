@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat, itemFile } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
@@ -64,7 +64,7 @@ type View = {
   loin: boolean
   /** Les deux valeurs vivantes, mises en cache: une ecriture identique coute autant qu'une vraie. */
   vuLabel: string; vuBouclier: string
-  floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; ownerId: string
+  floors: Floor[]; items: Entity[]; ascenseur: Entity; signature: string; sigItems: readonly number[] | null; sigSentries: readonly number[] | null; ownerId: string
   /** The base's root: at its centre, turned to face the belt; every part is a child in base-local metres. */
   racine: Entity
   /** The base's lock date the last time it was read: a jump forward is the door sealing, which is heard. */
@@ -234,20 +234,48 @@ const LOD_SLACK = 12
 const LOD_FIDELITE = 0.85
 
 /** Ce que cette base coutera en objets rendus, au detail complet ou reduite. */
+/*
+  The phone counts what IT counts, read in the mobile client's source (5 Sep,
+  godot/src/tool/debug_server/debug_collector.gd and lib/src/scene_runner/components):
+
+  - MATERIALS, 400 soft / 500 hard: UNIQUE material resources. One per SDK primitive (each pad,
+    ray quad, glyph plane, cone, door or sign carries its own material component, never
+    deduplicated), but one per material of a GLB file however many instances stand: fifty
+    pieces from one file cost that file's material once. This is the only budget this scene
+    can saturate, and it is what the desktop client's per-renderer count misled us into
+    modelling as "objects" (2 Sep to 4 Sep).
+  - BODIES, 2 400 soft, and DRAW CALLS, 1 000 soft app-wide: one per rendered instance.
+
+  So a far base shows every piece as a bare baked model for nothing on the first budget and one
+  draw call each on the second. Full detail is what costs materials, bought nearest-first.
+*/
+type Cost = { mats: number; draws: number }
+/** Unique materials: forty under the phone's warning, for avatars, wearables and the belt's crates. */
+const MATERIAL_BUDGET = 360
+/** Decor primitives measured at 85 (5 Sep, board with one face) plus the shared materials of its models, plus convoys. */
+const DECOR_MATERIALS = 120
+/** Rendered instances: under the app-wide draw-call warning with room for avatars and UI. */
+const DRAW_BUDGET = 800
+/** Decor plus belt and convoys, measured at 126 bodies (5 Sep). */
+const DECOR_DRAWS = 130
+
 function baseCost(
   p: { floors: number; items: readonly number[]; sentryFloors: readonly number[]; skin: number; ownerName: string }, pres: boolean
-): number {
+): Cost {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
-  if (!pres) return BASE_FIXED_COST_FAR + etages * STOREY_COST_FAR
-  // Every displayed piece counts, a plain Common included (its code is 0, not empty), plus
-  // the crown of rays above Epic and up, one sentry cone per armed storey, the kerb and crown
-  // of a skinned base, and one glyph plane per character of the name plate (audit, 4 Sep).
   let pieces = 0, rays = 0
   for (const it of p.items) if (it !== VIDE) { pieces++; if (rarityOf(it) >= RAYS_MIN_RARITY) rays++ }
+  // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
+  const loin: Cost = { mats: 2, draws: 2 + etages * STOREY_COST_FAR + pieces }
+  if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
   const crown = p.skin > 0 ? 2 : 0
-  return BASE_FIXED_COST + etages * STOREY_COST_NEAR + pieces * ITEM_COST + rays + cones + crown + p.ownerName.length
+  // Full: door and sign, one pad per piece, a crown of rays above Epic and up, one cone per
+  // armed storey, the kerb and crown of a skin, one glyph plane per letter; the climb per storey
+  // is a shared file, so it costs draws only.
+  const extras = 2 + pieces + rays + cones + crown + p.ownerName.length
+  return { mats: loin.mats + extras, draws: loin.draws + extras + etages }
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -787,7 +815,7 @@ function createView(x: number, z: number, mods: { accent: string; climb: string;
   const items: Entity[] = []
   for (let k = 0; k < SLOTS_PER_FLOOR; k++) items.push(createPedestal(racine, k))
   parentCourant = null
-  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
+  return { plinth, label, gain, door, plaque, plaqueGlyphes: null, loin, vuLabel: '', vuBouclier: '', ascenseur, floors, items, signature: '', sigItems: null, sigSentries: null, ownerId: '', skin: -1, peints: 0, halo: null, couronne: null, racine, lockSeen: -1 }
 }
 
 function destroyView(v: View): void {
@@ -1006,7 +1034,10 @@ export function setupPlots(): void {
   sealEmitter = emitter('assets/sounds/seal.wav', 1)
   room.onMessage('sentryShot', (d) => tirDeSentinelle(d.ownerId, d.floor, Vector3.create(d.x, d.y, d.z)))
   engine.addSystem(() => {
+    // Pedestals carry no collider on mobile, and a far base has none to tap: neither is polled.
+    if (isMobile()) return
     for (const v of views.values()) {
+      if (v.loin) continue
       for (let k = 0; k < v.items.length; k++) {
         if (
           inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, v.items[k])
@@ -1053,13 +1084,17 @@ export function setupPlots(): void {
     // would be forced full at once. Wait for the next frame instead.
     if (moiT === null) return
     const moiAdr = myClientAddress()
+
     const distances = new Map<number, number>()
-    const rangs: Array<{ id: number; rang: number; pres: number; loin: number; garde: boolean }> = []
+    const rangs: Array<{ id: number; rang: number; pres: Cost; loin: Cost; garde: boolean }> = []
+    // Every baked piece file on the field costs its material once, near or far.
+    const variantes = new Set<number>()
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       const t = Transform.get(ent)
       const d = moiT === null ? 0 : Math.hypot(moiT.position.x - t.position.x, moiT.position.z - t.position.z)
       distances.set(id, d)
+      for (const it of p.items) if (it !== VIDE) variantes.add(rarityOf(it) * 100 + mutationDe(it))
       const sienne = p.ownerId.toLowerCase() === moiAdr
       const dejaPres = views.get(id)?.loin === false
       rangs.push({
@@ -1078,13 +1113,16 @@ export function setupPlots(): void {
       loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
-    let facture = DECOR_COST
-    for (const r of rangs) facture += r.loin
+    let mats = DECOR_MATERIALS + variantes.size
+    let draws = DECOR_DRAWS
+    for (const r of rangs) { mats += r.loin.mats; draws += r.loin.draws }
     const complets = new Set<number>()
     for (const r of rangs) {
-      const surcout = r.pres - r.loin
-      if (r.rang < 0 || facture + surcout <= OBJECT_BUDGET + (r.garde ? LOD_SLACK : 0)) {
-        facture += surcout
+      const dm = r.pres.mats - r.loin.mats
+      const dd = r.pres.draws - r.loin.draws
+      if (r.rang < 0 || (mats + dm <= MATERIAL_BUDGET + (r.garde ? LOD_SLACK : 0) && draws + dd <= DRAW_BUDGET)) {
+        mats += dm
+        draws += dd
         complets.add(r.id)
       }
     }
@@ -1148,8 +1186,11 @@ export function setupPlots(): void {
         signature does not mention can never reach it, and the skin only appeared later, by
         accident, when a floor or an item happened to move.
       */
-      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.items.join(',')}|${p.given}|${p.received}|${p.sentryFloors.join(',')}|${p.rebirths}|${p.skin}`
-      const structurel = sig !== v.signature
+      // Arrays are replaced whole on a network update and yielded by reference each frame, so
+      // identity is the change test; the scalars make a short string. The 250-character join
+      // per base per frame this replaces was a third of the scene tick at sixteen bases (5 Sep).
+      const sig = `${p.ownerId}|${p.ownerName}|${p.ownerPresent}|${p.floors}|${p.given}|${p.received}|${p.rebirths}|${p.skin}`
+      const structurel = sig !== v.signature || v.sigItems !== p.items || v.sigSentries !== p.sentryFloors
       /*
         Ne prendre le mutable QUE si la valeur a change.
 
@@ -1379,6 +1420,8 @@ export function setupPlots(): void {
       // a full rebuild each second, which restarts item rotation tweens from identity.
       if (!structurel) continue
       v.signature = sig
+      v.sigItems = p.items
+      v.sigSentries = p.sentryFloors
       v.ownerId = p.ownerId
 
       const mine = monBase
@@ -1414,7 +1457,7 @@ export function setupPlots(): void {
         const tr = Transform.getMutableOrNull(ent)
         if (tr === null) continue
         const d = slotPosition(k)
-        const occupe = !v.loin && k < p.items.length && p.items[k] !== VIDE
+        const occupe = k < p.items.length && p.items[k] !== VIDE
 
         // 1. Tweens off, whatever the state: nothing below is safe while one is running.
         Tween.deleteFrom(ent)
@@ -1445,6 +1488,22 @@ export function setupPlots(): void {
         tr.position = Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size / 2, d.dz)
         tr.rotation = Quaternion.Identity()
         tr.scale = Vector3.create(size, size, size)
+        if (v.loin) {
+          /*
+            A far base shows its pieces bare: the baked model, its size, its float and its spin,
+            and nothing that would cost the phone a material of its own (pad, silhouette parts,
+            rays, light). What the game is about, readable from the other end of the field.
+          */
+          clearShape(ent)
+          clearPedestal(ent)
+          clearLight(ent)
+          clearRays(ent)
+          remonter(ent, itemFile(code))
+          toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
+          // No spin at a distance: every tweened piece writes its Transform back into the scene
+          // each frame, and a hundred of them cost the scene tick more than every base combined.
+          continue
+        }
         const hex = itemColor(rarityOf(code), mutationDe(code))
         const c = Color4.fromHexString(hex + 'ff')
         const mutId = mutationDe(code)
@@ -1479,7 +1538,7 @@ export function setupPlots(): void {
           metre lands at the right size on every pedestal. Seven files for seven rarities is
           the whole item budget; sixty bases share them and the engine keeps one copy each.
         */
-        remonter(ent, `item-${rarityOf(code)}.glb`)
+        remonter(ent, itemFile(code))
         // The Secret floats; in the parent's units, since the parent is scaled by `size`.
         toyFloat(ent, rarityOf(code) >= FLOAT_MIN_RARITY ? FLOAT_AMPLITUDE / size : null)
 

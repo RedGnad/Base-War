@@ -1,6 +1,6 @@
 import { isMobile } from '@dcl/sdk/platform'
 import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
-import { crate, mutation } from '../shared/loot-table'
+import { crate, mutation, rarityOf, mutationDe } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { HUE } from './theme'
@@ -264,8 +264,36 @@ export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip
   'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
 }
 
+/*
+  Baked pieces: `item-<rarity>-<mutation>.glb`, one file per tint (tools/model/build-item-variants.py).
+
+  The mobile client counts UNIQUE materials against its budget and duplicates one for every
+  piece tinted through a node modifier, so each exposed piece used to cost a material. Instances
+  of one file share theirs: a baked piece costs nothing there however many stand on the field.
+  The stand-in silhouette and the hand marker keep the tinted path (few, and the hand is a ghost).
+*/
+const CUIT = /^item-\d+-\d+\.glb$/
+const cuits = new Set<Entity>()
+export function itemFile(code: number): string {
+  const r = rarityOf(code)
+  return r <= 5 ? `item-${r}-${mutationDe(code)}.glb` : `item-${r}.glb`
+}
+/** The fit is the rarity model's, whatever tint the file carries. */
+function fitKey(fichier: string): string {
+  return fichier.replace(/^(item-\d+)-\d+\.glb$/, '$1.glb')
+}
+function noterCuisson(modele: Entity, fichier: string): void {
+  if (CUIT.test(fichier)) {
+    cuits.add(modele)
+    if (GltfNodeModifiers.has(modele)) GltfNodeModifiers.deleteFrom(modele)
+    teintes.delete(modele)
+  } else {
+    cuits.delete(modele)
+  }
+}
+
 function applyFit(modele: Entity, fichier: string): void {
-  const f = FIT[fichier]
+  const f = FIT[fitKey(fichier)]
   const t = Transform.getMutableOrNull(modele)
   if (t === null) return
   t.position = Vector3.create(0, f?.dy ?? 0, 0)
@@ -285,11 +313,12 @@ export function montable(primitive: Entity, fichier: string): void {
     holding everything OFF, because a model with clips and no Animator autoplays its first
     one, and the treasure chest's first clip is 'close' played at a random moment.
   */
-  const fit = FIT[fichier]
+  const fit = FIT[fitKey(fichier)]
   if (fit?.clip !== undefined) {
     Animator.create(modele, { states: [{ clip: fit.clip, playing: true, loop: true }] })
   }
   montages.set(primitive, { modele, fichier })
+  noterCuisson(modele, fichier)
   enAttente.add(primitive)
 }
 
@@ -333,6 +362,7 @@ export function remonter(primitive: Entity, fichier: string): void {
   // A new file is a new load: the arrival has to be watched for again.
   if (m.charge === true) { montages.set(primitive, { ...m, charge: false }); enAttente.add(primitive) }
   applyFit(m.modele, fichier)
+  noterCuisson(m.modele, fichier)
   const g = GltfContainer.getMutableOrNull(m.modele)
   if (g !== null) g.src = TOY_DIR + fichier
 }
@@ -433,6 +463,8 @@ const teintes = new Map<Entity, string>()
 */
 const dernierMateriau = new Map<Entity, PBMaterial_PbrMaterial>()
 export function teindreModele(modele: Entity, materiau: PBMaterial_PbrMaterial): void {
+  // A baked piece already wears its colour; a modifier would only cost the phone a material.
+  if (cuits.has(modele)) return
   const cle = JSON.stringify(materiau)
   if (teintes.get(modele) === cle) return
   teintes.set(modele, cle)
