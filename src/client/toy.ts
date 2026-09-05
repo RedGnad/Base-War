@@ -301,6 +301,11 @@ function applyFit(modele: Entity, fichier: string): void {
   const f = FIT[fitKey(fichier)]
   const t = Transform.getMutableOrNull(modele)
   if (t === null) return
+  // A new file is a new occupant: the float of the previous one, and the floor it remembered,
+  // must not outlive it. A queen put where a Secret had floated was set back on the Secret's
+  // floor (dy 0) instead of her own (-0.49) and hung a metre in the air (owner, 5 Sep).
+  if (Tween.has(modele)) { Tween.deleteFrom(modele); TweenSequence.deleteFrom(modele) }
+  floatFloor.delete(modele)
   t.position = Vector3.create(0, f?.dy ?? 0, 0)
   t.scale = Vector3.create(f?.scale ?? 1, f?.scale ?? 1, f?.scale ?? 1)
   t.rotation = Quaternion.fromEulerDegrees(f?.rotX ?? 0, 0, 0)
