@@ -113,7 +113,9 @@ def animate(path, period=2.4, tilt_deg=30.0):
     t = math.radians(tilt_deg); axis = (math.sin(t), math.cos(t), 0.0)
     quats = []
     for k in range(n):
-        th = -2 * math.pi * k / (n - 1)  # the other way round from the parent's spin
+        # Positive here IS the other way round in the client: the writer mirrors X (right-handed
+        # glTF to the engine's left hand), and a reflection reverses every rotation's sense.
+        th = 2 * math.pi * k / (n - 1)
         s2, c2 = math.sin(th / 2), math.cos(th / 2)
         quats.append((axis[0] * s2, axis[1] * s2, axis[2] * s2, c2))
     def push(data):
