@@ -22,7 +22,11 @@ import { HUE } from './theme'
 export const TOY = {
   /** The ground: a play-mat green, matte, the table the toys stand on. */
   ground: '#4eb85a',   // MEASURED against the genre leader's own grass, not guessed: two map captures average #65b261 (S45 V70) and #43a944 (S62 V67); ours sat at S44 V82, paler and lighter than both (owner, 1 Sep). This sits inside their bracket.
-  groundEvent: { gold: '#b89a3a', lava: '#b4523a', cursed: '#6a4a8f' },
+  groundEvent: {
+    gold: '#b89a3a', lava: '#b4523a', cursed: '#6a4a8f',
+    galaxy: '#3a3f7c', yinyang: '#8c8c90', radioactive: '#5c8a2c', divine: '#c8b78a',
+    rainbow: '#9a7a9c', cyber: '#2c7a86', phantom: '#6e9a86'
+  },
   /**
    * The street: the strip of ground that is not anybody's, running the length of the field.
    *

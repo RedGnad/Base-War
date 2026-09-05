@@ -126,10 +126,24 @@ export function nextBigText(): string | null {
  * metres a cell. Gold sparkles under the golden hour, lava has slow blobs under a darker
  * evening, cursed swirls under the night. Sky times are seconds since midnight.
  */
+/*
+  One look per rush theme: the hour of the sky (seconds into the day), which of the three ground
+  mats the venue wears and its tint. The three mats are greyscale weaves, so a theme only picks
+  the closest weave and brings its own colour. Every theme in EVENT_THEMES needs a line here:
+  the seven added on 5 Sep fell back to the Lava look, a Galaxy rush under a dusk sky on a lava
+  mat (owner, 5 Sep: "on a un changement de ciel quand il y a certains events ?").
+*/
 const LOOK: Record<number, { texture: string; teinte: string; sky: number }> = {
-  1: { texture: 'mat-gold', teinte: TOY.groundEvent.gold, sky: 64800 },
-  5: { texture: 'mat-lava', teinte: TOY.groundEvent.lava, sky: 72000 },
-  9: { texture: 'mat-cursed', teinte: TOY.groundEvent.cursed, sky: 79200 }
+  1: { texture: 'mat-gold', teinte: TOY.groundEvent.gold, sky: 64800 },         // golden hour
+  5: { texture: 'mat-lava', teinte: TOY.groundEvent.lava, sky: 72000 },         // dusk, red horizon
+  9: { texture: 'mat-cursed', teinte: TOY.groundEvent.cursed, sky: 79200 },     // night
+  6: { texture: 'mat-cursed', teinte: TOY.groundEvent.galaxy, sky: 1800 },      // deep night, stars
+  7: { texture: 'mat-gold', teinte: TOY.groundEvent.yinyang, sky: 21600 },      // dawn, half and half
+  8: { texture: 'mat-lava', teinte: TOY.groundEvent.radioactive, sky: 77400 },  // late evening
+  10: { texture: 'mat-gold', teinte: TOY.groundEvent.divine, sky: 27000 },      // sunrise light
+  11: { texture: 'mat-gold', teinte: TOY.groundEvent.rainbow, sky: 32400 },     // clear morning
+  12: { texture: 'mat-cursed', teinte: TOY.groundEvent.cyber, sky: 82800 },     // neon hour
+  13: { texture: 'mat-cursed', teinte: TOY.groundEvent.phantom, sky: 14400 }    // blue hour before dawn
 }
 let sol: Entity | null = null
 let solCouleur = ''
