@@ -12,8 +12,20 @@ import { TOAST } from './theme'
 
 type View = { body: Entity; label: Entity; texte: string }
 const views = new Map<number, View>()
-/** The last `progres` received per convoy and when, for the glide between server writes. */
-const horloges = new Map<number, { progres: number; recu: number }>()
+/*
+  The last TWO values received per convoy, with the local time each arrived.
+
+  One value was not enough. Reading the newest one and extrapolating forward means that every
+  time a fresh value lands the crate is put BACK where the server says it was a tenth of a
+  second ago, so it crawls forward and snaps back, ten times a second: a saw tooth, which is
+  exactly what a jerky convoy looks like (owner, 5 Sep). Network interpolation solves this the
+  same way everywhere it is written about: render slightly in the PAST and interpolate between
+  two values you already have, instead of guessing ahead of one. With a render delay of one
+  tick there is always a pair to sit between, and the motion cannot jump backwards.
+*/
+const horloges = new Map<number, { a: number; ta: number; b: number; tb: number }>()
+/** How far behind the newest value the crate is drawn: one server tick, in seconds. */
+const RETARD_S = 0.12
 
 export function setupConvoy(): void {
   room.onMessage('outbidWon', (d) => {
@@ -72,12 +84,18 @@ export function setupConvoy(): void {
         and lands on the server's next value, since both advance at the same rate. Capped at
         a tick and a half past the last write, so a stalled convoy stops instead of drifting.
       */
-      const d = Math.hypot(c.cibleX - c.departX, c.cibleZ - c.departZ)
-      const dureeS = Math.max(CONVOY_MIN_S, d / CONVOY_SPEED)
+      const maintenant = Date.now() / 1000
       let h = horloges.get(c.convoyId)
-      if (h === undefined || h.progres !== c.progres) { h = { progres: c.progres, recu: Date.now() }; horloges.set(c.convoyId, h) }
-      const avance = Math.min(0.15, (Date.now() - h.recu) / 1000) / dureeS
-      const k = Math.max(0, Math.min(1, c.progres + avance))
+      if (h === undefined) { h = { a: c.progres, ta: maintenant, b: c.progres, tb: maintenant }; horloges.set(c.convoyId, h) }
+      else if (h.b !== c.progres) { h.a = h.b; h.ta = h.tb; h.b = c.progres; h.tb = maintenant }
+      const rendu = maintenant - RETARD_S
+      let k = h.b
+      if (h.tb > h.ta) {
+        // Between the two known values, or a short step past the newest when a write is late.
+        const u = (rendu - h.ta) / (h.tb - h.ta)
+        k = h.a + (h.b - h.a) * Math.max(0, Math.min(1.4, u))
+      }
+      k = Math.max(0, Math.min(1, k))
       const pt = convoyPosition({ x: c.departX, z: c.departZ }, { x: c.cibleX, z: c.cibleZ }, k)
       const x = pt.x
       const z = pt.z
