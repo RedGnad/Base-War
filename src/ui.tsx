@@ -93,7 +93,8 @@ export function setupUi() {
       price or count has to be read rather than recognised.
     */
     setIconePrimaire(combatView.aiming ? ico('fire') : (nextAction()?.icon ?? null))
-    setReticuleClient(!combatView.aiming && !modale() && !menuView.open)
+    // Nor over the crate's roulette and reveal: nothing there is aimed at (owner, 5 Sep).
+    setReticuleClient(!combatView.aiming && !modale() && !menuView.open && !boxView.roule && boxView.resultat < 0)
     setMenuIcone(questsToClaim() > 0)
 
     // The fifth control on the client's cluster, and the 1 key on a keyboard: the menu.
@@ -388,7 +389,7 @@ const MenuWindow = () => {
 const SellChip = (props: { right?: number }) => {
   // Not while the crate's roulette still runs: the item lands in the hand with the roll's result,
   // and a price under a piece not yet revealed spoils the reveal (owner, 5 Sep).
-  if (carryView.code < 0 || carryView.vole || boxView.roule) return null
+  if (carryView.code < 0 || carryView.vole || boxView.roule || boxView.resultat >= 0) return null
   const prix = formatIncome(prixDeRevente(carryView.code))
   return (
     <Btn label={phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
@@ -1099,13 +1100,10 @@ function Roulette(): ReactEcs.JSX.Element {
             uiBackground={{ color: Color4.create(gagne.r, gagne.g, gagne.b, 0.5 * flash) }} />
         )}
 
+        {/* The title row stays empty: the state line it carried at the reveal sat under the
+            reveal's own glyph, unreadable, and the hand notice says it again once the reveal
+            is over (owner, 5 Sep). */}
         <UiEntity uiTransform={{ width: '100%', height: REEL_TITRE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-          {fini && (
-            <Label value={ETATS[boxView.state]?.() ?? ''}
-              fontSize={TYPE.label} textWrap="nowrap" textAlign="middle-center"
-              color={boxView.state === 'expose' ? C.money : C.bonus}
-              uiTransform={{ height: REEL_TITRE }} />
-          )}
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: bande }}>
