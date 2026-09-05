@@ -455,6 +455,7 @@ const MOTIFS = {
   9: { tuile: 1.8, albedo: 'skin-9-albedo', lueur: 'skin-9-glow', emissif: [0.35, 0.35, 0.35] },    // Cursed
   6: { tuile: 1.2, albedo: 'skin-6-albedo', lueur: 'skin-6-glow', emissif: [0.9, 0.8, 1.0] },       // Galaxy
   11: { tuile: 4.0, albedo: 'skin-11-albedo', lueur: 'skin-11-albedo', emissif: [0.12, 0.12, 0.12] }, // Rainbow, hue on height
+  7: { tuile: 1.6, albedo: 'skin-7-albedo' },                                                      // Yin Yang
   12: { tuile: 0.6, lueur: 'skin-12-glow', emissif: [0.7, 0.7, 0.7], couleur: [0.03, 0.10, 0.13] }   // Cyber
 }
 /** One group for a skin's part: its surface, and its pattern when it has one. */

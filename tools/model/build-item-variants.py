@@ -331,10 +331,23 @@ def cursed_veins(pm):
         return (int(150 * k), int(40 * k), int(220 * k))
     return png(pm, f)
 def yinyang_albedo(pm):
-    cx, w = pm.centre[0], pm.size * 0.12
+    """Interlocking black and white, marbled, with a few dots of each in the other.
+
+    A hard split down the middle read as a piece someone had painted half way (owner, 5 Sep).
+    Yin and yang is not two halves, it is two shapes that hold each other and each carries a
+    seed of the other: a three-octave noise thresholded at its middle gives exactly that on
+    any shape, and a sparse lattice drops the seeds."""
+    size = pm.size
     def f(i, p):
-        k = clamp((p[0] - cx) / w + 0.5)
-        return (int(15 + 218 * k), int(15 + 218 * k), int(22 + 213 * k))
+        n = 0.5 * noise3(p, size / 3, 71) + 0.32 * noise3(p, size / 6, 72) + 0.18 * noise3(p, size / 12, 73)
+        k = clamp((n - 0.5) / 0.05)                  # 0 black, 1 white, a soft edge between
+        g = size / 7
+        c = (math.floor(p[0] / g), math.floor(p[1] / g), math.floor(p[2] / g))
+        if hash3(*c, 74) > 0.93:                      # a round seed of the other tone
+            d = math.dist((p[0] / g - c[0], p[1] / g - c[1], p[2] / g - c[2]), (0.5, 0.5, 0.5))
+            if d < 0.26: k = 1.0 - k
+        v = int(18 + 219 * k)
+        return (v, v, min(255, v + 4))
     return png(pm, f)
 
 FANCY = {

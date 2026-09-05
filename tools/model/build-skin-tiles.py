@@ -116,6 +116,19 @@ def cursed():
         return (int(150 * k), int(40 * k), int(220 * k))
     return albedo, glow
 
+def yinyang():
+    """The pieces' marble, made periodic: interlocking black and white with a seed of each."""
+    def albedo(x, y):
+        n = 0.5 * noise2(x, y, 3, 71) + 0.32 * noise2(x, y, 6, 72) + 0.18 * noise2(x, y, 12, 73)
+        k = clamp((n - 0.5) / 0.05)
+        cx, cy = math.floor(x * 7) % 7, math.floor(y * 7) % 7
+        if hash2(cx, cy, 74) > 0.88:
+            d = math.hypot(x * 7 - math.floor(x * 7) - 0.5, y * 7 - math.floor(y * 7) - 0.5)
+            if d < 0.26: k = 1.0 - k
+        v = int(18 + 219 * k)
+        return (v, v, min(255, v + 4))
+    return albedo
+
 def galaxy():
     def albedo(x, y):
         n = 0.6 * noise2(x, y, 3, 6) + 0.4 * noise2(x, y, 8, 7)
@@ -140,12 +153,14 @@ def rainbow_albedo(x, y):
 def main():
     os.makedirs(OUT, exist_ok=True)
     lava_a, lava_g = lava(); cursed_a, cursed_g = cursed(); galaxy_a, galaxy_g = galaxy()
+    yinyang_a = yinyang()
     tiles = {
         'skin-5-albedo': lava_a, 'skin-5-glow': lava_g,
         'skin-9-albedo': cursed_a, 'skin-9-glow': cursed_g,
         'skin-6-albedo': galaxy_a, 'skin-6-glow': galaxy_g,
         'skin-12-glow': cyber_glow,
-        'skin-11-albedo': rainbow_albedo
+        'skin-11-albedo': rainbow_albedo,
+        'skin-7-albedo': yinyang_a
     }
     for name, fn in tiles.items():
         big = name.startswith('skin-5-')  # the lava tile spans 3.6 m: 512 px, no supersampling needed

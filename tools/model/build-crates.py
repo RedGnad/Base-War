@@ -76,17 +76,14 @@ def tuile_de(theme):
     """The 256 x 256 surface of a theme, or None for a flat crate."""
     from PIL import ImageDraw, ImageChops
     def skin(nom): return Image.open(os.path.join(TUILES_SKIN, nom)).convert('RGB').resize((TUILE_PX, TUILE_PX), Image.LANCZOS)
-    if theme in (5, 9, 11): return skin(f'skin-{theme}-albedo.png')
+    if theme in (5, 9, 11, 7): return skin(f'skin-{theme}-albedo.png')
     if theme == 6: return ImageChops.add(skin('skin-6-albedo.png'), skin('skin-6-glow.png'))  # nebula and its stars
     if theme == 12:
         base = Image.new('RGB', (TUILE_PX, TUILE_PX), (8, 26, 33))
         return ImageChops.add(base, skin('skin-12-glow.png'))
     im = Image.new('RGB', (TUILE_PX, TUILE_PX)); d = ImageDraw.Draw(im); px = im.load()
-    if theme == 7:   # yin yang: two halves, a soft seam
-        for x in range(TUILE_PX):
-            k = max(0.0, min(1.0, (x - TUILE_PX * 0.47) / (TUILE_PX * 0.06)))
-            col = (int(15 + 218 * k), int(15 + 218 * k), int(22 + 213 * k))
-            d.line([(x, 0), (x, TUILE_PX)], fill=col)
+    if False:
+        pass
     elif theme == 8:  # radioactive: acid green under dark hazard bands
         im.paste((110, 220, 0), (0, 0, TUILE_PX, TUILE_PX))
         for k in range(-2, 5):
