@@ -66,10 +66,10 @@ function refus(address: string, action: string, reason: string, antiCheat = fals
   with nothing left in it to do. You are here, you can give chase, so the wall comes down.
 */
 export function lockOnArrival(address: string): void {
-  const until = Date.now() + LOCK_ON_ARRIVAL_MS + lockBonus(address)
-  if (setLock(address, until)) {
-    log(`${displayName(address)} shielded ${Math.round((until - Date.now()) / 1000)}s on arrival`)
-  }
+  // No grace any more: thirty seconds of a lock nobody pressed read as a shield nobody asked
+  // for, and a label explaining it read as jargon (owner, 5 Sep). Arriving only ends the
+  // earned shield; from the first frame the owner is here, and can give chase.
+  if (setLock(address, Date.now())) log(`${displayName(address)} arrived, shield down`)
 }
 
 export function delivrerAlertes(address: string): void {

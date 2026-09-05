@@ -93,15 +93,60 @@ def orient(path):
     open(path, 'wb').write(out)
     print(f'  {flipped} triangles turned to face outward')
 
+def animate(path, period=9.0, tilt_deg=25.0):
+    """The planet gets its own node and a baked clip: a slow spin the other way about an axis
+    tilted like a planet's, while the piece's own spin (the client's tween on the parent) turns
+    the ring about the vertical. Two motions on one toy read as an orbit; one motion read as a
+    lump (owner, 5 Sep: "la boule avait un sens de rotation different, en biais")."""
+    import json, struct, math
+    b = open(path, 'rb').read()
+    L = struct.unpack_from('<I', b, 12)[0]; js = json.loads(b[20:20 + L]); off = 20 + L
+    L2 = struct.unpack_from('<I', b, off)[0]; chunk = bytearray(b[off + 8:off + 8 + L2])
+    prims = js['meshes'][0]['primitives']
+    assert len(prims) == 2, 'planet and ring expected'
+    js['meshes'] = [{'name': 'ring', 'primitives': [prims[1]]}, {'name': 'planet', 'primitives': [prims[0]]}]
+    js['nodes'] = [{'name': 'plat', 'mesh': 0, 'children': [1]}, {'name': 'planet', 'mesh': 1}]
+    n = 7
+    times = [period * k / (n - 1) for k in range(n)]
+    t = math.radians(tilt_deg); axis = (math.sin(t), math.cos(t), 0.0)
+    quats = []
+    for k in range(n):
+        th = -2 * math.pi * k / (n - 1)  # the other way round from the parent's spin
+        s2, c2 = math.sin(th / 2), math.cos(th / 2)
+        quats.append((axis[0] * s2, axis[1] * s2, axis[2] * s2, c2))
+    def push(data):
+        while len(chunk) % 4: chunk.append(0)
+        js['bufferViews'].append({'buffer': 0, 'byteOffset': len(chunk), 'byteLength': len(data)})
+        chunk.extend(data); return len(js['bufferViews']) - 1
+    bv_in = push(struct.pack('<' + 'f' * n, *times))
+    bv_out = push(struct.pack('<' + 'f' * (4 * n), *[c for q in quats for c in q]))
+    js['accessors'].append({'bufferView': bv_in, 'componentType': 5126, 'count': n, 'type': 'SCALAR', 'min': [0.0], 'max': [period]})
+    a_in = len(js['accessors']) - 1
+    js['accessors'].append({'bufferView': bv_out, 'componentType': 5126, 'count': n, 'type': 'VEC4'})
+    a_out = len(js['accessors']) - 1
+    js['animations'] = [{'name': 'spin', 'samplers': [{'input': a_in, 'output': a_out, 'interpolation': 'LINEAR'}],
+                         'channels': [{'sampler': 0, 'target': {'node': 1, 'path': 'rotation'}}]}]
+    js['buffers'][0]['byteLength'] = len(chunk)
+    jb = json.dumps(js, separators=(',', ':')).encode(); jb += b' ' * ((4 - len(jb) % 4) % 4)
+    while len(chunk) % 4: chunk.append(0)
+    total = 12 + 8 + len(jb) + 8 + len(chunk)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, total)); f.write(struct.pack('<II', len(jb), 0x4E4F534A)); f.write(jb)
+        f.write(struct.pack('<II', len(chunk), 0x004E4942)); f.write(bytes(chunk))
+    print('  planet node and spin clip written')
+
 def main():
-    m = Mesh()
-    sphere(m, 0.30)
-    ring(m, 0.42, 0.65, 0.08)
-    prim = {'pos': m.pos, 'nor': m.nor, 'uv_atlas': m.uv, 'idx': m.idx}
+    planet, halo = Mesh(), Mesh()
+    sphere(planet, 0.30)
+    ring(halo, 0.42, 0.65, 0.08)
+    prim = lambda m: {'pos': m.pos, 'nor': m.nor, 'uv': m.uv, 'uv_atlas': m.uv, 'idx': m.idx}
     atlas = Image.new('RGBA', (4, 4), (255, 255, 255, 255))
-    taille = aplatir.ecrire_glb(os.path.join(OUT, 'item-6.glb'), [(False, [prim])], atlas)
-    orient(os.path.join(OUT, 'item-6.glb'))
-    print(f"item-6.glb  {taille/1024:.1f} Ko  {len(m.idx)//3} triangles")
+    path = os.path.join(OUT, 'item-6.glb')
+    taille = aplatir.ecrire_glb(path, [(False, [prim(planet)]), (False, [prim(halo)])], atlas)
+    orient(path)
+    animate(path)
+    tris = (len(planet.idx) + len(halo.idx)) // 3
+    print(f'item-6.glb  {os.path.getsize(path) / 1024:.1f} Ko  {tris} triangles')
 
 if __name__ == '__main__':
     main()

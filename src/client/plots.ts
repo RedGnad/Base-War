@@ -1,4 +1,4 @@
-import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat, itemFile } from './toy'
+import { TOY, plastic, plasticDe, acrylic, montable, remonter, demonter, spinLoop, rarityShape, clearShape, toyPedestal, clearPedestal, PEDESTAL_THICKNESS, toyLight, clearLight, LIGHT_MIN_GLOW, demolir, accentDe, modelesDe, estMetal, metalMaterial, toyRays, clearRays, spawnRays, toyFloat, itemFile, poolTier } from './toy'
 import { PRODUCTION_PER_RARITY } from '../shared/economy'
 import { PBMaterial_PbrMaterial, TextureWrapMode, engine, Transform, MeshRenderer, MeshCollider, GltfContainer, Material, TextShape, Billboard, BillboardMode, Entity, PointerEvents, PointerEventType, InputAction, inputSystem, Tween, TweenSequence, ColliderLayer, AudioSource, EasingFunction } from '@dcl/sdk/ecs'
 import { Vector2, Color3, Color4, Vector3, Quaternion } from '@dcl/sdk/math'
@@ -1133,6 +1133,7 @@ export function setupPlots(): void {
     // pad colour (a pad and its pool: two), plus the plain pad.
     const variantes = new Set<number>()
     const socles = new Set<number>()
+    const flaques = new Set<number>()
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       const t = Transform.get(ent)
@@ -1140,7 +1141,12 @@ export function setupPlots(): void {
       distances.set(id, d)
       for (const it of p.items) if (it !== VIDE) {
         variantes.add(rarityOf(it) * 100 + mutationDe(it))
-        if (rarity(rarityOf(it)).glow >= LIGHT_MIN_GLOW) socles.add(mutation(mutationDe(it)).mult > 1 ? 100 + mutationDe(it) : rarityOf(it))
+        const g = rarity(rarityOf(it)).glow
+        if (g >= LIGHT_MIN_GLOW) {
+          const couleur = mutation(mutationDe(it)).mult > 1 ? 100 + mutationDe(it) : rarityOf(it)
+          socles.add(couleur)
+          flaques.add(couleur * 4 + poolTier(g + 0.8 * traitsDe(it)))
+        }
       }
       const sienne = p.ownerId.toLowerCase() === moiAdr
       const dejaPres = views.get(id)?.loin === false
@@ -1160,7 +1166,7 @@ export function setupPlots(): void {
       loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
-    let mats = DECOR_MATERIALS + variantes.size + 1 + 2 * socles.size
+    let mats = DECOR_MATERIALS + variantes.size + 1 + socles.size + flaques.size
     let draws = DECOR_DRAWS
     for (const r of rangs) { mats += r.loin.mats; draws += r.loin.draws }
     const complets = new Set<number>()
@@ -1568,7 +1574,7 @@ export function setupPlots(): void {
         // Candy glows (tester, 28 Aug). The mutation only sets the COLOUR of the glow when
         // there is one. Below the rarity threshold, no pad glow whatever the mutation.
         const padHex = r.glow >= LIGHT_MIN_GLOW ? (m.mult > 1 ? m.color : hex) : null
-        toyPedestal(ent, size, padHex)
+        toyPedestal(ent, size, padHex, r.glow + 0.8 * traits)
         // Epic and up wear a crown of rays; a mutation lends it its colour.
         toyRays(ent, v.racine, Vector3.create(d.dx, d.dy + JEU + PEDESTAL_THICKNESS + size + 0.35, d.dz),
           rarityOf(code) >= RAYS_MIN_RARITY ? (m.mult > 1 ? m.color : hex) : null)

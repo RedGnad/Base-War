@@ -266,6 +266,7 @@ export const FIT: Record<string, { scale: number; dy: number; rotX: number; clip
   'item-3.glb': { scale: 5.814, dy: -0.49, rotX: 0 },  // tour: 0.09 x 0.17 x 0.09 m (noeud applique)
   'item-4.glb': { scale: 4.127, dy: -0.49, rotX: 0 },  // dame: 0.10 x 0.23 x 0.10 m (noeud applique)
   'item-5.glb': { scale: 4.002, dy: -0.49, rotX: 0 },  // roi: 0.09 x 0.24 x 0.08 m (noeud applique)
+  'item-6.glb': { scale: 1, dy: 0, rotX: 0, clip: 'spin' }  // Secret: planet and ring at authored size, the planet spins on its own tilted axis
 }
 
 /*
@@ -565,10 +566,13 @@ export const PEDESTAL_DIAMETER = 1.4
 export const PEDESTAL_THICKNESS = 0.08
 const socles = new Map<Entity, Entity>()
 
-/** The pad file for a colour: the plain pad, or a lit pad with its painted pool. */
+/** The pad file for a colour: the plain pad, or a lit pad; its pool is `poolFile`. */
 export function padFile(mutationHex: string | null): string {
   return mutationHex === null ? 'pad-socle.glb' : `pad-${mutationHex.slice(1, 7).toLowerCase()}.glb`
 }
+/** Three baked intensities of pool: soft below 1.6 of glow (Rare, Epic), strong below 3 (Legendary, Mythic), blazing above (Secret). */
+export function poolTier(glow: number): number { return glow < 1.6 ? 1 : glow < 3 ? 2 : 3 }
+function poolFile(mutationHex: string, glow: number): string { return `pool-${mutationHex.slice(1, 7).toLowerCase()}-${poolTier(glow)}.glb` }
 
 /*
   A pad is a FILE per colour (tools/model/build-pads.py), no longer an SDK cylinder with its own
@@ -577,9 +581,15 @@ export function padFile(mutationHex: string | null): string {
   file. And the point light that pooled colour on the slab does not render on the mobile client
   before its v1.13.0, so a lit pad carries its pool PAINTED: a translucent disc around it, radial
   falloff, emissive, the fake every mobile game uses for a light on the floor (owner, 5 Sep:
-  "la flaque de lumiere est un element relativement important").
+  "la flaque de lumiere est un element relativement important"). The pool is a child of the
+  pad in its own file, scaled by the piece's glow the way the light's range grew with it: a
+  Rare's pool hugs its pad, a Secret's floods the shelf.
 */
-export function toyPedestal(parent: Entity, size: number, mutationHex: string | null): void {
+const flaques = new Map<Entity, Entity>()
+/** How wide a pool spreads for a glow: the light's range (0.8 + 0.7 glow) over the Rare's. */
+function poolScale(glow: number): number { return Math.max(0.8, Math.min(2.4, (0.8 + 0.7 * glow) / 1.36)) }
+
+export function toyPedestal(parent: Entity, size: number, mutationHex: string | null, glow = 0): void {
   let e = socles.get(parent)
   if (e === undefined) { e = engine.addEntity(); socles.set(parent, e) }
   // Child of a parent scaled by `size`: divide, so the pad keeps its world size whatever the toy.
@@ -593,6 +603,18 @@ export function toyPedestal(parent: Entity, size: number, mutationHex: string | 
   const g = GltfContainer.getMutableOrNull(e)
   if (g === null) GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   else if (g.src !== src) g.src = src
+  let f = flaques.get(e)
+  if (mutationHex === null) {
+    if (f !== undefined) { engine.removeEntity(f); flaques.delete(e) }
+    return
+  }
+  if (f === undefined) { f = engine.addEntity(); flaques.set(e, f) }
+  const k = poolScale(glow)
+  Transform.createOrReplace(f, { parent: e, scale: Vector3.create(k, 1, k) })
+  const psrc = TOY_DIR + poolFile(mutationHex, glow)
+  const pg = GltfContainer.getMutableOrNull(f)
+  if (pg === null) GltfContainer.create(f, { src: psrc, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  else if (pg.src !== psrc) pg.src = psrc
 }
 
 /*
@@ -693,6 +715,8 @@ export function toyFloat(parent: Entity, amplitude: number | null): void {
 export function clearPedestal(parent: Entity): void {
   const cur = socles.get(parent)
   if (cur === undefined) return
+  const f = flaques.get(cur)
+  if (f !== undefined) { engine.removeEntity(f); flaques.delete(cur) }
   engine.removeEntity(cur)
   socles.delete(parent)
 }

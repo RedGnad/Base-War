@@ -49,8 +49,10 @@ def recipe(rarity, mutation):
         return (1.0, 1.0, 1.0), 0.1, 0.3, (0.6, 0.6, 0.6), 1
     if mutation == 1:  # gold: the deep tone itself, full metal, a warm emissive floor under the rarity glow
         return rgb('#f5c518'), 0.9, 0.32, [c * max(0.04, lueur) for c in (0.72, 0.52, 0.10)], 1
-    if mutation == 2:  # diamond: very smooth, a little metallic, a base sparkle plus rarity glow
-        return [c * 0.85 for c in colour], 0.25, 0.05, [c * max(0.03, lueur) for c in colour], 1
+    if mutation == 2:  # diamond: a cut gem, deep teal under a mirror gloss, so it never reads as
+        # white glass lost on a pale pool (owner, 5 Sep: "une piece est presente mais pas visible")
+        c = rgb(MUTATIONS[2])
+        return tuple(v * 0.45 for v in c), 0.35, 0.08, [v * max(0.10, lueur) for v in c], 1
     if glow <= 0:  # plain plastic
         return colour, 0.0, 0.55, None, 0
     sombre = 1 / (1 + glow * 1.2)  # dark albedo, bright emissive: the platform's own glow recipe
@@ -427,7 +429,8 @@ def bake_fancy(js, rarity, mutation, bin_chunk, pm):
 
 def main():
     # An optional rarity on the command line bakes that rarity's fourteen files alone.
-    seules = {int(a) for a in sys.argv[1:]}
+    seules = {int(a) for a in sys.argv[1:] if a.isdigit()}
+    mutations_seules = {int(a[1:]) for a in sys.argv[1:] if a.startswith('m')}
     made = 0
     for r in range(len(RARITIES)):
         if seules and r not in seules: continue
@@ -436,6 +439,7 @@ def main():
         pm = PositionMap(js, bin_chunk)
         print(f'item-{r}: {pm.painted / len(pm.pos):.0%} of the atlas painted', flush=True)
         for m in range(len(MUTATIONS)):
+            if mutations_seules and m not in mutations_seules: continue
             out, chunk = bake(js, r, m, bin_chunk, pm)
             write_glb(os.path.join(TOY, f'item-{r}-{m}.glb'), out, chunk)
             made += 1

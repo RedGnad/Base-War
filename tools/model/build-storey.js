@@ -486,8 +486,11 @@ for (const t of teintes) {
 }
 octetsTotal += ecrire(path.join(OUT, 'glass.glb'), [{ nom: 'glass', couleur: [GLASS.r, GLASS.g, GLASS.b, GLASS.a], boites: vitres(), rugosite: 0.15 }])
 n += 1
+// A skin's glass takes the skin's colour, except where that colour washes the wrong way: the
+// Lava's red read as blood on the glass, so its wash is the amber of its cracks (owner, 5 Sep).
+const VERRE = { 5: '#f5a742' }
 for (const m of MUTATIONS) {
-  const [r, g, b] = hex(m.color)
+  const [r, g, b] = hex(VERRE[m.id] ?? m.color)
   octetsTotal += ecrire(path.join(OUT, `glass-skin-${m.id}.glb`), [{ nom: 'glass', couleur: [r, g, b, 0.3], boites: vitres(), rugosite: 0.15 }])
   octetsTotal += ecrire(path.join(OUT, `frame-skin-${m.id}.glb`), [habit('frame', m.color, cadre(), m.id)])
   n += 2

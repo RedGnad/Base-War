@@ -1179,8 +1179,10 @@ const uiComponent = () => {
   */
   const topBlocks: Array<[string, boolean, number]> = [
     ['money', true, TYPE.hero + 6 + 34 + 6],
-    ['event', bannerLine() !== null, 52],
-    ['belt', beltView.annonce !== '', 58]
+    // As tall as the plate drawn in it (64): a band shorter than its plate ate the gap under it,
+    // and the toasts landed glued to a boss line (owner, 5 Sep).
+    ['event', bannerLine() !== null, 64],
+    ['belt', beltView.annonce !== '', 68]  // the announcement plate is 68 high; same rule
   ]
   const band = topBand(topBlocks)
   /*

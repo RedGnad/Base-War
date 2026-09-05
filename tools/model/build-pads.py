@@ -33,6 +33,15 @@ def rgb(hex_):
 def vif(c):
     k = 1 / max(c[0], c[1], c[2], 0.05)
     return tuple(min(1.0, v * k) for v in c)
+def saturate(c, s_min):
+    """A pool of a pale colour (Diamond, Secret) was a white disc: pull its saturation up to s_min."""
+    mx, mn = max(c), min(c)
+    if mx <= 0: return c
+    sat = (mx - mn) / mx
+    if sat >= s_min or mx - mn == 0: return c
+    k = s_min / max(sat, 1e-6)
+    return tuple(max(0.0, mx - (mx - v) * k) for v in c)
+
 def luminance(c): return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
 def glow_lift(c):
     """client/toy.ts glowLift: dark hues get more emissive so no colour reads as a black disc."""
@@ -59,30 +68,33 @@ def pool_mesh(m):
                     (0.75 + math.cos(2 * math.pi * i / segs) * 0.24, 0.5 + math.sin(2 * math.pi * i / segs) * 0.24)) for i in range(segs + 1)]
     for i in range(segs): m.tri(centre, rim[i], rim[i + 1])
 
-def atlas():
+# Three tiers of pool, by the piece's glow: soft (Rare, Epic), strong (Legendary, Mythic),
+# blazing (Secret, or anything lifted there by its traits). Peak alpha and emissive per tier,
+# so the intensity climbs with rarity as the point light's did, with no material per instance.
+TIERS = {1: (0.55, 1.3, 0.35), 2: (0.75, 1.1, 0.55), 3: (0.92, 0.9, 0.8)}   # peak alpha, falloff power, emissive
+
+def atlas(tier=1):
     """Left half opaque white (the pad), right half a radial alpha falloff (the pool)."""
+    peak, power, _ = TIERS[tier]
     im = Image.new('RGBA', (TEX, TEX), (255, 255, 255, 255)); px = im.load()
     cx, cy, R = 96, 64, 31
     for y in range(TEX):
         for x in range(64, TEX):
             t = math.hypot(x - cx, y - cy) / R
-            a = 0 if t >= 1 else int(255 * 0.65 * (1 - t) ** 1.2)
+            a = 0 if t >= 1 else int(255 * peak * (1 - t) ** power)
             px[x, y] = (255, 255, 255, a)
     return im
 
 def write(key, colour, lit):
+    """pad-<key>.glb: the disc the piece stands on; pool-<key>.glb (lit colours): the painted
+    pool, its own file so the client scales it by the piece's glow, as the point light's
+    range used to grow with it (owner, 5 Sep: "l'accentuer sur les grosses raretes")."""
     def prim(m): return {'pos': m.pos, 'nor': m.nor, 'uv': m.uv, 'uv_atlas': m.uv, 'idx': m.idx}
+    c = rgb(colour); size = 0
     pad = Mesh(); pad_mesh(pad)
-    groupes = [(False, [prim(pad)])]
-    if lit:
-        pool = Mesh(); pool_mesh(pool); groupes.append((False, [prim(pool)]))
     path = os.path.join(OUT, f'pad-{key}.glb')
-    aplatir.ecrire_glb(path, groupes, atlas())
-    secret.orient(path)
-    # Materials: the pad wears the piece's plastic recipe (dark albedo, emissive of its colour),
-    # the pool is the colour at full, blended by the atlas alpha, glowing.
+    aplatir.ecrire_glb(path, [(False, [prim(pad)])], atlas()); secret.orient(path)
     js, chunk = variants.read_glb(path)
-    c = rgb(colour)
     if lit:
         lift = 1.0 if sombre_par_nature(c) else glow_lift(c)
         glow = PAD_GLOW * lift
@@ -90,15 +102,22 @@ def write(key, colour, lit):
         eclat = min(1.0, (glow ** 1.5) * 0.9 * EMISSIVE_SCALE)
         js['materials'][0]['pbrMetallicRoughness'].update({'baseColorFactor': [c[0] * sombre, c[1] * sombre, c[2] * sombre, 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 0.45})
         js['materials'][0]['emissiveFactor'] = [c[0] * eclat, c[1] * eclat, c[2] * eclat]
-        v = vif(c)
-        js['materials'][1]['pbrMetallicRoughness'].update({'baseColorFactor': [v[0], v[1], v[2], 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 1.0})
-        js['materials'][1]['emissiveFactor'] = [v[0] * 0.45, v[1] * 0.45, v[2] * 0.45]
-        js['materials'][1]['alphaMode'] = 'BLEND'
     else:
         js['materials'][0]['pbrMetallicRoughness'].update({'baseColorFactor': [c[0], c[1], c[2], 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 0.55})
-    for i, mat in enumerate(js['materials']): mat['name'] = f'pad-{key}-{"pool" if i else "pad"}'
-    variants.write_glb(path, js, chunk)
-    return os.path.getsize(path)
+    js['materials'][0]['name'] = f'pad-{key}'
+    variants.write_glb(path, js, chunk); size += os.path.getsize(path)
+    for tier in (TIERS if lit else ()):
+        pool = Mesh(); pool_mesh(pool)
+        path = os.path.join(OUT, f'pool-{key}-{tier}.glb')
+        aplatir.ecrire_glb(path, [(False, [prim(pool)])], atlas(tier)); secret.orient(path)
+        js, chunk = variants.read_glb(path)
+        v = saturate(vif(c), 0.6); em = TIERS[tier][2]
+        js['materials'][0]['pbrMetallicRoughness'].update({'baseColorFactor': [v[0], v[1], v[2], 1.0], 'metallicFactor': 0.0, 'roughnessFactor': 1.0})
+        js['materials'][0]['emissiveFactor'] = [v[0] * em, v[1] * em, v[2] * em]
+        js['materials'][0]['alphaMode'] = 'BLEND'
+        js['materials'][0]['name'] = f'pool-{key}-{tier}'
+        variants.write_glb(path, js, chunk); size += os.path.getsize(path)
+    return size
 
 def main():
     os.makedirs(OUT, exist_ok=True)
@@ -107,7 +126,7 @@ def main():
         if glow >= LIGHT_MIN_GLOW: total += write(colour[1:].lower(), colour, True); n += 1
     for colour in variants.MUTATIONS:
         if colour: total += write(colour[1:].lower(), colour, True); n += 1
-    print(f'{n} pad files, {total / 1024:.0f} KB')
+    print(f'{n} pad colours, {total / 1024:.0f} KB of pads and pools')
 
 if __name__ == '__main__':
     main()
