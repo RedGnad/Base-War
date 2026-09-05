@@ -4,7 +4,7 @@ import {
   PointerEvents, PointerEventType, InputAction, inputSystem, ColliderLayer
 } from '@dcl/sdk/ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-import { Convoy, CONVOY_OUTBID, CONVOY_SPEED, CONVOY_MIN_S, convoyPosition } from '../shared/schemas'
+import { Convoy, CONVOY_OUTBID, convoyPosition } from '../shared/schemas'
 import { room } from '../shared/messages'
 import { crate, formatIncome } from '../shared/loot-table'
 import { alerter, myClientAddress } from './theft'
@@ -77,12 +77,10 @@ export function setupConvoy(): void {
 
       /*
         Position comes from the server's `progres`, which two players must agree on, or a tap
-        that looks well-timed gets rejected. The server writes it ten times a second, and a
-        crate that jumps ten times a second reads as jerky (owner, 5 Sep). Between two writes
-        the client runs the same clock the server runs (distance over CONVOY_SPEED, never
-        under CONVOY_MIN_S) from the last value it received: the crate glides at frame rate
-        and lands on the server's next value, since both advance at the same rate. Capped at
-        a tick and a half past the last write, so a stalled convoy stops instead of drifting.
+        that looks well-timed gets rejected. The server writes it ten times a second, and the
+        crate is drawn one tick BEHIND that stream, between the last two values received: see
+        the note on `horloges`. Interpolating between two known points is smooth by
+        construction; extrapolating past one is what made the crate stutter.
       */
       const maintenant = Date.now() / 1000
       let h = horloges.get(c.convoyId)
