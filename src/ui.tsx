@@ -337,8 +337,18 @@ const MenuWindow = () => {
         {deborde && (
           <UiEntity
             uiTransform={{
+              /*
+                Drawn over the client's scrollbar, and TRANSPARENT to the thumb.
+
+                It used to block pointer events, and it sits twenty-six pixels wide against the
+                right edge of the scrolling body while a row's action button ends ten pixels
+                from that same edge: the right sixteen pixels of every BUY, SET and WIELD in
+                the menu were dead, so a press that landed there did nothing at all, no sound,
+                no plate pushed in (owner, 5 Sep: "j'appuie clairement et parfois rien"). A
+                cover hides a scrollbar; it has no reason to eat the press underneath it.
+              */
               width: SCROLLBAR_COVER_W, height: corps, positionType: 'absolute',
-              position: { top: 0, right: 0 }, pointerFilter: 'block'
+              position: { top: 0, right: 0 }, pointerFilter: 'none'
             }}
             uiBackground={{ color: Color4.fromHexString('#1b3054ff') }} />
         )}
