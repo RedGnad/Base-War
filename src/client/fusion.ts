@@ -1,7 +1,4 @@
-import {
-  engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, LightSource, ColliderLayer,
-  Tween, EasingFunction
-} from '@dcl/sdk/ecs'
+import { engine, Transform, MeshRenderer, MeshCollider, Material, PointerEvents, PointerEventType, InputAction, inputSystem, TextShape, Billboard, BillboardMode, Entity, ColliderLayer, Tween, EasingFunction } from '@dcl/sdk/ecs'
 import { Color3, Color4, Vector3 } from '@dcl/sdk/math'
 import { Fusion, FUSION_POS, FUSION_NEEDS } from '../shared/schemas'
 import { room } from '../shared/messages'
@@ -147,12 +144,20 @@ export function setupFuser(): void {
     }
     if (brille && f !== null) {
       const c = couleur(rarityOf(f.lastCode), mutationDe(f.lastCode))
-      // Opaque and lit: no alpha on a phone for a dome that only has to be seen glowing.
+      /*
+        NO LightSource here, and none anywhere else in this scene.
+
+        This lamp was created when the dome lit and deleted when it went out, and that pair
+        crashes the desktop client: `LightSourceApplyPropertiesSystem` dereferences a Unity
+        Light that the deletion already destroyed, throws a NullReferenceException and the
+        scene STOPS. Read in the client's own log at 14:31:41.503, the exact second the owner
+        fused three Legendaries and the game froze on him (5 Sep). The component is also
+        absent from the mobile client before its v1.13.0, so it was buying a crash to light
+        something a phone never saw. The emissive dome carries the whole effect.
+      */
       Material.setPbrMaterial(dome, plasticDe(Color4.create(c.r, c.g, c.b, 1), 1.6))
-      LightSource.createOrReplace(lampe, { type: LightSource.Type.Point({}), color: Color3.create(c.r, c.g, c.b), intensity: AMPOULE * 3, range: 6, shadow: false })
     } else {
       Material.setPbrMaterial(dome, plastic(TOY.wallCream))
-      if (LightSource.has(lampe)) LightSource.deleteFrom(lampe)
     }
     const t = TextShape.getMutableOrNull(ligne)
     if (t !== null) {

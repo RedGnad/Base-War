@@ -50,6 +50,21 @@ export const CRATE_PAYBACK_S = [60, 240, 960, 3840, 15360, 61440] as const
 
 /** How long a fusion should take to pay for itself, in seconds of the income it creates. */
 export const FUSION_HORIZON_S = 480
+/*
+  And the horizon LENGTHENS by rung, which is what stops the fuser being a button.
+
+  The price already scaled with the rarity in coins (4k at the first rung, 46M at the last),
+  but the payback was a flat eight minutes at every rung: the same deal every time, so the
+  act was never a decision and the machine read as spammable (owner, 5 Sep). Economy design
+  is consistent here (Schreiber's `Game Balance`, and the merge and idle games this borrows
+  from): a sink must grow FASTER than the income it feeds, or it stops gating anything, which
+  is the same failure our own crates hit on 27 Aug ("nothing costs anything any more").
+
+  A third more time per rung: 8 minutes at Common to Uncommon, 36 at Mythic to Secret. The
+  early loop, the one a newcomer and a judge see, is untouched; the top of the ladder becomes
+  a choice between one Secret and everything else that money could buy.
+*/
+export const FUSION_HORIZON_PER_RUNG = 1.35
 
 /**
  * What a fusion costs, priced on the NET income it is actually expected to create.
@@ -88,7 +103,7 @@ export function fusionCost(rarity: number, inputIncome: number, expectedMut: num
     that trade priced while leaving a genuine upgrade cheaper than a reroll.
   */
   const net = Math.max(out - inputIncome, out * 0.25)
-  return Math.round(net * Math.max(1, incomeMult) * FUSION_HORIZON_S)
+  return Math.round(net * Math.max(1, incomeMult) * FUSION_HORIZON_S * Math.pow(FUSION_HORIZON_PER_RUNG, r))
 }
 /*
   Two rungs above Epic, added 27 Aug because the ladder stopped where the money started.

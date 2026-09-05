@@ -1,5 +1,5 @@
 import { isMobile } from '@dcl/sdk/platform'
-import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, LightSource, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
+import { Animator, GltfNodeModifiers, engine, Entity, Transform, GltfContainer, GltfContainerLoadingState, LoadingState, MeshRenderer, Material, PBMaterial_PbrMaterial, Tween, TweenSequence, TweenLoop, EasingFunction } from '@dcl/sdk/ecs'
 import { crate, mutation, rarityOf, mutationDe, crateImage } from '../shared/loot-table'
 import { FLOOR_HEIGHT } from '../shared/schemas'
 import { Quaternion, Color3, Color4, Vector3 } from '@dcl/sdk/math'
@@ -835,22 +835,14 @@ function positionMonde(e: Entity): Vector3 | null {
 }
 
 function allumer(parent: Entity, hex: string, glow: number): void {
-  let e = lumieres.get(parent)
-  if (e === undefined) {
-    e = engine.addEntity()
-    Transform.create(e, { parent })
-    lumieres.set(parent, e)
-  }
-  const c = vif(hex)
-  // Same slow-start ramp as the emissive: a Rare's light is a nightlight (~5700 cd), a Secret's
-  // a floodlight (64000). The old (1 + glow) made a Rare almost as bright as a Legendary.
-  LightSource.createOrReplace(e, {
-    type: LightSource.Type.Point({}),
-    color: Color3.create(c.r, c.g, c.b),
-    intensity: AMPOULE * Math.pow(glow, 1.5) * 0.5 * glowLift(hex),
-    range: 0.8 + glow * 0.7,
-    shadow: false
-  })
+  /*
+    Dead on purpose, and kept as a scar. A `LightSource` created and deleted on the same
+    entity crashes the desktop client's own system (NullReferenceException in
+    `LightSourceApplyPropertiesSystem`, read in its log at the second the owner's game froze,
+    5 Sep), and the component does not render on the mobile client before v1.13.0. The pool
+    of colour under a rare piece is PAINTED into its pad instead (tools/model/build-pads.py).
+  */
+  void parent; void hex; void glow
 }
 
 function lightBudget(): void {
