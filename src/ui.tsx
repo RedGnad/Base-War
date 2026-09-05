@@ -1007,192 +1007,182 @@ function easeOutBack(t: number): number {
   draws no particles and no bloom, so the juice is timing, scale, colour and the sounds that
   already climb with rarity (owner, 5 Sep: "notre etape la plus juicy, et je la trouve fade").
 */
-/** The beat before the hero pops, matched to the sting's riser so the glyph lands ON the
+/*
+  L'ACTE DE LA CAISSE: une seule ligne de temps, du tambour au trophee.
+
+  C'etaient deux composants qui se chevauchaient, chacun avec sa propre horloge: la bande
+  redimensionnait sa carte gagnante (donc toute la rangee se replacait a l'arrivee, ce qui
+  lisait comme des cartes en retard), un eclair plein ecran passait pour un bug, et la carte
+  gagnante etait videe de son texte pendant que le heros arrivait, ce qui laissait une plaque
+  noire vide (proprietaire, 5 Sep). Un moment ne se fabrique pas a deux horloges.
+
+  La litterature dit trois choses de ce moment. Jonasson et Purho (GDC 2012) et Nijman (2013):
+  anticipation, puis paiement, et l'escalade avec l'enjeu. Le design mobile de la plateforme
+  (docs, UI best practices): ce qui demande a etre lu se joue au CENTRE, et rien ne doit
+  bouger sous le doigt. Le genre lui-meme (les tambours de caisses): la bande DECELERE sur la
+  carte, un tic par carte, la carte s'illumine, puis la bande s'efface et laisse la place.
+
+  Donc, une horloge unique (`gagneA`, l'instant ou la bande s'arrete) et quatre temps:
+    pendant le tour   la bande defile, decelere en quartique, un tic par carte, fond assombri
+    a l'arret        la carte gagnante prend un liseré de sa couleur et un pop, sur place
+    apres la montee  la bande se dissout (200 ms) pendant que le heros grandit derriere
+    le heros         eclat, glyphe, puis le nom, puis le rendement, chacun avec son rebond
+
+  Aucune carte ne change de taille dans la bande: le pop du gagnant est une COPIE posee par
+  dessus, donc la rangee ne se replace jamais. Aucun eclair: un eclat radial derriere le
+  glyphe, qui est ce que le joueur regarde.
+*/
+const REEL_FADE_MS = 200
+const REVEAL_CLOSE_MS = 260
+
+/** The beat before the hero rises, matched to the sting's riser so the glyph lands ON the
     impact: nothing for the small pulls, the riser's length for Epic and above. */
 function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete >= 3 ? 220 : 0 }
-function Revelation(): ReactEcs.JSX.Element {
-  const rarete = Math.max(0, boxView.resultat)
-  const depuis = Date.now() - boxView.gagneA - revealHold(rarete)
-  if (depuis < 0) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
-  const echelle = Math.min(1.6, 1 + 0.12 * rarete)
-  const entree = Math.min(1, depuis / 160)
-  const heroPop = easeOutBack(Math.min(1, depuis / 340))
-  const nomPop = easeOutBack(Math.max(0, Math.min(1, (depuis - 120) / 260)))
-  const lignePop = easeOutBack(Math.max(0, Math.min(1, (depuis - 260) / 260)))
-  const sortie = Math.max(0, Math.min(1, (boxView.resultatJusqua - Date.now()) / 260))
-  const gagneHex = itemColor(boxView.resultat, boxView.resultatMutation)
-  const gagne = Color4.fromHexString(gagneHex + 'ff')
-  const mut = mutation(boxView.resultatMutation)
-  const rayon = (560 + 120 * heroPop) * entree * echelle
-  const icone = 290 * heroPop * echelle
-  const eclair = rarete >= 3 ? Math.max(0, 0.45 - depuis / 400) : 0
-  /*
-    Au centre de l'ecran, et centre sur la COMPOSITION, pas sur l'image seule.
 
-    C'etait pose a 36% de la hauteur, donc franchement au-dessus du centre, sur les deux
-    plateformes (proprietaire, 1 Sep). Le moment ou la piece se revele est le produit: il se
-    joue au milieu de l'ecran, la ou l'oeil est deja.
+function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v }
 
-    Le groupe est l'icone plus ses deux lignes, nom et rendement. Centrer l'icone seule
-    poserait le texte sous le centre et ferait remonter l'ensemble; on decale donc d'une
-    demi-hauteur de texte vers le haut pour que le BLOC soit centre.
-  */
-  /*
-    Centre par la MISE EN PAGE, jamais par un calcul.
-
-    Trois passes ont echoue a centrer ca, et la cause etait la meme a chaque fois: `active.w`
-    est la resolution de REFERENCE, 1920, pas la largeur du conteneur. Le client met notre
-    interface a l'echelle par `min(largeurToile / 1920, hauteurToile / 1080)`; sur un ecran
-    plus large que 16:9 c'est la HAUTEUR qui commande, et le conteneur mesure alors bien plus
-    de 1920 de nos unites. `active.w / 2` n'est donc pas le milieu, il est a gauche du milieu,
-    d'autant plus que l'ecran est large. `decalageCentre()`, que j'ajoutais pour corriger,
-    repond a une autre question, l'encoche du telephone, et vaut zero sur un bureau: la
-    revelation restait exactement aussi decalee (proprietaire, 1 puis 2 Sep).
-
-    Un conteneur pleine page en `justifyContent: 'center'` n'a pas ce probleme: il ne connait
-    pas la resolution, il centre ce qu'il contient. C'est ce que `Centre` fait deja pour la
-    roulette, qui, elle, a toujours ete centree. Le bloc entier, icone et ses deux lignes,
-    passe donc en colonne centree, et il n'y a plus une seule coordonnee ecrite a la main.
-  */
+/** One card of the strip, at a fixed size: the strip never reflows. */
+const CarteReel = (props: { key?: number; rarete: number; x: number; haut: number; opacite: number; mutId?: number }) => {
+  const rar = RARITIES[props.rarete] ?? RARITIES[0]
+  const mut = mutation(props.mutId ?? 0)
+  const brut = Color4.fromHexString(rar.color + 'ff')
+  const texte = Color4.fromHexString(lisible(rar.color) + 'ff')
+  const mute = (props.mutId ?? 0) > 0 && mut.mult > 1
   return (
-    <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 }, opacity: sortie }}>
-      <UiEntity
-        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-        uiBackground={{ color: Color4.create(0, 0, 0, Math.min(0.85, SURF.voile.a * 0.63 * (1 + 0.15 * rarete)) * entree) }} />
-      {eclair > 0 && (
-        <UiEntity
-          uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-          uiBackground={{ color: Color4.create(gagne.r, gagne.g, gagne.b, eclair) }} />
-      )}
-      <UiEntity
-        uiTransform={{
-          width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 },
-          flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
-        }}>
-        {/* La cellule de l'icone porte l'eclat en enfant absolu, donc centre sur elle quoi
-            qu'il arrive et sans jamais deborder la colonne. */}
-        <UiEntity uiTransform={{ width: icone, height: icone }}>
-          {depuis < 900 && (
-            <UiEntity
-              uiTransform={{
-                width: rayon, height: rayon, positionType: 'absolute',
-                position: { left: (icone - rayon) / 2, top: (icone - rayon) / 2 },
-                opacity: Math.max(0, 1 - depuis / 900)
-              }}
-              uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch' }} />
-          )}
-          <UiEntity
-            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-            uiBackground={{ texture: { src: `assets/ui/toy-${boxView.resultat}.png` }, textureMode: 'stretch' }} />
-        </UiEntity>
-        <UiEntity uiTransform={{ height: 52, margin: { top: 6 }, opacity: Math.min(1, nomPop) }}>
-          <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
-            fontSize={Math.round(TYPE.title * (0.8 + 0.2 * nomPop))} textWrap="nowrap" textAlign="middle-center"
-            color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
-            uiTransform={{ height: 52 }} />
-        </UiEntity>
-        <UiEntity uiTransform={{ height: 40, opacity: Math.min(1, lignePop) }}>
-          <Label value={mut.mult > 1 ? `${mut.name.toUpperCase()}  x${mut.mult}  ·  +${formatIncome((INCOME_UI[boxView.resultat] ?? 1) * mut.mult)}/s` : `+${formatIncome(INCOME_UI[boxView.resultat] ?? 1)}/s`}
-          fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center"
-          color={C.money}
-          uiTransform={{ height: 40 }} />
-        </UiEntity>
-      </UiEntity>
+    <UiEntity
+      uiTransform={{
+        width: REEL_W, height: REEL_H, positionType: 'absolute',
+        position: { left: props.x, top: props.haut },
+        flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 8,
+        opacity: props.opacite
+      }}
+      uiBackground={{ ...SKIN.card, color: Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1) }}
+    >
+      <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap" color={texte}
+        uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
+      <UiEntity uiTransform={{ width: 118, height: 118 }}
+        uiBackground={{ texture: { src: `assets/ui/toy-${props.rarete}.png` }, textureMode: 'stretch' }} />
+      <Label
+        value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
+        fontSize={TYPE.caption} textWrap="nowrap"
+        color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
+        uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
     </UiEntity>
   )
 }
 
-function Roulette(): ReactEcs.JSX.Element {
-  const large = Math.min(active.w - 80, 1700)
-  const fini = !boxView.roule && boxView.resultat >= 0
-  const depuis = fini ? Date.now() - boxView.gagneA : 0
-  // The panel leaves on a fade instead of blinking out at its timer.
-  const sortie = fini ? Math.max(0, Math.min(1, (boxView.resultatJusqua - Date.now()) / 260)) : 1
-  const pop = fini ? easeOutBack(Math.min(1, depuis / 280)) : 0
-  const flash = fini ? Math.max(0, 1 - depuis / 750) : 0
-  const gagneHex = fini ? itemColor(boxView.resultat, boxView.resultatMutation) : '#ffffff'
+function CrateReveal(): ReactEcs.JSX.Element {
+  const now = Date.now()
+  const rarete = Math.max(0, boxView.resultat)
+  const tourne = boxView.roule
+  const t = tourne ? -1 : now - boxView.gagneA          // ms since the strip stopped
+  const hold = revealHold(rarete)
+  const sortie = tourne ? 1 : clamp01((boxView.resultatJusqua - now) / REVEAL_CLOSE_MS)
+  const gagneHex = itemColor(boxView.resultat, boxView.resultatMutation)
   const gagne = Color4.fromHexString(gagneHex + 'ff')
   const mut = mutation(boxView.resultatMutation)
-  // Tall enough for the winner at its full pop: at REEL_H + 12 the popped card ran past the
-  // strip and the panel's clip cut its top and bottom off (owner, 3 Sep).
-  const bande = Math.round(REEL_H * REEL_POP) + 12
+
+  // The strip: present while it turns, dissolving once the hero takes over.
+  const bandeVisible = !boxView.sansRoulette && (tourne || t < hold + REEL_FADE_MS)
+  const bandeOpacite = tourne ? 1 : clamp01(1 - (t - hold) / REEL_FADE_MS) * sortie
+  const large = Math.min(active.w - 80, 1700)
+  const bande = REEL_H + 12
+  const pop = tourne ? 0 : easeOutBack(clamp01(t / 160))
+
+  // The hero: after the hold, the glyph, then the name, then the income.
+  const heroVisible = !tourne && t >= hold
+  const h = t - hold
+  const fond = tourne ? 0.34 : Math.min(0.62, 0.34 + 0.28 * clamp01(h / 180))
+  const heroPop = easeOutBack(clamp01(h / 320))
+  const nomPop = easeOutBack(clamp01((h - 120) / 260))
+  const lignePop = easeOutBack(clamp01((h - 260) / 260))
+  const echelle = Math.min(1.5, 1 + 0.10 * rarete)
+  const icone = 290 * heroPop * echelle
+  const rayon = (520 + 140 * heroPop) * echelle
+  const eclat = Math.max(0, 1 - h / 900)
+
   return (
-    <Centre bottom={250}>
+    <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}>
+      {/* Le fond s'assombrit pendant le tour et se ferme sur le heros: jamais un eclair. */}
       <UiEntity
-        uiTransform={{ width: large, height: REEL_TITRE + bande, flexDirection: 'column', overflow: 'hidden', opacity: sortie }}
-        uiBackground={SKIN.panel}
-      >
-        {flash > 0 && (
-          <UiEntity
-            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
-            uiBackground={{ color: Color4.create(gagne.r, gagne.g, gagne.b, 0.5 * flash) }} />
-        )}
+        uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+        uiBackground={{ color: Color4.create(0, 0, 0, fond * sortie) }} />
 
-        {/* The title row stays empty: the state line it carried at the reveal sat under the
-            reveal's own glyph, unreadable, and the hand notice says it again once the reveal
-            is over (owner, 5 Sep). */}
-        <UiEntity uiTransform={{ width: '100%', height: REEL_TITRE, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-        </UiEntity>
+      {bandeVisible && (
+        <Centre bottom={250}>
+          <UiEntity uiTransform={{ width: large, height: bande, overflow: 'hidden', opacity: bandeOpacite }}>
+            {boxView.reel.map((r, i) => {
+              const x = large / 2 - REEL_W / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
+              if (x < -REEL_W - REEL_GAP || x > large + REEL_GAP) return null
+              return <CarteReel key={i} rarete={r} x={x} haut={(bande - REEL_H) / 2} opacite={!tourne && i !== REEL_WIN ? 0.42 : 1} />
+            })}
 
-        <UiEntity uiTransform={{ width: '100%', height: bande }}>
-          {boxView.reel.map((r, i) => {
-            const rar = RARITIES[r] ?? RARITIES[0]
-            const gagnant = fini && i === REEL_WIN
-            const s = gagnant ? 1 + (REEL_POP - 1) * pop : 1
-            const w = REEL_W * s, h = REEL_H * s
-            const x = large / 2 - w / 2 + (i - boxView.progres) * (REEL_W + REEL_GAP)
-            if (x < -w || x > large) return null
-            const brut = Color4.fromHexString(rar.color + 'ff')
-            const texte = Color4.fromHexString(lisible(rar.color) + 'ff')
-            // A card carries its rarity as a tint; the winner takes the full colour.
-            const teinte = gagnant
-              ? brut
-              : Color4.create(0.55 + 0.45 * brut.r, 0.55 + 0.45 * brut.g, 0.55 + 0.45 * brut.b, 1)
-            const mute = gagnant && mut.mult > 1
-            return (
-              <UiEntity key={i}
-                uiTransform={{
-                  width: w, height: h, positionType: 'absolute',
-                  position: { left: x, top: (bande - h) / 2 },
-                  flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 8,
-                  opacity: fini && !gagnant ? 0.42 : 1
-                }}
-                uiBackground={{ ...SKIN.card, color: teinte }}
-              >
-                {/* The winner turns into a lit plate under the hero above it: its own name,
-                    glyph and income were the same three things said twice (owner, 5 Sep). */}
-                <Label value={gagnant ? '' : rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap"
-                  color={texte}
-                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
-                <UiEntity
-                  uiTransform={{ width: 118 * s, height: 118 * s, opacity: gagnant ? 0 : 1 }}
-                  uiBackground={{ texture: { src: `assets/ui/toy-${r}.png` }, textureMode: 'stretch' }} />
-                <Label
-                  value={gagnant ? '' : mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[r] ?? 1)}/s`}
-                  fontSize={TYPE.caption} textWrap="nowrap"
-                  color={mute ? Color4.fromHexString(lisible(mut.color) + 'ff') : C.money}
-                  uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
-              </UiEntity>
-            )
-          })}
-
-          {/* The strip fades into the panel at both ends: cards arrive from beyond the window. */}
-          <UiEntity
-            uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { left: 0, top: 0 } }}
-            uiBackground={{ texture: { src: 'assets/ui/fade-left.png' }, textureMode: 'stretch' }} />
-          <UiEntity
-            uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { right: 0, top: 0 } }}
-            uiBackground={{ texture: { src: 'assets/ui/fade-right.png' }, textureMode: 'stretch' }} />
-
-          {/* The selector, gone once the strip has stopped: the winner's pop says it instead. */}
-          {!fini && (
+            {/* Les deux bords fondent dans le panneau: les cartes viennent de plus loin. */}
             <UiEntity
-              uiTransform={{ width: 5, height: bande, positionType: 'absolute', position: { left: large / 2 - 2.5, top: 0 } }}
-              uiBackground={{ color: C.name }} />
-          )}
+              uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { left: 0, top: 0 } }}
+              uiBackground={{ texture: { src: 'assets/ui/fade-left.png' }, textureMode: 'stretch' }} />
+            <UiEntity
+              uiTransform={{ width: 140, height: bande, positionType: 'absolute', position: { right: 0, top: 0 } }}
+              uiBackground={{ texture: { src: 'assets/ui/fade-right.png' }, textureMode: 'stretch' }} />
+
+            {tourne ? (
+              <UiEntity
+                uiTransform={{ width: 5, height: bande, positionType: 'absolute', position: { left: large / 2 - 2.5, top: 0 } }}
+                uiBackground={{ color: C.name }} />
+            ) : (
+              /* La carte gagnante, en COPIE par dessus: la rangee ne bouge pas d'un pixel. */
+              <UiEntity
+                uiTransform={{
+                  width: REEL_W * (1 + 0.22 * pop) + 16, height: REEL_H * (1 + 0.22 * pop) + 16,
+                  positionType: 'absolute',
+                  position: { left: large / 2 - (REEL_W * (1 + 0.22 * pop) + 16) / 2, top: (bande - REEL_H * (1 + 0.22 * pop) - 16) / 2 },
+                  justifyContent: 'center', alignItems: 'center'
+                }}
+                uiBackground={{ ...SKIN.card, color: gagne }}
+              >
+                <CarteReel rarete={rarete} x={8} haut={8} opacite={1} mutId={boxView.resultatMutation} />
+              </UiEntity>
+            )}
+          </UiEntity>
+        </Centre>
+      )}
+
+      {heroVisible && (
+        <UiEntity
+          uiTransform={{
+            width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 },
+            flexDirection: 'column', justifyContent: 'center', alignItems: 'center', opacity: sortie
+          }}>
+          <UiEntity uiTransform={{ width: icone, height: icone }}>
+            {eclat > 0 && (
+              <UiEntity
+                uiTransform={{
+                  width: rayon, height: rayon, positionType: 'absolute',
+                  position: { left: (icone - rayon) / 2, top: (icone - rayon) / 2 }, opacity: eclat * 0.9
+                }}
+                uiBackground={{ texture: { src: 'assets/ui/burst.png' }, textureMode: 'stretch', color: gagne }} />
+            )}
+            <UiEntity
+              uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { left: 0, top: 0 } }}
+              uiBackground={{ texture: { src: `assets/ui/toy-${rarete}.png` }, textureMode: 'stretch' }} />
+          </UiEntity>
+          <UiEntity uiTransform={{ height: 52, margin: { top: 6 }, opacity: clamp01(nomPop) }}>
+            <Label value={`${itemName(boxView.resultat, boxView.resultatMutation)}${boxView.resultatTraits > 0 ? ' +' + boxView.resultatTraits : ''}`.toUpperCase()}
+              fontSize={Math.round(TYPE.title * (0.82 + 0.18 * clamp01(nomPop)))} textWrap="nowrap" textAlign="middle-center"
+              color={Color4.fromHexString(lisible(gagneHex) + 'ff')}
+              uiTransform={{ height: 52 }} />
+          </UiEntity>
+          <UiEntity uiTransform={{ height: 40, opacity: clamp01(lignePop) }}>
+            <Label
+              value={mut.mult > 1
+                ? `${mut.name.toUpperCase()}  x${mut.mult}  \u00b7  +${formatIncome((INCOME_UI[rarete] ?? 1) * mut.mult)}/s`
+                : `+${formatIncome(INCOME_UI[rarete] ?? 1)}/s`}
+              fontSize={TYPE.body} textWrap="nowrap" textAlign="middle-center" color={C.money}
+              uiTransform={{ height: 40 }} />
+          </UiEntity>
         </UiEntity>
-      </UiEntity>
-    </Centre>
+      )}
+    </UiEntity>
   )
 }
 
@@ -1618,8 +1608,7 @@ const uiComponent = () => {
       point of the form is the cards that go past. Only the cards actually on screen are
       drawn, out of the thirty-four in the strip.
     */}
-    {hud() && !boxView.sansRoulette && (boxView.roule || boxView.resultat >= 0) && Roulette()}
-    {hud() && !boxView.roule && boxView.resultat >= 0 && Revelation()}
+    {hud() && (boxView.roule || boxView.resultat >= 0) && CrateReveal()}
 
 
 

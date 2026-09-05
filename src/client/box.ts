@@ -81,6 +81,7 @@ export const boxView = {
 let crateMesh: Entity
 let hitSound: Entity
 let sonBurst: Entity
+let sonLand: Entity
 let sonReveal: Entity
 let sonRevealRare: Entity
 let sonRevealBig: Entity
@@ -158,6 +159,7 @@ export function setupBox(): void {
   }
   hitSound = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
+  sonLand = emetteur('assets/sounds/land.wav', 0.8)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
   sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.85)
   sonRevealBig = emetteur('assets/sounds/reveal-big.wav', 0.85)
@@ -235,6 +237,8 @@ export function setupBox(): void {
         boxView.progres = REEL_WIN
         boxView.sansRoulette = false
         boxView.gagneA = Date.now()
+        // The stop has its own weight, under the sting that climbs out of it.
+        jouer(sonLand)
         jouerReveal(boxView.resultat)
         // Long enough to read the name once, gone before it outstays the win: the
         // genre closes its reveals fast and lets the item in the hand carry the memory.

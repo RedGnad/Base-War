@@ -123,5 +123,8 @@ if __name__ == '__main__':
                step_s=0.095, decay_s=0.34, tail=1.15,
                chord=[1046.5, 1568.0, 2093.0], partials=(1.0, 0.5, 0.28, 0.14, 0.07),
                gain=0.36, riser=(0.34, 420.0, 1600.0), impact=(72.0, 0.42), shimmer=0.16)
-    for nom, taille in (('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
+    # The strip stopping: a click and a low thud, under whichever sting follows.
+    n0 = sting(os.path.join(out, 'land.wav'), [220.0], step_s=0.02, decay_s=0.10, tail=0.12,
+               partials=(1.0, 0.5, 0.2), gain=0.30, impact=(96.0, 0.13))
+    for nom, taille in (('land', n0), ('reveal', n1), ('reveal-rare', n2), ('reveal-big', n3), ('reveal-huge', n4)):
         print(f'{nom + ".wav":18s} {taille / 1024:6.1f} KB')
