@@ -69,7 +69,8 @@ export function lockOnArrival(address: string): void {
   // No grace any more: thirty seconds of a lock nobody pressed read as a shield nobody asked
   // for, and a label explaining it read as jargon (owner, 5 Sep). Arriving only ends the
   // earned shield; from the first frame the owner is here, and can give chase.
-  if (setLock(address, Date.now())) log(`${displayName(address)} arrived, shield down`)
+  // Only when a shield is actually up: writing a date nobody needs rang the seal on every client.
+  if (lockOf(address) > Date.now() && setLock(address, Date.now())) log(`${displayName(address)} arrived, shield down`)
 }
 
 export function delivrerAlertes(address: string): void {

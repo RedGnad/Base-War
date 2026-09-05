@@ -5,6 +5,7 @@ import { rarity, formatIncome, crate } from '../shared/loot-table'
 import { indexView } from './index-ui'
 import { applyThiefPenalty, applyFreeze } from './locomotion'
 import { flashDamage, floatAmount, playHurt, playCash } from './juice'
+import { decideWelcome } from './welcome'
 import { tutoView } from './tutorial'
 import { sendOrHold } from './intent'
 import { poseView } from './pose'
@@ -237,6 +238,7 @@ export function setupTheft(): void {
 
   room.onMessage('wallet', (d) => {
     tutoView.etape = d.tutoEtape
+    decideWelcome(d.tutoEtape, tutoView.total)
     theftView.sentries = d.sentries
     theftView.sentryPrice = d.sentryPrice
     theftView.presents = d.presents

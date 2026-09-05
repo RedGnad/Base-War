@@ -5,11 +5,22 @@ import { Glyphs } from './glyphs'
 import { Btn } from './ui-kit'
 import { strip } from './layout'
 
-// Open, except on a measurement build: an instrument should not have to get past a door.
 import { STRESS_BASES } from './stress'
 
-export const welcomeView = { open: STRESS_BASES <= 0 }
+/*
+  Shown once, to a player whose tutorial is not finished, and to nobody else. It used to open
+  at every launch for everyone; the sponsor's own line on mobile onboarding is "forcing
+  everyone to onboarding creates frustration" (Friendzone workshop 3, Mobile UX, 19 Aug), and
+  a returning player already gets WELCOME BACK. Decided on the first profile the server sends.
+  Never on a measurement build: an instrument should not have to get past a door.
+*/
+export const welcomeView = { open: false, decided: false }
 export function closeWelcome(): void { welcomeView.open = false }
+export function decideWelcome(tutoEtape: number, tutoTotal: number): void {
+  if (welcomeView.decided) return
+  welcomeView.decided = true
+  welcomeView.open = STRESS_BASES <= 0 && tutoEtape < tutoTotal
+}
 
 export const WelcomePanel = () => {
   if (!welcomeView.open) return <UiEntity uiTransform={{ width: 0, height: 0 }} />

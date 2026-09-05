@@ -1202,11 +1202,13 @@ export function setupPlots(): void {
       const lockSeconds = Math.max(0, Math.ceil((p.lockedUntil - Date.now()) / 1000))
       /*
         The door sealing is HEARD, on every client near enough, whichever lock sealed it:
-        the owner's press, the sentry, the grace on arrival. A lock date that jumps forward
-        is a seal; the first read of a base is not.
+        the owner's press, the sentry, the shield a theft earns. A lock date that jumps
+        forward INTO THE FUTURE is a seal; the first read of a base is not, and neither is
+        the arrival bringing a stale date up to now to drop an old shield (owner, 5 Sep: the
+        seal rang on arrival with no lock).
       */
       if (v.lockSeen < 0) v.lockSeen = p.lockedUntil
-      else if (p.lockedUntil > v.lockSeen + 1000) {
+      else if (p.lockedUntil > v.lockSeen + 1000 && p.lockedUntil > Date.now() + 500) {
         v.lockSeen = p.lockedUntil
         const porte = pointDeBase(v.racine, 0, 1.2, BASE_SIDE / 2)
         if (porte !== null) jouerA(sealEmitter, porte)

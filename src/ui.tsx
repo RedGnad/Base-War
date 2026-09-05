@@ -386,7 +386,9 @@ const MenuWindow = () => {
  * client's own stack has no free slot without folding the others behind a "+".
  */
 const SellChip = (props: { right?: number }) => {
-  if (carryView.code < 0 || carryView.vole) return null
+  // Not while the crate's roulette still runs: the item lands in the hand with the roll's result,
+  // and a price under a piece not yet revealed spoils the reveal (owner, 5 Sep).
+  if (carryView.code < 0 || carryView.vole || boxView.roule) return null
   const prix = formatIncome(prixDeRevente(carryView.code))
   return (
     <Btn label={phone() ? `SELL  +${prix}` : `2  SELL  +${prix}`}
