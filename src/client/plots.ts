@@ -263,18 +263,23 @@ function baseCost(
   p: { floors: number; items: readonly number[]; sentryFloors: readonly number[]; skin: number; ownerName: string }, pres: boolean
 ): Cost {
   const etages = Math.max(1, Math.min(p.floors, MAX_FLOORS))
-  let pieces = 0, rays = 0
-  for (const it of p.items) if (it !== VIDE) { pieces++; if (rarityOf(it) >= RAYS_MIN_RARITY) rays++ }
+  let pieces = 0, rays = 0, lit = 0
+  for (const it of p.items) if (it !== VIDE) {
+    pieces++
+    if (rarityOf(it) >= RAYS_MIN_RARITY) rays++
+    if (rarity(rarityOf(it)).glow >= LIGHT_MIN_GLOW) lit++
+  }
   // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
   const loin: Cost = { mats: 2 + rays, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces + rays }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
   const crown = p.skin > 0 ? 2 : 0
-  // Full: door and sign, one pad per piece, a crown of rays above Epic and up, one cone per
-  // armed storey, the kerb and crown of a skin, one glyph plane per letter.
-  const extras = 2 + pieces + cones + crown + p.ownerName.length
-  return { mats: loin.mats + extras, draws: loin.draws + extras }
+  // Full: door and sign, a crown of rays above Epic and up, one cone per armed storey, the kerb
+  // and crown of a skin, one glyph plane per letter; in draws also one pad per piece and one
+  // painted pool per lit piece. Pads are files shared per colour, billed once on the field.
+  const extras = 2 + cones + crown + p.ownerName.length
+  return { mats: loin.mats + extras, draws: loin.draws + extras + pieces + lit }
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -1124,14 +1129,19 @@ export function setupPlots(): void {
 
     const distances = new Map<number, number>()
     const rangs: Array<{ id: number; rang: number; pres: Cost; loin: Cost; garde: boolean }> = []
-    // Every baked piece file on the field costs its material once, near or far.
+    // Every baked piece file on the field costs its material once, near or far; so does every
+    // pad colour (a pad and its pool: two), plus the plain pad.
     const variantes = new Set<number>()
+    const socles = new Set<number>()
     for (const [ent, p] of engine.getEntitiesWith(Plot, Transform)) {
       const id = ent as unknown as number
       const t = Transform.get(ent)
       const d = moiT === null ? 0 : Math.hypot(moiT.position.x - t.position.x, moiT.position.z - t.position.z)
       distances.set(id, d)
-      for (const it of p.items) if (it !== VIDE) variantes.add(rarityOf(it) * 100 + mutationDe(it))
+      for (const it of p.items) if (it !== VIDE) {
+        variantes.add(rarityOf(it) * 100 + mutationDe(it))
+        if (rarity(rarityOf(it)).glow >= LIGHT_MIN_GLOW) socles.add(mutation(mutationDe(it)).mult > 1 ? 100 + mutationDe(it) : rarityOf(it))
+      }
       const sienne = p.ownerId.toLowerCase() === moiAdr
       const dejaPres = views.get(id)?.loin === false
       rangs.push({
@@ -1150,7 +1160,7 @@ export function setupPlots(): void {
       loin tant que le budget suit. Une base qu'on ne peut pas s'offrir n'arrete pas la boucle:
       une base basse derriere une tour peut encore rentrer, et la refuser gaspillerait la place.
     */
-    let mats = DECOR_MATERIALS + variantes.size
+    let mats = DECOR_MATERIALS + variantes.size + 1 + 2 * socles.size
     let draws = DECOR_DRAWS
     for (const r of rangs) { mats += r.loin.mats; draws += r.loin.draws }
     const complets = new Set<number>()

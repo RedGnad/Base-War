@@ -565,23 +565,34 @@ export const PEDESTAL_DIAMETER = 1.4
 export const PEDESTAL_THICKNESS = 0.08
 const socles = new Map<Entity, Entity>()
 
+/** The pad file for a colour: the plain pad, or a lit pad with its painted pool. */
+export function padFile(mutationHex: string | null): string {
+  return mutationHex === null ? 'pad-socle.glb' : `pad-${mutationHex.slice(1, 7).toLowerCase()}.glb`
+}
+
+/*
+  A pad is a FILE per colour (tools/model/build-pads.py), no longer an SDK cylinder with its own
+  material. Two reasons. The phone counts one material per SDK primitive, so twelve pads in a
+  base were twelve materials from the tightest budget; every pad of one colour now shares one
+  file. And the point light that pooled colour on the slab does not render on the mobile client
+  before its v1.13.0, so a lit pad carries its pool PAINTED: a translucent disc around it, radial
+  falloff, emissive, the fake every mobile game uses for a light on the floor (owner, 5 Sep:
+  "la flaque de lumiere est un element relativement important").
+*/
 export function toyPedestal(parent: Entity, size: number, mutationHex: string | null): void {
   let e = socles.get(parent)
-  if (e === undefined) {
-    e = engine.addEntity()
-    MeshRenderer.setCylinder(e, 0.5, 0.5)
-    socles.set(parent, e)
-  }
+  if (e === undefined) { e = engine.addEntity(); socles.set(parent, e) }
   // Child of a parent scaled by `size`: divide, so the pad keeps its world size whatever the toy.
-  // Its top face is the cube's bottom face: the toy stands on it.
+  // The file is authored at world size; its top face is the cube's bottom face, the toy stands on it.
   Transform.createOrReplace(e, {
     parent,
     position: Vector3.create(0, -0.5 - PEDESTAL_THICKNESS / 2 / size, 0),
-    scale: Vector3.create(PEDESTAL_DIAMETER / size, PEDESTAL_THICKNESS / size, PEDESTAL_DIAMETER / size)
+    scale: Vector3.create(1 / size, 1 / size, 1 / size)
   })
-  // The lit pad is an emissive material, not a light: it survives a Low preset, where scene
-  // lights and bloom are both off, so a valuable toy always sits on a visible ring of colour.
-  Material.setPbrMaterial(e, mutationHex === null ? plastic(TOY.socle) : plastic(mutationHex, 1.8 * (sombreParNature(mutationHex) ? 1 : glowLift(mutationHex))))
+  const src = TOY_DIR + padFile(mutationHex)
+  const g = GltfContainer.getMutableOrNull(e)
+  if (g === null) GltfContainer.create(e, { src, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
+  else if (g.src !== src) g.src = src
 }
 
 /*
@@ -755,7 +766,14 @@ export function vif(hex: string): Color4 {
 const LIGHTS_MAX = 16
 const souhaits = new Map<Entity, { hex: string; glow: number }>()
 
+/*
+  The scene's point lights, off for now on every client: the mobile client does not render them
+  before its v1.13.0, the pool under a lit piece is painted into its pad instead, and the desktop
+  shows what a phone shows so the two can be compared (owner, 5 Sep). Flip to bring them back.
+*/
+const SCENE_LIGHTS = false
 export function toyLight(parent: Entity, hex: string | null, glow: number): void {
+  if (!SCENE_LIGHTS) return
   // No point lights on a phone: the client disables scene lights on the mobile preset, so
   // the budget would sort and create lights nobody renders, spending CPU for nothing (tester,
   // 28 Aug). The emissive material carries the whole glow there, which is free on every preset.
