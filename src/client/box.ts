@@ -82,6 +82,7 @@ let crateMesh: Entity
 let hitSound: Entity
 let sonBurst: Entity
 let sonLand: Entity
+let sonMutation: Entity
 let sonReveal: Entity
 let sonRevealRare: Entity
 let sonRevealBig: Entity
@@ -159,6 +160,7 @@ export function setupBox(): void {
   }
   hitSound = emetteur('assets/sounds/hit.wav', 0.9)
   sonBurst = emetteur('assets/sounds/burst.wav', 1)
+  sonMutation = emetteur('assets/sounds/mutation.wav', 0.75)
   sonLand = emetteur('assets/sounds/land.wav', 0.8)
   sonReveal = emetteur('assets/sounds/reveal.wav', 0.85)
   sonRevealRare = emetteur('assets/sounds/reveal-rare.wav', 0.85)
@@ -345,6 +347,9 @@ let lastPosition: Vector3 | null = null
 */
 function jouerReveal(rarete: number): void {
   jouer(rarete >= 5 ? sonRevealHuge : rarete >= 3 ? sonRevealBig : rarete >= 2 ? sonRevealRare : sonReveal)
+  // A mutated piece adds one layer over that sting, the same layer for all fourteen: the
+  // ladder the ear reads stays the rarity's, and the shimmer says this one is not plain.
+  if (boxView.resultatMutation > 0) jouer(sonMutation)
 }
 
 function jouer(e: Entity): void {

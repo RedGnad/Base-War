@@ -5,7 +5,8 @@ import { Btn, SURF } from './ui-kit'
 import { formatIncome } from '../shared/loot-table'
 import { PRESTIGE_CASH_SHARE } from '../shared/economy'
 import { SENTRY_TIERS, SENTRY_MAX_CHARGES, MAX_FLOORS, prestigeTier, prixParCharge, GEARS, prixGear, LUCK_MS } from '../shared/schemas'
-import { gearView, acheterGear, buyLuckCharm, wield, togglePlacing as basculerPosePiege, canPlace, estPosable } from './gear'
+import { gearView, acheterGear, buyLuckCharm, wield, togglePlacing as basculerPosePiege, canPlace, estPosable, tirerLaCape } from './gear'
+import { carryView } from './carry'
 import { view } from './setup'
 import { maDefense } from './plots'
 import { theftView, buyFloorFor, armSentry, alerter } from './theft'
@@ -243,18 +244,27 @@ export const ShopContent = () => {
         // The two weapons (slap id 2, taser id 5) are WIELDED from here: tap to hold, tap again for the gun.
         const armeDeG = g.id === 2 ? 'slap' as const : g.id === 5 ? 'taser' as const : null
         const estArme = armeDeG !== null && held > 0
+        /*
+          The cloak (id 3) is USED from its own row, the way the two weapons are wielded from
+          theirs. It was on the draw key, which already draws, so nobody could guess it (owner,
+          5 Sep). The contextual button was not an option: it names ONE act at a time and
+          everything below it in the chain would have lost its turn. The row that sold it is
+          where a pocket item belongs, and it says what it does and whether it is ready.
+        */
+        const estCape = g.id === 3 && held > 0
         const tenue = estArme && gearView.armeChoisie === armeDeG
         return (
           <Rang key={g.name}
-            titre={estArme ? `${g.name}  ·  ${tenue ? 'WIELDING' : 'OWNED'}` : porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
+            titre={estCape ? `${g.name}  \u00b7  ${gearView.cloaked ? 'INVISIBLE' : 'READY'}` : estArme ? `${g.name}  ·  ${tenue ? 'WIELDING' : 'OWNED'}` : porte ? `${g.name}  ·  WORN` : held > 0 ? `${g.name}  x${held}` : g.name}
             icone={`ui-gear-${g.id}.png`}
             detail={debloque ? (COURT[g.id] ?? g.verb) : `needs prestige ${g.prestige}`}
-            bouton={!debloque ? 'LOCKED' : estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
-            prix={estArme || porte || peutPoserCe ? 0 : prix}
-            possible={debloque && (estArme || (!porte && (posable && held > 0 ? peutPoserCe : argent >= prix)))}
-            refus={posable && held > 0 && !peutPoserCe ? 'stand where it can be set' : `need ${formatIncome(prix)} coins`}
+            bouton={!debloque ? 'LOCKED' : estCape ? 'GO INVISIBLE' : estArme ? (tenue ? 'HOLD GUN' : 'WIELD') : porte ? 'OWNED' : peutPoserCe ? 'SET' : 'BUY'}
+            prix={estCape || estArme || porte || peutPoserCe ? 0 : prix}
+            possible={debloque && (estCape ? !gearView.cloaked && carryView.code < 0 : estArme || (!porte && (posable && held > 0 ? peutPoserCe : argent >= prix)))}
+            refus={estCape ? (gearView.cloaked ? 'already invisible' : 'not while carrying something') : posable && held > 0 && !peutPoserCe ? 'stand where it can be set' : `need ${formatIncome(prix)} coins`}
             onClick={() => {
-              if (estArme) { wield(tenue ? 'shoot' : (armeDeG as 'slap' | 'taser')); closeMenu() }
+              if (estCape) { tirerLaCape(); closeMenu() }
+              else if (estArme) { wield(tenue ? 'shoot' : (armeDeG as 'slap' | 'taser')); closeMenu() }
               else if (peutPoserCe) { basculerPosePiege(g.id); closeMenu() }
               else if (!porte) acheterGear(g.id)
             }} />
