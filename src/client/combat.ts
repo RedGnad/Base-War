@@ -5,7 +5,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { isMobile } from '@dcl/sdk/platform'
 import { Color4, Color3, Vector3, Quaternion } from '@dcl/sdk/math'
 import { DroppedCoins, SHOT_RANGE, SHOT_COOLDOWN_MS, inShotCone, LOOT_OWNER_LOCK_MS, SLAP_RANGE, SLAP_COOLDOWN_MS, TASER_COOLDOWN_MS, RAID_HIT_RANGE } from '../shared/schemas'
-import { gearView, tirerLaCape } from './gear'
+import { gearView } from './gear'
 import { raidView } from './raid'
 import { room } from '../shared/messages'
 import { formatIncome } from '../shared/loot-table'
@@ -527,9 +527,9 @@ function gunSystem(dt: number): void {
   // fire mode Fortnite recommends to players new to mobile, and a judge here has five
   // minutes: a second button for the trigger would buy nothing and cost a thumb.
   if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) {
-    // With a cloak in the pocket and nothing drawn, F pulls the cloak on instead of the gun.
-    // Drawing while cloaked is still allowed and still F: the cloak simply does not stop it.
-    if (!combatView.aiming && tirerLaCape()) return
+    // F draws and holsters, and does nothing else. It used to pull the cloak on when one sat
+    // in the pocket and no weapon was out, so BUYING a cloak silently took the draw key away
+    // (owner, 5 Sep). The cloak is used from its own row in the gear panel.
     degainer(!combatView.aiming)
   }
 
