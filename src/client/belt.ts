@@ -266,9 +266,10 @@ export function setupBelt(): void {
     beltView.annonce = `${r.name} on the belt!  ${crateSummary(d.crateTier)}`
     beltView.annonceColor = r.color
     beltView.annonceTier = d.crateTier
-    // A rarer crate stays on screen longer: it deserves more attention, and it is also
-    // the one worth crossing the venue for.
-    beltView.annonceJusqua = Date.now() + 5000 + d.crateTier * 2000
+    // A rarer crate stays a little longer, within the same window as every other moment on the
+    // band: five to fifteen seconds read as a stuck banner next to toasts that leave in four
+    // (owner, 5 Sep). The crate itself glows on the belt for as long as it rolls.
+    beltView.annonceJusqua = Date.now() + 3500 + d.crateTier * 500
     console.log(`[CLIENT] announced: ${r.name}`)
   })
 

@@ -266,16 +266,15 @@ function baseCost(
   let pieces = 0, rays = 0
   for (const it of p.items) if (it !== VIDE) { pieces++; if (rarityOf(it) >= RAYS_MIN_RARITY) rays++ }
   // Reduced: plinth and lift are primitives; shells, accents, glass and the bare pieces are shared files.
-  const loin: Cost = { mats: 2, draws: 2 + etages * STOREY_COST_FAR + pieces }
+  const loin: Cost = { mats: 2, draws: 2 + etages * (STOREY_COST_FAR + 1) + pieces }
   if (!pres) return loin
   let cones = 0
   for (let e = 0; e < etages; e++) if ((p.sentryFloors[e] ?? 0) > 0) cones++
   const crown = p.skin > 0 ? 2 : 0
   // Full: door and sign, one pad per piece, a crown of rays above Epic and up, one cone per
-  // armed storey, the kerb and crown of a skin, one glyph plane per letter; the climb per storey
-  // is a shared file, so it costs draws only.
+  // armed storey, the kerb and crown of a skin, one glyph plane per letter.
   const extras = 2 + pieces + rays + cones + crown + p.ownerName.length
-  return { mats: loin.mats + extras, draws: loin.draws + extras + etages }
+  return { mats: loin.mats + extras, draws: loin.draws + extras }
 }
 
 function modele(src: string, y: number, rendu = true): Entity {
@@ -363,6 +362,11 @@ function buildFloor(x: number, z: number, floor: number, mods: { accent: string;
   // Le modele revient: il est centre sur l'origine et l'entite porte position et pente, donc
   // il ne peut pas etre ailleurs que la marche. La boite nue qui l'avait remplace le temps du
   // diagnostic n'avait ni rambarde ni epaisseur (proprietaire, 3 Sep, "juste une rampe moche").
+  // The climb is a shared model, free on the phone's material budget: drawn in both states, so a
+  // base's stairs never pop when the player walks up (owner, 5 Sep: "les escaliers clippent").
+  GltfContainer.create(montee, {
+    src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
+  })
   const sentry = engine.addEntity()
   Transform.create(sentry, {
     parent: parentCourant ?? undefined,
@@ -392,11 +396,7 @@ function garnirEtage(f: Floor, x: number, z: number, floor: number, mods: { acce
   const finArriere = -1.2
   const rampeX = STAIRWELL_WIDTH - 0.3
   const montee = f.montee
-  if (!GltfContainer.has(montee)) {
-    GltfContainer.create(montee, {
-      src: `assets/Models/${mods.climb}`, visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0
-    })
-  }
+  void mods
   engine.removeEntity(f.ramp)
   const sols: Entity[] = [
     collisionneur(x - STAIRWELL_WIDTH / 2, y + SLAB_THICKNESS / 2, z, c - STAIRWELL_WIDTH, SLAB_THICKNESS, c)
@@ -435,7 +435,6 @@ function garnirEtage(f: Floor, x: number, z: number, floor: number, mods: { acce
 }
 
 function depouillerEtage(f: Floor): void {
-  if (GltfContainer.has(f.montee)) GltfContainer.deleteFrom(f.montee)
   for (const e of [...f.sols, ...f.murs, ...f.rails, f.ramp]) { taille.delete(e); engine.removeEntity(e) }
   f.sols = []
   f.murs = []
