@@ -93,11 +93,13 @@ def orient(path):
     open(path, 'wb').write(out)
     print(f'  {flipped} triangles turned to face outward')
 
-def animate(path, period=6.0, tilt_deg=80.0):
-    """The planet gets its own node and a baked clip: a spin the other way about a nearly
-    horizontal axis (80 degrees off the vertical, so the veins roll top to bottom), while the piece's own spin (the client's tween on the parent) turns
-    the ring about the vertical. Two motions on one toy read as an orbit; one motion read as a
-    lump (owner, 5 Sep: "la boule avait un sens de rotation different, en biais")."""
+def animate(path, period=2.4, tilt_deg=30.0):
+    """The planet gets its own node and a baked clip: a quick spin the other way about an axis
+    tilted thirty degrees, while the piece's own spin (the client's tween on the parent, six
+    seconds a turn) turns the ring about the vertical. The parent's spin adds to the planet's,
+    so the planet only reads as turning the other way when its own spin is clearly faster:
+    2.4 s a turn against 6, net about one turn in four seconds backwards, with the tilt's
+    wobble (owner, 5 Sep: "presque l'inverse de l'anneau, mais avec des composantes en biais")."""
     import json, struct, math
     b = open(path, 'rb').read()
     L = struct.unpack_from('<I', b, 12)[0]; js = json.loads(b[20:20 + L]); off = 20 + L
