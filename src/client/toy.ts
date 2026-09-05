@@ -692,9 +692,10 @@ export function clearPedestal(parent: Entity): void {
  * Emissive is a surface property: a lit toy glows and nothing around it knows. The mobile
  * renderer has no bloom to spill that glow onto the slab, so from the doorway a Legendary was
  * a bright shape standing on the same cream as a Common. A point light in the toy's colour is
- * the platform's own way to make an object light its room, and it renders on mobile: of the
- * whole rendering surface, only particles and audio analysis do not. One entity, a child at
- * the toy's base, so the pool lands on the slab and follows the toy's size.
+ * the platform's own way to make an object light its room. On the phone it is absent until the
+ * mobile client's v1.13.0 ships LightSource (docs, missing-features, September 2026): no cost
+ * there, a desktop flourish until then. One entity, a child at the toy's base, so the pool
+ * lands on the slab and follows the toy's size.
  *
  * The renderer draws the four to ten lights nearest the player and drops the rest, which is
  * the right rule here: the lights that render are the ones in the base the judge is standing

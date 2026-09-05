@@ -464,7 +464,8 @@ function habit(nom, hexa, boites, id) {
   if (!m) return g
   if (m.couleur) g.couleur = m.couleur
   if (m.albedo) { g.couleur = [1, 1, 1]; g.albedo = tuile(m.albedo) }
-  if (m.lueur) { g.lueur = tuile(m.lueur); g.emissif = m.emissif }
+  // Its own copy even when the same tile: the docs forbid one image serving albedo and emissive.
+  if (m.lueur) { g.lueur = Buffer.from(tuile(m.lueur)); g.emissif = m.emissif }
   g.tuile = m.tuile
   return g
 }

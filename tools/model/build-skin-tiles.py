@@ -62,15 +62,25 @@ def tile(fn):
     return im.resize((TEX_OUT, TEX_OUT), Image.BOX)
 
 def lava():
-    # Three plates per tile: with the tile at 1.8 m, plates of sixty centimetres, read from the
-    # plaza edge (owner, 5 Sep: "trop serre sur les bases").
-    edge = voronoi2(5, 3)
+    # Crust, not crackle: thick molten channels between plates of sixty centimetres (three per
+    # 1.8 m tile), a hot core fading to orange at the channel's edge, a cooled dark rim on each
+    # plate, embers glowing past the rim. The pieces keep their thin cracks; the base is read
+    # from the plaza edge (owner, 5 Sep: "vraiment un effet croute de lave").
+    edge = voronoi2(5, 3); W = 0.14
     def albedo(x, y):
-        k = clamp((0.05 - edge(x, y)) / 0.05); m = mottle2(x, y, 55)
-        return tuple(int(c + (t - c) * k) for c, t in zip((34 * m, 22 * m, 18 * m), (255, 92, 28)))
+        e = edge(x, y); m = mottle2(x, y, 55)
+        if e < W:
+            t = e / W  # 0 at the channel's centre, 1 at its edge
+            return tuple(int(c + (r - c) * t) for c, r in zip((255, 214, 96), (225, 64, 14)))
+        rim = clamp((0.24 - e) / 0.10)  # the plate's edge, cooled darker
+        return tuple(int(c * (1 - 0.45 * rim)) for c in (36 * m, 22 * m, 18 * m))
     def glow(x, y):
-        e = edge(x, y); g = max(clamp((0.05 - e) / 0.05), 0.4 * clamp((0.16 - e) / 0.16) ** 2)
-        return (int(255 * g), int(120 * g), int(20 * g))
+        e = edge(x, y)
+        if e < W:
+            t = e / W
+            return (int(255 - 25 * t), int(190 - 120 * t), int(60 - 45 * t))
+        g = 0.35 * clamp((0.34 - e) / 0.20) ** 2
+        return (int(255 * g), int(110 * g), int(20 * g))
     return albedo, glow
 
 def cursed():
