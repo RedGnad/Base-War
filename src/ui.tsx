@@ -443,7 +443,7 @@ const PRECHAUFFE = [
   // while a panel is drawing arrives a beat late, and the player sees an empty square where
   // the crate should be (owner, 1 Sep). Anything the interface can show has to be listed
   // here the moment it is created, which is the whole job of this list.
-  'ui-crate', 'ui-floor', 'ui-shield', 'ui-lock', 'ui-prestige', 'ui-luck', 'ui-close',
+  'ui-crate', 'ui-floor', 'ui-shield', 'ui-prestige', 'ui-luck', 'ui-close',
   'ui-gear-0', 'ui-gear-1', 'ui-gear-2', 'ui-gear-3', 'ui-gear-4', 'ui-gear-5', 'ui-gear-6', 'ui-gear-7',
   'burst'
 ]
@@ -668,7 +668,7 @@ function choisirAction(): { id: string; label: string; action: () => void; icon?
     It sat INSIDE the full-hands branch by mistake, so it only ever showed while carrying
     (owner, 4 Sep: "the button does not become the activation when I am at the post").
   */
-  if (lockPostInReach()) return { id: 'verrouiller', label: 'LOCK BASE', icon: 'ui-lock', action: lockBase }
+  if (lockPostInReach()) return { id: 'verrouiller', label: 'LOCK BASE', icon: ico('lock'), action: lockBase }
   /*
     Hands first, because full hands are the loudest fact about your situation.
 
@@ -1007,11 +1007,13 @@ function easeOutBack(t: number): number {
   draws no particles and no bloom, so the juice is timing, scale, colour and the sounds that
   already climb with rarity (owner, 5 Sep: "notre etape la plus juicy, et je la trouve fade").
 */
-const REVEAL_HOLD_MS = 240
+/** The beat before the hero pops, matched to the sting's riser so the glyph lands ON the
+    impact: nothing for the small pulls, the riser's length for Epic and above. */
+function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete >= 3 ? 220 : 0 }
 function Revelation(): ReactEcs.JSX.Element {
-  const depuis = Date.now() - boxView.gagneA - REVEAL_HOLD_MS
-  if (depuis < 0) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   const rarete = Math.max(0, boxView.resultat)
+  const depuis = Date.now() - boxView.gagneA - revealHold(rarete)
+  if (depuis < 0) return <UiEntity uiTransform={{ width: 0, height: 0 }} />
   const echelle = Math.min(1.6, 1 + 0.12 * rarete)
   const entree = Math.min(1, depuis / 160)
   const heroPop = easeOutBack(Math.min(1, depuis / 340))
