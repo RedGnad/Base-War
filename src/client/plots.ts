@@ -815,11 +815,15 @@ function garnirBase(v: View): void {
   PointerEvents.createOrReplace(v.ascenseur, {
     pointerEvents: [{ eventType: PointerEventType.PET_DOWN, eventInfo: { button: InputAction.IA_POINTER, hoverText: 'Go up' } }]
   })
-  MeshRenderer.setBox(v.door)
+  /*
+    The shield is a FILE, not a primitive box (tools/model/build-shield.py). Two reasons. The
+    engine culls back faces on every material it draws, so a single box was invisible from
+    inside the base: the owner sealed his door and saw nothing change through his own windows
+    (owner, 5 Sep). The file carries a second, inward-facing shell. And a primitive costs the
+    phone one material per base where a shared file costs one for every base at once.
+  */
+  GltfContainer.create(v.door, { src: 'assets/Models/shield.glb', visibleMeshesCollisionMask: 0, invisibleMeshesCollisionMask: 0 })
   MeshCollider.setBox(v.door)
-  Material.setPbrMaterial(v.door, {
-    albedoColor: TOY.shield, emissiveColor: Color3.fromHexString(TOY.sentry), emissiveIntensity: 1.2, metallic: 0, roughness: 0.1
-  })
   TextShape.createOrReplace(v.gain, { text: '', fontSize: 4.4, textColor: VERT, outlineWidth: 0.22, outlineColor: NOIR })
   MeshRenderer.setPlane(v.enseigne)
   // Alpha TEST, not blend: a tested cutout writes depth and wins every angle against the glazing (1 Sep).

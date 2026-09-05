@@ -1042,16 +1042,17 @@ function revealHold(rarete: number): number { return rarete >= 5 ? 340 : rarete 
 function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v }
 
 /** One card of the strip, at a fixed size: the strip never reflows. */
-const CarteReel = (props: { key?: number; rarete: number; x: number; haut: number; opacite: number; mutId?: number }) => {
+const CarteReel = (props: { key?: number; rarete: number; x: number; haut: number; opacite: number; mutId?: number; taille?: number }) => {
   const rar = RARITIES[props.rarete] ?? RARITIES[0]
   const mut = mutation(props.mutId ?? 0)
   const brut = Color4.fromHexString(rar.color + 'ff')
   const texte = Color4.fromHexString(lisible(rar.color) + 'ff')
   const mute = (props.mutId ?? 0) > 0 && mut.mult > 1
+  const k = (props.taille ?? REEL_W) / REEL_W
   return (
     <UiEntity
       uiTransform={{
-        width: REEL_W, height: REEL_H, positionType: 'absolute',
+        width: REEL_W * k, height: REEL_H * k, positionType: 'absolute',
         position: { left: props.x, top: props.haut },
         flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: 8,
         opacity: props.opacite
@@ -1060,7 +1061,7 @@ const CarteReel = (props: { key?: number; rarete: number; x: number; haut: numbe
     >
       <Label value={rar.name.toUpperCase()} fontSize={TYPE.caption} textWrap="nowrap" color={texte}
         uiTransform={{ width: '100%', height: 26 }} textAlign="middle-center" />
-      <UiEntity uiTransform={{ width: 118, height: 118 }}
+      <UiEntity uiTransform={{ width: 118 * k, height: 118 * k }}
         uiBackground={{ texture: { src: `assets/ui/toy-${props.rarete}.png` }, textureMode: 'stretch' }} />
       <Label
         value={mute ? `${mut.name.toUpperCase()}  x${mut.mult}` : `+${formatIncome(INCOME_UI[props.rarete] ?? 1)}/s`}
@@ -1130,17 +1131,19 @@ function CrateReveal(): ReactEcs.JSX.Element {
                 uiTransform={{ width: 5, height: bande, positionType: 'absolute', position: { left: large / 2 - 2.5, top: 0 } }}
                 uiBackground={{ color: C.name }} />
             ) : (
-              /* La carte gagnante, en COPIE par dessus: la rangee ne bouge pas d'un pixel. */
+              /* La carte gagnante, en COPIE par dessus: la rangee ne bouge pas d'un pixel.
+                 Le cadre ET la carte grandissent ensemble; le cadre grandissait seul, et la
+                 bande de plaque nue qui s'ouvrait sur deux cotes etait la "fenetre vide" vue
+                 a chaque revelation (proprietaire, 5 Sep). */
               <UiEntity
                 uiTransform={{
                   width: REEL_W * (1 + 0.22 * pop) + 16, height: REEL_H * (1 + 0.22 * pop) + 16,
                   positionType: 'absolute',
-                  position: { left: large / 2 - (REEL_W * (1 + 0.22 * pop) + 16) / 2, top: (bande - REEL_H * (1 + 0.22 * pop) - 16) / 2 },
-                  justifyContent: 'center', alignItems: 'center'
+                  position: { left: large / 2 - (REEL_W * (1 + 0.22 * pop) + 16) / 2, top: (bande - REEL_H * (1 + 0.22 * pop) - 16) / 2 }
                 }}
                 uiBackground={{ ...SKIN.card, color: gagne }}
               >
-                <CarteReel rarete={rarete} x={8} haut={8} opacite={1} mutId={boxView.resultatMutation} />
+                <CarteReel rarete={rarete} x={8} haut={8} opacite={1} mutId={boxView.resultatMutation} taille={REEL_W * (1 + 0.22 * pop)} />
               </UiEntity>
             )}
           </UiEntity>
@@ -1281,7 +1284,8 @@ const uiComponent = () => {
     <FusionPanel />
     <MenuWindow />
 
-    {combatView.aiming && hud() && !slotView.active && <Crosshair />}
+    {/* Not over the crate act: nothing is aimed at during it (owner, 5 Sep). */}
+    {combatView.aiming && hud() && !slotView.active && !boxView.roule && boxView.resultat < 0 && <Crosshair />}
 
 
     {/*
