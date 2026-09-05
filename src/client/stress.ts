@@ -49,9 +49,20 @@ function poser(
     const e = engine.addEntity()
     faux.set(clef(spot.x, spot.z), e)
     Transform.create(e, { position: Vector3.create(spot.x, 0, spot.z) })
-    const floors = 1 + alea(4)
+    /*
+      The first two fakes are a palette, not a roll: one piece of every mutation as an Epic,
+      then one of every rarity plain and as gold and diamond. A tint can only be judged on a
+      piece that exists (owner, 5 Sep: "je vois aucun item cursed").
+    */
+    const palette = n === 0 ? Array.from({ length: 14 }, (_, m) => encoder(3, m))
+      : n === 1 ? [0, 1, 2, 3, 4, 5].flatMap((r) => [encoder(r, 0), encoder(r, 1), encoder(r, 2)])
+      : null
+    const floors = palette !== null ? Math.ceil(palette.length / 6) : 1 + alea(4)
     const items: number[] = []
-    for (let k = 0; k < floors * 6; k++) items.push(Math.random() < 0.85 ? encoder(alea(5), alea(3) === 0 ? 1 + alea(5) : 0) : -1)
+    for (let k = 0; k < floors * 6; k++) {
+      if (palette !== null) { items.push(palette[k] ?? -1); continue }
+      items.push(Math.random() < 0.85 ? encoder(alea(5), alea(3) === 0 ? 1 + alea(5) : 0) : -1)
+    }
     // Armed storeys draw a cone each: half the storeys of a fake carry charges.
     const sentryFloors = Array.from({ length: floors }, () => (alea(2) === 0 ? 1 + alea(20) : 0))
     Plot.create(e, {
